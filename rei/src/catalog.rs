@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 const ANY_DAMAGE: i32 = -1;
+// blue italics as later REI versions name the owning mod under an item
+const ORIGIN_STYLE: &str = "§9§o";
 
 // an item and damage pair, the identity every list, filter and recipe lookup works on
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -48,6 +50,7 @@ pub struct Catalog
     pub m_entries: Vec<Entry>,
     pub m_recipes: Vec<RecipeView>,
     m_byKey: HashMap<Key, usize>,
+    m_origins: HashMap<i32, String>,
     pub m_generation: i32,
 }
 
@@ -87,7 +90,14 @@ impl Catalog
         let entries: Vec<Entry> = itemCatalog().into_iter().filter_map(Catalog::listed).collect();
         let byKey: HashMap<Key, usize> =
             entries.iter().enumerate().map(|(index, entry)| (entry.m_key, index)).collect();
-        Catalog { m_entries: entries, m_recipes: recipeList(), m_byKey: byKey, m_generation: generation }
+        let origins: HashMap<i32, String> = origins(&entries);
+        Catalog {
+            m_entries: entries,
+            m_recipes: recipeList(),
+            m_byKey: byKey,
+            m_origins: origins,
+            m_generation: generation,
+        }
     }
 
     fn listed(stack: ItemStack) -> Option<Entry>
@@ -106,6 +116,9 @@ impl Catalog
     }
 
     pub fn entry(&self, key: Key) -> Option<&Entry> { self.m_byKey.get(&key).map(|index| &self.m_entries[*index]) }
+
+    // keyed by id alone so damaged tools find their mod too
+    pub fn origin(&self, id: i32) -> Option<&str> { self.m_origins.get(&id).map(String::as_str) }
 
     pub fn name(&self, key: Key) -> String
     {
@@ -173,6 +186,26 @@ impl Catalog
         outputs.dedup();
         outputs
     }
+}
+
+// one tooltip line per item id, asking the host once per namespace
+fn origins(entries: &[Entry]) -> HashMap<i32, String>
+{
+    let mut lines: HashMap<&str, String> = HashMap::new();
+    let mut origins: HashMap<i32, String> = HashMap::new();
+    for entry in entries.iter().filter(|entry| !entry.m_namespace.is_empty())
+    {
+        let line: &String = lines.entry(&entry.m_namespace).or_insert_with(|| origin(&entry.m_namespace));
+        origins.insert(entry.m_key.m_id, line.clone());
+    }
+    origins
+}
+
+fn origin(namespace: &str) -> String
+{
+    let name: String = modName(namespace);
+    let shown: &str = if name.is_empty() { namespace } else { &name };
+    format!("{ORIGIN_STYLE}{shown}")
 }
 
 // greedy, exact damages first so a wildcard ingredient never takes the one stack an exact ingredient needs

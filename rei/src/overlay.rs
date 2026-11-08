@@ -1,5 +1,5 @@
 use crate::catalog::{self, Catalog, Key};
-use crate::cheat;
+use crate::{cheat, config};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -42,7 +42,6 @@ mod color
     pub const TEXT: u32 = 0xE0E0E0;
     pub const HINT: u32 = 0x707070;
     pub const TOOLTIP: u32 = 0xC000_0000;
-    pub const MOD_NAME: u32 = 0x5555FF;
     pub const TITLE: u32 = 0x404040;
     pub const RECIPE_ID: u32 = 0x707070;
 }
@@ -56,18 +55,16 @@ mod key
     pub const USAGE: i32 = 22;
     pub const HIDE: i32 = 24;
     pub const RETURN: i32 = 28;
+    pub const LEFT: i32 = 203;
+    pub const RIGHT: i32 = 205;
 }
 
 mod text
 {
     pub const SEARCH: &str = "rei.text.rei.search.field.suggestion";
-    pub const CRAFTING: &str = "rei.category.rei.crafting";
-    pub const SHAPELESS: &str = "rei.text.rei.shapeless";
-    pub const SMELTING: &str = "rei.category.rei.smelting";
     pub const BACK: &str = "rei.text.rei.back";
     pub const LEFT: &str = "rei.text.rei.left_arrow";
     pub const RIGHT: &str = "rei.text.rei.right_arrow";
-    pub const VANILLA: &str = "minecraft";
     pub const CRAFTABLE: &str = "Craftable Only";
 }
 
@@ -85,9 +82,6 @@ mod page
 {
     pub const INSET: i32 = 8;
     pub const TITLE_TOP: i32 = 6;
-    pub const FOCUS_TOP: i32 = 20;
-    pub const NAME_GAP: i32 = 4;
-    pub const BODY_TOP: i32 = 44;
     pub const GRID: usize = 3;
     pub const GRID_LEFT: i32 = 30;
     pub const ARROW_LEFT: i32 = 90;
@@ -222,6 +216,7 @@ struct State
     m_frame: u32,
     m_layout: Layout,
     m_hovered: Option<Key>,
+    m_mouse: [i32; 2],
     m_slots: Vec<(Rect, Key)>,
     m_generation: i32,
 }
@@ -314,7 +309,8 @@ impl State
 
     fn pages(&self) -> usize { self.m_visible.len().div_ceil(self.m_layout.perPage().max(1)).max(1) }
 
-    fn open(&mut self, catalog: &Catalog, key: Key, usages: bool)
+    // a lookup from a recipe page can be backed out of, one from the list or a vanilla slot starts over
+    fn open(&mut self, catalog: &Catalog, key: Key, usages: bool, drill: bool)
     {
         let key: Key = listedKey(catalog, key);
         let recipes: Vec<usize> = if usages
@@ -329,9 +325,10 @@ impl State
         {
             return;
         }
-        if let Some(current) = self.m_view.take()
+        match self.m_view.take()
         {
-            self.m_history.push(current);
+            Some(current) if drill => self.m_history.push(current),
+            _ => self.m_history.clear(),
         }
         self.m_view = Some(View { m_focus: key, m_recipes: recipes, m_index: 0 });
     }
@@ -353,6 +350,18 @@ impl State
     }
 
     fn turnPage(&mut self, forward: bool) { self.m_page = cycle(self.m_page, self.pages(), forward); }
+
+    fn turn(&mut self, forward: bool)
+    {
+        if self.m_view.is_some()
+        {
+            self.turnRecipe(forward);
+        }
+        else
+        {
+            self.turnPage(forward);
+        }
+    }
 
     // the focused search field takes every key, so typing never closes the screen
     fn typeKey(&mut self, character: char, code: i32) -> bool
@@ -390,6 +399,7 @@ impl State
                 self.m_hidden = !self.m_hidden;
                 true
             }
+            _ if self.m_hidden => false,
             key::ESCAPE if self.m_view.is_some() =>
             {
                 self.close();
@@ -400,18 +410,37 @@ impl State
                 self.back();
                 true
             }
-            key::RECIPE | key::USAGE if !self.m_hidden => match self.m_hovered.or(hovered)
+            key::LEFT | key::RIGHT =>
             {
-                Some(target) =>
-                {
-                    let catalog: Rc<Catalog> = self.catalog();
-                    self.open(&catalog, target, code == key::USAGE);
-                    true
-                }
-                None => false,
-            },
+                self.turn(code == key::RIGHT);
+                true
+            }
+            key::RECIPE | key::USAGE => self.lookup(code == key::USAGE, hovered),
             _ => false,
         }
+    }
+
+    fn lookup(&mut self, usages: bool, hovered: Option<Key>) -> bool
+    {
+        // the recipe page covers the vanilla slots under it
+        let onPage: bool = self.m_view.is_some() && inside(self.m_mouse, self.m_layout.m_container);
+        let target: Option<Key> = if onPage
+        {
+            self.m_hovered
+        }
+        else
+        {
+            self.m_hovered.or(hovered)
+        };
+        let Some(target) = target
+        else
+        {
+            return false;
+        };
+
+        let catalog: Rc<Catalog> = self.catalog();
+        self.open(&catalog, target, usages, onPage);
+        true
     }
 
     // cheating grabs a full stack on left click and one on right click, a held stack of another item is deleted
@@ -419,7 +448,7 @@ impl State
     {
         if !cheat::enabled()
         {
-            self.open(catalog, key, button == RIGHT_BUTTON);
+            self.open(catalog, key, button == RIGHT_BUTTON, false);
             return;
         }
         if cursorHolds().is_some_and(|held| held != Some(key))
@@ -454,7 +483,8 @@ impl State
         let container: Rect = self.m_layout.m_container;
         let [previous, next, back] = pageButtons(container);
         let focus: Key = view.m_focus;
-        if inside(point, previous) || inside(point, next)
+        let paged: bool = view.m_recipes.len() > 1;
+        if paged && (inside(point, previous) || inside(point, next))
         {
             self.turnRecipe(inside(point, next));
         }
@@ -465,7 +495,7 @@ impl State
         else if let Some((_, key)) = self.m_slots.iter().find(|(rect, _)| inside(point, *rect)).copied()
             && (key != focus || button == RIGHT_BUTTON)
         {
-            self.open(catalog, key, button == RIGHT_BUTTON);
+            self.open(catalog, key, button == RIGHT_BUTTON, true);
         }
         inside(point, container)
     }
@@ -586,9 +616,8 @@ impl Painter<'_>
         }
     }
 
-    fn recipe(&mut self, recipe: &RecipeView)
+    fn recipe(&mut self, recipe: &RecipeView, top: i32)
     {
-        let top: i32 = page::BODY_TOP;
         let output: Key = Key::of(&recipe.output);
         let count: i32 = recipe.output.count;
         match &recipe.shape
@@ -651,13 +680,10 @@ impl Painter<'_>
             (None, Some(key)) => vec![(self.m_catalog.name(key), color::WHITE)],
             (None, None) => return,
         };
-        if let Some(entry) = self
-            .m_hovered
-            .filter(|_| self.m_hint.is_none())
-            .and_then(|key| self.m_catalog.entry(key))
-            .filter(|entry| entry.m_namespace != text::VANILLA)
+        if let Some(origin) =
+            self.m_hovered.filter(|_| self.m_hint.is_none()).and_then(|key| origin(self.m_catalog, key))
         {
-            lines.push((entry.m_namespace.clone(), color::MOD_NAME));
+            lines.push((origin.to_owned(), color::WHITE));
         }
         let width: i32 = lines.iter().map(|(line, _)| textWidth(line)).max().unwrap_or(0);
         let height: i32 = (lines.len() as i32 - 1) * layout::LINE + layout::FONT_HEIGHT;
@@ -767,7 +793,7 @@ impl Painter<'_>
     }
 
     // the recipe registry name as REI shows recipe ids, the namespace alone when the whole name does not fit
-    fn recipeId(&mut self, id: &str, container: Rect, buttonsTop: i32)
+    fn recipeId(&mut self, id: &str, container: Rect, top: i32)
     {
         let room: i32 = container[2] - page::INSET * 2;
         let shown: &str = if textWidth(id) <= room
@@ -779,7 +805,7 @@ impl Painter<'_>
             id.split(':').next().unwrap_or(id)
         };
         let x: i32 = (container[2] - textWidth(shown)) / 2;
-        self.m_draw.plain(x, buttonsTop - layout::LINE - page::ID_GAP, shown, color::RECIPE_ID);
+        self.m_draw.plain(x, top, shown, color::RECIPE_ID);
     }
 
     fn view(&mut self, view: &View, container: Rect)
@@ -787,27 +813,32 @@ impl Painter<'_>
         let [x, y, w, h] = container;
         self.m_draw.panel(x, y, w, h);
         let recipe: &RecipeView = &self.m_catalog.m_recipes[view.m_recipes[view.m_index]];
-        let title: &str = match recipe.shape
+        let name: String = self.m_catalog.name(Key::of(&recipe.output));
+        self.m_draw.plain(page::INSET, page::TITLE_TOP, &name, color::TITLE);
+
+        let paged: bool = view.m_recipes.len() > 1;
+        if paged
         {
-            RecipeShape::Shaped { .. } => text::CRAFTING,
-            RecipeShape::Shapeless { .. } => text::SHAPELESS,
-            RecipeShape::Smelting { .. } => text::SMELTING,
-        };
-        self.m_draw.plain(page::INSET, page::TITLE_TOP, &translate(title), color::TITLE);
-        let index: String = format!("{}/{}", view.m_index + 1, view.m_recipes.len());
-        self.m_draw.plain(container[2] - page::INSET - textWidth(&index), page::TITLE_TOP, &index, color::TITLE);
-        self.slotItem(page::INSET, page::FOCUS_TOP, Some(view.m_focus));
-        let name: String = self.m_catalog.name(view.m_focus);
-        let nameX: i32 = page::INSET + layout::CELL + page::NAME_GAP;
-        self.m_draw.plain(nameX, page::FOCUS_TOP + page::NAME_GAP, &name, color::TITLE);
-        self.recipe(recipe);
+            let index: String = format!("{}/{}", view.m_index + 1, view.m_recipes.len());
+            self.m_draw.plain(container[2] - page::INSET - textWidth(&index), page::TITLE_TOP, &index, color::TITLE);
+        }
+
         let [previous, next, back] = pageButtons(container);
+        let idTop: i32 = back[1] - layout::LINE - page::ID_GAP;
+        // the grid sits centered between the title and the recipe id
+        let bodyTop: i32 = page::TITLE_TOP + layout::FONT_HEIGHT;
+        let body: i32 = page::GRID as i32 * layout::CELL;
+        self.recipe(recipe, (bodyTop + idTop - body) / 2);
         if let Some(id) = &recipe.id
         {
-            self.recipeId(&id.to_string(), container, back[1]);
+            self.recipeId(&id.to_string(), container, idTop);
         }
-        self.button(previous, &translate(text::LEFT));
-        self.button(next, &translate(text::RIGHT));
+
+        if paged
+        {
+            self.button(previous, &translate(text::LEFT));
+            self.button(next, &translate(text::RIGHT));
+        }
         self.button(back, &translate(text::BACK));
     }
 }
@@ -816,6 +847,7 @@ fn drawFrame(draw: &mut Draw, state: &mut State, size: [i32; 2], mouse: [i32; 2]
 {
     state.m_frame = state.m_frame.wrapping_add(1);
     state.m_hovered = None;
+    state.m_mouse = mouse;
     state.m_slots.clear();
     if state.m_hidden
     {
@@ -882,11 +914,27 @@ impl Overlay for Viewer
     }
 }
 
+// the owning mod's line under an item name, when the option is on
+fn origin(catalog: &Catalog, key: Key) -> Option<&str>
+{
+    if !config::modName()
+    {
+        return None;
+    }
+    catalog.origin(key.m_id)
+}
+
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for target in TARGETS
     {
         ctx.screens().overlay(target, Viewer)?;
     }
-    Ok(())
+    ctx.screens().tooltip(|stack, lines| {
+        let catalog: Rc<Catalog> = catalog::get();
+        if let Some(origin) = Key::ofStack(stack).and_then(|key| origin(&catalog, key))
+        {
+            lines.push(origin.to_owned());
+        }
+    })
 }
