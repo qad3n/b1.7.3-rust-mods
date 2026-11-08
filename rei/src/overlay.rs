@@ -13,31 +13,28 @@ mod layout
     pub const ICON: i32 = 16;
     pub const MARGIN: i32 = 4;
     pub const GAP: i32 = 6;
-    pub const BAR: i32 = 14;
-    pub const ARROW: i32 = 16;
-    pub const FIELD: i32 = 16;
+    pub const SPACING: i32 = 2;
+    // vanilla buttons are 20 high
+    pub const BAR: i32 = 20;
+    pub const ARROW: i32 = 20;
+    pub const FIELD: i32 = 20;
     pub const TOGGLE: i32 = 20;
-    pub const BUTTON_PAD: i32 = 10;
     pub const TEXT_INSET: i32 = 4;
     pub const FONT_HEIGHT: i32 = 8;
     pub const LINE: i32 = 10;
     pub const TOOLTIP_PAD: i32 = 3;
     pub const TOOLTIP_OFFSET: i32 = 12;
-    pub const BUTTON_TEXT_TOP: i32 = 3;
-    pub const TOGGLE_ICON_LEFT: i32 = 2;
-}
-
-mod bevel
-{
-    pub const EDGE: i32 = 1;
-    pub const INNER: i32 = 3;
+    pub const TOGGLE_ICON: i32 = 2;
+    pub const FIELD_EDGE: i32 = 1;
 }
 
 mod color
 {
     pub const WHITE: u32 = 0xFFFFFF;
     pub const HOVER: u32 = 0x80FF_FFFF;
-    pub const CHEAT_TINT: u32 = 0x30FF_0000;
+    // GuiButton label colors, give mode in the red REI uses for cheating
+    pub const BUTTON_HOVER: u32 = 0xFFFFA0;
+    pub const GIVE_MODE: u32 = 0xFF5555;
     pub const CRAFTABLE_TINT: u32 = 0x4000_FF00;
     pub const FIELD_EDGE: u32 = 0xFFA0_A0A0;
     pub const FIELD_FOCUS: u32 = 0xFFFF_FFFF;
@@ -46,12 +43,6 @@ mod color
     pub const HINT: u32 = 0x707070;
     pub const TOOLTIP: u32 = 0xC000_0000;
     pub const MOD_NAME: u32 = 0x5555FF;
-    pub const PANEL_EDGE: u32 = 0xFF00_0000;
-    pub const PANEL_LIGHT: u32 = 0xFFFF_FFFF;
-    pub const PANEL_SHADOW: u32 = 0xFF55_5555;
-    pub const PANEL_FACE: u32 = 0xFFC6_C6C6;
-    pub const SLOT_DARK: u32 = 0xFF37_3737;
-    pub const SLOT_FACE: u32 = 0xFF8B_8B8B;
     pub const TITLE: u32 = 0x404040;
     pub const RECIPE_ID: u32 = 0x707070;
 }
@@ -77,6 +68,7 @@ mod text
     pub const LEFT: &str = "rei.text.rei.left_arrow";
     pub const RIGHT: &str = "rei.text.rei.right_arrow";
     pub const VANILLA: &str = "minecraft";
+    pub const CRAFTABLE: &str = "Craftable Only";
 }
 
 mod timing
@@ -101,14 +93,13 @@ mod page
     pub const ARROW_LEFT: i32 = 90;
     pub const OUTPUT_LEFT: i32 = 124;
     pub const OUTPUT_FRAME: i32 = 4;
-    pub const COUNT_TOP: i32 = 9;
     pub const SMELT_INPUT: i32 = 56;
     pub const SMELT_ARROW: i32 = 79;
     pub const SMELT_OUTPUT: i32 = 116;
     pub const FLAME_TOP: i32 = 20;
     pub const BUTTON_WIDTH: i32 = 20;
     pub const BACK_WIDTH: i32 = 50;
-    pub const BUTTON_HEIGHT: i32 = 16;
+    pub const BUTTON_HEIGHT: i32 = 20;
     pub const BUTTON_INSET: i32 = 8;
     pub const ID_GAP: i32 = 2;
     pub const ARROW_TEXTURE: &str = "/gui/furnace.png";
@@ -155,22 +146,27 @@ impl Layout
         let panelRight: i32 = width - left - layout::MARGIN;
         let barTop: i32 = layout::MARGIN - top;
         let gridTop: i32 = barTop + layout::BAR + layout::MARGIN;
-        let fieldTop: i32 = height - top - layout::FIELD - layout::MARGIN;
         let columns: i32 = ((panelRight - panelLeft) / layout::CELL).max(0);
-        let rows: i32 = ((height - top - layout::MARGIN - gridTop) / layout::CELL).max(0);
-        let gridLeft: i32 = panelLeft + (panelRight - panelLeft - columns * layout::CELL) / 2;
-        let cheatWidth: i32 = textWidth(&cheat::label()) + layout::BUTTON_PAD;
+        let gridWidth: i32 = columns * layout::CELL;
+        let searchWidth: i32 = (gridWidth - (layout::TOGGLE + layout::SPACING) * 2).max(0);
+        let room: i32 = height - top - layout::MARGIN - layout::FIELD - layout::MARGIN - gridTop;
+        let rows: i32 = (room / layout::CELL).max(0);
+        let grid: Rect = [panelLeft, gridTop, gridWidth, rows * layout::CELL];
+        let gridRight: i32 = grid[0] + grid[2];
+        // search, craftable and mode sit in one row right under the list, edge to edge with it
+        let rowTop: i32 = grid[1] + grid[3] + layout::MARGIN;
+        let craftableLeft: i32 = grid[0] + searchWidth + layout::SPACING;
         Layout {
             m_screen: [-left, -top, width, height],
             m_container: [0, 0, container[0], container[1]],
-            m_grid: [gridLeft, gridTop, columns * layout::CELL, rows * layout::CELL],
+            m_grid: grid,
             m_columns: columns,
             m_rows: rows,
-            m_previous: [panelLeft, barTop, layout::ARROW, layout::BAR],
-            m_next: [panelRight - layout::ARROW, barTop, layout::ARROW, layout::BAR],
-            m_search: [0, fieldTop, container[0] - layout::TOGGLE - layout::MARGIN, layout::FIELD],
-            m_craftable: [container[0] - layout::TOGGLE, fieldTop, layout::TOGGLE, layout::FIELD],
-            m_cheat: [layout::MARGIN - left, barTop, cheatWidth, layout::FIELD],
+            m_previous: [grid[0], barTop, layout::ARROW, layout::BAR],
+            m_next: [gridRight - layout::ARROW, barTop, layout::ARROW, layout::BAR],
+            m_search: [grid[0], rowTop, searchWidth, layout::FIELD],
+            m_craftable: [craftableLeft, rowTop, layout::TOGGLE, layout::TOGGLE],
+            m_cheat: [gridRight - layout::TOGGLE, rowTop, layout::TOGGLE, layout::TOGGLE],
         }
     }
 
@@ -543,6 +539,7 @@ struct Painter<'a>
     m_mouse: [i32; 2],
     m_frame: u32,
     m_hovered: Option<Key>,
+    m_hint: Option<&'static str>,
     m_slots: Vec<(Rect, Key)>,
 }
 
@@ -560,30 +557,17 @@ impl Painter<'_>
         self.m_draw.texture(page::ARROW_TEXTURE, x, y, u, v, w, h);
     }
 
-    fn panel(&mut self, rect: Rect)
-    {
-        let [x, y, w, h] = rect;
-        let (edge, inner): (i32, i32) = (bevel::EDGE, bevel::INNER);
-        self.m_draw.rect(x, y, w, h, color::PANEL_EDGE);
-        self.m_draw.rect(x + edge, y + edge, w - edge * 2, h - edge * 2, color::PANEL_LIGHT);
-        self.m_draw.rect(x + inner, y + inner, w - inner - edge, h - inner - edge, color::PANEL_SHADOW);
-        self.m_draw.rect(x + inner, y + inner, w - inner * 2, h - inner * 2, color::PANEL_FACE);
-    }
-
-    fn slot(&mut self, x: i32, y: i32, size: i32)
-    {
-        let edge: i32 = bevel::EDGE;
-        self.m_draw.rect(x - edge, y - edge, size + edge * 2, size + edge * 2, color::PANEL_LIGHT);
-        self.m_draw.rect(x - edge, y - edge, size + edge, size + edge, color::SLOT_DARK);
-        self.m_draw.rect(x, y, size, size, color::SLOT_FACE);
-    }
+    fn slot(&mut self, x: i32, y: i32, size: i32) { self.m_draw.slot(x, y, size); }
 
     // a wildcard ingredient cycles through every listed damage of its item
-    fn item(&mut self, x: i32, y: i32, key: Key)
+    fn item(&mut self, x: i32, y: i32, key: Key) { self.stack(x, y, key, 1); }
+
+    // the host draws the count as vanilla slots do
+    fn stack(&mut self, x: i32, y: i32, key: Key, count: i32)
     {
         let variants: Vec<Key> = self.m_catalog.variants(key);
         let shown: Key = variants[(self.m_frame / timing::CYCLE) as usize % variants.len()];
-        self.m_draw.item(x, y, &shown.stack(1));
+        self.m_draw.item(x, y, &shown.stack(count));
         let rect: Rect = [x, y, layout::ICON, layout::ICON];
         if inside(self.m_mouse, rect)
         {
@@ -655,29 +639,23 @@ impl Painter<'_>
     {
         let frame: i32 = page::OUTPUT_FRAME;
         self.slot(x - frame, y - frame, layout::ICON + frame * 2);
-        self.item(x, y, output);
-        if count > 1
-        {
-            let label: String = count.to_string();
-            self.m_draw.text(
-                x + layout::ICON + bevel::EDGE - textWidth(&label),
-                y + page::COUNT_TOP,
-                &label,
-                color::WHITE,
-            );
-        }
+        self.stack(x, y, output, count);
     }
 
     // the name, and for mod items the owning mod as REI shows it
     fn tooltip(&mut self, screen: Rect)
     {
-        let Some(key) = self.m_hovered
-        else
+        let mut lines: Vec<(String, u32)> = match (self.m_hint, self.m_hovered)
         {
-            return;
+            (Some(hint), _) => vec![(hint.to_owned(), color::WHITE)],
+            (None, Some(key)) => vec![(self.m_catalog.name(key), color::WHITE)],
+            (None, None) => return,
         };
-        let mut lines: Vec<(String, u32)> = vec![(self.m_catalog.name(key), color::WHITE)];
-        if let Some(entry) = self.m_catalog.entry(key).filter(|entry| entry.m_namespace != text::VANILLA)
+        if let Some(entry) = self
+            .m_hovered
+            .filter(|_| self.m_hint.is_none())
+            .and_then(|key| self.m_catalog.entry(key))
+            .filter(|entry| entry.m_namespace != text::VANILLA)
         {
             lines.push((entry.m_namespace.clone(), color::MOD_NAME));
         }
@@ -705,21 +683,16 @@ impl Painter<'_>
     fn search(&mut self, state: &State, rect: Rect)
     {
         let [x, y, w, h] = rect;
-        let edge: i32 = bevel::EDGE;
-        self.m_draw.rect(
-            x,
-            y,
-            w,
-            h,
-            if state.m_focused
-            {
-                color::FIELD_FOCUS
-            }
-            else
-            {
-                color::FIELD_EDGE
-            },
-        );
+        let edge: i32 = layout::FIELD_EDGE;
+        let border: u32 = if state.m_focused
+        {
+            color::FIELD_FOCUS
+        }
+        else
+        {
+            color::FIELD_EDGE
+        };
+        self.m_draw.rect(x, y, w, h, border);
         self.m_draw.rect(x + edge, y + edge, w - edge * 2, h - edge * 2, color::FIELD_FACE);
         let room: i32 = w - layout::TEXT_INSET * 2;
         let mut shown: &str = &state.m_query;
@@ -742,11 +715,6 @@ impl Painter<'_>
 
     fn list(&mut self, state: &State, layout: &Layout)
     {
-        if cheat::enabled()
-        {
-            let [x, y, w, h] = layout.m_grid;
-            self.m_draw.rect(x, y, w, h, color::CHEAT_TINT);
-        }
         let perPage: usize = layout.perPage();
         for (offset, key) in state.m_visible.iter().skip(state.m_page * perPage).take(perPage).enumerate()
         {
@@ -757,20 +725,45 @@ impl Painter<'_>
         self.button(layout.m_next, &translate(text::RIGHT));
         let label: String = format!("{}/{}", state.m_page + 1, state.pages());
         let middle: i32 = (layout.m_previous[0] + layout.m_next[0] + layout.m_next[2]) / 2;
-        self.m_draw.centered(middle, layout.m_previous[1] + layout::BUTTON_TEXT_TOP, &label, color::WHITE);
+        let textTop: i32 = (layout::BAR - layout::FONT_HEIGHT) / 2;
+        self.m_draw.centered(middle, layout.m_previous[1] + textTop, &label, color::WHITE);
     }
 
     fn toggles(&mut self, state: &State, layout: &Layout)
     {
-        self.button(layout.m_cheat, &cheat::label());
+        self.button(layout.m_cheat, "");
+        let [x, y, w, _] = layout.m_cheat;
+        let tint: u32 = if inside(self.m_mouse, layout.m_cheat)
+        {
+            color::BUTTON_HOVER
+        }
+        else if cheat::enabled()
+        {
+            color::GIVE_MODE
+        }
+        else
+        {
+            color::TEXT
+        };
+        let textTop: i32 = (layout::BAR - layout::FONT_HEIGHT) / 2;
+        self.m_draw.centered(x + w / 2, y + textTop, cheat::BUTTON, tint);
+        if inside(self.m_mouse, layout.m_cheat)
+        {
+            self.m_hint = Some(cheat::mode());
+        }
+        if inside(self.m_mouse, layout.m_craftable)
+        {
+            self.m_hint = Some(text::CRAFTABLE);
+        }
         self.button(layout.m_craftable, "");
         let [x, y, w, h] = layout.m_craftable;
+        // the button texture keeps a two pixel rim inside which the tint and icon sit
+        let rim: i32 = layout::TOGGLE_ICON;
         if state.m_craftable
         {
-            let edge: i32 = bevel::EDGE;
-            self.m_draw.rect(x + edge, y + edge, w - edge * 2, h - edge * 2, color::CRAFTABLE_TINT);
+            self.m_draw.rect(x + rim, y + rim, w - rim * 2, h - rim * 2, color::CRAFTABLE_TINT);
         }
-        self.m_draw.item(x + layout::TOGGLE_ICON_LEFT, y, &ItemStack::of(CRAFTABLE_ICON, 1));
+        self.m_draw.item(x + rim, y + rim, &ItemStack::of(CRAFTABLE_ICON, 1));
     }
 
     // the recipe registry name as REI shows recipe ids, the namespace alone when the whole name does not fit
@@ -791,7 +784,8 @@ impl Painter<'_>
 
     fn view(&mut self, view: &View, container: Rect)
     {
-        self.panel(container);
+        let [x, y, w, h] = container;
+        self.m_draw.panel(x, y, w, h);
         let recipe: &RecipeView = &self.m_catalog.m_recipes[view.m_recipes[view.m_index]];
         let title: &str = match recipe.shape
         {
@@ -841,6 +835,7 @@ fn drawFrame(draw: &mut Draw, state: &mut State, size: [i32; 2], mouse: [i32; 2]
         m_mouse: mouse,
         m_frame: state.m_frame,
         m_hovered: None,
+        m_hint: None,
         m_slots: Vec::new(),
     };
     painter.toggles(state, &layout);

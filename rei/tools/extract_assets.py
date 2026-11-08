@@ -12,8 +12,6 @@ from pathlib import Path
 SOURCE = "assets/roughlyenoughitems/lang/en_us.json"
 TARGET = Path("assets/rei/lang/en_US.lang")
 KEYS = [
-    "text.rei.cheating_enabled",
-    "text.rei.cheating_disabled",
     "text.rei.no_permission_cheat",
     "text.rei.failed_cheat_items",
     "text.rei.search.field.suggestion",

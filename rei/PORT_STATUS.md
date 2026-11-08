@@ -12,16 +12,16 @@ time and gamemode buttons are left out.
 
 | Input | Does |
 |---|---|
-| Left click an item | recipes making it, or with cheats on a full stack on the cursor |
-| Right click an item | recipes using it, or with cheats on one item on the cursor |
-| Click the list holding another item | deletes the held stack (cheats on) |
+| Left click an item | recipes making it, or in give mode a full stack on the cursor |
+| Right click an item | recipes using it, or in give mode one item on the cursor |
+| Click the list holding another item | deletes the held stack (give mode) |
 | `R` / `U` over any item | recipes / usages, vanilla slots included |
 | Wheel over the list / recipe page | page / recipe |
 | `Esc` / `Backspace` on a recipe page | close / back |
 | `O` | hides or shows the panel |
 | Search field | words match the name, `@word` the mod id, right click clears |
 | Crafting table button | craftable filter, from the 36 inventory slots |
-| Cheat button | asks the server, which grants it only to ops and checks op again on every grab and delete |
+| `R` button | REI's cheat toggle as recipe mode and give mode, the R turns red in give mode and its tooltip names the mode. The server grants it only to ops and checks op again on every grab and delete |
 
 ## Done
 
@@ -37,5 +37,5 @@ time and gamemode buttons are left out.
 ## Bugs to check at the end
 
 - [ ] Live check: none run yet. Deploy, open the inventory, search, craftable, recipe pages, cheat as op and non-op on a dedicated server
-- [ ] Block items drawn by overlay `DrawOp::Item` may render without item lighting (flat) since the overlay draws after the container resets GL state
-- [ ] Tooltip over 3D block items may be hidden behind them if depth test is on during overlay draw
+- [x] Overlay items lit and depth tested as vanilla slots, tooltips (REI and vanilla slot) drawn over every overlay
+- [x] Vanilla 20 high buttons and panels, search field, craftable and `R` square buttons in one row under the list

@@ -13,11 +13,13 @@ mod channel
 
 mod text
 {
-    pub const ENABLED: &str = "rei.text.rei.cheating_enabled";
-    pub const DISABLED: &str = "rei.text.rei.cheating_disabled";
     pub const NO_PERMISSION: &str = "rei.text.rei.no_permission_cheat";
     pub const FAILED: &str = "rei.text.rei.failed_cheat_items";
 }
+
+// the mode button reads R, red while a click gives items, and its tooltip names the mode
+pub const BUTTON: &str = "R";
+const MODES: [&str; 2] = ["Recipe Mode", "Give Mode"];
 
 #[derive(Serialize, Deserialize)]
 struct Grab
@@ -34,18 +36,7 @@ thread_local! {
 
 pub fn enabled() -> bool { ENABLED.with(Cell::get) }
 
-pub fn label() -> String
-{
-    let key: &str = if enabled()
-    {
-        text::ENABLED
-    }
-    else
-    {
-        text::DISABLED
-    };
-    translate(key)
-}
+pub fn mode() -> &'static str { MODES[usize::from(enabled())] }
 
 fn post<T: Serialize>(channel: &str, target: Target, message: &T)
 {
