@@ -9,13 +9,15 @@ sources, tools and status notes. One `.b173mod` per folder runs on both the clie
 
 ## Building a mod
 
-Each mod builds with `cargo-b173` from the modding SDK:
+Each mod has a `build.sh` that runs `cargo-b173` from the modding SDK, either from `PATH` or from the SDK vendored in
+the rewrite checkout next to this one (override with `B173_SDK=<sdk dir>`):
 
 ```
-cargo b173 build --path aether
+aether/build.sh
 ```
 
-The result lands in `<mod>/target/<id>-<version>.b173mod`. Drop it into the `mods/` folder of the client and the server.
+The release build lands in `out/<id>-<version>.b173mod`, which holds only the latest build of each mod. Drop it into the
+`mods/` folder of the client and the server.
 
 ## Assets
 
