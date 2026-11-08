@@ -1,0 +1,14 @@
+id = "spc"
+version = "0.1.0"
+name = "Single Player Commands"
+description = "Simple single player commands: /give, /fly, /god, /heal, /time, /tp and more"
+authors = ["simo_415 (original idea)", "b173 port"]
+license = "MIT"
+api = "1.1"
+side = "both"
+
+[network]
+version = "1"
+
+[depends]
+loader = ">=0.1"
