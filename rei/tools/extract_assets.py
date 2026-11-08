@@ -15,12 +15,9 @@ KEYS = [
     "text.rei.no_permission_cheat",
     "text.rei.failed_cheat_items",
     "text.rei.search.field.suggestion",
-    "text.rei.shapeless",
     "text.rei.back",
     "text.rei.left_arrow",
     "text.rei.right_arrow",
-    "category.rei.crafting",
-    "category.rei.smelting",
 ]
 
 
