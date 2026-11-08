@@ -8,7 +8,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-b173_api = { path = "../../b1.7.3-rewrite/vendor/b1.7.3-modding-sdk/b173_api" }
+b173_api = { path = "../../b1.7.3_rewrite/vendor/b1.7.3-modding-sdk/b173_api" }
 serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
 
 [lints.rust]

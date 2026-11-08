@@ -1,6 +1,6 @@
 # b1.7.3 Rust mods
 
-Mods ported to the b1.7.3-rewrite mod loader. Each folder is a project of its own: its own `Cargo.toml`, `mod.toml`,
+Mods ported to the b1.7.3_rewrite mod loader. Each folder is a project of its own: its own `Cargo.toml`, `mod.toml`,
 sources, tools and status notes. One `.b173mod` per folder runs on both the client and the server.
 
 | Folder | Mod | Ported from |

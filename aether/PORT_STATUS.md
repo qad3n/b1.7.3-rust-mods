@@ -1,14 +1,14 @@
 # Aether port status
 
 Source: Aether Legacy 1.7.10 v1.1.2.5 (`reference/src`, Vineflower decompile of the user's jar, SRG names).
-Target: b1.7.3-rewrite mod loader, one `aether-<version>.b173mod` for client and server.
+Target: b1.7.3_rewrite mod loader, one `aether-<version>.b173mod` for client and server.
 Assets: never committed, `python3 -I tools/extract_assets.py <jar>` fills `assets/aether`.
 
 ## Build and test
 
 ```bash
 cargo build --release --target wasm32-unknown-unknown
-../../b1.7.3-rewrite/vendor/b1.7.3-modding-sdk/target/release/cargo-b173 b173 build --path .
+../../b1.7.3_rewrite/vendor/b1.7.3-modding-sdk/target/release/cargo-b173 b173 build --path .
 ../../tools/rewrite/modtest.sh install target/aether-0.1.0.b173mod
 ../../tools/rewrite/modtest.sh server
 ../../tools/rewrite/modtest.sh cmd loader map 2 0 0 8 aether.png

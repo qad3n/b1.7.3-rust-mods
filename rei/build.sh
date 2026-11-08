@@ -10,7 +10,7 @@ fi
 
 tool=(cargo-b173)
 if ! command -v cargo-b173 > /dev/null; then
-    sdk="${B173_SDK:-$PWD/../../b1.7.3-rewrite/vendor/b1.7.3-modding-sdk}"
+    sdk="${B173_SDK:-$PWD/../../b1.7.3_rewrite/vendor/b1.7.3-modding-sdk}"
     if [[ ! -f "$sdk/Cargo.toml" ]]; then
         echo "modding SDK not found at $sdk, set B173_SDK or install cargo-b173" >&2
         exit 1
