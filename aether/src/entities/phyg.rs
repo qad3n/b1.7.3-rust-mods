@@ -1,0 +1,84 @@
+use super::mount::{Saddle, dropSaddle, saddleInteract, steering, wingPose};
+use super::{creature, drop, onAetherGrass};
+use crate::models::{Program, combine, phyg_wing, pig, pig_saddle, quadruped, quadrupedPose};
+use b173_api::prelude::*;
+
+const NAME: &str = "phyg";
+const TEXTURE: &str = "aether:entity/phyg/phyg";
+const WINGS: &str = "aether:entity/phyg/wings";
+const SADDLE_TEXTURE: &str = "minecraft:mob/saddle";
+const WING_BASE: u16 = quadruped::PARTS;
+const SADDLE_BASE: u16 = WING_BASE + 4;
+
+struct Phyg;
+
+#[entity_behavior]
+impl EntityBehavior for Phyg
+{
+    fn onTick(&self, entity: Entity, _info: &EntityInfo) { entity.setField(EntityField::FallDistance, 0.0); }
+
+    fn onInteract(&self, entity: Entity, player: Player) -> bool { saddleInteract(entity, player) }
+
+    fn onHurt(&self, entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
+    {
+        if source.is_some() && source == entity.rider()
+        {
+            None
+        }
+        else
+        {
+            Some(amount)
+        }
+    }
+
+    fn onDeath(&self, entity: Entity, _source: Option<i32>) { dropSaddle(entity); }
+
+    fn canSpawn(&self, entity: Entity, info: &EntityInfo) -> bool
+    {
+        crate::config::spawnRoll(entity, "phyg") && onAetherGrass(info)
+    }
+
+    // PhygRenderer: the pig, its wings, then the saddle when it has one
+    fn pose(&self, input: &PoseInput) -> Pose
+    {
+        let saddle: Saddle = b173_api::fromBytes(&input.synced).unwrap_or_default();
+        let mut body: Program = Program::new();
+        quadrupedPose(&mut body, 0, &pig::PIVOTS, input, None);
+        body.texture(WINGS);
+        wingPose(&mut body, WING_BASE, &phyg_wing::ROTATIONS, input);
+        if saddle.m_saddled
+        {
+            body.texture(SADDLE_TEXTURE);
+            quadrupedPose(&mut body, SADDLE_BASE, &pig_saddle::PIVOTS, input, None);
+        }
+        Pose { pre: Vec::new(), model: body.take() }
+    }
+}
+
+pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+{
+    ctx.entities().register(
+        NAME,
+        EntitySpec {
+            template: Identifier::parse("minecraft:pig").ok(),
+            texture: Some(TEXTURE.to_owned()),
+            size: Some([0.9, 1.3]),
+            health: Some(10),
+            spawn: creature(12),
+            drops: Some(vec![drop("minecraft:feather", [1, 3]), drop("minecraft:porkchop", [1, 3])]),
+            sounds: Some(EntitySounds {
+                living: Some("mob.pig".to_owned()),
+                hurt: Some("mob.pig".to_owned()),
+                death: Some("mob.pigdeath".to_owned()),
+            }),
+            model: Some(EntityModelSpec {
+                shadow: 0.7,
+                ..combine(vec![pig::model(), phyg_wing::model(), pig_saddle::model()])
+            }),
+            steering: steering(1),
+            ..EntitySpec::default()
+        },
+        Some(std::rc::Rc::new(Phyg)),
+    )?;
+    Ok(())
+}
