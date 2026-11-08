@@ -23,19 +23,21 @@ struct Spec
     m_name: &'static str,
     m_usage: &'static str,
     m_run: fn(&[String], Player) -> Result<String>,
+    // a dedicated server already has this command, only single player gets ours
+    m_vanilla: bool,
 }
 
 const COMMANDS: &[Spec] = &[
-    Spec { m_name: "help", m_usage: "", m_run: help },
-    Spec { m_name: "give", m_usage: "<item> [count] [damage]", m_run: give },
-    Spec { m_name: "fly", m_usage: "", m_run: fly },
-    Spec { m_name: "god", m_usage: "", m_run: god },
-    Spec { m_name: "heal", m_usage: "", m_run: heal },
-    Spec { m_name: "repair", m_usage: "", m_run: repair },
-    Spec { m_name: "clear", m_usage: "", m_run: clear },
-    Spec { m_name: "time", m_usage: "<day|noon|night|midnight|ticks>", m_run: time },
-    Spec { m_name: "tp", m_usage: "<x> <y> <z>", m_run: teleport },
-    Spec { m_name: "summon", m_usage: "<entity> [count]", m_run: summon },
+    Spec { m_name: "help", m_usage: "", m_run: help, m_vanilla: false },
+    Spec { m_name: "give", m_usage: "<item> [count] [damage]", m_run: give, m_vanilla: true },
+    Spec { m_name: "fly", m_usage: "", m_run: fly, m_vanilla: false },
+    Spec { m_name: "god", m_usage: "", m_run: god, m_vanilla: false },
+    Spec { m_name: "heal", m_usage: "", m_run: heal, m_vanilla: false },
+    Spec { m_name: "repair", m_usage: "", m_run: repair, m_vanilla: false },
+    Spec { m_name: "clear", m_usage: "", m_run: clear, m_vanilla: false },
+    Spec { m_name: "time", m_usage: "<day|noon|night|midnight|ticks>", m_run: time, m_vanilla: true },
+    Spec { m_name: "tp", m_usage: "<x> <y> <z>", m_run: teleport, m_vanilla: true },
+    Spec { m_name: "summon", m_usage: "<entity> [count]", m_run: summon, m_vanilla: false },
 ];
 
 fn vanillaId(name: &str) -> Result<Identifier>
@@ -60,9 +62,16 @@ fn entityOf(player: Player) -> Result<(Entity, EntityInfo)>
     Ok((Entity { world: World { dimension: info.world }, id: player.id }, info))
 }
 
+// a dedicated server keeps its own give, time and tp
+fn available() -> impl Iterator<Item = &'static Spec>
+{
+    let server: bool = !isClient();
+    COMMANDS.iter().filter(move |spec| !(server && spec.m_vanilla))
+}
+
 fn help(_: &[String], _: Player) -> Result<String>
 {
-    Ok(COMMANDS.iter().map(|spec| format!("/{} {}", spec.m_name, spec.m_usage)).collect::<Vec<String>>().join("\n"))
+    Ok(available().map(|spec| format!("/{} {}", spec.m_name, spec.m_usage)).collect::<Vec<String>>().join("\n"))
 }
 
 fn give(args: &[String], player: Player) -> Result<String>
@@ -200,7 +209,7 @@ fn summon(args: &[String], player: Player) -> Result<String>
 
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    for spec in COMMANDS
+    for spec in available()
     {
         let run: fn(&[String], Player) -> Result<String> = spec.m_run;
         ctx.commands().registerWithUsage(spec.m_name, Permission::Op, spec.m_usage, move |command| {

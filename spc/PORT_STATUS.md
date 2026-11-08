@@ -2,7 +2,8 @@
 
 Modern, minimal take on simo_415's Single Player Commands (b1.7.3 v2.11.1). Not a 1:1 port: only the core commands,
 built on the loader's command API. Every command needs op, which singleplayer always has. Each also answers to
-`/spc:<name>` when another mod owns the short name.
+`/spc:<name>` when another mod owns the short name. `/give`, `/time` and `/tp` exist only in single player, a dedicated
+server keeps its vanilla ones. With mods loaded, `T` opens chat in single player and slash lines run here.
 
 | Command | Does |
 |---|---|
