@@ -193,10 +193,6 @@ mod panel
     pub const SLOT_UV: [i32; 2] = [76, 7];
     pub const TOGGLE_ICON: &str = "aether:gui/inventory/button/cloud";
     pub const TOGGLE_HOVER: &str = "aether:gui/inventory/button/cloud_hover";
-    pub const FACE: u32 = 0xFFC6C6C6;
-    pub const LIGHT: u32 = 0xFFFFFFFF;
-    pub const SHADOW: u32 = 0xFF555555;
-    pub const EDGE: u32 = 0xFF000000;
     pub const HOVER: u32 = 0x80FFFFFF;
     pub const ICON: i32 = 16;
 }
@@ -243,11 +239,7 @@ impl Overlay for Equipment
         {
             return;
         }
-        let (left, top, width, height) = (panel::LEFT, panel::TOP, panel::WIDTH, panel::HEIGHT);
-        draw.rect(left, top, width, height, panel::EDGE);
-        draw.rect(left + 1, top + 1, width - 2, height - 2, panel::LIGHT);
-        draw.rect(left + 3, top + 3, width - 4, height - 4, panel::SHADOW);
-        draw.rect(left + 3, top + 3, width - 6, height - 6, panel::FACE);
+        draw.panel(panel::LEFT, panel::TOP, panel::WIDTH, panel::HEIGHT);
         let worn: Worn = localPlayer().map_or_else(Worn::default, Worn::of);
         for (index, (_, icon)) in WORN.iter().enumerate()
         {
