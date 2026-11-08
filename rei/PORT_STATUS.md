@@ -1,7 +1,7 @@
 # Roughly Enough Items port status
 
 Source: RoughlyEnoughItems-16.0.799-fabric.jar (`reference/src`, Vineflower decompile, never committed).
-Target: b1.7.3_rewrite mod loader, one `rei-<version>.b173mod` for client and server. Needs loader API 1.4.
+Target: b1.7.3_rewrite mod loader, one `rei-<version>.b173mod` for client and server. Needs loader API 1.5.
 Assets: never committed, `python3 -I tools/extract_assets.py <jar>` copies the lang lines the port uses into `assets/rei`.
 
 Not a 1:1 port: only the core concept, rebuilt small on the loader's overlay API. REI's plugin system, entry types,
@@ -34,6 +34,7 @@ time and gamemode buttons are left out.
 - [x] Loader API 1.2: overlay key and wheel input, `itemCatalog`, `recipeList`, `contentGeneration`, `screenSize`
 - [x] Items and recipes come from the loader registries, so every mod's items and its recipes (`ctx.recipes()` or `data/<modid>/recipes/*.toml`) appear with no REI plugin. Recipe pages show the recipe registry name. The cache reloads on each content generation (remap, server recipe sync)
 - [x] Mod name line: `§9§o` mod name under every item tooltip, REI list and vanilla slots (API 1.4 tooltip hook), behind the client option `tooltip.mod_name` (default on, mod menu "Mod Name")
+- [x] Loader API 1.5: the recipe page reports it covers the container, so vanilla slots under it show no highlight, tooltip or key lookup stack
 - [x] Build, clippy and fmt clean for the mod and the rewrite
 
 ## Bugs to check at the end

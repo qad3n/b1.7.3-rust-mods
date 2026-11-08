@@ -1,7 +1,7 @@
 use crate::catalog::{self, Catalog, Key};
 use crate::{cheat, config};
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 
 // container screens that get the item list, as REI shows it beside every handled screen
@@ -911,6 +911,15 @@ impl Overlay for Viewer
     fn scroll(&mut self, x: i32, y: i32, delta: i32) -> bool
     {
         STATE.with(|state| state.borrow_mut().scroll([x, y], delta))
+    }
+
+    // the recipe page hides the vanilla slots under it
+    fn covered(&mut self, x: i32, y: i32) -> bool
+    {
+        STATE.with(|state| {
+            let state: Ref<State> = state.borrow();
+            !state.m_hidden && state.m_view.is_some() && inside([x, y], state.m_layout.m_container)
+        })
     }
 }
 
