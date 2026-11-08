@@ -4,6 +4,20 @@ use b173_api::prelude::*;
 // a block a player placed keeps metadata 1, only blocks the world grew give skyroot tools a second drop
 const PLACED: u8 = 1;
 const NATURAL: u8 = 0;
+// the metadata above as a named state, values in metadata order so saved blocks keep their meaning
+const PLACED_VALUES: [&str; 2] = ["false", "true"];
+
+// blocks that remember being placed by a player save that as placed=true instead of bare metadata
+pub fn registerStates(ctx: &mut RegisterCtx, names: &[&str]) -> Result<()>
+{
+    for name in names
+    {
+        let property: PropertySpec =
+            PropertySpec { name: "placed".to_owned(), values: PLACED_VALUES.map(str::to_owned).to_vec() };
+        ctx.blocks().states(name, BlockStatesSpec { properties: vec![property], ..BlockStatesSpec::default() })?;
+    }
+    Ok(())
+}
 // BlockAetherLog: the stronger axes chip one or two golden amber out of golden oak
 const AMBER_MIN: i32 = 1;
 const AMBER_SPREAD: i32 = 2;

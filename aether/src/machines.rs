@@ -145,6 +145,7 @@ mod lit
     // BlockAetherContainer.setState
     pub const IDLE: u8 = 0;
     pub const ACTIVE: u8 = 1;
+    pub const VALUES: [&str; 2] = ["false", "true"];
     // randomDisplayTick puffs rise up to six pixels above the top face
     pub const PUFF_SPREAD: f64 = 6.0 / 16.0;
     pub const CENTER: f64 = 0.5;
@@ -620,7 +621,10 @@ fn registerBlock(
             .tileEntity(name)
             .behavior(ContainerBlock { m_screen: name, m_particle: particle }),
     )?;
-    Ok(())
+    // lit::IDLE and lit::ACTIVE as a named state, in metadata order
+    let property: PropertySpec =
+        PropertySpec { name: "lit".to_owned(), values: lit::VALUES.map(str::to_owned).to_vec() };
+    ctx.blocks().states(name, BlockStatesSpec { properties: vec![property], ..BlockStatesSpec::default() })
 }
 
 fn containerScreen(title: &str) -> ScreenBuilder

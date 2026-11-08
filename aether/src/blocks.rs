@@ -717,5 +717,16 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         ctx.blocks().register(row.m_name, spec)?;
     }
     registerSpecial(ctx)?;
+    harvest::registerStates(
+        ctx,
+        &[
+            block::AETHER_GRASS,
+            block::AETHER_DIRT,
+            block::HOLYSTONE,
+            block::QUICKSOIL,
+            block::SKYROOT_LOG,
+            block::GOLDEN_OAK_LOG,
+        ],
+    )?;
     crate::portal::registerBlock(ctx)
 }

@@ -123,6 +123,20 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Not ported yet, add their options with the features: Aether menu and menu button, trivia, holiday trees, tall grass,
   Sun Spirit dialogue repeat, legacy visuals, legacy altar name, portal frame start, first-entry gifts toggle.
 
+## Done (loader API 1.1, ABI 3)
+
+- `mod.toml` needs API 1.1. The loader still accepts ABI 2 builds of this port.
+- Named block states, so worlds save names instead of bare metadata:
+  - `lit` on the enchanter, freezer and incubator, in `machines.rs` `registerBlock`. The values follow `lit::IDLE` and `lit::ACTIVE`.
+  - `placed` on aether grass, aether dirt, holystone, quicksoil and both logs, in `harvest.rs` `registerStates`. The values follow `NATURAL` and `PLACED`.
+  - Each property lists its values in metadata order, so `ctx.meta()` code is unchanged and old saves keep their meaning.
+- Synced player data now gets its own `aether` slot on every entity. Another mod syncing data on the player can no longer overwrite it. Old saves hand their single blob to the first mod that reads it, which is Aether.
+- Not changed:
+  - Stack damage is only durability here, so no data components were needed.
+  - World data was already per mod.
+  - The `thread_local` maps are runtime AI state, not saved data.
+- Not verified in game: chunk palettes with these states, and an old world loading with this build.
+
 ## Todo, in order
 
 1. Aether main menu and menu button (config, off by default in the source), achievements.
