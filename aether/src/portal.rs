@@ -164,7 +164,7 @@ impl PortalSize
         {
             for l in 0..self.m_height
             {
-                let _ = world.setBlockQuiet(step(self.m_bottomLeft, self.m_right, i).offset(0, l, 0), portal, 0);
+                placeQuiet(world, step(self.m_bottomLeft, self.m_right, i).offset(0, l, 0), portal);
             }
         }
         remember(world.dimension, self.center());
@@ -180,6 +180,18 @@ impl PortalSize
             self.m_bottomLeft.z as f64 + self.m_right[1] as f64 * half + 0.5,
         ]
     }
+}
+
+// placed without neighbor updates so a half built portal never breaks itself, yet marked so clients and the
+// renderer see it, as the original's setBlock flag 2
+fn placeQuiet(world: World, pos: BlockPos, block: i32)
+{
+    if let Err(error) = world.setBlockQuiet(pos, block, 0)
+    {
+        warn(&format!("portal block {block} not placed at {pos:?}: {error}"));
+        return;
+    }
+    world.markBlockForRender(pos);
 }
 
 // BlockAetherPortal.trySpawnPortal
@@ -364,7 +376,7 @@ fn enter(world: World, player: Player)
 
 fn setFrame(world: World, pos: BlockPos, frameBlock: i32, portal: i32, inside: bool)
 {
-    let _ = world.setBlockQuiet(pos, if inside { portal } else { frameBlock }, 0);
+    placeQuiet(world, pos, if inside { portal } else { frameBlock });
 }
 
 // TeleporterAether.makePortal, a two by three glowstone portal on the ground with a platform when it floats
@@ -397,14 +409,14 @@ fn buildPortal(world: World, x: i32, z: i32) -> [f64; 3]
             let below: BlockPos = BlockPos::new(x + dx, y - 1, z + dz);
             if world.isAir(below)
             {
-                let _ = world.setBlockQuiet(below, floor, 0);
+                placeQuiet(world, below, floor);
             }
             for dy in 0..=build::HEIGHT + 1
             {
                 let at: BlockPos = BlockPos::new(x + dx, y + dy, z + dz);
                 if dz != 0
                 {
-                    let _ = world.setBlockQuiet(at, 0, 0);
+                    placeQuiet(world, at, 0);
                     continue;
                 }
                 let edge: bool = dx == -1 || dx == build::WIDTH || dy == 0 || dy == build::HEIGHT + 1;
