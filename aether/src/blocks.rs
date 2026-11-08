@@ -324,10 +324,12 @@ fn faces(look: &Look) -> FaceTextures
 {
     match look
     {
-        Look::All(name) =>
-        {
-            FaceTextures { top: Some(texture(name)), bottom: None, side: Some(texture(name)), front: None }
-        }
+        Look::All(name) => FaceTextures {
+            top: Some(texture(name)),
+            bottom: Some(texture(name)),
+            side: Some(texture(name)),
+            front: None,
+        },
         Look::Column { top, side } =>
         {
             FaceTextures { top: Some(texture(top)), bottom: Some(texture(top)), side: Some(texture(side)), front: None }
