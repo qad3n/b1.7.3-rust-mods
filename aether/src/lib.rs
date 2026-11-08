@@ -12,6 +12,7 @@ mod machines;
 mod models;
 mod player;
 mod portal;
+mod portal_overlay;
 mod recipes;
 mod shapes;
 mod sparkle;
@@ -38,6 +39,7 @@ fn register(ctx: &mut RegisterCtx) -> Result<()>
     entities::register(ctx)?;
     machines::register(ctx)?;
     portal::registerEvents(ctx)?;
+    portal_overlay::register(ctx)?;
     player::register(ctx)?;
     tools::register(ctx)?;
     gear::register(ctx)?;

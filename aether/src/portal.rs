@@ -294,7 +294,7 @@ impl Visitor
     }
 }
 
-fn inPortal(info: &EntityInfo) -> bool
+pub fn inPortal(info: &EntityInfo) -> bool
 {
     let world: World = World { dimension: info.world };
     let portal: i32 = blockId(block::AETHER_PORTAL);
