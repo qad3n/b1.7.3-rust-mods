@@ -17,8 +17,14 @@ the rewrite checkout next to this one (override with `B173_SDK=<sdk dir>`):
 aether/build.sh
 ```
 
-The release build lands in `out/<id>-<version>.b173mod`, which holds only the latest build of each mod. Drop it into the
-`mods/` folder of the client and the server.
+The release build lands in `<mod>/out/<id>-<version>.b173mod`, which holds only the latest build of that mod. Drop it
+into the `mods/` folder of the client and the server.
+
+`build-all.sh` in the root runs every mod's `build.sh`, each into its own `out/`:
+
+```
+./build-all.sh
+```
 
 ## Assets
 
