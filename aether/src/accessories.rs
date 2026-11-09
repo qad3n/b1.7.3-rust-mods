@@ -182,11 +182,14 @@ mod panel
 {
     // the equipment panel beside the vanilla inventory, the toggle sits over the player preview's top left corner
     pub const TOGGLE: [i32; 4] = [27, 9, 10, 10];
-    pub const LEFT: i32 = -52;
-    pub const TOP: i32 = 8;
+    // same gap as the rei panel on the other side and rows level with the vanilla armor slots
+    pub const GAP: i32 = 6;
+    pub const LEFT: i32 = -(WIDTH + GAP);
+    pub const TOP: i32 = 0;
     pub const WIDTH: i32 = 50;
     pub const HEIGHT: i32 = 86;
-    pub const INSET: i32 = 7;
+    // slot items sit eight in from the edge like vanilla so the slot frames leave seven on every side
+    pub const INSET: i32 = 8;
     pub const SLOT: i32 = 18;
     pub const ROWS: usize = 4;
     pub const SHEET: &str = "aether:gui/inventory/accessories";
