@@ -772,7 +772,7 @@ impl Painter<'_>
             color::TEXT
         };
         let textTop: i32 = (layout::BAR - layout::FONT_HEIGHT) / 2;
-        self.m_draw.centered(x + w / 2, y + textTop, cheat::BUTTON, tint);
+        self.m_draw.centered(x + w / 2, y + textTop, cheat::button(), tint);
         if inside(self.m_mouse, layout.m_cheat)
         {
             self.m_hint = Some(cheat::mode());
@@ -820,7 +820,7 @@ impl Painter<'_>
         self.m_draw.panel(x, y, w, h);
         let recipe: &RecipeView = &self.m_catalog.m_recipes[view.m_recipes[view.m_index]];
         let name: String = self.m_catalog.name(Key::of(&recipe.output));
-        self.m_draw.plain(page::INSET, page::TITLE_TOP, &name, color::TITLE);
+        self.m_draw.plain((container[2] - textWidth(&name)) / 2, page::TITLE_TOP, &name, color::TITLE);
 
         let paged: bool = view.m_recipes.len() > 1;
         if paged

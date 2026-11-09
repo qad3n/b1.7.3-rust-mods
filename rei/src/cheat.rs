@@ -17,9 +17,8 @@ mod text
     pub const FAILED: &str = "rei.text.rei.failed_cheat_items";
 }
 
-// the mode button reads R, red while a click gives items, and its tooltip names the mode
-pub const BUTTON: &str = "R";
-const MODES: [&str; 2] = ["Recipe Mode", "Give Mode"];
+// the mode button reads R, or a red G while a click gives items, and its tooltip names the mode
+const MODES: [(&str, &str); 2] = [("R", "Recipe Mode"), ("G", "Give Mode")];
 
 #[derive(Serialize, Deserialize)]
 struct Grab
@@ -36,7 +35,9 @@ thread_local! {
 
 pub fn enabled() -> bool { ENABLED.with(Cell::get) }
 
-pub fn mode() -> &'static str { MODES[usize::from(enabled())] }
+pub fn button() -> &'static str { MODES[usize::from(enabled())].0 }
+
+pub fn mode() -> &'static str { MODES[usize::from(enabled())].1 }
 
 fn post<T: Serialize>(channel: &str, target: Target, message: &T)
 {
