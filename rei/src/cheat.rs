@@ -74,13 +74,14 @@ fn onToggle(wanted: bool, player: Player)
     post(channel::STATE, Target::Player(player.id), &granted);
 }
 
-// the stack lands on the cursor, topped up when the cursor already holds the same item, else in the inventory
+// the stack goes straight into the inventory and what does not fit drops at the player
 fn onGrab(request: Grab, player: Player)
 {
     if !permitted(player)
     {
         return;
     }
+
     let key: Key = Key { m_id: request.m_id, m_damage: request.m_damage };
     let Some(max) = catalog::get().entry(key).map(|entry: &Entry| entry.m_max)
     else
@@ -88,18 +89,9 @@ fn onGrab(request: Grab, player: Player)
         warn(&format!("grab of unlisted item {key:?} refused"));
         return;
     };
+
     let count: i32 = request.m_count.clamp(1, max);
-    let held: Option<ItemStack> = player.cursor();
-    let result: Result<()> = match held
-    {
-        None => player.setCursor(Some(key.stack(count))),
-        Some(held) if Key::ofStack(&held) == Some(key) =>
-        {
-            player.setCursor(Some(key.stack((held.count + count).min(max))))
-        }
-        Some(_) => player.give(key.stack(count)),
-    };
-    if let Err(error) = result
+    if let Err(error) = player.give(key.stack(count))
     {
         warn(&format!("grab failed: {error}"));
         player.chat(&translate(text::FAILED));

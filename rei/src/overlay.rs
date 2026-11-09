@@ -442,7 +442,7 @@ impl State
         true
     }
 
-    // cheating grabs a full stack on left click and one on right click, a held stack of another item is deleted
+    // cheating gives a full stack on left click and one on right click
     fn clickItem(&mut self, catalog: &Catalog, key: Key, button: i32)
     {
         if !cheat::enabled()
@@ -450,11 +450,7 @@ impl State
             self.open(catalog, key, button == RIGHT_BUTTON, false);
             return;
         }
-        if cursorHolds().is_some_and(|held| held != Some(key))
-        {
-            cheat::trash();
-            return;
-        }
+
         let max: i32 = catalog.entry(key).map_or(1, |entry| entry.m_max);
         cheat::grab(key, if button == RIGHT_BUTTON { 1 } else { max });
     }
