@@ -926,6 +926,15 @@ impl Overlay for Viewer
             !state.m_hidden && state.m_view.is_some() && inside([x, y], state.m_layout.m_container)
         })
     }
+
+    // the recipe page fills the container so other mods' panels beside it hide
+    fn exclusive(&mut self) -> bool
+    {
+        STATE.with(|state| {
+            let state: Ref<State> = state.borrow();
+            !state.m_hidden && state.m_view.is_some()
+        })
+    }
 }
 
 // the owning mod's line under an item name, when the option is on
