@@ -792,18 +792,24 @@ impl Painter<'_>
         self.m_draw.item(x + rim, y + rim, &ItemStack::of(CRAFTABLE_ICON, 1));
     }
 
-    // the recipe registry name as REI shows recipe ids, the namespace alone when the whole name does not fit
+    // a recipe id too wide for the panel drops its namespace and then gets cut short
     fn recipeId(&mut self, id: &str, container: Rect, top: i32)
     {
         let room: i32 = container[2] - page::INSET * 2;
-        let shown: &str = if textWidth(id) <= room
+        let mut shown: &str = if textWidth(id) <= room
         {
             id
         }
         else
         {
-            id.split(':').next().unwrap_or(id)
+            id.split_once(':').map_or(id, |(_, path)| path)
         };
+        while textWidth(shown) > room
+        {
+            let mut chars: std::str::Chars = shown.chars();
+            chars.next_back();
+            shown = chars.as_str();
+        }
         let x: i32 = (container[2] - textWidth(shown)) / 2;
         self.m_draw.plain(x, top, shown, color::RECIPE_ID);
     }
