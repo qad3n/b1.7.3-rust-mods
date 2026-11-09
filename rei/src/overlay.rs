@@ -136,19 +136,18 @@ impl Layout
         let [width, height] = screenSize().unwrap_or(container);
         let left: i32 = (width - container[0]) / 2;
         let top: i32 = (height - container[1]) / 2;
-        let panelLeft: i32 = container[0] + layout::GAP;
         let panelRight: i32 = width - left - layout::MARGIN;
         let barTop: i32 = layout::MARGIN - top;
-        let gridTop: i32 = barTop + layout::BAR + layout::MARGIN;
-        let columns: i32 = ((panelRight - panelLeft) / layout::CELL).max(0);
+        let rowTop: i32 = height - top - layout::MARGIN - layout::FIELD;
+        let columns: i32 = ((panelRight - container[0] - layout::GAP) / layout::CELL).max(0);
         let gridWidth: i32 = columns * layout::CELL;
         let searchWidth: i32 = (gridWidth - (layout::TOGGLE + layout::SPACING) * 2).max(0);
-        let room: i32 = height - top - layout::MARGIN - layout::FIELD - layout::MARGIN - gridTop;
+        let room: i32 = rowTop - layout::MARGIN - barTop - layout::BAR - layout::MARGIN;
         let rows: i32 = (room / layout::CELL).max(0);
-        let grid: Rect = [panelLeft, gridTop, gridWidth, rows * layout::CELL];
+        // the bars hug the screen edges so the leftover space of a partial cell goes beside and around the list
+        let gridTop: i32 = barTop + layout::BAR + layout::MARGIN + (room - rows * layout::CELL) / 2;
+        let grid: Rect = [panelRight - gridWidth, gridTop, gridWidth, rows * layout::CELL];
         let gridRight: i32 = grid[0] + grid[2];
-        // search, craftable and mode sit in one row right under the list, edge to edge with it
-        let rowTop: i32 = grid[1] + grid[3] + layout::MARGIN;
         let craftableLeft: i32 = grid[0] + searchWidth + layout::SPACING;
         Layout {
             m_screen: [-left, -top, width, height],
