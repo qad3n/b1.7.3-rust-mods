@@ -180,10 +180,10 @@ fn click(message: Click, player: Player)
 
 mod panel
 {
-    // the equipment panel beside the vanilla inventory, the toggle sits over the player preview's top left corner
-    pub const TOGGLE: [i32; 4] = [27, 9, 12, 12];
+    // the equipment panel beside the vanilla inventory, the toggle sits where AetherClientEvents puts it on GuiInventory
+    pub const TOGGLE: [i32; 4] = [26, 65, 12, 12];
     // GuiAccessoryButton draws the cloud at 14 one pixel left of its 12 pixel hitbox
-    pub const TOGGLE_ART: [i32; 4] = [26, 9, 14, 14];
+    pub const TOGGLE_ART: [i32; 4] = [25, 65, 14, 14];
     // same gap as the rei panel on the other side and rows level with the vanilla armor slots
     pub const GAP: i32 = 6;
     pub const LEFT: i32 = -(WIDTH + GAP);
