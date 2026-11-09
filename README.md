@@ -29,13 +29,17 @@ into the `mods/` folder of the client and the server.
 
 ## Assets
 
-Textures, sounds and lang files belong to the original authors and are not in this repository. Each mod extracts them
-from your own copy of the original jar, for example:
+Mods made here commit their assets with the source.
+
+Ported mods do not: their textures, sounds and lang files belong to the original authors. Each ported mod's `README.md`
+says which jar to supply and how to extract the assets from it before building, for example:
 
 ```
 cd aether
 python3 -I tools/extract_assets.py <path to aether-1.7.10-v1.1.2.5.jar>
 ```
+
+A new port adds its `<mod>/assets/` to `.gitignore`.
 
 ## Licenses
 
