@@ -25,10 +25,6 @@ pub enum Impact
     Bomb,
     // EntityTFUrGhastFireball, a ghast's block breaking explosion
     Fireball,
-    // the ender bow's arrow swaps the shooter with what it hits
-    Swap,
-    // EntitySeekerArrow, it bends toward the creature ahead
-    Seek,
     // EntityTFMoonwormShot, a moonworm that clings where it lands
     Moonworm,
 }
@@ -48,7 +44,6 @@ mod sheet
     pub const SLIME_BALL: i32 = 30;
     pub const PAPER: i32 = 58;
     pub const FIRE: i32 = 26;
-    pub const ARROW: i32 = 37;
     pub const CELLS: f32 = 16.0;
 }
 
@@ -65,10 +60,6 @@ mod effect
 {
     pub const BOMB_POWER: f32 = 2.0;
     pub const FIREBALL_POWER: f32 = 1.0;
-    pub const ARROW_DAMAGE: i32 = 6;
-    // EntitySeekerArrow looks five ticks of flight ahead and turns toward what it finds
-    pub const SEEK_AHEAD: f64 = 5.0;
-    pub const SEEK_TURN: f64 = 0.4;
 }
 
 const TWILIGHT_ORB: &str = "twilightforest:item/twilightorb";
@@ -83,14 +74,10 @@ pub const LICH_BOMB: &str = "lich_bomb";
 pub const THROWN_AXE: &str = "thrown_axe";
 pub const THROWN_PICK: &str = "thrown_pick";
 pub const UR_FIREBALL: &str = "ur_ghast_fireball";
-pub const ARROW: &str = "twilight_arrow";
-pub const ICE_ARROW: &str = "ice_arrow";
-pub const ENDER_ARROW: &str = "ender_arrow";
-pub const SEEKER_ARROW: &str = "seeker_arrow";
 pub const MOONWORM_SHOT: &str = "moonworm_shot";
 const KNIGHT_PHANTOM: &str = "knight_phantom";
 
-pub const SHOTS: [Shot; 15] = [
+pub const SHOTS: [Shot; 11] = [
     Shot
     {
         m_name: NATURE_BOLT,
@@ -193,11 +180,6 @@ pub const SHOTS: [Shot; 15] = [
         m_puff: "smoke",
         m_passes: None,
     },
-    arrow(ARROW, Impact::Plain),
-    // the ice bow's slowness has no beta counterpart
-    arrow(ICE_ARROW, Impact::Plain),
-    arrow(ENDER_ARROW, Impact::Swap),
-    arrow(SEEKER_ARROW, Impact::Seek),
     Shot
     {
         m_name: MOONWORM_SHOT,
@@ -209,21 +191,6 @@ pub const SHOTS: [Shot; 15] = [
         m_passes: None,
     },
 ];
-
-// the twilight bows' arrows, drawn as the arrow icon, a full draw's damage
-const fn arrow(name: &'static str, impact: Impact) -> Shot
-{
-    Shot
-    {
-        m_name: name,
-        m_gravity: 0.05,
-        m_damage: effect::ARROW_DAMAGE,
-        m_impact: impact,
-        m_icon: Icon::Sheet(sheet::ARROW),
-        m_puff: "crit",
-        m_passes: None,
-    }
-}
 
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Flight
@@ -254,8 +221,7 @@ pub fn fire(
     };
     let delta: [f64; 3] = [0, 1, 2].map(|axis| toward[axis] - from[axis]);
     let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
-    let jitter = || (f64::from(world.random(2001)) / 1000.0 - 1.0) * 0.0075 * spread;
-    let motion: [f64; 3] = delta.map(|axis| (axis / length + jitter()) * speed);
+    let motion: [f64; 3] = delta.map(|axis| (axis / length + wobble(world, spread)) * speed);
     let _ = entity.setMotion(motion);
     let _ = entity.setData(&Flight { m_owner: owner, m_age: 0 });
     if let Some(owner) = owner
@@ -263,6 +229,13 @@ pub fn fire(
         entity.setField(EntityField::Shooter, f64::from(owner));
     }
     Some(entity)
+}
+
+// EntityThrowable.setThrowableHeading's inaccuracy on one axis, uniform where upstream draws a gaussian
+pub fn wobble(world: World, spread: f64) -> f64
+{
+    let (steps, scale, inaccuracy): (i32, f64, f64) = (2001, 1000.0, 0.0075);
+    (f64::from(world.random(steps)) / scale - 1.0) * inaccuracy * spread
 }
 
 struct Thrown
@@ -275,27 +248,9 @@ fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, 
 {
     let world: World = entity.world;
     if let Some(target) = target
+        && shot.m_damage > 0
     {
-        let victim: Entity = Entity { world, id: target.id };
-        if shot.m_damage > 0
-        {
-            victim.damage(shot.m_damage, owner);
-        }
-        match shot.m_impact
-        {
-            Impact::Swap =>
-            {
-                let shooter: Option<EntityInfo> = owner.and_then(|id| Entity { world, id }.info());
-                if let Some(shooter) = shooter
-                {
-                    let _ = Entity { world, id: shooter.id }.setPosition(target.pos);
-                    let _ = victim.setPosition(shooter.pos);
-                    world.playSound(target.pos, "mob.endermen.portal", 1.0, 1.0);
-                }
-            }
-            Impact::Plain | Impact::Nature | Impact::Bomb | Impact::Fireball | Impact::Seek | Impact::Moonworm =>
-            {}
-        }
+        Entity { world, id: target.id }.damage(shot.m_damage, owner);
     }
     if shot.m_impact == Impact::Nature && target.is_none()
     {
@@ -368,10 +323,6 @@ impl EntityBehavior for Thrown
             }
             land(self.m_shot, entity, block.point, None, state.m_owner);
             return;
-        }
-        if self.m_shot.m_impact == Impact::Seek
-        {
-            seek(entity, info, state.m_owner);
         }
         let drag: f64 = flight::DRAG;
         let _ = entity.setMotion([
@@ -450,41 +401,4 @@ pub fn blast(world: World, at: [f64; 3], power: f32, source: Option<i32>)
         let damage: i32 = ((impact * impact + impact) / 2.0 * 8.0 * reach + 1.0) as i32;
         Entity { world, id: other.id }.damage(damage, source);
     }
-}
-
-// EntitySeekerArrow.onUpdate, the arrow curves toward the creature most nearly ahead of it
-fn seek(entity: Entity, info: &EntityInfo, owner: Option<i32>)
-{
-    let world: World = entity.world;
-    let speed: f64 = info.motion.iter().map(|axis| axis * axis).sum::<f64>().sqrt();
-    if speed < 1.0e-3
-    {
-        return;
-    }
-
-    let course: [f64; 3] = info.motion.map(|axis| axis / speed);
-    let ahead: [f64; 3] = [0, 1, 2].map(|axis| info.pos[axis] + info.motion[axis] * effect::SEEK_AHEAD);
-    let best: Option<(f64, [f64; 3])> = world
-        .entitiesNear(ahead, speed * effect::SEEK_AHEAD)
-        .into_iter()
-        .filter(|near| near.health.is_some() && near.player.is_none() && Some(near.id) != owner && near.id != entity.id)
-        .map(|near|
-        {
-            let toward: [f64; 3] =
-                [near.pos[0] - info.pos[0], near.pos[1] + 1.0 - info.pos[1], near.pos[2] - info.pos[2]];
-            let length: f64 = toward.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
-            let dot: f64 = (0..3).map(|axis| course[axis] * toward[axis] / length).sum();
-            (dot, toward.map(|axis| axis / length))
-        })
-        .max_by(|a, b| a.0.total_cmp(&b.0));
-    let Some((dot, toward)) = best.filter(|(dot, _)| *dot > 0.0)
-    else
-    {
-        return;
-    };
-
-    let turn: f64 = effect::SEEK_TURN * dot;
-    let bent: [f64; 3] = [0, 1, 2].map(|axis| course[axis] * (1.0 - turn) + toward[axis] * turn);
-    let length: f64 = bent.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
-    let _ = entity.setMotion(bent.map(|axis| axis / length * speed));
 }

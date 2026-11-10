@@ -100,3 +100,36 @@ pub fn knockback(motion: [f64; 3], toward: [f64; 2]) -> [f64; 3]
     };
     [motion[0] / 2.0 - x * push, (motion[1] / 2.0 + push).min(push), motion[2] / 2.0 - z * push]
 }
+
+pub fn length(vector: [f64; 3]) -> f64 { vector.iter().map(|axis| axis * axis).sum::<f64>().sqrt() }
+
+pub fn dot(a: [f64; 3], b: [f64; 3]) -> f64 { (0..3).map(|axis| a[axis] * b[axis]).sum() }
+
+// Vec3.normalize, a vector too short to point anywhere becomes zero
+pub fn normalize(vector: [f64; 3]) -> [f64; 3]
+{
+    let tiny: f64 = 1.0e-4;
+    let size: f64 = length(vector);
+    if size < tiny
+    {
+        [0.0; 3]
+    }
+    else
+    {
+        vector.map(|axis| axis / size)
+    }
+}
+
+// Vec3.rotateAroundY
+pub fn turn(vector: [f64; 3], angle: f64) -> [f64; 3]
+{
+    let (sin, cos): (f64, f64) = angle.sin_cos();
+    [vector[0] * cos + vector[2] * sin, vector[1], vector[2] * cos - vector[0] * sin]
+}
+
+// EntityArrow.setArrowHeading's yaw and pitch in degrees for a flight direction
+pub fn heading(motion: [f64; 3]) -> (f64, f64)
+{
+    let horizontal: f64 = motion[0].hypot(motion[2]);
+    (motion[0].atan2(motion[2]).to_degrees(), motion[1].atan2(horizontal).to_degrees())
+}

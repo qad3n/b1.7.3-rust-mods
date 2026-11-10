@@ -1,4 +1,5 @@
 pub mod ai;
+pub mod arrows;
 mod breath;
 mod flock;
 mod goblin;
@@ -84,5 +85,6 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
     mobs::register(ctx)?;
     roving_cube::register(ctx)?;
     quest_ram::register(ctx)?;
+    arrows::register(ctx)?;
     shots::register(ctx)
 }

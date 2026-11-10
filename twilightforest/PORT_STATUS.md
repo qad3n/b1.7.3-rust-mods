@@ -137,7 +137,11 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   through a whole troll garden patch covered by falling sand and overflowed the wasm stack, which disabled the mod and
   left flat stone terrain behind.
 - Scepters (twilight, life drain, zombie with EntityTFLoyalZombie) and bows (triple, seeker, ice, ender with their
-  arrows in `entities/shots.rs`), one source use tick or a full draw per click. Transformation powder (beta pairs), moonworm queen.
+  arrows in `entities/arrows.rs` on the loader's `arrow` template, so beta EntityArrow flight, sticking, pickup and
+  RenderArrow), one source use tick or a full draw per click. The triple bow's side arrows are a `side_arrow` kind
+  that drops its shooter once stuck, so only the middle one can be picked up. The ender bow swaps places on any arrow
+  hit while held, as TFEventListener does. Beta arrows deal a flat 4, not 1.7's speed scaled 6, and the triple bow
+  cannot clear the target's hurt cooldown (no SDK field), so a second arrow in the same moment bounces. Transformation powder (beta pairs), moonworm queen.
 - Block and chain and cube of annihilation (`items/thrown.rs`, EntityTFChainBlock, EntityTFCubeOfAnnihilation): one
   out per player, the ball smashes soft blocks and swings back, the cube eats blocks where its holder looks.
 - Giant miner and armored giant (RenderTFGiant: a four times biped with the steve skin), harbinger cube

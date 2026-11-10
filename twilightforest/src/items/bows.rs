@@ -1,17 +1,19 @@
 use super::{put, texture};
-use crate::entities::shots::{self, ARROW, ENDER_ARROW, ICE_ARROW, SEEKER_ARROW};
+use crate::entities::arrows::{self, ICE, PLAIN, SEEKER, SIDE};
 use crate::ids::item;
-use crate::math::look;
 use b173_api::prelude::*;
 
 // ItemTFBowBase and its triple, seeker, ice and ender bows; beta's bow fires on the click, so do these, at full draw
 mod bow
 {
     pub const DURABILITY: i32 = 384;
+    // a full draw, EntityArrow's 1.5 times the bow's velocity of 2
     pub const SPEED: f64 = 3.0;
-    pub const SPREAD: f64 = 1.0;
-    // the triple bow's side arrows climb and dip 0.15 a tick
+    // ItemTFSeekerBow halves the velocity
+    pub const SEEKER_SPEED: f64 = 1.5;
+    // the triple bow's side arrows climb and dip 0.15 a tick and start 0.025 above and below
     pub const SIDE_LIFT: f64 = 0.15;
+    pub const SIDE_RISE: f64 = 0.025;
     pub const SLOTS: i32 = 36;
 }
 
@@ -19,6 +21,7 @@ mod bow
 struct Bow
 {
     m_arrow: &'static str,
+    m_speed: f64,
     m_triple: bool,
 }
 
@@ -60,27 +63,16 @@ impl ItemBehavior for Bow
         {
             return Use::Pass;
         }
-        let aim: [f64; 3] = look(info.yaw, info.pitch);
-        let from: [f64; 3] = info.pos;
-        let toward: [f64; 3] = [0, 1, 2].map(|axis| from[axis] + aim[axis]);
-        let mut fired: Vec<Entity> =
-            shots::fire(world, self.m_arrow, from, toward, bow::SPEED, bow::SPREAD, Some(player.id))
-                .into_iter()
-                .collect();
+        let mut fired: bool = arrows::shoot(world, self.m_arrow, &info, self.m_speed, 0.0, 0.0).is_some();
         if self.m_triple
         {
-            for lift in [bow::SIDE_LIFT, -bow::SIDE_LIFT]
+            for side in [1.0, -1.0]
             {
-                if let Some(side) =
-                    shots::fire(world, self.m_arrow, from, toward, bow::SPEED, bow::SPREAD, Some(player.id))
-                    && let Some(motion) = side.info().map(|side| side.motion)
-                {
-                    let _ = side.setMotion([motion[0], motion[1] + lift, motion[2]]);
-                    fired.push(side);
-                }
+                let (lift, rise): (f64, f64) = (side * bow::SIDE_LIFT, side * bow::SIDE_RISE);
+                fired |= arrows::shoot(world, SIDE, &info, self.m_speed, lift, rise).is_some();
             }
         }
-        if !fired.is_empty()
+        if fired
         {
             let pitch: f32 = 1.0 / (crate::ids::fraction(world) * 0.4 + 1.2) + 0.5;
             world.playSound(info.pos, "random.bow", 1.0, pitch);
@@ -93,10 +85,21 @@ impl ItemBehavior for Bow
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let rows: [(&str, &str, &str, Bow); 4] = [
-        (item::TRIPLE_BOW, "Tri-bow", "triplebow_standby", Bow { m_arrow: ARROW, m_triple: true }),
-        (item::SEEKER_BOW, "Seeker Bow", "seekerbow_standby", Bow { m_arrow: SEEKER_ARROW, m_triple: false }),
-        (item::ICE_BOW, "Ice Bow", "icebow_standby", Bow { m_arrow: ICE_ARROW, m_triple: false }),
-        (item::ENDER_BOW, "Ender Bow", "enderbow_standby", Bow { m_arrow: ENDER_ARROW, m_triple: false }),
+        (item::TRIPLE_BOW, "Tri-bow", "triplebow_standby", Bow { m_arrow: PLAIN, m_speed: bow::SPEED, m_triple: true }),
+        (
+            item::SEEKER_BOW,
+            "Seeker Bow",
+            "seekerbow_standby",
+            Bow { m_arrow: SEEKER, m_speed: bow::SEEKER_SPEED, m_triple: false },
+        ),
+        (item::ICE_BOW, "Ice Bow", "icebow_standby", Bow { m_arrow: ICE, m_speed: bow::SPEED, m_triple: false }),
+        // ItemTFEnderBow fires a plain arrow, the swap happens in the hurt listener
+        (
+            item::ENDER_BOW,
+            "Ender Bow",
+            "enderbow_standby",
+            Bow { m_arrow: PLAIN, m_speed: bow::SPEED, m_triple: false },
+        ),
     ];
     for (name, label, look, behavior) in rows
     {
