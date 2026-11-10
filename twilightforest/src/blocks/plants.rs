@@ -60,7 +60,7 @@ const DEADBUSH_TEXTURE: &str = "minecraft:55";
 const PLANTS: [Plant; 12] = [
     Plant
     {
-        m_name: "moss_patch",
+        m_name: MOSS_PATCH,
         m_label: "Moss Patch",
         m_texture: "mosspatch",
         m_shape: Shape::Patch(1.0),
@@ -262,11 +262,15 @@ pub fn trollHold(world: World, pos: BlockPos) -> bool
         || [block::TROLL_ROOT, block::TROLLBER, block::UNRIPE_TROLLBER].iter().any(|name| block == ids::blockId(name))
 }
 
+const MOSS_PATCH: &str = "moss_patch";
+
 struct SmallPlant
 {
     m_footing: Footing,
     m_tinted: bool,
     m_ripens: bool,
+    // BlockTFPlant's moss patch, a spore now and then
+    m_spores: bool,
 }
 
 // BlockTFUnripeTorchCluster ripens once its spot is lit to six
@@ -275,6 +279,26 @@ const RIPEN_LIGHT: i32 = 6;
 #[block_behavior]
 impl BlockBehavior for SmallPlant
 {
+    // BlockTFPlant.randomDisplayTick, a moss patch puffs a spore one tick in ten
+    fn onRandomDisplayTick(&self, ctx: &mut BlockCtx)
+    {
+        let odds: i32 = 10;
+        let world: World = ctx.world();
+        if !self.m_spores || world.random(odds) != 0
+        {
+            return;
+        }
+
+        let pos: BlockPos = ctx.pos();
+        let rise: f64 = 0.1;
+        let at: [f64; 3] = [
+            f64::from(pos.x) + f64::from(ids::fraction(world)),
+            f64::from(pos.y) + rise,
+            f64::from(pos.z) + f64::from(ids::fraction(world)),
+        ];
+        crate::particles::spawn(world, "townaura", at, [0.0; 3]);
+    }
+
     fn canPlaceAt(&self, ctx: &mut BlockCtx) -> bool
     {
         ctx.world().isAir(ctx.pos()) && footed(self.m_footing, ctx.world(), ctx.pos())
@@ -344,6 +368,7 @@ fn plantSpec(row: &Plant) -> Result<BlockSpecBuilder>
             m_footing: row.m_footing,
             m_tinted: row.m_tinted,
             m_ripens: row.m_name == block::UNRIPE_TROLLBER,
+            m_spores: row.m_name == MOSS_PATCH,
         });
     if let Some(model) = shapeModel(row.m_shape)
     {
