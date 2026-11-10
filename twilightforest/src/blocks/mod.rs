@@ -9,6 +9,7 @@ pub mod wood;
 
 use b173_api::prelude::*;
 pub use plants::{axisOf, plantStays};
+pub use stone::SHIELD_LATENT;
 
 pub enum Look
 {

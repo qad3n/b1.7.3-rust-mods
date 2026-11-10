@@ -256,11 +256,6 @@ fn checkPlayers()
 // what a biome needs before the player may stay there, for the teleporter's safety check
 pub fn safe(player: Player, biome: Biome) -> bool { required(biome).is_none_or(|gate| has(player, gate)) }
 
-pub struct Pedestal;
-
-#[block_behavior]
-impl BlockBehavior for Pedestal {}
-
 pub fn doorLocked(_world: World, _pos: BlockPos) -> bool { false }
 
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>

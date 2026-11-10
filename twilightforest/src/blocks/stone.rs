@@ -339,7 +339,9 @@ fn registerAurora(ctx: &mut RegisterCtx) -> Result<()>
 }
 
 // BlockTFShield: unbreakable, the face it was placed against shows the inside
-const SIDES: [&str; 6] = ["down", "up", "north", "south", "west", "east"];
+// the six facings, then the latent shield the stronghold access chamber lays, outside on every face
+const SIDES: [&str; 7] = ["down", "up", "north", "south", "west", "east", "none"];
+pub const SHIELD_LATENT: i32 = 6;
 
 fn registerShield(ctx: &mut RegisterCtx) -> Result<()>
 {
@@ -360,7 +362,17 @@ fn registerShield(ctx: &mut RegisterCtx) -> Result<()>
     )?;
     ctx.blocks().states(
         block::SHIELD,
-        BlockStatesSpec { properties: vec![property("facing", &SIDES)], ..BlockStatesSpec::default() },
+        BlockStatesSpec
+        {
+            properties: vec![property("facing", &SIDES)],
+            variants: vec![StateVariantSpec
+            {
+                when: when("facing", "none"),
+                texture: Some(texture("shield_outside")),
+                textures: None,
+            }],
+            ..BlockStatesSpec::default()
+        },
     )
 }
 
@@ -401,12 +413,6 @@ fn registerNagastone(ctx: &mut RegisterCtx) -> Result<()>
     )
 }
 
-mod pedestal
-{
-    pub const HARDNESS: f32 = 2.0;
-    pub const RESISTANCE: f32 = 2000.0;
-}
-
 fn registerSpecial(ctx: &mut RegisterCtx) -> Result<()>
 {
     super::put(
@@ -420,36 +426,6 @@ fn registerSpecial(ctx: &mut RegisterCtx) -> Result<()>
             .sound("cloth")
             .model(BlockModelSpec { translucent: true, ..BlockModelSpec::default() })
             .drops(Vec::new()),
-    )?;
-    super::put(
-        ctx,
-        block::TROPHY_PEDESTAL,
-        base("minecraft:block", "Trophy Pedestal", Kind::Rock, pedestal::HARDNESS)
-            .resistance(pedestal::RESISTANCE)
-            .faces(FaceTextures
-            {
-                top: Some(texture("pedestal_top")),
-                bottom: Some(texture("pedestal_top")),
-                side: Some(texture("pedestal_naga")),
-                front: None,
-            })
-            .behavior(crate::progress::Pedestal),
-    )?;
-    let active: FaceTextures = FaceTextures
-    {
-        top: Some(texture("pedestal_top_active")),
-        bottom: Some(texture("pedestal_top_active")),
-        side: Some(texture("pedestal_naga_active")),
-        front: None,
-    };
-    ctx.blocks().states(
-        block::TROPHY_PEDESTAL,
-        BlockStatesSpec
-        {
-            properties: vec![property("active", &["false", "true"])],
-            variants: vec![StateVariantSpec { when: when("active", "true"), texture: None, textures: Some(active) }],
-            ..BlockStatesSpec::default()
-        },
     )
 }
 

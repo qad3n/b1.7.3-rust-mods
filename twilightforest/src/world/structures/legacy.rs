@@ -260,13 +260,22 @@ fn twilight(field: &str, meta: i32) -> Resolved
         "bossSpawner" => (crate::bosses::SPAWNER, meta),
         "trollSteinn" => (block::TROLLSTEINN, 0),
         "fluffyCloud" => (block::FLUFFY_CLOUD, 0),
-        // the port's shield keeps only its six facings, the unbreakable 15 faces down
-        "shield" => (block::SHIELD, if meta > 5 { 0 } else { meta }),
+        // 15 is the latent shield a trophy pedestal clears
+        "shield" => (
+            block::SHIELD,
+            if meta > 5
+            {
+                crate::blocks::SHIELD_LATENT
+            }
+            else
+            {
+                meta
+            },
+        ),
         "auroraBlock" => (block::AURORA_BRICK, meta),
         "auroraPillar" => (block::AURORA_PILLAR, meta),
         "uberousSoil" => (block::UBEROUS_SOIL, 0),
-        // the latent pedestal the stronghold places waits inactive for a trophy
-        "trophyPedestal" => (block::TROPHY_PEDESTAL, 0),
+        "trophyPedestal" => (block::TROPHY_PEDESTAL, meta),
         "hugeGloomBlock" => (block::HUGE_GLOOM, meta),
         "hedge" => (block::HEDGE, 0),
         _ => ("air", 0),
