@@ -197,7 +197,7 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 
 ## Bugs to check at the end
 
-- Custom particles (TFClientProxy.spawnParticle classes) use the closest beta particles.
+- TFClientProxy.spawnParticle classes are loader mod particles (api 1.24, `particles.rs`): a beta particle recolored, resized, retimed or weighted toward each EntityFX; their own textures and animated fading are not reproduced.
 - The tree of transformation's enchanted forest columns color grass and leaves and steer loader spawning, but the
   port's own biome lookups (biome locks, its spawn lists) still read the generated biome; the SDK has no biome query.
 - Death tome uses the 1.7 enchanting book texture, which beta and the jar do not have.
@@ -209,7 +209,7 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 - Not checked in a client yet: mob models, poses and textures, the uncrafting table ghosts, portal visuals.
 - Cinder furnace: the title sits left like other mod screens instead of centred.
 - A player placed trophy pedestal is never latent (beta block items place meta 0).
-- Moss patches have no spore aura (beta has no townaura).
+- Moss patches puff a gray spore one tick in ten (BlockTFPlant), a recolored smoke since beta has no townaura.
 
 ## Remaining, in order
 
