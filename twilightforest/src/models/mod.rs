@@ -1,5 +1,6 @@
 // converter output keeps the Java float literals, 3.141593F and friends
 pub mod animated;
+pub mod armor;
 #[allow(dead_code, clippy::approx_constant, clippy::excessive_precision)]
 mod generated;
 mod vanilla;
@@ -269,6 +270,19 @@ const ZOMBIE_SPREAD: f32 = 0.1;
 
 fn limbPose(program: &mut Program, pivots: &[[f32; 3]], rotations: &[[f32; 3]], input: &PoseInput, zombie: bool)
 {
+    for (part, rotation) in limbRotations(input, zombie)
+    {
+        program.part(part, rotation, pivots[part as usize]);
+    }
+    for part in biped::PARTS..pivots.len() as u16
+    {
+        program.part(part, rotations[part as usize], pivots[part as usize]);
+    }
+}
+
+// ModelBiped.setRotationAngles for its seven parts
+pub fn limbRotations(input: &PoseInput, zombie: bool) -> [(u16, [f32; 3]); 7]
+{
     use std::f32::consts::PI;
     let head: [f32; 3] = [input.head_pitch / DEGREES_PER_RADIAN, input.head_yaw / DEGREES_PER_RADIAN, 0.0];
     let swing: f32 = input.walk * WALK_RATE;
@@ -294,7 +308,7 @@ fn limbPose(program: &mut Program, pivots: &[[f32; 3]], rotations: &[[f32; 3]], 
     left[2] -= roll;
     right[0] += pitch;
     left[0] -= pitch;
-    let posed: [(u16, [f32; 3]); 7] = [
+    [
         (biped::HEAD, head),
         (biped::HEADWEAR, head),
         (biped::BODY, [0.0; 3]),
@@ -302,13 +316,5 @@ fn limbPose(program: &mut Program, pivots: &[[f32; 3]], rotations: &[[f32; 3]], 
         (biped::LEFT_ARM, left),
         (biped::RIGHT_LEG, rightLeg),
         (biped::LEFT_LEG, leftLeg),
-    ];
-    for (part, rotation) in posed
-    {
-        program.part(part, rotation, pivots[part as usize]);
-    }
-    for part in biped::PARTS..pivots.len() as u16
-    {
-        program.part(part, rotations[part as usize], pivots[part as usize]);
-    }
+    ]
 }

@@ -1,6 +1,7 @@
 use super::ai::{self, Ai};
 use super::{drop, shots};
 use crate::ids::item;
+use crate::models::armor::{Piece, Worn};
 use crate::models::{self, Program, bipedPose, quadrupedPose};
 use crate::world::biomes::Biome;
 use b173_api::prelude::*;
@@ -68,6 +69,8 @@ pub struct Mob
     pub m_hidden: &'static [u16],
     // root parts the Java setRotationAngles turns with the head
     pub m_headed: &'static [u16],
+    // setCurrentItemOrArmor slots 1 to 4, drawn by RenderBiped's armor passes
+    pub m_armor: &'static [Worn],
 }
 
 mod speed
@@ -129,6 +132,7 @@ const fn mob(
         m_held: None,
         m_hidden: &[],
         m_headed: &[],
+        m_armor: &[],
     }
 }
 
@@ -158,6 +162,21 @@ const fn holding(mob: Mob, item: &'static str) -> Mob { Mob { m_held: Some(item)
 const fn hiding(mob: Mob, parts: &'static [u16]) -> Mob { Mob { m_hidden: parts, ..mob } }
 
 const fn headed(mob: Mob, parts: &'static [u16]) -> Mob { Mob { m_headed: parts, ..mob } }
+
+const fn wearing(mob: Mob, armor: &'static [Worn]) -> Mob { Mob { m_armor: armor, ..mob } }
+
+const IRON: &str = "minecraft:armor/iron";
+
+// EntityTFArmoredGiant's iron set
+const GIANT_ARMOR: &[Worn] = &[
+    Worn { m_piece: Piece::Helmet, m_sheet: IRON },
+    Worn { m_piece: Piece::Chestplate, m_sheet: IRON },
+    Worn { m_piece: Piece::Leggings, m_sheet: IRON },
+    Worn { m_piece: Piece::Boots, m_sheet: IRON },
+];
+// EntityTFRedcap's iron boots and EntityTFRedcapSapper's ironwood ones
+const REDCAP_BOOTS: &[Worn] = &[Worn { m_piece: Piece::Boots, m_sheet: IRON }];
+const SAPPER_BOOTS: &[Worn] = &[Worn { m_piece: Piece::Boots, m_sheet: "twilightforest:armor/ironwood" }];
 
 // ModelTFRedcap copies the head's angles onto its ears
 const REDCAP_EARS: &[u16] = &[models::tf_redcap::GOBLIN_RIGHT_EAR, models::tf_redcap::GOBLIN_LEFT_EAR];
@@ -413,55 +432,61 @@ pub const MOBS: [Mob; 44] = [
         Ai::Flyer { speed: 0.1 },
     ),
     // monsters, their own AI comes on top of the monster template
-    headed(
-        holding(
-            acting(
-                redcapped(drops(
-                    mob(
-                        "redcap",
-                        "Redcap",
-                        MONSTER,
-                        tf("redcap"),
-                        [0.9, 1.4],
-                        20,
-                        0.28,
-                        4,
-                        model!(tf_redcap),
-                        Look::Biped,
-                        Spawning::Monster,
-                    ),
-                    &[("minecraft:coal", [0, 2])],
-                )),
-                Ai::Redcap { sapper: false },
+    wearing(
+        headed(
+            holding(
+                acting(
+                    redcapped(drops(
+                        mob(
+                            "redcap",
+                            "Redcap",
+                            MONSTER,
+                            tf("redcap"),
+                            [0.9, 1.4],
+                            20,
+                            0.28,
+                            4,
+                            model!(tf_redcap),
+                            Look::Biped,
+                            Spawning::Monster,
+                        ),
+                        &[("minecraft:coal", [0, 2])],
+                    )),
+                    Ai::Redcap { sapper: false },
+                ),
+                "minecraft:iron_pickaxe",
             ),
-            "minecraft:iron_pickaxe",
+            REDCAP_EARS,
         ),
-        REDCAP_EARS,
+        REDCAP_BOOTS,
     ),
-    headed(
-        holding(
-            acting(
-                redcapped(drops(
-                    mob(
-                        "redcap_sapper",
-                        "Redcap Sapper",
-                        MONSTER,
-                        tf("redcapsapper"),
-                        [0.9, 1.4],
-                        30,
-                        0.28,
-                        4,
-                        model!(tf_redcap),
-                        Look::Biped,
-                        Spawning::Monster,
-                    ),
-                    &[("minecraft:coal", [0, 2])],
-                )),
-                Ai::Redcap { sapper: true },
+    wearing(
+        headed(
+            holding(
+                acting(
+                    redcapped(drops(
+                        mob(
+                            "redcap_sapper",
+                            "Redcap Sapper",
+                            MONSTER,
+                            tf("redcapsapper"),
+                            [0.9, 1.4],
+                            30,
+                            0.28,
+                            4,
+                            model!(tf_redcap),
+                            Look::Biped,
+                            Spawning::Monster,
+                        ),
+                        &[("minecraft:coal", [0, 2])],
+                    )),
+                    Ai::Redcap { sapper: true },
+                ),
+                item::IRONWOOD_PICK,
             ),
-            item::IRONWOOD_PICK,
+            REDCAP_EARS,
         ),
-        REDCAP_EARS,
+        SAPPER_BOOTS,
     ),
     hiding(
         acting(
@@ -1102,27 +1127,30 @@ pub const MOBS: [Mob; 44] = [
         ),
         "minecraft:stone_pickaxe",
     ),
-    holding(
-        scaled(
-            drops(
-                mob(
-                    "armored_giant",
-                    "Armored Giant",
-                    MONSTER,
-                    GIANT_SKIN,
-                    [2.4, 7.2],
-                    80,
-                    0.23,
-                    10,
-                    model!(tf_loyal_zombie),
-                    Look::Biped,
-                    Spawning::Never,
+    wearing(
+        holding(
+            scaled(
+                drops(
+                    mob(
+                        "armored_giant",
+                        "Armored Giant",
+                        MONSTER,
+                        GIANT_SKIN,
+                        [2.4, 7.2],
+                        80,
+                        0.23,
+                        10,
+                        model!(tf_loyal_zombie),
+                        Look::Biped,
+                        Spawning::Never,
+                    ),
+                    &[(item::GIANT_SWORD, [1, 1])],
                 ),
-                &[(item::GIANT_SWORD, [1, 1])],
+                GIANT_SCALE,
             ),
-            GIANT_SCALE,
+            "minecraft:stone_sword",
         ),
-        "minecraft:stone_sword",
+        GIANT_ARMOR,
     ),
     drops(
         mob(
@@ -1310,6 +1338,7 @@ impl EntityBehavior for Posed
         {
             super::goblin::draw(&mut body, input);
         }
+        models::armor::draw(&mut body, mob.m_pivots.len() as u16, mob.m_armor, input);
         if let Some(item) = mob.m_held
         {
             body.held(models::biped::RIGHT_ARM, item);
@@ -1337,6 +1366,16 @@ fn fitParts(body: &mut Program, mob: &Mob, input: &PoseInput)
             *rotation = head;
         }
     }
+}
+
+// a mob that wears armor carries both armor layers after its own parts
+fn wornModel(mob: &Mob) -> EntityModelSpec
+{
+    if mob.m_armor.is_empty()
+    {
+        return (mob.m_model)();
+    }
+    models::combine(vec![(mob.m_model)(), models::armor::model()])
 }
 
 fn registerMob(ctx: &mut RegisterCtx, mob: &'static Mob) -> Result<()>
@@ -1375,7 +1414,7 @@ fn registerMob(ctx: &mut RegisterCtx, mob: &'static Mob) -> Result<()>
                     .collect(),
             ),
             sounds,
-            model: Some(EntityModelSpec { shadow: mob.m_shadow, ..(mob.m_model)() }),
+            model: Some(EntityModelSpec { shadow: mob.m_shadow, ..wornModel(mob) }),
             ..EntitySpec::default()
         },
         Some(Rc::new(Posed { m_mob: mob })),
