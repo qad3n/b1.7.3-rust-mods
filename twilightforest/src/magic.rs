@@ -43,12 +43,25 @@ fn time(world: World, pos: BlockPos)
     }
 }
 
-// doTreeOfTransformationEffect, the chime of the heart, the biome change is in the bug list
+// doTreeOfTransformationEffect, the heart chimes and turns one column within reach to the enchanted forest
 fn transformation(world: World, pos: BlockPos)
 {
+    use crate::world::biomes::{self, Biome};
     let reach: i32 = 16;
-    let _ = (spread(world, reach), spread(world, reach));
+    let (dx, dz): (i32, i32) = (spread(world, reach), spread(world, reach));
     world.playSound(center(pos), "note.harp", core::QUIET, ids::fraction(world) * 2.0);
+    let (x, z): (i32, i32) = (pos.x + dx, pos.z + dz);
+    let inside: bool = f64::from(dx).hypot(f64::from(dz)) < f64::from(reach);
+    if !inside || biomes::biomeAt(world, BlockPos::new(x, pos.y, z)) == Biome::EnchantedForest
+    {
+        return;
+    }
+
+    let name: String = format!("twilightforest:{}", biomes::rowOf(Biome::EnchantedForest).m_name);
+    if let Err(error) = world.setBiome(x, z, &name)
+    {
+        warn(&format!("tree of transformation at {x} {z}: {}", error.0));
+    }
 }
 
 // doMinersTreeEffect, the miner's core pulls ores toward itself like an ore magnet
