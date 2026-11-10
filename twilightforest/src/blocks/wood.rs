@@ -454,6 +454,14 @@ struct MagicCore
 #[block_behavior]
 impl BlockBehavior for MagicCore
 {
+    fn onRemoved(&self, ctx: &mut BlockCtx)
+    {
+        if ctx.isAuthority()
+        {
+            shedLeaves(ctx.world(), ctx.pos());
+        }
+    }
+
     fn onAdded(&self, ctx: &mut BlockCtx)
     {
         if ctx.isAuthority()
@@ -487,6 +495,48 @@ impl BlockBehavior for MagicCore
     }
 }
 
+// BlockLog.onBlockRemoval, leaves near a broken log start to decay
+pub fn shedLeaves(world: World, pos: BlockPos)
+{
+    let reach: i32 = 4;
+    let decaying: i32 = 8;
+    for x in -reach..=reach
+    {
+        for y in -reach..=reach
+        {
+            for z in -reach..=reach
+            {
+                let at: BlockPos = pos.offset(x, y, z);
+                let meta: i32 = world.meta(at);
+                if !ids::decayingLeaves(world.block(at)) || meta & decaying != 0
+                {
+                    continue;
+                }
+
+                if let Err(error) = world.setMeta(at, meta | decaying)
+                {
+                    warn(&format!("leaf decay at {at:?}: {}", error.0));
+                }
+            }
+        }
+    }
+}
+
+// BlockLog, a plain log that lets its leaves go when broken
+pub struct Log;
+
+#[block_behavior]
+impl BlockBehavior for Log
+{
+    fn onRemoved(&self, ctx: &mut BlockCtx)
+    {
+        if ctx.isAuthority()
+        {
+            shedLeaves(ctx.world(), ctx.pos());
+        }
+    }
+}
+
 fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &LOGS
@@ -494,7 +544,8 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
         let spec: BlockSpecBuilder = base("minecraft:block", row.m_label, Kind::Wood, LOG_HARDNESS)
             .faces(faces(&Look::Column { top: row.m_top, side: row.m_side }))
             .flammable(fire::LOG.0, fire::LOG.1)
-            .sustainsLeaves();
+            .sustainsLeaves()
+            .behavior(Log);
         super::put(ctx, row.m_log, spec)?;
         ctx.blocks().states(
             row.m_log,

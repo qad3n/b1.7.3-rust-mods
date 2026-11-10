@@ -280,6 +280,27 @@ pub fn holdsLeaves(block: i32) -> bool
     )
 }
 
+// BlockLeaves and the leaves built on it, the ones a broken log tells to decay
+pub fn decayingLeaves(block: i32) -> bool
+{
+    anyOf(
+        block,
+        &[
+            "minecraft:leaves",
+            self::block::OAK_LEAVES,
+            self::block::CANOPY_LEAVES,
+            self::block::MANGROVE_LEAVES,
+            self::block::RAINBOW_LEAVES,
+            self::block::TIME_LEAVES,
+            self::block::TRANS_LEAVES,
+            self::block::MINE_LEAVES,
+            self::block::SORT_LEAVES,
+            self::block::THORN_LEAVES,
+            self::block::BEANSTALK_LEAVES,
+        ],
+    )
+}
+
 pub fn giantBlock(block: i32) -> bool
 {
     anyOf(

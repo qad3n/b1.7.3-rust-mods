@@ -455,6 +455,15 @@ fn burst(world: World, pos: BlockPos, axis: u8)
 #[block_behavior]
 impl BlockBehavior for Thorns
 {
+    // BlockTFThorns.breakBlock, live thorns hold leaves like a log
+    fn onRemoved(&self, ctx: &mut BlockCtx)
+    {
+        if ctx.isAuthority() && !self.m_burnt
+        {
+            super::wood::shedLeaves(ctx.world(), ctx.pos());
+        }
+    }
+
     fn onEntityCollided(&self, ctx: &mut BlockCtx, entity: Entity)
     {
         if !ctx.isAuthority()
@@ -793,7 +802,8 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
             .sound("grass")
             .resistance(stalkResistance)
             .faces(super::faces(&super::Look::Column { top: "huge_stalk_top", side: "huge_stalk" }))
-            .sustainsLeaves(),
+            .sustainsLeaves()
+            .behavior(super::wood::Log),
     )?;
     let gloomHardness: f32 = 0.2;
     // BlockTFHugeGloomBlock drops nothing seven times in ten and up to two mushglooms otherwise

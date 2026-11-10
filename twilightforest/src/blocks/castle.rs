@@ -275,7 +275,8 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         block::CINDER_LOG,
         base("minecraft:block", "Cinder Log [NYI]", Kind::Wood, cinderHardness)
             .faces(super::faces(&super::Look::Column { top: "cinder_top", side: "cinder_side" }))
-            .sustainsLeaves(),
+            .sustainsLeaves()
+            .behavior(super::wood::Log),
     )?;
     let axis: PropertySpec = super::property("axis", &super::wood::LOG_AXES);
     ctx.blocks().states(block::CINDER_LOG, BlockStatesSpec { properties: vec![axis], ..BlockStatesSpec::default() })
