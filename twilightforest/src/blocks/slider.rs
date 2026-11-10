@@ -229,6 +229,7 @@ fn launch(world: World, pos: BlockPos, meta: i32)
     };
 
     entity.setField(EntityField::Block, f64::from(state.m_block));
+    entity.setField(EntityField::BlockMeta, f64::from(state.m_meta));
     if let Err(error) = entity.setData(&state)
     {
         warn(&format!("slide block state: {}", error.0));
