@@ -1,6 +1,6 @@
 use super::{Cube, Kind, Look, base, cube, faces, property, texture, tough, when};
 use crate::colors;
-use crate::ids::{NEIGHBORS, block, item};
+use crate::ids::{self, NEIGHBORS, block, item};
 use b173_api::prelude::*;
 
 mod maze
@@ -343,6 +343,68 @@ fn registerAurora(ctx: &mut RegisterCtx) -> Result<()>
 const SIDES: [&str; 7] = ["down", "up", "north", "south", "west", "east", "none"];
 pub const SHIELD_LATENT: i32 = 6;
 
+// BlockTFShield, only the inside face can be dug, as fast as the player digs stone and a third slower
+struct Shield;
+
+mod shield
+{
+    pub const REACH: f64 = 6.0;
+    pub const SLOWER: f32 = 1.5;
+    pub const SCALE: f32 = 100.0;
+    // BlockPistonBase.determineOrientation, a player this close looks up or down at it instead of across
+    pub const NEAR: f64 = 2.0;
+    pub const ABOVE: f64 = 2.0;
+    pub const EYE_RISE: f64 = 0.2;
+}
+
+#[block_behavior]
+impl BlockBehavior for Shield
+{
+    // BlockTFShield.onBlockPlacedBy, the inside faces the player that set it
+    fn onPlacedBy(&self, ctx: &mut BlockCtx, entity: Entity)
+    {
+        let Some(info) = entity.info()
+        else
+        {
+            return;
+        };
+
+        let pos: BlockPos = ctx.pos();
+        let close: bool = (info.pos[0] - f64::from(pos.x)).abs() < shield::NEAR
+            && (info.pos[2] - f64::from(pos.z)).abs() < shield::NEAR;
+        let eye: f64 = info.pos[1] + shield::EYE_RISE;
+        let facing: u8 = if close && eye - f64::from(pos.y) > shield::ABOVE
+        {
+            1
+        }
+        else if close && f64::from(pos.y) - eye > 0.0
+        {
+            0
+        }
+        else
+        {
+            let quarter: usize = ((f64::from(info.yaw) * 4.0 / 360.0 + 0.5).floor() as i32 & 3) as usize;
+            [2, 5, 3, 4][quarter]
+        };
+        ctx.setMeta(facing);
+    }
+
+    fn strength(&self, ctx: &mut BlockCtx, player: Player) -> Option<f32>
+    {
+        let info: EntityInfo = player.info()?;
+        let aim: [f64; 3] = crate::math::look(info.yaw, info.pitch);
+        let to: [f64; 3] = std::array::from_fn(|axis| info.pos[axis] + aim[axis] * shield::REACH);
+        let face: Option<i32> = ctx.world().rayTrace(info.pos, to, false).map(|hit| hit.face);
+        if face != Some(i32::from(ctx.meta()))
+        {
+            return Some(0.0);
+        }
+
+        let stone: i32 = ids::blockId("minecraft:stone");
+        Some(player.digSpeed(stone) / shield::SLOWER / shield::SCALE)
+    }
+}
+
 fn registerShield(ctx: &mut RegisterCtx) -> Result<()>
 {
     let unbreakable: f32 = -1.0;
@@ -358,7 +420,8 @@ fn registerShield(ctx: &mut RegisterCtx) -> Result<()>
                 bottom: Some(texture("shield_outside")),
                 side: Some(texture("shield_outside")),
                 front: Some(texture("shield_inside")),
-            }),
+            })
+            .behavior(Shield),
     )?;
     ctx.blocks().states(
         block::SHIELD,
