@@ -82,7 +82,7 @@ const TENTACLE_ROOTS: [([f32; 3], f32); TENTACLES] = [
 ];
 
 // ModelTFTowerBoss, a ghast body with nine three jointed tentacles
-fn model() -> EntityModelSpec
+pub fn model() -> EntityModelSpec
 {
     let mut parts: Vec<ModelPart> = vec![part(
         "body",
@@ -130,6 +130,24 @@ fn model() -> EntityModelSpec
 }
 
 fn tentaclePart(number: usize) -> u16 { (1 + number * (JOINTS + 1)) as u16 }
+
+// ModelTFTowerBoss.setRotationAngles and render for a model whose parts start at first, the tentacles wave with age
+pub fn drawBody(body: &mut Program, first: u16, age: f32, look: [f32; 2])
+{
+    body.part(first, [look[0], look[1], 0.0], [0.0, 8.0, 0.0]);
+    for (number, (pivot, lean)) in TENTACLE_ROOTS.iter().enumerate()
+    {
+        let time: f32 = (age + number as f32 * 9.0) / 2.0;
+        let base: u16 = first + tentaclePart(number);
+        body.part(base, [0.0, boss::TWIST * (time * 0.3).sin(), *lean], *pivot);
+        let swing: [f32; JOINTS] =
+            [0.2 + (time * 0.3335).cos() * 0.15, 0.1 + (time * 0.4445).cos() * 0.2, 0.1 + (time * 0.5555).cos() * 0.25];
+        for (joint, angle) in swing.iter().enumerate()
+        {
+            body.part(base + 1 + joint as u16, [*angle, 0.0, 0.0], [0.0, 4.0, 0.0]);
+        }
+    }
+}
 
 #[derive(Default)]
 struct Brain
@@ -733,22 +751,7 @@ impl EntityBehavior for UrGhast
         };
         let mut body: Program = Program::new();
         body.texture(texture);
-        body.part(0, [input.head_pitch.to_radians(), input.head_yaw.to_radians(), 0.0], [0.0, 8.0, 0.0]);
-        for (number, (pivot, lean)) in TENTACLE_ROOTS.iter().enumerate()
-        {
-            let time: f32 = (input.age + number as f32 * 9.0) / 2.0;
-            let base: u16 = tentaclePart(number);
-            body.part(base, [0.0, boss::TWIST * (time * 0.3).sin(), *lean], *pivot);
-            let swing: [f32; JOINTS] = [
-                0.2 + (time * 0.3335).cos() * 0.15,
-                0.1 + (time * 0.4445).cos() * 0.2,
-                0.1 + (time * 0.5555).cos() * 0.25,
-            ];
-            for (joint, angle) in swing.iter().enumerate()
-            {
-                body.part(base + 1 + joint as u16, [*angle, 0.0, 0.0], [0.0, 4.0, 0.0]);
-            }
-        }
+        drawBody(&mut body, 0, input.age, [input.head_pitch.to_radians(), input.head_yaw.to_radians()]);
         Pose { pre: pre.take(), model: body.take() }
     }
 }

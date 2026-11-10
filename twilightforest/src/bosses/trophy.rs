@@ -1,4 +1,5 @@
 use crate::ids::{self, block, item};
+use crate::models::{Program, combine, tf_hydra_head, tf_lich, tf_naga, tf_snow_queen};
 use crate::progress::{self, Gate};
 use b173_api::prelude::*;
 
@@ -235,6 +236,31 @@ fn registerPedestal(ctx: &mut RegisterCtx) -> Result<()>
     Ok(())
 }
 
+// BlockTFTrophy and TileEntityTFTrophy: the block's meta says where it sits, 1 on the floor and 2 to 5 on a wall
+// facing out of that face, the tile keeps which boss and the floor turn in sixteenths
+mod head
+{
+    pub const FLOOR: i32 = 1;
+    pub const TURNS: i32 = 16;
+    pub const FULL_TURN: f32 = 360.0;
+    pub const TILE: &str = "trophy_head";
+    // RenderBlockTFPedestal's skull bounds, BlockSkull.setBlockBoundsBasedOnState
+    pub const BOUNDS: [[[f32; 3]; 2]; 5] = [
+        [[4.0, 0.0, 4.0], [12.0, 8.0, 12.0]],
+        [[4.0, 4.0, 8.0], [12.0, 12.0, 16.0]],
+        [[4.0, 4.0, 0.0], [12.0, 12.0, 8.0]],
+        [[8.0, 4.0, 4.0], [16.0, 12.0, 12.0]],
+        [[0.0, 4.0, 4.0], [8.0, 12.0, 12.0]],
+    ];
+}
+
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
+struct Head
+{
+    m_kind: u8,
+    m_turn: u8,
+}
+
 struct TrophyItem
 {
     m_kind: i32,
@@ -243,51 +269,221 @@ struct TrophyItem
 #[item_behavior]
 impl ItemBehavior for TrophyItem
 {
-    // ItemTFTrophy.onItemUse, set down on the face clicked
-    fn onUseOnBlock(&self, world: World, _player: Player, stack: ItemStack, pos: BlockPos, face: i32) -> Use
+    // ItemTFTrophy.onItemUse, set down on top of or against the side of a solid block, never under one
+    fn onUseOnBlock(&self, world: World, player: Player, stack: ItemStack, pos: BlockPos, face: i32) -> Use
     {
         let offset: [i32; 3] = crate::world::structures::facing(face);
         let at: BlockPos = pos.offset(offset[0], offset[1], offset[2]);
-        if world.block(at) != 0
+        let solid: bool = World::blockInfo(world.block(pos)).solid;
+        if face == 0 || !solid || !World::blockInfo(world.block(at)).replaceable && world.block(at) != 0
         {
             return Use::Pass;
         }
 
         if world.isAuthority()
         {
-            let _ = world.setBlock(at, ids::blockId(BLOCK), self.m_kind);
+            let yaw: f32 = player.info().map_or(0.0, |info| info.yaw);
+            let turn: i32 = if face == head::FLOOR
+            {
+                (yaw * head::TURNS as f32 / head::FULL_TURN + 0.5).floor() as i32 & (head::TURNS - 1)
+            }
+            else
+            {
+                0
+            };
+            let _ = world.setBlock(at, ids::blockId(BLOCK), face);
+            let state: Head = Head { m_kind: self.m_kind as u8, m_turn: turn as u8 };
+            if let Err(error) = world.setTileData(at, &state)
+            {
+                warn(&format!("trophy at {at:?}: {}", error.0));
+            }
         }
         let left: i32 = stack.count - 1;
         Use::Done((left > 0).then_some(ItemStack { count: left, ..stack }))
     }
 }
 
+// BlockTFTrophy drops the trophy of its boss
+struct TrophyBlock;
+
+fn dropHead(ctx: &mut BlockCtx)
+{
+    if !ctx.isAuthority()
+    {
+        return;
+    }
+    let state: Head = ctx.tileData();
+    let Some(trophy) = TROPHIES.get(usize::from(state.m_kind))
+    else
+    {
+        return;
+    };
+    let name: String = format!("twilightforest:{}", trophy.m_item);
+    if let Err(error) = ctx.world().spawnItem(ids::center(ctx.pos()), ItemStack::of(name.as_str(), 1))
+    {
+        warn(&format!("trophy drop: {}", error.0));
+    }
+}
+
+#[block_behavior]
+impl BlockBehavior for TrophyBlock
+{
+    fn onDestroyedByPlayer(&self, ctx: &mut BlockCtx) { dropHead(ctx) }
+
+    fn onDestroyedByExplosion(&self, ctx: &mut BlockCtx) { dropHead(ctx) }
+}
+
+// the five heads share one model, each kind's parts start where the one before it ends
+fn kindStarts() -> [u16; 5]
+{
+    thread_local!
+    {
+        static STARTS: std::cell::OnceCell<[u16; 5]> = const { std::cell::OnceCell::new() };
+    }
+    STARTS.with(|starts|
+    {
+        *starts.get_or_init(||
+        {
+            let sizes: [usize; 5] = [
+                tf_hydra_head::model().parts.len(),
+                tf_naga::model().parts.len(),
+                tf_lich::model().parts.len(),
+                super::ur_ghast::model().parts.len(),
+                tf_snow_queen::model().parts.len(),
+            ];
+            let mut first: u16 = 0;
+            sizes.map(|size|
+            {
+                let start: u16 = first;
+                first += size as u16;
+                start
+            })
+        })
+    })
+}
+
+fn headModel() -> EntityModelSpec
+{
+    combine(vec![
+        tf_hydra_head::model(),
+        tf_naga::model(),
+        tf_lich::model(),
+        super::ur_ghast::model(),
+        tf_snow_queen::model(),
+    ])
+}
+
+// TileEntityTFTrophyRenderer, each boss head turned and lifted as the source draws it on a floor or a wall
+struct HeadTile;
+
+#[tile_behavior]
+impl TileBehavior for HeadTile
+{
+    fn pose(&self, ctx: &mut BlockCtx, partial: f32, ticks: i32) -> Pose
+    {
+        let state: Head = ctx.tileData();
+        let meta: i32 = i32::from(ctx.meta()) & 7;
+        let floor: bool = meta == head::FLOOR;
+        let turn: f32 = match meta
+        {
+            2 => 0.0,
+            3 => 180.0,
+            4 => 270.0,
+            5 => 90.0,
+            _ => f32::from(state.m_turn) * head::FULL_TURN / head::TURNS as f32,
+        };
+        let starts: [u16; 5] = kindStarts();
+        let mut body: Program = Program::new();
+        body.translate(0.5, 0.5, 0.5);
+        let face = |body: &mut Program, texture: &str|
+        {
+            body.texture(texture).scale(1.0, -1.0, -1.0).rotate(turn, 0.0, 1.0, 0.0).rotate(180.0, 0.0, 1.0, 0.0);
+        };
+        match state.m_kind
+        {
+            0 =>
+            {
+                body.scale(0.25, 0.25, 0.25);
+                face(&mut body, "twilightforest:model/hydra4");
+                body.translate(0.0, if floor { 1.0 } else { 0.0 }, 1.5);
+                // ModelTFHydraHead.openMouthForTrophy
+                let mouth: f32 = if floor { 0.0 } else { 0.25 };
+                let first: u16 = starts[0];
+                body.part(
+                    first + tf_hydra_head::HEAD,
+                    [-mouth * std::f32::consts::PI / 12.0, 0.0, 0.0],
+                    tf_hydra_head::PIVOTS[0],
+                );
+                body.part(
+                    first + tf_hydra_head::JAW,
+                    [mouth * std::f32::consts::PI / 3.0, 0.0, 0.0],
+                    tf_hydra_head::PIVOTS[1],
+                );
+                body.part(first + tf_hydra_head::FRILL, tf_hydra_head::ROTATIONS[2], tf_hydra_head::PIVOTS[2]);
+            }
+            1 =>
+            {
+                body.translate(0.0, -0.125, 0.0).scale(0.25, 0.25, 0.25);
+                face(&mut body, "twilightforest:model/nagahead");
+                body.translate(0.0, if floor { 1.0 } else { 0.0 }, if floor { 0.0 } else { 1.0 });
+                body.scale(2.0, 2.0, 2.0).rest(starts[1] + tf_naga::HEAD);
+            }
+            2 =>
+            {
+                body.translate(0.0, 1.0, 0.0);
+                face(&mut body, "twilightforest:model/twilightlich64");
+                body.translate(0.0, if floor { 1.75 } else { 1.5 }, if floor { 0.0 } else { 0.24 });
+                body.rest(starts[2] + tf_lich::HEAD).rest(starts[2] + tf_lich::HEADWEAR);
+            }
+            3 =>
+            {
+                body.translate(0.0, 1.0, 0.0).scale(0.5, 0.5, 0.5);
+                face(&mut body, "twilightforest:model/towerboss");
+                body.translate(0.0, 1.0, 0.0);
+                super::ur_ghast::drawBody(&mut body, starts[3], ticks as f32 + partial, [0.0, 0.0]);
+            }
+            _ =>
+            {
+                body.translate(0.0, 1.0, 0.0);
+                face(&mut body, "twilightforest:model/snowqueen");
+                body.translate(0.0, if floor { 1.5 } else { 1.25 }, if floor { 0.0 } else { 0.24 });
+                body.rest(starts[4] + tf_snow_queen::HEAD).rest(starts[4] + tf_snow_queen::HEADWEAR);
+            }
+        }
+        Pose { pre: Vec::new(), model: body.take() }
+    }
+}
+
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerPedestal(ctx)?;
-    let head: [[f32; 3]; 2] = [[4.0, 0.0, 4.0], [12.0, 8.0, 12.0]];
-    let cuboids: Vec<Cuboid> = TROPHIES
+    // the bounds of each placement, drawn with an empty sprite since the tile draws the head
+    let cuboids: Vec<Cuboid> = head::BOUNDS
         .iter()
         .enumerate()
-        .map(|(kind, trophy)| Cuboid
+        .map(|(index, [from, to])| Cuboid
         {
-            from: head[0],
-            to: head[1],
-            texture: Some(texture(trophy.m_texture)),
-            metas: vec![kind as i32],
+            from: *from,
+            to: *to,
+            texture: Some("twilightforest:block/blank".to_owned()),
+            metas: vec![head::FLOOR + index as i32],
             ..Cuboid::default()
         })
         .collect();
+    let spec: TileEntitySpec = TileEntitySpec { inventory: 0, ticks: false, sync: true, behavior: None };
+    ctx.tileEntities().register(head::TILE, spec, Some(std::rc::Rc::new(HeadTile)))?;
+    ctx.tileEntities().model(head::TILE, headModel())?;
     ctx.blocks().register(
         BLOCK,
         BlockSpecBuilder::template("minecraft:block")
             .name("Trophy")
             .material("circuits")
-            .texture(&texture(TROPHIES[0].m_texture))
+            .texture("twilightforest:block/blank")
             .hardness(1.0)
             .model(BlockModelSpec { cuboids, translucent: true, ..BlockModelSpec::default() })
-            .collision(vec![Cuboid { from: head[0], to: head[1], ..Cuboid::default() }])
-            .drops(Vec::new()),
+            .tileEntity(head::TILE)
+            .drops(Vec::new())
+            .behavior(TrophyBlock),
     )?;
     for (kind, trophy) in TROPHIES.iter().enumerate()
     {
