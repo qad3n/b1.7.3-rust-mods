@@ -49,7 +49,6 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   - no spawn eggs: ItemTFSpawnEgg is left out;
   - no written books: the explorer's notes are their own items with beta's book icon and read out in chat;
   - no death messages in beta: TFDamageSources is left out;
-  - no creative inventory: the slide trap (BlockTFSlider) is creative only in 2.4.3, so it is left out;
   - no map copying in beta: TFMapCloningRecipe is left out;
   - maps: beta draws only its own map in the hand, so a held twilight map shows as a map panel in the top right
     corner of the screen (the loader's dynamic texture and HUD), the holder's pointer is drawn into the picture and
@@ -182,7 +181,6 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 - Structure warnings from the translated Java (unused locals, never read assignments) are still to be cleaned.
 - Trophies show the trophy icon on a small cube; the source draws the bosses' heads with their models.
 - The stronghold shields from StructureTFMajorFeatureStart.addShieldFor are unused in 2.4.3 and not ported.
-- `twilightforest:raven` spawn warning: the raven's registry name differs from the spawn call.
 - Hydra: the source's 200 tick death with heads dying one by one is a quick death here; the mortar cannot be
   knocked back (projectile entities take no hits). Snow queen's triple and seeker bow drops need the bows (items).
 - Ur-ghast tantrum: the source also turns on the overworld's rain for 6000 ticks, the loader has no weather call.
