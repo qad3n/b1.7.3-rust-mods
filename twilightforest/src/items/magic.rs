@@ -603,6 +603,13 @@ pub fn pull(world: World, from: [i32; 3], to: [i32; 3]) -> i32
     moved
 }
 
+mod magnet
+{
+    pub const FLICKER: i32 = 20;
+    pub const GLOW: &str = "twilightforest:item/oremagnet1";
+    pub const BRIGHT: &str = "twilightforest:item/oremagnet2";
+}
+
 // ItemTFOreMagnet, pulls the nearest ore vein out of the rock toward the player, trying eight aims around the look
 struct OreMagnet;
 
@@ -626,6 +633,18 @@ impl ItemBehavior for OreMagnet
     fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
 
     fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Bow }
+
+    // ItemTFOreMagnet.getIcon, it glows after ten ticks and flickers once a second has passed
+    fn useIcon(&self, _stack: ItemStack, used: i32) -> Option<i32>
+    {
+        let glow: &str = match used
+        {
+            _ if used >= magnet::FLICKER && (used >> 2) % 2 == 0 => magnet::BRIGHT,
+            _ if used > held::MAGNET_HOLD => magnet::GLOW,
+            _ => return None,
+        };
+        b173_api::world::itemSlot(glow)
+    }
 
     // ItemTFOreMagnet.onPlayerStoppedUsing, a hold past ten ticks pulls on release
     fn onStoppedUsing(&self, world: World, player: Player, _stack: ItemStack, left: i32) -> Use
@@ -723,6 +742,11 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         item::ORE_METER,
         ItemSpecBuilder::new().name("Ore Meter [WIP]").texture(&texture("oremeter")).maxStack(1).behavior(OreMeter),
     )?;
+    // no item spec names the glowing magnet icons, asking for their slots now gives them room on the item sheet
+    for glow in [magnet::GLOW, magnet::BRIGHT]
+    {
+        let _ = b173_api::world::itemSlot(glow);
+    }
     put(ctx, item::ORE_MAGNET, worn("Ore Magnet", "oremagnet", wear::MAGNET).behavior(OreMagnet))?;
     put(ctx, item::CRUMBLE_HORN, worn("Crumble Horn", "crumblehorn", wear::HORN).behavior(CrumbleHorn))?;
     put(ctx, item::PEACOCK_FAN, worn("Peacock Feather Fan", "peacockfan", wear::FAN).behavior(PeacockFan))?;

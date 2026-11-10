@@ -201,7 +201,6 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   port's own biome lookups (biome locks, its spawn lists) still read the generated biome; the SDK has no biome query.
 - Death tome uses the 1.7 enchanting book texture, which beta and the jar do not have.
 - Structure warnings from the translated Java (unused locals, never read assignments) are still to be cleaned.
-- Bows and the ore magnet keep their standby icon while drawn; the source's pulling icons need a per use icon hook.
 - The stronghold shields from StructureTFMajorFeatureStart.addShieldFor are unused in 2.4.3 and not ported.
 - Hydra: the mortar cannot be knocked back (projectile entities take no hits). Snow queen's triple and seeker bow drops need the bows (items).
 - Boss AI is checked by code review only: dimension 3 keeps no chunks loaded without a player, so the test server

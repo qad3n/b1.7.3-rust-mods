@@ -20,13 +20,31 @@ mod bow
     pub const SLOTS: i32 = 36;
 }
 
+// the three pulling icons of a bow sheet by its name
+macro_rules! pulls
+{
+    ($bow:literal) =>
+    {
+        [
+            concat!("twilightforest:item/", $bow, "_pulling_0"),
+            concat!("twilightforest:item/", $bow, "_pulling_1"),
+            concat!("twilightforest:item/", $bow, "_pulling_2"),
+        ]
+    };
+}
+
 #[derive(Clone, Copy)]
 struct Bow
 {
     m_arrow: &'static str,
     m_speed: f64,
     m_triple: bool,
+    // ItemTFBowBase's pulling icons, a little, half and fully drawn
+    m_pulls: [&'static str; 3],
 }
+
+// ItemTFBowBase.getIcon, the pull shown after these many ticks of drawing
+const PULL_AFTER: [i32; 3] = [0, 13, 17];
 
 // InventoryPlayer.consumeInventoryItem for one arrow
 fn takeArrow(player: Player) -> bool
@@ -76,6 +94,12 @@ impl ItemBehavior for Bow
 
     fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Bow }
 
+    fn useIcon(&self, _stack: ItemStack, used: i32) -> Option<i32>
+    {
+        let pull: usize = PULL_AFTER.iter().rposition(|after| used > *after)?;
+        b173_api::world::itemSlot(self.m_pulls[pull])
+    }
+
     // ItemTFBowBase.onPlayerStoppedUsing and ItemTFTripleBow's, the arrows fly as fast as the bow was drawn
     fn onStoppedUsing(&self, world: World, player: Player, _stack: ItemStack, left: i32) -> Use
     {
@@ -117,24 +141,39 @@ impl ItemBehavior for Bow
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let rows: [(&str, &str, &str, Bow); 4] = [
-        (item::TRIPLE_BOW, "Tri-bow", "triplebow_standby", Bow { m_arrow: PLAIN, m_speed: bow::SPEED, m_triple: true }),
+        (
+            item::TRIPLE_BOW,
+            "Tri-bow",
+            "triplebow_standby",
+            Bow { m_arrow: PLAIN, m_speed: bow::SPEED, m_triple: true, m_pulls: pulls!("triplebow") },
+        ),
         (
             item::SEEKER_BOW,
             "Seeker Bow",
             "seekerbow_standby",
-            Bow { m_arrow: SEEKER, m_speed: bow::SEEKER_SPEED, m_triple: false },
+            Bow { m_arrow: SEEKER, m_speed: bow::SEEKER_SPEED, m_triple: false, m_pulls: pulls!("seekerbow") },
         ),
-        (item::ICE_BOW, "Ice Bow", "icebow_standby", Bow { m_arrow: ICE, m_speed: bow::SPEED, m_triple: false }),
+        (
+            item::ICE_BOW,
+            "Ice Bow",
+            "icebow_standby",
+            Bow { m_arrow: ICE, m_speed: bow::SPEED, m_triple: false, m_pulls: pulls!("icebow") },
+        ),
         // ItemTFEnderBow fires a plain arrow, the swap happens in the hurt listener
         (
             item::ENDER_BOW,
             "Ender Bow",
             "enderbow_standby",
-            Bow { m_arrow: PLAIN, m_speed: bow::SPEED, m_triple: false },
+            Bow { m_arrow: PLAIN, m_speed: bow::SPEED, m_triple: false, m_pulls: pulls!("enderbow") },
         ),
     ];
     for (name, label, look, behavior) in rows
     {
+        // no item spec names the pulling icons, asking for their slots now gives them room on the item sheet
+        for pull in behavior.m_pulls
+        {
+            let _ = b173_api::world::itemSlot(pull);
+        }
         put(
             ctx,
             name,
