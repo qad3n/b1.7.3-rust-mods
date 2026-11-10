@@ -149,7 +149,8 @@ impl Layout
         let grid: Rect = [panelRight - gridWidth, gridTop, gridWidth, rows * layout::CELL];
         let gridRight: i32 = grid[0] + grid[2];
         let craftableLeft: i32 = grid[0] + searchWidth + layout::SPACING;
-        Layout {
+        Layout
+        {
             m_screen: [-left, -top, width, height],
             m_container: [0, 0, container[0], container[1]],
             m_grid: grid,
@@ -220,7 +221,8 @@ struct State
     m_generation: i32,
 }
 
-thread_local! {
+thread_local!
+{
     // one state for every container screen, so search and page survive switching screens
     static STATE: RefCell<State> = RefCell::new(State { m_dirty: true, ..State::default() });
 }
@@ -294,7 +296,8 @@ impl State
                 let craftable: Vec<Key> = catalog.craftable(&heldItems());
                 matches
                     .into_iter()
-                    .filter(|key| {
+                    .filter(|key|
+                    {
                         craftable
                             .binary_search_by_key(&(key.m_id, key.m_damage), |out| (out.m_id, out.m_damage))
                             .is_ok()
@@ -368,7 +371,8 @@ impl State
         match code
         {
             key::ESCAPE | key::RETURN => self.m_focused = false,
-            key::BACK => self.edit(|query| {
+            key::BACK => self.edit(|query|
+            {
                 query.pop();
             }),
             _ if !character.is_control() && character != '\0' => self.edit(|query| query.push(character)),
@@ -862,7 +866,8 @@ fn drawFrame(draw: &mut Draw, state: &mut State, size: [i32; 2], mouse: [i32; 2]
         state.refilter(&catalog);
     }
     state.m_page = state.m_page.min(state.pages() - 1);
-    let mut painter: Painter = Painter {
+    let mut painter: Painter = Painter
+    {
         m_draw: draw,
         m_catalog: &catalog,
         m_mouse: mouse,
@@ -917,7 +922,8 @@ impl Overlay for Viewer
     // the recipe page hides the vanilla slots under it
     fn covered(&mut self, x: i32, y: i32) -> bool
     {
-        STATE.with(|state| {
+        STATE.with(|state|
+        {
             let state: Ref<State> = state.borrow();
             !state.m_hidden && state.m_view.is_some() && inside([x, y], state.m_layout.m_container)
         })
@@ -926,7 +932,8 @@ impl Overlay for Viewer
     // the recipe page fills the container so other mods' panels beside it hide
     fn exclusive(&mut self) -> bool
     {
-        STATE.with(|state| {
+        STATE.with(|state|
+        {
             let state: Ref<State> = state.borrow();
             !state.m_hidden && state.m_view.is_some()
         })
@@ -949,7 +956,8 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
     {
         ctx.screens().overlay(target, Viewer)?;
     }
-    ctx.screens().tooltip(|stack, lines| {
+    ctx.screens().tooltip(|stack, lines|
+    {
         let catalog: Rc<Catalog> = catalog::get();
         if let Some(origin) = Key::ofStack(stack).and_then(|key| origin(&catalog, key))
         {

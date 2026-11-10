@@ -54,7 +54,8 @@ pub struct Catalog
     pub m_generation: i32,
 }
 
-thread_local! {
+thread_local!
+{
     static CATALOG: RefCell<Option<Rc<Catalog>>> = const { RefCell::new(None) };
 }
 
@@ -63,7 +64,8 @@ thread_local! {
 pub fn get() -> Rc<Catalog>
 {
     let generation: i32 = contentGeneration();
-    CATALOG.with(|cached| {
+    CATALOG.with(|cached|
+    {
         let mut cached = cached.borrow_mut();
         match cached.as_ref().filter(|catalog| catalog.m_generation == generation)
         {
@@ -91,7 +93,8 @@ impl Catalog
         let byKey: HashMap<Key, usize> =
             entries.iter().enumerate().map(|(index, entry)| (entry.m_key, index)).collect();
         let origins: HashMap<i32, String> = origins(&entries);
-        Catalog {
+        Catalog
+        {
             m_entries: entries,
             m_recipes: recipeList(),
             m_byKey: byKey,
@@ -106,7 +109,8 @@ impl Catalog
         let name: String = displayName(&key.stack(1));
         let namespace: String =
             nameOf(RegistryKind::Item, key.m_id).map(|id| id.namespace().to_owned()).unwrap_or_default();
-        Some(Entry {
+        Some(Entry
+        {
             m_key: key,
             m_max: stack.count,
             m_search: name.to_lowercase(),
@@ -162,7 +166,8 @@ impl Catalog
         let lowered: String = query.to_lowercase();
         let words: Vec<&str> = lowered.split_whitespace().collect();
         (0..self.m_entries.len())
-            .filter(|index| {
+            .filter(|index|
+            {
                 let entry: &Entry = &self.m_entries[*index];
                 words.iter().all(|word| match word.strip_prefix('@')
                 {
@@ -214,7 +219,8 @@ fn covers(held: &[(Key, i32)], needed: &[Key]) -> bool
     let mut left: Vec<(Key, i32)> = held.to_vec();
     let mut ordered: Vec<Key> = needed.to_vec();
     ordered.sort_by_key(|key| key.m_damage == ANY_DAMAGE);
-    ordered.iter().all(|ingredient| {
+    ordered.iter().all(|ingredient|
+    {
         match left.iter_mut().find(|(have, count)| *count > 0 && ingredient.accepts(*have))
         {
             Some((_, count)) =>

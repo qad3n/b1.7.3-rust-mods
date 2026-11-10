@@ -28,7 +28,8 @@ struct Grab
     m_count: i32,
 }
 
-thread_local! {
+thread_local!
+{
     // granted by the server, which checks op on every request again
     static ENABLED: Cell<bool> = const { Cell::new(false) };
 }
