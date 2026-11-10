@@ -1,5 +1,5 @@
 use super::{Kind, base, put, vanillaTexture};
-use crate::ids::block;
+use crate::ids::{self, block};
 use b173_api::prelude::*;
 
 // BlockTFGiantBlock: one item fills a 4x4x4 cell aligned to the grid, breaking any part clears the whole cell
@@ -58,6 +58,13 @@ impl BlockBehavior for Giant
     }
 
     fn onDestroyedByExplosion(&self, ctx: &mut BlockCtx) { self.onDestroyedByPlayer(ctx) }
+
+    fn faceTexture(&self, ctx: &mut BlockCtx, face: i32) -> Option<i32>
+    {
+        let row: &GiantRow = rowOf(ctx.block())?;
+        let (column, line): (i32, i32) = tile(ctx.pos(), face);
+        b173_api::world::terrainSlot(&b173_api::world::tileName(&faceSprite(row, face), column, line))
+    }
 }
 
 struct GiantRow
@@ -115,10 +122,33 @@ const GIANTS: [GiantRow; 4] = [
     },
 ];
 
+// GiantBlockIcon, a quarter of a quarter of the vanilla face blown up to a whole face, picked by the block's spot
+fn tile(pos: BlockPos, face: i32) -> (i32, i32)
+{
+    let last: i32 = cell::SIZE - 1;
+    let [x, y, z] = [pos.x & last, pos.y & last, pos.z & last];
+    match face
+    {
+        2 => (last - x, last - y),
+        3 => (x, last - y),
+        4 => (z, last - y),
+        5 => (last - z, last - y),
+        _ => (x, z),
+    }
+}
+
+fn faceSprite(row: &GiantRow, face: i32) -> String { vanillaTexture(if face < 2 { row.m_top } else { row.m_side }) }
+
+fn rowOf(block: i32) -> Option<&'static GiantRow> { GIANTS.iter().find(|row| ids::blockId(row.m_name) == block) }
+
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &GIANTS
     {
+        for texture in [vanillaTexture(row.m_top), vanillaTexture(row.m_side)]
+        {
+            b173_api::world::terrainTiles(&texture, cell::SIZE, cell::SIZE)?;
+        }
         let mut spec: BlockSpecBuilder = base("minecraft:block", row.m_label, row.m_kind, row.m_hardness)
             .faces(FaceTextures
             {
