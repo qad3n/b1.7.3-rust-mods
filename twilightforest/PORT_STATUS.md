@@ -90,6 +90,10 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   charms of life and keeping (TFEventListener), magic tree cores (BlockTFMagicLogSpecial), uberous soil.
 - Machines: uncrafting table (ContainerTFUncrafting on a tile inventory, ghost ingredients drawn over the assembly
   grid) and cinder furnace (TileEntityTFCinderFurnace).
+- Batch 3: the armored giant and redcaps wear their armor (RenderBiped's two armor layers over their own limb swing,
+  `models/armor.rs`), chunks are populated with creature herds (SpawnerAnimals.performWorldGenSpawning with the
+  creature list's SpawnListEntry group sizes, fireflies stay ambient), the tree of transformation turns columns to
+  the enchanted forest (loader api 1.16 biome overrides, saved and synced).
 - Loader api 1.13 and 1.14 features: castle runes glow a pixel off castle brick (RenderBlockTFCastleMagic), giant
   blocks show a quarter of a quarter of the vanilla face (GiantBlockIcon), nagastone heads and bodies refit to their
   neighbors with every source shape, sprite and turn (BlockTFNagastone, RenderBlockTFNagastone), the stronghold
@@ -190,8 +194,8 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 ## Bugs to check at the end
 
 - Custom particles (TFClientProxy.spawnParticle classes) use the closest beta particles.
-- Spawns at chunk generation (SpawnerAnimals.performWorldGenSpawning) are not run; mobs come from normal spawning.
-- Tree of transformation: the biome change is not done yet (needs a per column biome override in the loader).
+- The tree of transformation's enchanted forest columns color grass and leaves and steer loader spawning, but the
+  port's own biome lookups (biome locks, its spawn lists) still read the generated biome; the SDK has no biome query.
 - Death tome uses the 1.7 enchanting book texture, which beta and the jar do not have.
 - Structure warnings from the translated Java (unused locals, never read assignments) are still to be cleaned.
 - Trophies show the trophy icon on a small cube; the source draws the bosses' heads with their models.
@@ -207,11 +211,12 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 
 ## Remaining, in order
 
-1. Worn armor on mobs (the armored giant's iron set, redcap boots) needs an armor layer for mod mobs; the redcaps'
+1. The redcaps'
    swap to tnt or flint while planting or lighting is not shown; tower ghast eye textures by attack state; per
    variant block names (Blue Castle Rune Brick and the like need per state names in the loader).
 2. Config OldMapGen (pre 1.7 map gen, "may not be fully supported" in 2.4.3) is not ported.
-3. TFClientEvents' iced entity overlay (ice cubes around a slowed mob) and the bow zoom FOV.
+3. TFClientEvents' iced entity overlay keys on the slowness potion and the bow zoom FOV on an item in use, beta has
+   neither (accepted with potions and item use duration).
 4. Not checked in a client: the map panel, mob poses and animations, held items, weather locks, charm effects,
    multiplayer.
 
