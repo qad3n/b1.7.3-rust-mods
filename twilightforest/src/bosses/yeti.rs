@@ -1,6 +1,6 @@
 use super::{dropAt, home, killer};
 use crate::entities::ai::{distance, eyes, face};
-use crate::ids::{self, item};
+use crate::ids::{self, cell, item};
 use crate::items::{put, texture};
 use crate::math::look;
 use crate::models::{Program, bipedPose, tf_yeti_alpha};
@@ -105,8 +105,6 @@ thread_local!
 }
 
 fn key(entity: Entity) -> (i32, i32) { (entity.world.dimension, entity.id) }
-
-fn cell(at: [f64; 3]) -> BlockPos { BlockPos::new(at[0].floor() as i32, at[1].floor() as i32, at[2].floor() as i32) }
 
 // EntityTFYetiAlpha.destroyBlocksInAABB, all but obsidian, end stone and bedrock
 fn destroyBox(world: World, low: [f64; 3], high: [f64; 3])

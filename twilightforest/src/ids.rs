@@ -9,6 +9,7 @@ pub mod block
     pub const GIANT_LOG: &str = "giant_log";
     pub const GIANT_LEAVES: &str = "giant_leaves";
     pub const GIANT_OBSIDIAN: &str = "giant_obsidian";
+    pub const SLIDER: &str = "slider";
     pub const ANTIBUILDER: &str = "antibuilder";
     pub const ANTIBUILT: &str = "antibuilt_block";
     pub const AURORA_BRICK: &str = "aurora_brick";
@@ -204,6 +205,11 @@ pub mod item
 pub fn blockId(name: &str) -> i32 { b173_api::Blocks.id(name).unwrap_or(0) }
 
 pub fn itemId(name: &str) -> i32 { b173_api::Items.get(name).and_then(|item| item.id()).unwrap_or(0) }
+
+pub fn cell(at: [f64; 3]) -> BlockPos
+{
+    BlockPos::new(at[0].floor() as i32, at[1].floor() as i32, at[2].floor() as i32)
+}
 
 pub fn center(pos: BlockPos) -> [f64; 3] { [f64::from(pos.x) + 0.5, f64::from(pos.y) + 0.5, f64::from(pos.z) + 0.5] }
 

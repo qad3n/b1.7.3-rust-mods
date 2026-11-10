@@ -84,3 +84,19 @@ pub fn gaussian(first: f64, second: f64) -> f64
     let radius: f64 = (-2.0 * first.max(f64::MIN_POSITIVE).ln()).sqrt();
     radius * (std::f64::consts::TAU * second).cos()
 }
+
+// EntityLiving.knockBack, halve the motion then shove away from the hit along the ground and up
+pub fn knockback(motion: [f64; 3], toward: [f64; 2]) -> [f64; 3]
+{
+    let push: f64 = 0.4;
+    let length: f64 = toward[0].hypot(toward[1]);
+    let [x, z]: [f64; 2] = if length > 0.0
+    {
+        [toward[0] / length, toward[1] / length]
+    }
+    else
+    {
+        [0.0; 2]
+    };
+    [motion[0] / 2.0 - x * push, (motion[1] / 2.0 + push).min(push), motion[2] / 2.0 - z * push]
+}

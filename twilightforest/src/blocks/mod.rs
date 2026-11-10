@@ -2,6 +2,7 @@ mod castle;
 mod critters;
 mod giant;
 mod plants;
+mod slider;
 mod stone;
 pub mod tower;
 pub mod wood;
@@ -190,5 +191,6 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
     tower::register(ctx)?;
     castle::register(ctx)?;
     critters::register(ctx)?;
+    slider::register(ctx)?;
     giant::register(ctx)
 }
