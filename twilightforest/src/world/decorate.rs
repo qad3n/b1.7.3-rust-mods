@@ -761,6 +761,7 @@ pub fn populate(chunk: ChunkInfo)
         m_z: mapZ,
     };
     decorator.biome(decorated);
+    crate::entities::spawns::worldgen(&world, &random, biome, mapX + 8, mapZ + 8);
     freeze(&world, mapX + 8, mapZ + 8);
 }
 

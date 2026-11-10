@@ -30,10 +30,12 @@ pub enum Look
 pub enum Spawning
 {
     Never,
-    // every twilight biome but the highlands center
-    Forest(i32),
-    Everywhere(i32),
-    Only(i32, &'static [Biome]),
+    // every twilight biome but the highlands center, by weight and SpawnListEntry group size
+    Forest(i32, [i32; 2]),
+    Everywhere(i32, [i32; 2]),
+    Only(i32, [i32; 2], &'static [Biome]),
+    // TFBiomeBase's ambient list, natural spawning only
+    Ambient(i32, [i32; 2]),
     Monster,
 }
 
@@ -237,7 +239,7 @@ pub const MOBS: [Mob; 44] = [
                     0,
                     model!(tf_boar),
                     Look::Quadruped,
-                    Spawning::Forest(10),
+                    Spawning::Forest(10, [4, 4]),
                 ),
                 0.7,
             ),
@@ -261,7 +263,7 @@ pub const MOBS: [Mob; 44] = [
                     0,
                     model!(tf_bighorn),
                     Look::Quadruped,
-                    Spawning::Forest(12),
+                    Spawning::Forest(12, [4, 4]),
                 ),
                 0.7,
             ),
@@ -285,7 +287,7 @@ pub const MOBS: [Mob; 44] = [
                     0,
                     model!(tf_deer),
                     Look::Quadruped,
-                    Spawning::Forest(15),
+                    Spawning::Forest(15, [4, 5]),
                 ),
                 0.7,
             ),
@@ -309,7 +311,7 @@ pub const MOBS: [Mob; 44] = [
                     0,
                     model!(tf_bunny),
                     Look::Posed(models::animated::bunnyPose),
-                    Spawning::Forest(10),
+                    Spawning::Forest(10, [4, 5]),
                 ),
                 0.3,
             ),
@@ -330,7 +332,7 @@ pub const MOBS: [Mob; 44] = [
                 0,
                 model!(tf_squirrel),
                 Look::Posed(models::animated::squirrelPose),
-                Spawning::Forest(10),
+                Spawning::Forest(10, [2, 4]),
             ),
             0.3,
         ),
@@ -352,7 +354,7 @@ pub const MOBS: [Mob; 44] = [
                             0,
                             model!(tf_tiny_bird),
                             Look::Posed(models::animated::tinyBirdPose),
-                            Spawning::Forest(15),
+                            Spawning::Forest(15, [4, 8]),
                         ),
                         0.3,
                     ),
@@ -381,7 +383,7 @@ pub const MOBS: [Mob; 44] = [
                         0,
                         model!(tf_raven),
                         Look::Posed(models::animated::ravenPose),
-                        Spawning::Everywhere(10),
+                        Spawning::Everywhere(10, [1, 2]),
                     ),
                     0.3,
                 ),
@@ -406,7 +408,7 @@ pub const MOBS: [Mob; 44] = [
                 0,
                 model!(tf_penguin),
                 Look::Posed(models::animated::penguinPose),
-                Spawning::Only(10, GLACIER),
+                Spawning::Only(10, [4, 4], GLACIER),
             ),
             0.3,
         ),
@@ -425,7 +427,7 @@ pub const MOBS: [Mob; 44] = [
                 0,
                 model!(tf_firefly),
                 Look::Rest,
-                Spawning::Forest(10),
+                Spawning::Ambient(10, [8, 8]),
             ),
             0.0,
         ),
@@ -1380,7 +1382,10 @@ fn wornModel(mob: &Mob) -> EntityModelSpec
 
 fn registerMob(ctx: &mut RegisterCtx, mob: &'static Mob) -> Result<()>
 {
-    let animal: bool = matches!(mob.m_spawn, Spawning::Forest(_) | Spawning::Everywhere(_) | Spawning::Only(..));
+    let animal: bool = matches!(
+        mob.m_spawn,
+        Spawning::Forest(..) | Spawning::Everywhere(..) | Spawning::Only(..) | Spawning::Ambient(..)
+    );
     let scale: f32 = if animal
     {
         speed::ANIMAL

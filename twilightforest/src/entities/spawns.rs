@@ -1,7 +1,9 @@
 use super::mobs::{GHASTS, MOBS, Mob, Spawning};
 use crate::world::biomes::{self, Biome};
 use crate::world::features::Feature;
+use crate::world::generate::GenWorld;
 use b173_api::prelude::*;
+use b173_api::terrain::Random;
 
 // ChunkProviderTwilightForest.getPossibleCreatures: inside a feature's pieces its own lists, nothing in a conquered
 // feature, the biome's underground monsters below sea level and the biome's own lists elsewhere; beta lacks
@@ -67,7 +69,8 @@ const SURFACE: [Surface; 3] = [
 ];
 
 // TFBiomeBase's creature list beside the twilight animals, which mobs.rs weighs
-const VANILLA_CREATURES: Entries = &[("minecraft:chicken", 10), ("minecraft:wolf", 5)];
+// TFBiomeBase's vanilla creatures with their SpawnListEntry group sizes
+const VANILLA_CREATURES: &[(&str, i32, [i32; 2])] = &[("minecraft:chicken", 10, [4, 4]), ("minecraft:wolf", 5, [4, 4])];
 // TFBiomeTwilightLake
 const LAKE_WATER: Entries = &[("minecraft:squid", 10)];
 // TFFeature.waterCreatureList of the dark tower
@@ -164,30 +167,134 @@ fn featureList(feature: Feature, index: i32, kind: CreatureKind) -> Vec<SpawnEnt
     }
 }
 
-// TFBiomeBase's creature list, the final plateau keeps only ravens, the thornlands and streams have none
-fn creatureOffered(mob: &Mob, biome: Biome) -> Option<i32>
+// TFBiomeBase's creature list, the final plateau keeps only ravens, the thornlands and streams have none; the ambient
+// fireflies come along unless only creatures are asked for
+fn creatureOffered(mob: &Mob, biome: Biome, ambient: bool) -> Option<(i32, [i32; 2])>
 {
     let cleared: bool = matches!(biome, Biome::Thornlands | Biome::Stream);
+    let forest: bool = !cleared && biome != Biome::FinalPlateau;
     match mob.m_spawn
     {
-        Spawning::Forest(weight) if !cleared && biome != Biome::FinalPlateau => Some(weight),
-        Spawning::Everywhere(weight) if !cleared => Some(weight),
-        Spawning::Only(weight, biomes) if biomes.contains(&biome) => Some(weight),
+        Spawning::Forest(weight, group) if forest => Some((weight, group)),
+        Spawning::Ambient(weight, group) if ambient && forest => Some((weight, group)),
+        Spawning::Everywhere(weight, group) if !cleared => Some((weight, group)),
+        Spawning::Only(weight, group, biomes) if biomes.contains(&biome) => Some((weight, group)),
         _ => None,
     }
 }
 
-fn creatures(biome: Biome) -> Vec<SpawnEntry>
+// a creature list of names with their weights and group sizes
+fn creatureRows(biome: Biome, ambient: bool) -> Vec<(&'static str, i32, [i32; 2])>
 {
     let base: bool = !matches!(biome, Biome::Thornlands | Biome::Stream | Biome::FinalPlateau);
-    let vanilla: Entries = if base { VANILLA_CREATURES } else { &[] };
+    let vanilla: &[(&'static str, i32, [i32; 2])] = if base { VANILLA_CREATURES } else { &[] };
     let twilight = MOBS
         .iter()
         .chain(GHASTS.iter())
-        .filter_map(|mob| creatureOffered(mob, biome).map(|weight| (mob.m_name, weight)));
-    let mut list: Vec<SpawnEntry> = entries(vanilla.iter().copied());
-    list.extend(twilight.filter_map(|(name, weight)| spawnEntry(name, weight).ok()));
-    list
+        .filter_map(|mob| creatureOffered(mob, biome, ambient).map(|(weight, group)| (mob.m_name, weight, group)));
+    vanilla.iter().copied().chain(twilight).collect()
+}
+
+fn creatures(biome: Biome) -> Vec<SpawnEntry>
+{
+    entries(creatureRows(biome, true).into_iter().map(|(name, weight, _)| (name, weight)))
+}
+
+mod worldgen
+{
+    // TFBiomeBase.getSpawningChance
+    pub const CHANCE: f32 = 0.12;
+    pub const TRIES: i32 = 4;
+    pub const WANDER: i32 = 5;
+    pub const AREA: i32 = 16;
+}
+
+// SpawnerAnimals.performWorldGenSpawning, herds of the biome's creatures placed as a chunk is populated
+pub fn worldgen(world: &GenWorld, random: &Random, biome: Biome, x: i32, z: i32)
+{
+    let rows: Vec<(&'static str, i32, [i32; 2])> = creatureRows(biome, false);
+    let total: i32 = rows.iter().map(|row| row.1).sum();
+    if total <= 0
+    {
+        return;
+    }
+
+    while random.nextFloat() < worldgen::CHANCE
+    {
+        let mut roll: i32 = world.m_world.random(total);
+        let Some(&(name, _, [least, most])) = rows.iter().find(|row|
+        {
+            roll -= row.1;
+            roll < 0
+        })
+        else
+        {
+            return;
+        };
+
+        let count: i32 = least + random.nextIntBounded(1 + most - least);
+        herd(world, random, name, count, [x, z]);
+    }
+}
+
+// one herd wanders out from a random column of the area, each animal on the first fitting spot in four tries
+fn herd(world: &GenWorld, random: &Random, name: &str, count: i32, corner: [i32; 2])
+{
+    let area: i32 = worldgen::AREA;
+    let wander = || random.nextIntBounded(worldgen::WANDER) - random.nextIntBounded(worldgen::WANDER);
+    let start: [i32; 2] = [corner[0] + random.nextIntBounded(area), corner[1] + random.nextIntBounded(area)];
+    let [mut x, mut z] = start;
+    for _ in 0..count
+    {
+        let mut placed: bool = false;
+        let mut tries: i32 = 0;
+        while !placed && tries < worldgen::TRIES
+        {
+            tries += 1;
+            let y: i32 = world.topSolid(x, z);
+            if standable(world, x, y, z)
+            {
+                place(world, name, [f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5], random.nextFloat() * 360.0);
+                placed = true;
+            }
+            x += wander();
+            z += wander();
+            while x < corner[0] || x >= corner[0] + area || z < corner[1] || z >= corner[1] + area
+            {
+                x = start[0] + wander();
+                z = start[1] + wander();
+            }
+        }
+    }
+}
+
+// SpawnerAnimals.canCreatureTypeSpawnAtLocation for creatures
+fn standable(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
+{
+    let floor: i32 = world.block(x, y - 1, z);
+    world.isOpaque(x, y - 1, z)
+        && floor != world.id("minecraft:bedrock")
+        && !world.isOpaque(x, y, z)
+        && !world.isLiquid(x, y, z)
+        && !world.isOpaque(x, y + 1, z)
+}
+
+// creature rows name vanilla mobs in full and the port's own by their bare registry names
+fn place(world: &GenWorld, name: &str, at: [f64; 3], yaw: f32)
+{
+    let kind: String = if name.contains(':')
+    {
+        name.to_owned()
+    }
+    else
+    {
+        format!("twilightforest:{name}")
+    };
+    match world.m_world.spawnEntity(&kind, at)
+    {
+        Ok(entity) => entity.setField(EntityField::Yaw, f64::from(yaw)),
+        Err(error) => warn(&format!("worldgen spawn {name}: {}", error.0)),
+    }
 }
 
 // TFBiomeDarkForest, TFBiomeSnow and TFBiomeSwamp.getSpawnableList
