@@ -25,12 +25,39 @@ mod door
 
 const FORCE_FIELD_LIGHT: f32 = 2.0 / 15.0;
 
-struct RuneTint;
+// BlockTFCastleMagic: castle brick with a glowing rune floating a pixel off every face open to the air
+struct Runes;
+
+const RUNE_SPRITES: i32 = 8;
+const RUNE_LIFT: f32 = 1.0;
+
+fn runeTexture(index: i32) -> String { texture(&format!("castleblock_magic_{index}")) }
+
+// BlockTFCastleMagic.getMagicIconFor, the rune each spot shows
+fn runeAt(pos: BlockPos) -> i32
+{
+    let seed: i64 =
+        i64::from(pos.x).wrapping_mul(3129871) ^ i64::from(pos.y).wrapping_mul(116129781) ^ i64::from(pos.z);
+    let mixed: i64 = seed.wrapping_mul(seed).wrapping_mul(42317861).wrapping_add(seed.wrapping_mul(11));
+    (mixed >> 12 & i64::from(RUNE_SPRITES - 1)) as i32
+}
 
 #[block_behavior]
-impl BlockBehavior for RuneTint
+impl BlockBehavior for Runes
 {
-    fn colorMultiplier(&self, ctx: &mut BlockCtx) -> u32 { runeColor(ctx.meta()) }
+    // RenderBlockTFCastleMagic, the rune shows only where the neighbor is air
+    fn overlay(&self, ctx: &mut BlockCtx, face: i32) -> Option<FaceOverlay>
+    {
+        let [dx, dy, dz] = *ids::NEIGHBORS.get(usize::try_from(face).ok()?)?;
+        let pos: BlockPos = ctx.pos();
+        if !ctx.world().isAir(pos.offset(dx, dy, dz))
+        {
+            return None;
+        }
+
+        let sprite: i32 = b173_api::world::terrainSlot(&runeTexture(runeAt(pos)))?;
+        Some(FaceOverlay { sprite, color: runeColor(ctx.meta()), glow: true, lift: RUNE_LIFT })
+    }
 }
 
 pub fn runeColor(meta: u8) -> u32
@@ -149,9 +176,14 @@ fn registerRunes(ctx: &mut RegisterCtx) -> Result<()>
         block::CASTLE_RUNE_BRICK,
         base("minecraft:block", "Castle Rune Brick", Kind::Rock, rune::HARDNESS)
             .resistance(rune::RESISTANCE)
-            .texture(&texture("castleblock_magic_0"))
-            .behavior(RuneTint),
+            .texture(&texture("castleblock_brick"))
+            .behavior(Runes),
     )?;
+    // no block spec names the rune sprites, asking for their slots now gives them room in the atlas
+    for index in 0..RUNE_SPRITES
+    {
+        let _ = b173_api::world::terrainSlot(&runeTexture(index));
+    }
     let colors: Vec<String> = colorValues(4);
     let values: Vec<&str> = colors.iter().map(String::as_str).collect();
     ctx.blocks().states(
