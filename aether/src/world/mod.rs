@@ -53,7 +53,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             portal_frame: None,
             biome: own(BIOME),
             generator: None,
-            // AetherWorldProvider lets players sleep and set their spawn in the Aether
+            // beds sleep here but beta keeps the spawn point in the overworld where Aether deaths respawn
             beds: true,
             music: Some(MusicSpec { sound: MUSIC.to_owned(), delay: MUSIC_DELAY }),
         },
