@@ -4,7 +4,7 @@ name = "Single Player Commands"
 description = "Simple single player commands: /give, /fly, /god, /heal, /time, /tp and more"
 authors = ["simo_415 (original idea)", "b173 port"]
 license = "MIT"
-api = "1.1"
+api = "1.10"
 side = "both"
 
 [network]

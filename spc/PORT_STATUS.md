@@ -17,6 +17,7 @@ server keeps its vanilla ones. With mods loaded, `T` opens chat in single player
 | `/time <day\|noon\|night\|midnight\|ticks>` | moves forward to that time of day |
 | `/tp <x> <y> <z>` | teleport, `~` for relative |
 | `/summon <entity> [count]` | spawns at the player |
+| `/locate <structure> [radius]` | nearest structure of a kind from the loader's structure registry (`dungeon`, `aether:silver_dungeon`, `twilightforest:lich_tower`), 64 chunks unless given |
 
 Fly and god persist per player (`player.setData`). Flight state reaches the client on the `fly` channel; client movement
 runs in `TickPost`, the server clears fall distance.

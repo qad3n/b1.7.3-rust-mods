@@ -7,6 +7,8 @@ mod limits
     pub const GIVE: i32 = 64 * 36;
     pub const SUMMON: i32 = 32;
     pub const MAIN_INVENTORY: i32 = 36;
+    // chunks searched around the player, the loader answers up to 128
+    pub const LOCATE: i32 = 64;
 }
 
 mod clock
@@ -38,6 +40,7 @@ const COMMANDS: &[Spec] = &[
     Spec { m_name: "time", m_usage: "<day|noon|night|midnight|ticks>", m_run: time, m_vanilla: true },
     Spec { m_name: "tp", m_usage: "<x> <y> <z>", m_run: teleport, m_vanilla: true },
     Spec { m_name: "summon", m_usage: "<entity> [count]", m_run: summon, m_vanilla: false },
+    Spec { m_name: "locate", m_usage: "<structure> [radius]", m_run: locate, m_vanilla: false },
 ];
 
 fn vanillaId(name: &str) -> Result<Identifier>
@@ -205,6 +208,31 @@ fn summon(args: &[String], player: Player) -> Result<String>
         entity.world.spawnEntity(&kind, info.pos).map_err(|_| Error(format!("unknown entity {name}")))?;
     }
     Ok(format!("summoned {count} {kind}"))
+}
+
+fn locate(args: &[String], player: Player) -> Result<String>
+{
+    let name: &str = arg(args, 0).ok_or("usage: /locate <structure> [radius], such as dungeon or mod:name")?;
+    let kind: Identifier = vanillaId(name)?;
+    let radius: i32 = number(args, 1, limits::LOCATE)?;
+    let (entity, info): (Entity, EntityInfo) = entityOf(player)?;
+    let from: BlockPos =
+        BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32, info.pos[2].floor() as i32);
+    let Some(found) = entity.world.locate(&kind, from, radius)?
+    else
+    {
+        return Ok(format!("no {kind} within {radius} chunks"));
+    };
+
+    let state: &str = if found.generated
+    {
+        "built"
+    }
+    else
+    {
+        "not built yet"
+    };
+    Ok(format!("{kind} at {} {}, {state}", found.x, found.z))
 }
 
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
