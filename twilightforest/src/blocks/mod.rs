@@ -8,7 +8,7 @@ pub mod tower;
 pub mod wood;
 
 use b173_api::prelude::*;
-pub use plants::{axisOf, plantStays};
+pub use plants::{PAD_PIECES, axisOf, padMeta, padTurn, plantStays};
 pub use stone::SHIELD_LATENT;
 
 pub enum Look

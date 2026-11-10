@@ -583,6 +583,104 @@ mod lily
 
 struct HugeLilyPad;
 
+// a pad's quarters in TFGenHugeLilyPad order from its corner
+pub const PAD_PIECES: [[i32; 2]; 4] = [[0, 0], [1, 0], [1, 1], [0, 1]];
+
+// TFGenHugeLilyPad and ItemBlockTFHugeLilyPad turn a pad by a hash of its corner
+pub fn padTurn(bx: i32, bz: i32) -> i32
+{
+    let salt: i64 = 8890919293;
+    let hash: b173_api::terrain::Random = b173_api::terrain::Random::withSeed(salt);
+    let seed: i64 = i64::from(bx).wrapping_mul(hash.nextLong()) ^ i64::from(bz).wrapping_mul(hash.nextLong()) ^ salt;
+    hash.setSeed(seed);
+    hash.nextIntBounded(lily::PIECES)
+}
+
+// the piece property comes first so it is the high part of the state
+pub fn padMeta(piece: usize, turn: i32) -> i32 { piece as i32 * lily::PIECES + turn }
+
+fn stillWater(world: World, pos: BlockPos) -> bool
+{
+    world.block(pos) == ids::blockId("minecraft:water") && world.meta(pos) == 0
+}
+
+// Item.getMovingObjectPositionFromPlayer with liquids, the water surface the player looks at within reach
+fn waterAimed(world: World, player: Player) -> Option<BlockPos>
+{
+    let reach: f64 = 5.0;
+    let info: EntityInfo = player.info()?;
+    let aim: [f64; 3] = crate::math::look(info.yaw, info.pitch);
+    let to: [f64; 3] = std::array::from_fn(|axis| info.pos[axis] + aim[axis] * reach);
+    let hit: RayHit = world.rayTrace(info.pos, to, true)?;
+    stillWater(world, hit.pos).then_some(hit.pos)
+}
+
+fn spend(stack: ItemStack) -> Use
+{
+    let left: i32 = stack.count - 1;
+    Use::Done((left > 0).then_some(ItemStack { count: left, ..stack }))
+}
+
+// ItemBlockTFHugeLilyPad, a two by two pad laid on the still water the player looks at
+struct PadItem;
+
+#[item_behavior]
+impl ItemBehavior for PadItem
+{
+    fn onRightClick(&self, world: World, player: Player, stack: ItemStack) -> Use
+    {
+        let Some(water) = waterAimed(world, player)
+        else
+        {
+            return Use::Pass;
+        };
+
+        let corner: BlockPos = BlockPos::new(water.x >> 1 << 1, water.y, water.z >> 1 << 1);
+        let open: bool = PAD_PIECES.iter().all(|[dx, dz]|
+        {
+            let at: BlockPos = corner.offset(*dx, 0, *dz);
+            stillWater(world, at) && world.isAir(at.offset(0, 1, 0))
+        });
+        if !open
+        {
+            return Use::Pass;
+        }
+
+        if world.isAuthority()
+        {
+            let pad: i32 = ids::blockId(block::HUGE_LILY_PAD);
+            let turn: i32 = padTurn(corner.x, corner.z);
+            for (piece, [dx, dz]) in PAD_PIECES.iter().enumerate()
+            {
+                let _ = world.setBlock(corner.offset(*dx, 1, *dz), pad, padMeta(piece, turn));
+            }
+        }
+        spend(stack)
+    }
+}
+
+// ItemBlockTFHugeWaterLily, a lily set on the still water the player looks at
+struct WaterLilyItem;
+
+#[item_behavior]
+impl ItemBehavior for WaterLilyItem
+{
+    fn onRightClick(&self, world: World, player: Player, stack: ItemStack) -> Use
+    {
+        let Some(water) = waterAimed(world, player).filter(|water| world.isAir(water.offset(0, 1, 0)))
+        else
+        {
+            return Use::Pass;
+        };
+
+        if world.isAuthority()
+        {
+            let _ = world.setBlock(water.offset(0, 1, 0), ids::blockId(block::HUGE_WATER_LILY), 0);
+        }
+        spend(stack)
+    }
+}
+
 fn padHeld(world: World, pos: BlockPos, pad: i32) -> bool
 {
     let base: BlockPos = BlockPos::new(pos.x >> 1 << 1, pos.y, pos.z >> 1 << 1);
@@ -616,6 +714,9 @@ fn clearPad(world: World, pos: BlockPos, pad: i32)
 #[block_behavior]
 impl BlockBehavior for HugeLilyPad
 {
+    // only the item lays a whole pad, a single quarter never goes down on its own
+    fn canPlaceAt(&self, _ctx: &mut BlockCtx) -> bool { false }
+
     fn onNeighborChanged(&self, ctx: &mut BlockCtx, _neighbor: i32)
     {
         if ctx.isAuthority() && !padHeld(ctx.world(), ctx.pos(), ctx.block())
@@ -705,7 +806,8 @@ fn registerWater(ctx: &mut RegisterCtx) -> Result<()>
             .model(BlockModelSpec { cuboids: vec![flat.clone()], ..BlockModelSpec::default() })
             .collision(vec![flat])
             .drops(Vec::new())
-            .behavior(HugeLilyPad),
+            .behavior(HugeLilyPad)
+            .itemBehavior(PadItem),
     )?;
     let quarters: Vec<String> = (0..lily::PIECES).map(|piece| piece.to_string()).collect();
     let values: Vec<&str> = quarters.iter().map(String::as_str).collect();
@@ -726,7 +828,8 @@ fn registerWater(ctx: &mut RegisterCtx) -> Result<()>
             .texture(&texture("huge_waterlily"))
             .hardness(0.0)
             .sound("grass")
-            .behavior(WaterLily),
+            .behavior(WaterLily)
+            .itemBehavior(WaterLilyItem),
     )
 }
 

@@ -476,8 +476,7 @@ fn thornArm(
 pub fn lilyPads(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
     let pad: i32 = world.id(block::HUGE_LILY_PAD);
-    let salt: i64 = 8890919293;
-    let pieces: [[i32; 2]; 4] = [[0, 0], [1, 0], [1, 1], [0, 1]];
+    let pieces: [[i32; 2]; 4] = crate::blocks::PAD_PIECES;
     for _ in 0..10
     {
         let [bx, by, bz] = scatter(random, x, y, z);
@@ -486,15 +485,10 @@ pub fn lilyPads(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         {
             continue;
         }
-        let hash: Random = Random::withSeed(salt);
-        let seed: i64 =
-            i64::from(bx).wrapping_mul(hash.nextLong()) ^ i64::from(bz).wrapping_mul(hash.nextLong()) ^ salt;
-        hash.setSeed(seed);
-        let orient: i32 = hash.nextIntBounded(4);
+        let turn: i32 = crate::blocks::padTurn(bx, bz);
         for (piece, [dx, dz]) in pieces.iter().enumerate()
         {
-            // the piece property comes first so it is the high part of the state
-            world.setMeta(bx + dx, by, bz + dz, pad, piece as i32 * 4 + orient);
+            world.setMeta(bx + dx, by, bz + dz, pad, crate::blocks::padMeta(piece, turn));
         }
     }
 }
