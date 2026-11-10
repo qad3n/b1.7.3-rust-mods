@@ -43,30 +43,93 @@ fn fitLift(component: &mut StructureBox, lift: i32, lowest: i32, highest: i32)
     component.offset([0, height - component.m_min[1], 0]);
 }
 
+// the dungeons as structure kinds of the loader's registry, the silver and golden ones locatable from the seed
+struct KindRow
+{
+    m_name: &'static str,
+    m_label: &'static str,
+    m_finder: Option<fn(&Random, i32, i32) -> bool>,
+}
+
+const BRONZE: usize = 0;
+const SILVER: usize = 1;
+const GOLDEN: usize = 2;
+
+const KINDS: [KindRow; 3] = [
+    KindRow { m_name: "bronze_dungeon", m_label: "Bronze Dungeon", m_finder: None },
+    KindRow { m_name: "silver_dungeon", m_label: "Silver Dungeon", m_finder: Some(silver::canSpawn) },
+    KindRow { m_name: "golden_dungeon", m_label: "Golden Dungeon", m_finder: Some(golden::canSpawn) },
+];
+
+fn registerKinds(ctx: &mut RegisterCtx) -> Result<()>
+{
+    let structures: Structures = ctx.structures();
+    for row in &KINDS
+    {
+        match row.m_finder
+        {
+            Some(finder) =>
+            {
+                structures.withFinder(row.m_name, row.m_label, super::DIMENSION, move |seed, chunkX, chunkZ| {
+                    finder(&structure::candidate(seed, chunkX, chunkZ), chunkX, chunkZ)
+                })?
+            }
+            None => structures.register(row.m_name, row.m_label, super::DIMENSION)?,
+        };
+    }
+    Ok(())
+}
+
+// hands a built dungeon to the loader's structure registry, which keeps one record per origin
+fn record(world: &GenWorld, kind: usize, origin: BlockPos, rooms: &[StructureBox])
+{
+    let name: &str = KINDS[kind].m_name;
+    let Ok(id) = Identifier::parse(&format!("aether:{name}"))
+    else
+    {
+        warn(&format!("structure name {name} is not an identifier"));
+        return;
+    };
+    let pieces: Vec<StructurePiece> = rooms.iter().map(|room| room.piece("")).collect();
+    if let Err(error) = world.m_world.addStructure(structure::start(&id, origin, pieces))
+    {
+        warn(&format!("could not record {id}: {}", error.0));
+    }
+}
+
+// a start's origin is the middle of its chunk at the bottom of its box
+fn startOrigin(chunkX: i32, chunkZ: i32, component: &StructureBox) -> BlockPos
+{
+    const MIDDLE: i32 = 8;
+    BlockPos::new((chunkX << 4) + MIDDLE, component.m_min[1], (chunkZ << 4) + MIDDLE)
+}
+
 // MapGenStructure.generateStructuresInChunk for the silver and golden dungeons, before the biome decorates
 pub fn structures(world: &GenWorld, random: &Random, chunk: &ChunkInfo)
 {
     let clip: StructureBox = StructureBox::populated(chunk.x, chunk.z);
-    let mut silvers: Vec<silver::Start> = Vec::new();
+    let mut silvers: Vec<(i32, i32, silver::Start)> = Vec::new();
     structure::candidates(chunk.seed, chunk.x, chunk.z, RANGE, |x, z, candidate| {
         if silver::canSpawn(candidate, x, z)
         {
-            silvers.push(silver::start(chunk.seed, x, z));
+            silvers.push((x, z, silver::start(chunk.seed, x, z)));
         }
     });
-    for start in silvers.iter().filter(|start| start.m_box.intersects(&clip))
+    for (x, z, start) in silvers.iter().filter(|(_, _, start)| start.m_box.intersects(&clip))
     {
+        record(world, SILVER, startOrigin(*x, *z, &start.m_box), &[start.m_box]);
         silver::generate(world, random, start, clip);
     }
-    let mut goldens: Vec<golden::Start> = Vec::new();
+    let mut goldens: Vec<(i32, i32, golden::Start)> = Vec::new();
     structure::candidates(chunk.seed, chunk.x, chunk.z, RANGE, |x, z, candidate| {
         if golden::canSpawn(candidate, x, z)
         {
-            goldens.push(golden::start(chunk.seed, x, z));
+            goldens.push((x, z, golden::start(chunk.seed, x, z)));
         }
     });
-    for start in goldens.iter().filter(|start| start.m_box.intersects(&clip))
+    for (x, z, start) in goldens.iter().filter(|(_, _, start)| start.m_box.intersects(&clip))
     {
+        record(world, GOLDEN, startOrigin(*x, *z, &start.m_box), &[start.m_box]);
         golden::generate(world, random, start, clip);
     }
 }
@@ -75,7 +138,11 @@ pub fn structures(world: &GenWorld, random: &Random, chunk: &ChunkInfo)
 pub fn bronze(world: &GenWorld, random: &Random, x: i32, z: i32)
 {
     let y: i32 = random.nextIntBounded(bronze_spot::SPREAD) + bronze_spot::LOWEST;
-    bronze::generate(world, random, x, y, z);
+    let rooms: Vec<StructureBox> = bronze::generate(world, random, x, y, z);
+    if !rooms.is_empty()
+    {
+        record(world, BRONZE, BlockPos::new(x, y, z), &rooms);
+    }
 }
 
 // BlockDungeonBase, the unbreakable copies a dungeon is built from until its boss falls, and BlockDungeonTrap
@@ -392,6 +459,7 @@ fn registerChests(ctx: &mut RegisterCtx) -> Result<()>
 
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
+    registerKinds(ctx)?;
     for row in &STONES
     {
         let mut spec: BlockSpecBuilder = BlockSpecBuilder::template("minecraft:block")

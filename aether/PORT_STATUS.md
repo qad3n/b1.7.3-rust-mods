@@ -123,6 +123,14 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Not ported yet, add their options with the features: Aether menu and menu button, trivia, holiday trees, tall grass,
   Sun Spirit dialogue repeat, legacy visuals, legacy altar name, portal frame start, first-entry gifts toggle.
 
+## Done (loader API 1.10, structure registry)
+
+- `mod.toml` needs API 1.10. The dungeons are loader structure kinds `aether:bronze_dungeon`, `aether:silver_dungeon` and
+  `aether:golden_dungeon` (`world/dungeons/mod.rs` `KINDS`). Silver and golden starts are recorded with their component
+  box when they build into a chunk and have finders on `canSpawn`, so `/locate` finds them before they generate. A bronze
+  dungeon is recorded with every room and tube `Writer` built (`m_rooms`) once its boss room is placed.
+- Generation is unchanged: recording draws no random numbers.
+
 ## Done (loader API 1.1, ABI 3)
 
 - `mod.toml` needs API 1.1. The loader still accepts ABI 2 builds of this port.

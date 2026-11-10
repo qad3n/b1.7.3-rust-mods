@@ -21,6 +21,8 @@ pub struct Writer<'a>
     m_block: Pick,
     m_extra: Pick,
     pub m_chance: i32,
+    // every room and tube built, so a finished dungeon can be recorded piece by piece
+    pub m_rooms: Vec<StructureBox>,
 }
 
 impl<'a> Writer<'a>
@@ -48,6 +50,7 @@ impl<'a> Writer<'a>
             m_block: AIR,
             m_extra: AIR,
             m_chance: 0,
+            m_rooms: Vec::new(),
         }
     }
 
@@ -169,8 +172,16 @@ impl<'a> Writer<'a>
         kept
     }
 
+    fn addRoom(&mut self, from: [i32; 3], size: [i32; 3])
+    {
+        let min: [i32; 3] = self.actualOffset(from[0], from[1], from[2]);
+        let max: [i32; 3] = self.actualOffset(from[0] + size[0] - 1, from[1] + size[1] - 1, from[2] + size[2] - 1);
+        self.m_rooms.push(StructureBox::new(min, max));
+    }
+
     pub fn hollowBox(&mut self, from: [i32; 3], size: [i32; 3])
     {
+        self.addRoom(from, size);
         self.clear(from, size);
         let [x, y, z] = from;
         let [w, h, d] = size;
@@ -185,6 +196,7 @@ impl<'a> Writer<'a>
     // walls on two sides: 0 floor and ends, 1 sides and ends, 2 floor and sides
     pub fn squareTube(&mut self, from: [i32; 3], size: [i32; 3], angle: i32)
     {
+        self.addRoom(from, size);
         self.clear(from, size);
         let [x, y, z] = from;
         let [w, h, d] = size;

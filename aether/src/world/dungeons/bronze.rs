@@ -3,6 +3,7 @@ use super::writer::{AIR, Pick, RandomTracker, Writer, shuffle};
 use crate::entities::bosses;
 use crate::world::GenWorld;
 use b173_api::terrain::Random;
+use b173_api::terrain::structure::StructureBox;
 use b173_api::{BlockPos, ItemStack};
 
 mod size
@@ -68,7 +69,8 @@ struct Bronze<'a>
     m_roomCount: i32,
 }
 
-pub fn generate(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
+// the rooms and tubes it built, none when the spot failed its checks
+pub fn generate(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> Vec<StructureBox>
 {
     let mut writer: Writer = Writer::dungeon(world, random);
     writer.m_replaceAir = true;
@@ -82,6 +84,7 @@ pub fn generate(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         m_roomCount: 0,
     };
     dungeon.bossRoom(x, y, z);
+    dungeon.m_writer.m_rooms
 }
 
 impl Bronze<'_>
