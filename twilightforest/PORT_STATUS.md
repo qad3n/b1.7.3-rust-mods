@@ -43,8 +43,6 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   - swamp trees are plain oaks (WorldGenSwamp's vines are its only difference that beta could not show);
   - troll cave clouds sit at y 120 and hollow trees are cut to fit under 128;
   - no experience: uncrafting costs nothing, the recraft cost (enchantments) never applies;
-  - no item use duration: the crumble horn works on every repeated click, the lamp of cinders and ore magnet
-    act on the click instead of on release;
   - no creative tabs: the sorting engine groups chests by item;
   - no spawn eggs: ItemTFSpawnEgg is left out;
   - no written books: the explorer's notes are their own items with beta's book icon and read out in chat;
@@ -90,6 +88,10 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   charms of life and keeping (TFEventListener), magic tree cores (BlockTFMagicLogSpecial), uberous soil.
 - Machines: uncrafting table (ContainerTFUncrafting on a tile inventory, ghost ingredients drawn over the assembly
   grid) and cinder furnace (TileEntityTFCinderFurnace).
+- Loader api 1.20: the crumble horn crumbles every fifth tick while held, the lamp of cinders and ore magnet act on
+  release after a short hold (ItemTFCrumbleHorn, ItemTFLampOfCinders, ItemTFOreMagnet); trophies are tile entities
+  drawing the bosses' heads (TileEntityTFTrophyRenderer) on a floor turned in sixteenths or against a wall, and drop
+  their trophy when broken.
 - Batch 3: the armored giant and redcaps wear their armor (RenderBiped's two armor layers over their own limb swing,
   `models/armor.rs`), chunks are populated with creature herds (SpawnerAnimals.performWorldGenSpawning with the
   creature list's SpawnListEntry group sizes, fireflies stay ambient), the tree of transformation turns columns to
@@ -153,7 +155,8 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   left flat stone terrain behind.
 - Scepters (twilight, life drain, zombie with EntityTFLoyalZombie) and bows (triple, seeker, ice, ender with their
   arrows in `entities/arrows.rs` on the loader's `arrow` template, so beta EntityArrow flight, sticking, pickup and
-  RenderArrow), one source use tick or a full draw per click. The triple bow's side arrows are a `side_arrow` kind
+  RenderArrow), drawn while the use key is held and loosed on release with the draw's speed (loader api 1.20 item
+  use, with 1.7's bow zoom, slowed walk and first person pull; beta arrows have no critical hit). The triple bow's side arrows are a `side_arrow` kind
   that drops its shooter once stuck, so only the middle one can be picked up. The ender bow swaps places on any arrow
   hit while held, as TFEventListener does. Beta arrows deal a flat 4, not 1.7's speed scaled 6, and the triple bow
   cannot clear the target's hurt cooldown (no SDK field), so a second arrow in the same moment bounces. Transformation powder (beta pairs), moonworm queen.
@@ -198,7 +201,7 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   port's own biome lookups (biome locks, its spawn lists) still read the generated biome; the SDK has no biome query.
 - Death tome uses the 1.7 enchanting book texture, which beta and the jar do not have.
 - Structure warnings from the translated Java (unused locals, never read assignments) are still to be cleaned.
-- Trophies show the trophy icon on a small cube; the source draws the bosses' heads with their models.
+- Bows and the ore magnet keep their standby icon while drawn; the source's pulling icons need a per use icon hook.
 - The stronghold shields from StructureTFMajorFeatureStart.addShieldFor are unused in 2.4.3 and not ported.
 - Hydra: the mortar cannot be knocked back (projectile entities take no hits). Snow queen's triple and seeker bow drops need the bows (items).
 - Boss AI is checked by code review only: dimension 3 keeps no chunks loaded without a player, so the test server
@@ -214,8 +217,8 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
    swap to tnt or flint while planting or lighting is not shown; tower ghast eye textures by attack state; per
    variant block names (Blue Castle Rune Brick and the like need per state names in the loader).
 2. Config OldMapGen (pre 1.7 map gen, "may not be fully supported" in 2.4.3) is not ported.
-3. TFClientEvents' iced entity overlay keys on the slowness potion and the bow zoom FOV on an item in use, beta has
-   neither (accepted with potions and item use duration).
+3. TFClientEvents' iced entity overlay keys on the slowness potion, which beta lacks until the loader's status
+   effects (api 1.22) land.
 4. Not checked in a client: the map panel, mob poses and animations, held items, weather locks, charm effects,
    multiplayer.
 
