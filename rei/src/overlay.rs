@@ -337,6 +337,13 @@ impl State
 
     fn back(&mut self) { self.m_view = self.m_history.pop(); }
 
+    // every screen change starts on the plain container, so reopening the inventory never lands on an old recipe
+    fn leave(&mut self)
+    {
+        self.close();
+        self.m_focused = false;
+    }
+
     fn close(&mut self)
     {
         self.m_view = None;
@@ -956,6 +963,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
     {
         ctx.screens().overlay(target, Viewer)?;
     }
+    ctx.events().on::<ScreenOpen>(Priority::Normal, |_| STATE.with(|state| state.borrow_mut().leave()))?;
     ctx.screens().tooltip(|stack, lines|
     {
         let catalog: Rc<Catalog> = catalog::get();

@@ -18,7 +18,7 @@ time and gamemode buttons are left out.
 | `R` / `U` over any item | recipes / usages, vanilla slots included |
 | Wheel over the list / recipe page | page / recipe |
 | `Left` / `Right` arrow keys | recipe on a recipe page, else list page |
-| `Esc` / `Backspace` / Back button on a recipe page | close / back to the page an ingredient was opened from, else close |
+| `Esc` / `Backspace` / Back button on a recipe page | close / back to the page an ingredient was opened from, else close. Any screen change closes the page, so the inventory always reopens on the plain container |
 | `O` | hides or shows the panel |
 | Search field | words match the name, `@word` the mod id, right click clears |
 | Crafting table button | craftable filter, from the 36 inventory slots |
