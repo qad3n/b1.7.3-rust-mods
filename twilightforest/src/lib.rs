@@ -31,6 +31,7 @@ fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     config::register(ctx)?;
     effects::register(ctx)?;
+    particles::register(ctx)?;
     blocks::register(ctx)?;
     items::register(ctx)?;
     recipes::register(ctx)?;
