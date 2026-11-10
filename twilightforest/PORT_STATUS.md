@@ -26,12 +26,13 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   castle stands from y 152 up on its plateau as in 2.4.3. Terrain handlers still fill the bottom 128.
 - Beta substitutes, accepted differences:
   - no enchantments: efficiency is baked into tool speed, other enchantments dropped;
-  - no potions, so no potion effects at all: the ice sword, ice bow, ice bombs, tome bolts and yeti armor only deal
-    their damage, nature bolts drop their poison, the charms of life keep their heal but not their regeneration,
-    resistance and fire resistance, and the life drain scepter marks its target itself instead of slowing it;
-  - biome locks: the snowy forest and glacier bite with cold damage every three seconds (1 and 2) instead of
-    slowness, the swamp and dark forest have no hunger or blindness, every locked biome may still bring a hint
-    kobold for the feature that unlocks it;
+  - potions ride the loader's status effects (api 1.22, `effects.rs`): slowness, speed, strength, poison and
+    regeneration as the source gives them (ice sword, ice bow, ice bombs, tome and nature bolts, life drain scepter,
+    zombie wand, lich minions, charms of life, the snowy forest and glacier locks); hunger, blindness, jump boost,
+    resistance and fire resistance have no beta stat and stay out (swamp, dark forest, mosquitoes, mist wolves,
+    charm extras), the effect lengths are the normal difficulty's, regeneration four heals four every fifty ticks
+    where 1.7 heals one every six, and yeti armor's chill aura is an enchantment beta lacks;
+  - biome locks: every locked biome may still bring a hint kobold for the feature that unlocks it;
   - foods heal their hunger value in half hearts and stack to one;
   - no vines: hollow trees climb with ladders, WorldGenVines only draws its randoms;
   - no lily pads, double plants or 1.7 flowers: lily pads only draw randoms, double plants place their single
@@ -216,8 +217,8 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
    swap to tnt or flint while planting or lighting is not shown; tower ghast eye textures by attack state; per
    variant block names (Blue Castle Rune Brick and the like need per state names in the loader).
 2. Config OldMapGen (pre 1.7 map gen, "may not be fully supported" in 2.4.3) is not ported.
-3. TFClientEvents' iced entity overlay keys on the slowness potion, which beta lacks until the loader's status
-   effects (api 1.22) land.
+3. TFClientEvents' iced entity overlay (ice cubes around a slowed mob) is not drawn yet; slowness now exists but
+   other mobs' effects may not reach clients.
 4. Not checked in a client: the map panel, mob poses and animations, held items, weather locks, charm effects,
    multiplayer.
 
