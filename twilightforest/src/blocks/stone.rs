@@ -442,6 +442,26 @@ mod knightmetal
         let far: f32 = 16.0 - inset;
         Cuboid { from: [inset; 3], to: [far; 3], ..Cuboid::default() }
     }
+
+    // RenderBlockTFKnightMetal, a core with a spike on every corner, edge and face, each pulled in by a hair
+    pub fn spikes() -> Vec<Cuboid>
+    {
+        let (step, size, hair): (f32, f32, f32) = (6.0, 4.0, 1.0 / 64.0);
+        let mut cuboids: Vec<Cuboid> = vec![shell()];
+        for x in 0..3
+        {
+            for y in 0..3
+            {
+                for z in 0..3
+                {
+                    let from: [f32; 3] = [x, y, z].map(|cell| cell as f32 * step + hair);
+                    let to: [f32; 3] = from.map(|start| start + size - hair * 2.0);
+                    cuboids.push(Cuboid { from, to, ..Cuboid::default() });
+                }
+            }
+        }
+        cuboids
+    }
 }
 
 // BlockTFKnightmetalBlock pricks anything touching it like a cactus
@@ -494,7 +514,10 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         let spec: BlockSpecBuilder = super::build(row);
         let spec: BlockSpecBuilder = match row.m_name
         {
-            block::KNIGHTMETAL_BLOCK => spec.behavior(Knightmetal).collision(vec![knightmetal::shell()]),
+            block::KNIGHTMETAL_BLOCK => spec
+                .behavior(Knightmetal)
+                .model(BlockModelSpec { cuboids: knightmetal::spikes(), ..BlockModelSpec::default() })
+                .collision(vec![knightmetal::shell()]),
             block::TROLLSTEINN => spec.behavior(Trollsteinn),
             _ => spec,
         };
