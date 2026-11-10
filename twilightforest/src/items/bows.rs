@@ -3,10 +3,13 @@ use crate::entities::arrows::{self, ICE, PLAIN, SEEKER, SIDE};
 use crate::ids::item;
 use b173_api::prelude::*;
 
-// ItemTFBowBase and its triple, seeker, ice and ender bows; beta's bow fires on the click, so do these, at full draw
+// ItemTFBowBase and its triple, seeker, ice and ender bows, drawn while the use key is held and loosed on release
 mod bow
 {
     pub const DURABILITY: i32 = 384;
+    // ticks to a full draw and the least draw that looses an arrow
+    pub const FULL_DRAW: f64 = 20.0;
+    pub const LEAST_DRAW: f64 = 0.1;
     // a full draw, EntityArrow's 1.5 times the bow's velocity of 2
     pub const SPEED: f64 = 3.0;
     // ItemTFSeekerBow halves the velocity
@@ -44,12 +47,40 @@ fn takeArrow(player: Player) -> bool
     true
 }
 
+fn hasArrow(player: Player) -> bool
+{
+    (0..bow::SLOTS).any(|slot| player.slot(slot).is_some_and(|stack| stack.item.is("minecraft:arrow")))
+}
+
+// ItemBow's draw, a second held is a full draw and short draws hardly fly
+fn draw(held: i32) -> f64
+{
+    let seconds: f64 = f64::from(held) / bow::FULL_DRAW;
+    ((seconds * seconds + seconds * 2.0) / 3.0).min(1.0)
+}
+
 #[item_behavior]
 impl ItemBehavior for Bow
 {
-    fn onRightClick(&self, world: World, player: Player, _stack: ItemStack) -> Use
+    // ItemBow.onItemRightClick, drawing starts only with an arrow to loose
+    fn onRightClick(&self, _world: World, player: Player, _stack: ItemStack) -> Use
     {
-        let Some(info) = player.info()
+        if !hasArrow(player)
+        {
+            return Use::Done(player.held());
+        }
+        super::magic::holdInUse(player)
+    }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { super::magic::held::LONGEST }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Bow }
+
+    // ItemTFBowBase.onPlayerStoppedUsing and ItemTFTripleBow's, the arrows fly as fast as the bow was drawn
+    fn onStoppedUsing(&self, world: World, player: Player, _stack: ItemStack, left: i32) -> Use
+    {
+        let power: f64 = draw(super::magic::held::LONGEST - left);
+        let Some(info) = player.info().filter(|_| power >= bow::LEAST_DRAW)
         else
         {
             return Use::Pass;
@@ -63,18 +94,19 @@ impl ItemBehavior for Bow
         {
             return Use::Pass;
         }
-        let mut fired: bool = arrows::shoot(world, self.m_arrow, &info, self.m_speed, 0.0, 0.0).is_some();
+        let speed: f64 = self.m_speed * power;
+        let mut fired: bool = arrows::shoot(world, self.m_arrow, &info, speed, 0.0, 0.0).is_some();
         if self.m_triple
         {
             for side in [1.0, -1.0]
             {
                 let (lift, rise): (f64, f64) = (side * bow::SIDE_LIFT, side * bow::SIDE_RISE);
-                fired |= arrows::shoot(world, SIDE, &info, self.m_speed, lift, rise).is_some();
+                fired |= arrows::shoot(world, SIDE, &info, speed, lift, rise).is_some();
             }
         }
         if fired
         {
-            let pitch: f32 = 1.0 / (crate::ids::fraction(world) * 0.4 + 1.2) + 0.5;
+            let pitch: f32 = 1.0 / (crate::ids::fraction(world) * 0.4 + 1.2) + power as f32 * 0.5;
             world.playSound(info.pos, "random.bow", 1.0, pitch);
             super::magic::wearHeld(player, 1);
         }
