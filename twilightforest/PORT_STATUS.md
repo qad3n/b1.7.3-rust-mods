@@ -203,7 +203,6 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 - Hydra: the mortar cannot be knocked back (projectile entities take no hits). Snow queen's triple and seeker bow drops need the bows (items).
 - Boss AI is checked by code review only: dimension 3 keeps no chunks loaded without a player, so the test server
   cannot tick them.
-- Alpha yeti tells shots from blows by distance (over 4 blocks), the loader's hurt hook only names the shooter.
 - Not checked in a client yet: mob models, poses and textures, the uncrafting table ghosts, portal visuals.
 - Cinder furnace: the title sits left like other mod screens instead of centred.
 - A player placed trophy pedestal is never latent (beta block items place meta 0).

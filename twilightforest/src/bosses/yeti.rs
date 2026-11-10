@@ -44,8 +44,6 @@ mod yeti
     pub const STOMP_LIFT: f64 = 0.4;
     pub const DROPS_MIN: i32 = 6;
     pub const DROPS_SPREAD: i32 = 6;
-    // the source tells projectiles apart, the port's hurt hook only names the shooter so far away hits count
-    pub const RANGED: f64 = 4.0;
     pub const WALK: f64 = 0.2;
 }
 
@@ -450,14 +448,11 @@ impl EntityBehavior for YetiAlpha
     }
 
     // EntityTFYetiAlpha.attackEntityFrom, shots bounce off until it has been hurt up close or while tired
-    fn onHurt(&self, entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
+    // EntityTFYetiAlpha.attackEntityFrom, shots bounce off until it has rampaged or tired
+    fn onHurt(&self, entity: Entity, _source: Option<i32>, amount: i32) -> Option<i32>
     {
-        let world: World = entity.world;
-        let ranged: bool = match (source.and_then(|id| Entity { world, id }.info()), entity.info())
-        {
-            (Some(attacker), Some(info)) => distance(attacker.pos, info.pos) > yeti::RANGED,
-            _ => false,
-        };
+        let kind: Option<Identifier> = b173_api::world::damageType();
+        let ranged: bool = kind.is_some_and(|kind| matches!(kind.path(), "arrow" | "thrown" | "fireball"));
         BRAINS.with(|brains|
         {
             let mut brains = brains.borrow_mut();
