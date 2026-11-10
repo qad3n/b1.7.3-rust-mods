@@ -350,15 +350,15 @@ fn registerShield(ctx: &mut RegisterCtx) -> Result<()>
     super::put(
         ctx,
         block::SHIELD,
-        base("minecraft:block", "Stronghold Shield", Kind::Metal, unbreakable).resistance(resistance).faces(
-            FaceTextures
+        base("minecraft:block", "Stronghold Shield", Kind::Metal, unbreakable)
+            .resistance(resistance)
+            .faces(FaceTextures
             {
                 top: Some(texture("shield_outside")),
                 bottom: Some(texture("shield_outside")),
                 side: Some(texture("shield_outside")),
                 front: Some(texture("shield_inside")),
-            },
-        ),
+            }),
     )?;
     ctx.blocks().states(
         block::SHIELD,
@@ -373,43 +373,6 @@ fn registerShield(ctx: &mut RegisterCtx) -> Result<()>
             }],
             ..BlockStatesSpec::default()
         },
-    )
-}
-
-// BlockTFNagastone: heads face one of four sides, bodies lie along an axis
-const HEAD_FACING: [&str; 4] = ["north", "south", "west", "east"];
-const BODY_AXES: [&str; 3] = ["x", "z", "y"];
-
-fn registerNagastone(ctx: &mut RegisterCtx) -> Result<()>
-{
-    let hardness: f32 = 1.5;
-    super::put(
-        ctx,
-        block::NAGASTONE_HEAD,
-        base("minecraft:block", "Nagastone Head", Kind::Rock, hardness).resistance(brick::RESISTANCE).faces(
-            FaceTextures
-            {
-                top: Some(texture("nagastone_top_tip")),
-                bottom: Some(texture("nagastone_bottom_tip")),
-                side: Some(texture("nagastone_long_side")),
-                front: Some(texture("nagastone_face_front")),
-            },
-        ),
-    )?;
-    ctx.blocks().states(
-        block::NAGASTONE_HEAD,
-        BlockStatesSpec { properties: vec![property("facing", &HEAD_FACING)], ..BlockStatesSpec::default() },
-    )?;
-    super::put(
-        ctx,
-        block::NAGASTONE,
-        base("minecraft:block", "Nagastone", Kind::Rock, hardness)
-            .resistance(brick::RESISTANCE)
-            .faces(faces(&Look::Column { top: "nagastone_cross_section", side: "nagastone_long_side" })),
-    )?;
-    ctx.blocks().states(
-        block::NAGASTONE,
-        BlockStatesSpec { properties: vec![property("axis", &BODY_AXES)], ..BlockStatesSpec::default() },
     )
 }
 
@@ -541,6 +504,5 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
     }
     registerAurora(ctx)?;
     registerShield(ctx)?;
-    registerNagastone(ctx)?;
     registerSpecial(ctx)
 }

@@ -170,9 +170,8 @@ fn twilight(field: &str, meta: i32) -> Resolved
     {
         "nagastone" => match meta
         {
-            0..=3 => (block::NAGASTONE_HEAD, meta),
-            12..=14 => (block::NAGASTONE, meta - 12),
-            _ => (block::NAGASTONE, 0),
+            0..=3 => (block::NAGASTONE_HEAD, crate::blocks::headMeta(meta)),
+            _ => (block::NAGASTONE, crate::blocks::bodyMeta(meta)),
         },
         "mazestone" => (
             [

@@ -1,6 +1,7 @@
 mod castle;
 mod critters;
 mod giant;
+mod nagastone;
 mod plants;
 mod slider;
 mod stone;
@@ -8,6 +9,7 @@ pub mod tower;
 pub mod wood;
 
 use b173_api::prelude::*;
+pub use nagastone::{bodyMeta, headMeta};
 pub use plants::{PAD_PIECES, axisOf, padMeta, padTurn, plantStays};
 pub use stone::SHIELD_LATENT;
 
@@ -192,6 +194,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
     tower::register(ctx)?;
     castle::register(ctx)?;
     critters::register(ctx)?;
+    nagastone::register(ctx)?;
     slider::register(ctx)?;
     giant::register(ctx)
 }
