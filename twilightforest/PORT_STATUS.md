@@ -90,6 +90,10 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   charms of life and keeping (TFEventListener), magic tree cores (BlockTFMagicLogSpecial), uberous soil.
 - Machines: uncrafting table (ContainerTFUncrafting on a tile inventory, ghost ingredients drawn over the assembly
   grid) and cinder furnace (TileEntityTFCinderFurnace).
+- Loader api 1.12 features: TwilightForestSeed seeds the dimension (WorldProviderTwilightForest.getSeed), the
+  ur-ghast's tantrum storms the overworld for 6000 ticks, the hydra dies over 200 ticks with a head falling every
+  second, trollsteinn shows its lit face toward light, huge lily pad and water lily items lay onto the still water
+  the player looks at, and the slide block keeps its orientation in flight.
 - Block effects: knightmetal block pricks what touches it and shows its spikes, trollsteinn glints red toward dark
   faces, transformation leaves shed runes, broken logs, cores, huge stalks and live thorns start nearby leaves decaying
   (BlockLog.onBlockRemoval). Slider (BlockTFSlider, EntityTFSlideBlock on the loader's moving_block): wakes on its
@@ -188,27 +192,22 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 - Structure warnings from the translated Java (unused locals, never read assignments) are still to be cleaned.
 - Trophies show the trophy icon on a small cube; the source draws the bosses' heads with their models.
 - The stronghold shields from StructureTFMajorFeatureStart.addShieldFor are unused in 2.4.3 and not ported.
-- Hydra: the source's 200 tick death with heads dying one by one is a quick death here; the mortar cannot be
-  knocked back (projectile entities take no hits). Snow queen's triple and seeker bow drops need the bows (items).
-- Ur-ghast tantrum: the source also turns on the overworld's rain for 6000 ticks, the loader has no weather call.
+- Hydra: the mortar cannot be knocked back (projectile entities take no hits). Snow queen's triple and seeker bow drops need the bows (items).
 - Boss AI is checked by code review only: dimension 3 keeps no chunks loaded without a player, so the test server
   cannot tick them.
 - Alpha yeti tells shots from blows by distance (over 4 blocks), the loader's hurt hook only names the shooter.
 - Not checked in a client yet: mob models, poses and textures, the uncrafting table ghosts, portal visuals.
 - Cinder furnace: the title sits left like other mod screens instead of centred.
 - Trophy pedestal stays breakable once placed (no relative hardness hook), the player placed one is never latent.
-- Slider sliding sideways shows its upright faces (falling sand draws a block without its meta).
-- Trollsteinn has no lit face texture and castle magic no full bright rune overlay (no world aware face texture or
-  overlay pass in the loader); moss patches have no spore aura (beta has no townaura).
-- Huge lily pad and huge water lily items cannot be placed on water: ItemBlockTFHugeLilyPad and
-  ItemBlockTFHugeWaterLily ray trace onto water, the loader has no item behavior for a block's own item yet.
+- Castle magic has no full bright rune overlay (no overlay pass in the loader); moss patches have no spore aura
+  (beta has no townaura).
 
 ## Remaining, in order
 
 1. Worn armor on mobs (the armored giant's iron set, redcap boots) needs an armor layer for mod mobs; the redcaps'
    swap to tnt or flint while planting or lighting is not shown; tower ghast eye textures by attack state; per
    variant block names (Blue Castle Rune Brick and the like need per state names in the loader).
-2. Config TwilightForestSeed and OldMapGen are not ported.
+2. Config OldMapGen (pre 1.7 map gen, "may not be fully supported" in 2.4.3) is not ported.
 3. TFClientEvents' iced entity overlay (ice cubes around a slowed mob) and the bow zoom FOV.
 4. Not checked in a client: the map panel, mob poses and animations, held items, weather locks, charm effects,
    multiplayer.
