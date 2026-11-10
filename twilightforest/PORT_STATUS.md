@@ -90,6 +90,10 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   charms of life and keeping (TFEventListener), magic tree cores (BlockTFMagicLogSpecial), uberous soil.
 - Machines: uncrafting table (ContainerTFUncrafting on a tile inventory, ghost ingredients drawn over the assembly
   grid) and cinder furnace (TileEntityTFCinderFurnace).
+- Loader api 1.13 and 1.14 features: castle runes glow a pixel off castle brick (RenderBlockTFCastleMagic), giant
+  blocks show a quarter of a quarter of the vanilla face (GiantBlockIcon), nagastone heads and bodies refit to their
+  neighbors with every source shape, sprite and turn (BlockTFNagastone, RenderBlockTFNagastone), the stronghold
+  shield is dug only from its inside face at the player's stone speed, a used trophy pedestal cannot be broken.
 - Loader api 1.12 features: TwilightForestSeed seeds the dimension (WorldProviderTwilightForest.getSeed), the
   ur-ghast's tantrum storms the overworld for 6000 ticks, the hydra dies over 200 ticks with a head falling every
   second, trollsteinn shows its lit face toward light, huge lily pad and water lily items lay onto the still water
@@ -185,7 +189,7 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 
 ## Bugs to check at the end
 
-- Castle rune brick overlay, nagastone connected textures, giant block 4x4 textures, custom particles.
+- Custom particles (TFClientProxy.spawnParticle classes) use the closest beta particles.
 - Spawns at chunk generation (SpawnerAnimals.performWorldGenSpawning) are not run; mobs come from normal spawning.
 - Tree of transformation: the biome change is not done yet (needs a per column biome override in the loader).
 - Death tome uses the 1.7 enchanting book texture, which beta and the jar do not have.
@@ -198,9 +202,8 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 - Alpha yeti tells shots from blows by distance (over 4 blocks), the loader's hurt hook only names the shooter.
 - Not checked in a client yet: mob models, poses and textures, the uncrafting table ghosts, portal visuals.
 - Cinder furnace: the title sits left like other mod screens instead of centred.
-- Trophy pedestal stays breakable once placed (no relative hardness hook), the player placed one is never latent.
-- Castle magic has no full bright rune overlay (no overlay pass in the loader); moss patches have no spore aura
-  (beta has no townaura).
+- A player placed trophy pedestal is never latent (beta block items place meta 0).
+- Moss patches have no spore aura (beta has no townaura).
 
 ## Remaining, in order
 
