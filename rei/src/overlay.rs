@@ -240,10 +240,7 @@ fn heldItems() -> Vec<(Key, i32)>
         .collect()
 }
 
-fn cursorHolds() -> Option<Option<Key>>
-{
-    localPlayer().and_then(|player| player.cursor()).map(|held| Key::ofStack(&held))
-}
+fn holding() -> bool { localPlayer().and_then(|player| player.cursor()).is_some() }
 
 // a damaged tool or other unlisted damage is looked up as its plain item
 fn listedKey(catalog: &Catalog, key: Key) -> Key
@@ -268,6 +265,26 @@ fn cycle(index: usize, count: usize, forward: bool) -> usize
     {
         (index + count - 1) % count
     }
+}
+
+// drops characters from one end until the text fits the width
+fn clip(text: &str, room: i32, dropFront: bool) -> &str
+{
+    let mut shown: &str = text;
+    while textWidth(shown) > room
+    {
+        let mut chars: std::str::Chars = shown.chars();
+        if dropFront
+        {
+            chars.next();
+        }
+        else
+        {
+            chars.next_back();
+        }
+        shown = chars.as_str();
+    }
+    shown
 }
 
 impl State
@@ -336,6 +353,9 @@ impl State
     }
 
     fn back(&mut self) { self.m_view = self.m_history.pop(); }
+
+    // the recipe page is up and covers the container
+    fn paging(&self) -> bool { !self.m_hidden && self.m_view.is_some() }
 
     // every screen change starts on the plain container, so reopening the inventory never lands on an old recipe
     fn leave(&mut self)
@@ -433,7 +453,7 @@ impl State
     fn lookup(&mut self, usages: bool, hovered: Option<Key>) -> bool
     {
         // the recipe page covers the vanilla slots under it
-        let onPage: bool = self.m_view.is_some() && inside(self.m_mouse, self.m_layout.m_container);
+        let onPage: bool = self.paging() && inside(self.m_mouse, self.m_layout.m_container);
         let target: Option<Key> = if onPage
         {
             self.m_hovered
@@ -472,7 +492,7 @@ impl State
         match self.m_visible.get(index).copied()
         {
             Some(key) => self.clickItem(catalog, key, button),
-            None if cheat::enabled() && cursorHolds().is_some() => cheat::trash(),
+            None if cheat::enabled() && holding() => cheat::trash(),
             None =>
             {}
         }
@@ -549,12 +569,13 @@ impl State
 
     fn scroll(&mut self, point: [i32; 2], delta: i32) -> bool
     {
-        let forward: bool = delta < 0;
         if self.m_hidden
         {
             return false;
         }
-        if self.m_view.is_some() && inside(point, self.m_layout.m_container)
+
+        let forward: bool = delta < 0;
+        if self.paging() && inside(point, self.m_layout.m_container)
         {
             self.turnRecipe(forward);
             return true;
@@ -595,23 +616,28 @@ impl Painter<'_>
 
     fn slot(&mut self, x: i32, y: i32, size: i32) { self.m_draw.slot(x, y, size); }
 
-    // a wildcard ingredient cycles through every listed damage of its item
-    fn item(&mut self, x: i32, y: i32, key: Key) { self.stack(x, y, key, 1); }
-
-    // the host draws the count as vanilla slots do
-    fn stack(&mut self, x: i32, y: i32, key: Key, count: i32)
+    // a wildcard ingredient cycles through every listed damage of its item, the host draws the count as vanilla slots do
+    fn icon(&mut self, x: i32, y: i32, key: Key, count: i32) -> Key
     {
         let variants: Vec<Key> = self.m_catalog.variants(key);
         let shown: Key = variants[(self.m_frame / timing::CYCLE) as usize % variants.len()];
         self.m_draw.item(x, y, &shown.stack(count));
-        let rect: Rect = [x, y, layout::ICON, layout::ICON];
-        if inside(self.m_mouse, rect)
+        if inside(self.m_mouse, [x, y, layout::ICON, layout::ICON])
         {
             self.m_draw.rect(x, y, layout::ICON, layout::ICON, color::HOVER);
             self.m_hovered = Some(shown);
         }
-        self.m_slots.push((rect, shown));
+        shown
     }
+
+    // recipe page stacks answer clicks, the list maps clicks through its grid instead
+    fn stack(&mut self, x: i32, y: i32, key: Key, count: i32)
+    {
+        let shown: Key = self.icon(x, y, key, count);
+        self.m_slots.push(([x, y, layout::ICON, layout::ICON], shown));
+    }
+
+    fn item(&mut self, x: i32, y: i32, key: Key) { self.stack(x, y, key, 1); }
 
     fn slotItem(&mut self, x: i32, y: i32, key: Option<Key>)
     {
@@ -726,14 +752,7 @@ impl Painter<'_>
         };
         self.m_draw.rect(x, y, w, h, border);
         self.m_draw.rect(x + edge, y + edge, w - edge * 2, h - edge * 2, color::FIELD_FACE);
-        let room: i32 = w - layout::TEXT_INSET * 2;
-        let mut shown: &str = &state.m_query;
-        while textWidth(shown) > room
-        {
-            let mut chars: std::str::Chars = shown.chars();
-            chars.next();
-            shown = chars.as_str();
-        }
+        let shown: &str = clip(&state.m_query, w - layout::TEXT_INSET * 2, true);
         let textX: i32 = x + layout::TEXT_INSET;
         let textY: i32 = y + (h - layout::FONT_HEIGHT) / 2;
         if shown.is_empty() && !state.m_focused
@@ -751,7 +770,7 @@ impl Painter<'_>
         for (offset, key) in state.m_visible.iter().skip(state.m_page * perPage).take(perPage).enumerate()
         {
             let [x, y] = layout.cell(offset);
-            self.item(x, y, *key);
+            self.icon(x, y, *key, 1);
         }
         self.button(layout.m_previous, &translate(text::LEFT));
         self.button(layout.m_next, &translate(text::RIGHT));
@@ -765,7 +784,8 @@ impl Painter<'_>
     {
         self.button(layout.m_cheat, "");
         let [x, y, w, _] = layout.m_cheat;
-        let tint: u32 = if inside(self.m_mouse, layout.m_cheat)
+        let overCheat: bool = inside(self.m_mouse, layout.m_cheat);
+        let tint: u32 = if overCheat
         {
             color::BUTTON_HOVER
         }
@@ -779,7 +799,7 @@ impl Painter<'_>
         };
         let textTop: i32 = (layout::BAR - layout::FONT_HEIGHT) / 2;
         self.m_draw.centered(x + w / 2, y + textTop, cheat::button(), tint);
-        if inside(self.m_mouse, layout.m_cheat)
+        if overCheat
         {
             self.m_hint = Some(cheat::mode());
         }
@@ -802,7 +822,7 @@ impl Painter<'_>
     fn recipeId(&mut self, id: &str, container: Rect, top: i32)
     {
         let room: i32 = container[2] - page::INSET * 2;
-        let mut shown: &str = if textWidth(id) <= room
+        let short: &str = if textWidth(id) <= room
         {
             id
         }
@@ -810,12 +830,7 @@ impl Painter<'_>
         {
             id.split_once(':').map_or(id, |(_, path)| path)
         };
-        while textWidth(shown) > room
-        {
-            let mut chars: std::str::Chars = shown.chars();
-            chars.next_back();
-            shown = chars.as_str();
-        }
+        let shown: &str = clip(short, room, false);
         let x: i32 = (container[2] - textWidth(shown)) / 2;
         self.m_draw.plain(x, top, shown, color::RECIPE_ID);
     }
@@ -889,8 +904,6 @@ fn drawFrame(draw: &mut Draw, state: &mut State, size: [i32; 2], mouse: [i32; 2]
     {
         painter.list(state, &layout);
     }
-    // only recipe page slots answer clicks, the list maps clicks through its grid
-    painter.m_slots.clear();
     if let Some(view) = &state.m_view
     {
         painter.view(view, layout.m_container);
@@ -932,19 +945,12 @@ impl Overlay for Viewer
         STATE.with(|state|
         {
             let state: Ref<State> = state.borrow();
-            !state.m_hidden && state.m_view.is_some() && inside([x, y], state.m_layout.m_container)
+            state.paging() && inside([x, y], state.m_layout.m_container)
         })
     }
 
     // the recipe page fills the container so other mods' panels beside it hide
-    fn exclusive(&mut self) -> bool
-    {
-        STATE.with(|state|
-        {
-            let state: Ref<State> = state.borrow();
-            !state.m_hidden && state.m_view.is_some()
-        })
-    }
+    fn exclusive(&mut self) -> bool { STATE.with(|state| state.borrow().paging()) }
 }
 
 // the owning mod's line under an item name, when the option is on
