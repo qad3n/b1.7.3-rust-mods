@@ -556,15 +556,27 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
     }
 }
 
-// EntityTFUrGhast.switchPhase, a tantrum calls ghasts down from the traps
+// EntityTFUrGhast.switchPhase, a tantrum calls ghasts down from the traps and storms over the overworld
 fn switchPhase(world: World, brain: &mut Brain)
 {
     brain.m_tantrum = !brain.m_tantrum;
     if brain.m_tantrum
     {
+        storm();
         minions(world, brain);
     }
     brain.m_untilPhase = boss::PHASE_DAMAGE;
+}
+
+// EntityTFUrGhast.startTantrum
+fn storm()
+{
+    let ticks: i32 = 6000;
+    let overworld: World = World { dimension: crate::portal::travel::OVERWORLD };
+    if let Err(error) = overworld.setWeather(true, true, ticks)
+    {
+        warn(&format!("ur-ghast storm: {}", error.0));
+    }
 }
 
 pub fn trapped(entity: Entity)

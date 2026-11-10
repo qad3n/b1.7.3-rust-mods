@@ -7,7 +7,7 @@ use std::collections::HashMap;
 // BlockTFPortal and TFTeleporter, a pool ringed by flowers turns into a portal when a diamond lands in it
 const PORTALS_KEY: &str = "portals";
 
-mod travel
+pub(crate) mod travel
 {
     pub const OVERWORLD: i32 = 0;
     // a fresh arrival waits above the world for one tick while the portal is found or built under it
