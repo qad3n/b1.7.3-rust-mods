@@ -40,7 +40,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             weight: 1,
         },
     )?;
-    ctx.dimensions().register(
+    let aether: Dimension = ctx.dimensions().register(
         DIMENSION,
         DimensionSpec {
             name: "The Aether".to_owned(),
@@ -59,7 +59,6 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         },
     )?;
     dungeons::register(ctx)?;
-    ctx.dimensions().terrain(DIMENSION_ID, terrain::generate)?;
-    ctx.dimensions().generator(DIMENSION_ID, decorate::populate)?;
+    aether.terrain(terrain::generate)?.generator(decorate::populate)?;
     Ok(())
 }
