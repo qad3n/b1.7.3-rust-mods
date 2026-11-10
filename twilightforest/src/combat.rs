@@ -1,0 +1,170 @@
+use crate::ids::item;
+use crate::items::armorWorn;
+use b173_api::prelude::*;
+use std::cell::Cell;
+
+mod weapon
+{
+    // ItemTFFierySword and ItemTFFieryPick set what they hit alight for fifteen seconds
+    pub const BURN_TICKS: i32 = 15 * 20;
+    // ItemTFKnightlySword ItemTFKnightlyPick and ItemTFKnightlyAxe hit two harder against the right target
+    pub const KNIGHTLY_BONUS: i32 = 2;
+    pub const FLAMES: i32 = 20;
+    pub const FLAKES: i32 = 20;
+}
+
+mod aura
+{
+    // TFEnchantment.getFieryAuraLevel counts five for every fiery piece worn, a mob burns on a roll under it in 25
+    pub const FIERY_PER_PIECE: i32 = 5;
+    pub const FIERY_ROLL: i32 = 25;
+}
+
+thread_local!
+{
+    // the block a fiery pick just broke, its drops come out smelted
+    static SMELT_AT: Cell<Option<(i32, BlockPos)>> = const { Cell::new(None) };
+}
+
+// TF mobs that wear armor, for the knightly bonuses, EntityLivingBase.getTotalArmorValue above zero
+const ARMORED: [&str; 6] =
+    ["goblin_knight_upper", "goblin_knight_lower", "helmet_crab", "armored_giant", "knight_phantom", "block_goblin"];
+
+fn armored(target: &EntityInfo) -> bool
+{
+    if target.player.is_some()
+    {
+        let player: Player = Player { id: target.id };
+        return (0..4).any(|slot| player.slot(crate::items::ARMOR_FIRST_SLOT + slot).is_some());
+    }
+    target.kind.as_ref().is_some_and(|kind| kind.namespace() == "twilightforest" && ARMORED.contains(&kind.path()))
+}
+
+fn holding(player: Player, name: &str) -> bool { player.held().is_some_and(|stack| stack.item.is(name)) }
+
+fn burn(world: World, target: Entity, info: &EntityInfo)
+{
+    for _ in 0..weapon::FLAMES
+    {
+        world.particle("flame", [info.pos[0], info.pos[1] + 1.0, info.pos[2]], [0.0; 3]);
+    }
+    target.setField(EntityField::FireTicks, f64::from(weapon::BURN_TICKS));
+}
+
+// LivingHurt for every attack a player makes with twilight weapons
+fn weaponHit(event: &mut Event, target: &EntityInfo, attacker: Player)
+{
+    let world: World = World { dimension: target.world };
+    let entity: Entity = Entity { world, id: target.id };
+    if holding(attacker, item::FIERY_SWORD) || holding(attacker, item::FIERY_PICK)
+    {
+        burn(world, entity, target);
+    }
+    // ItemTFIceSword's slowness has no beta counterpart, the frost shows and the blade's damage stands alone
+    if holding(attacker, item::ICE_SWORD)
+    {
+        for _ in 0..weapon::FLAKES
+        {
+            crate::particles::spawn(world, "snowstuff", target.pos, [0.0; 3]);
+        }
+    }
+    let EventData::Attack { amount, .. } = event.data()
+    else
+    {
+        return;
+    };
+    let bonus: bool = ((holding(attacker, item::KNIGHTLY_SWORD) || holding(attacker, item::KNIGHTLY_PICK))
+        && armored(target))
+        || (holding(attacker, item::KNIGHTLY_AXE) && !armored(target));
+    if bonus
+    {
+        let raised: i32 = amount + weapon::KNIGHTLY_BONUS;
+        event.setAmount(raised);
+    }
+}
+
+// TFEventListener.entityHurts, fiery armor burns a mob that hits the wearer; yeti armor's chill aura is an
+// enchantment and a slowness, neither of which beta has
+fn armorAura(target: &EntityInfo, attacker: &EntityInfo)
+{
+    let world: World = World { dimension: target.world };
+    let wearer: Player = Player { id: target.id };
+    let mob: Entity = Entity { world, id: attacker.id };
+    let fire: i32 = armorWorn(wearer, "fiery") as i32 * aura::FIERY_PER_PIECE;
+    if fire > 0 && world.random(aura::FIERY_ROLL) < fire
+    {
+        mob.setField(EntityField::FireTicks, f64::from(fire / 2 * 20));
+    }
+}
+
+fn hurt(event: &mut Event)
+{
+    let EventData::Attack { entity: target, source: Some(source), .. } = event.data().clone()
+    else
+    {
+        return;
+    };
+    let world: World = World { dimension: target.world };
+    if !world.isAuthority()
+    {
+        return;
+    }
+    let Some(attacker) = world.entity(source)
+    else
+    {
+        return;
+    };
+    if attacker.player.is_some()
+    {
+        weaponHit(event, &target, Player { id: attacker.id });
+    }
+    else if target.player.is_some()
+    {
+        armorAura(&target, &attacker);
+    }
+}
+
+// ItemTFFieryPick marks the block it breaks, the harvest then smelts what drops
+pub fn markSmelt(world: World, pos: BlockPos) { SMELT_AT.set(Some((world.dimension, pos))); }
+
+fn smeltDrops(event: &mut Event)
+{
+    let Some((dimension, at)) = SMELT_AT.take()
+    else
+    {
+        return;
+    };
+    let EventData::Drops { world, pos, drops, .. } = event.dataMut()
+    else
+    {
+        return;
+    };
+    if *world != dimension || *pos != at
+    {
+        return;
+    }
+    let recipes: Vec<RecipeView> = recipeList();
+    for drop in drops.iter_mut()
+    {
+        let smelted: Option<&StackData> = recipes.iter().find_map(|recipe| match &recipe.shape
+        {
+            RecipeShape::Smelting { input }
+                if input.id == drop.id && (input.damage == drop.damage || input.damage < 0) =>
+            {
+                Some(&recipe.output)
+            }
+            _ => None,
+        });
+        if let Some(result) = smelted
+        {
+            *drop = StackData { id: result.id, count: drop.count, damage: result.damage };
+        }
+    }
+}
+
+pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+{
+    ctx.events().on::<LivingHurt>(Priority::Normal, hurt)?;
+    ctx.events().on::<BlockHarvestDrops>(Priority::Normal, smeltDrops)?;
+    Ok(())
+}

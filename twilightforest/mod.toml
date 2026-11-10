@@ -1,0 +1,14 @@
+id = "twilightforest"
+version = "0.1.0"
+name = "The Twilight Forest"
+description = "Port of The Twilight Forest to b1.7.3"
+authors = ["original authors", "b173 port"]
+license = "see the original mod, assets extracted from the user's jar"
+api = "1.10"
+side = "both"
+
+[network]
+version = "1"
+
+[depends]
+loader = ">=0.1"

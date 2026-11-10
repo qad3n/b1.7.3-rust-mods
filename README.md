@@ -8,6 +8,7 @@ sources, tools and status notes. One `.b173mod` per folder runs on both the clie
 | `aether/` | The Aether (Aether Legacy) | 1.7.10 v1.1.2.5 |
 | `spc/` | Single Player Commands (modern, minimal redesign) | b1.7.3 v2.11.1 |
 | `rei/` | Roughly Enough Items (item list, recipes and cheat mode only) | Fabric 16.0.799 |
+| `twilightforest/` | The Twilight Forest | 1.7.10 2.4.3 |
 
 ## Building a mod
 

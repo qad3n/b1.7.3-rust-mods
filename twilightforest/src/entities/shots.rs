@@ -1,0 +1,490 @@
+use crate::models::Program;
+use b173_api::prelude::*;
+
+// the twilight forest's EntityThrowable shots: how they fall, what they do on a hit and the icon they show
+pub struct Shot
+{
+    pub m_name: &'static str,
+    // EntityThrowable.getGravityVelocity
+    pub m_gravity: f64,
+    pub m_damage: i32,
+    pub m_impact: Impact,
+    pub m_icon: Icon,
+    pub m_puff: &'static str,
+    // an entity kind the shot flies through, the knight phantoms' own axes and picks pass them
+    pub m_passes: Option<&'static str>,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Impact
+{
+    Plain,
+    // EntityTFNatureBolt, leaves where it lands; its poison has no beta counterpart
+    Nature,
+    // EntityTFLichBomb, a small blast
+    Bomb,
+    // EntityTFUrGhastFireball, a ghast's block breaking explosion
+    Fireball,
+    // the ender bow's arrow swaps the shooter with what it hits
+    Swap,
+    // EntitySeekerArrow, it bends toward the creature ahead
+    Seek,
+    // EntityTFMoonwormShot, a moonworm that clings where it lands
+    Moonworm,
+}
+
+// RenderSnowball's icon, a cell of the beta item sheet or a twilight item texture
+#[derive(Clone, Copy, PartialEq)]
+pub enum Icon
+{
+    Sheet(i32),
+    Texture(&'static str),
+}
+
+mod sheet
+{
+    pub const SEEDS: i32 = 9;
+    pub const SNOWBALL: i32 = 14;
+    pub const SLIME_BALL: i32 = 30;
+    pub const PAPER: i32 = 58;
+    pub const FIRE: i32 = 26;
+    pub const ARROW: i32 = 37;
+    pub const CELLS: f32 = 16.0;
+}
+
+mod flight
+{
+    // EntityThrowable drag in the air and its life span before it gives up
+    pub const DRAG: f64 = 0.99;
+    pub const LIFETIME: i32 = 1200;
+    pub const HIT_RADIUS: f64 = 0.3;
+    pub const PUFFS: i32 = 8;
+}
+
+mod effect
+{
+    pub const BOMB_POWER: f32 = 2.0;
+    pub const FIREBALL_POWER: f32 = 1.0;
+    pub const ARROW_DAMAGE: i32 = 6;
+    // EntitySeekerArrow looks five ticks of flight ahead and turns toward what it finds
+    pub const SEEK_AHEAD: f64 = 5.0;
+    pub const SEEK_TURN: f64 = 0.4;
+}
+
+const TWILIGHT_ORB: &str = "twilightforest:item/twilightorb";
+
+pub const NATURE_BOLT: &str = "nature_bolt";
+pub const TOME_BOLT: &str = "tome_bolt";
+pub const WAND_BOLT: &str = "twilight_wand_bolt";
+pub const SLIME_BLOB: &str = "slime_blob";
+pub const ICE_SNOWBALL: &str = "ice_snowball";
+pub const LICH_BOLT: &str = "lich_bolt";
+pub const LICH_BOMB: &str = "lich_bomb";
+pub const THROWN_AXE: &str = "thrown_axe";
+pub const THROWN_PICK: &str = "thrown_pick";
+pub const UR_FIREBALL: &str = "ur_ghast_fireball";
+pub const ARROW: &str = "twilight_arrow";
+pub const ICE_ARROW: &str = "ice_arrow";
+pub const ENDER_ARROW: &str = "ender_arrow";
+pub const SEEKER_ARROW: &str = "seeker_arrow";
+pub const MOONWORM_SHOT: &str = "moonworm_shot";
+const KNIGHT_PHANTOM: &str = "knight_phantom";
+
+pub const SHOTS: [Shot; 15] = [
+    Shot
+    {
+        m_name: NATURE_BOLT,
+        m_gravity: 0.003,
+        m_damage: 2,
+        m_impact: Impact::Nature,
+        m_icon: Icon::Sheet(sheet::SEEDS),
+        m_puff: "snowballpoof",
+        m_passes: None,
+    },
+    Shot
+    {
+        m_name: TOME_BOLT,
+        m_gravity: 0.003,
+        m_damage: 6,
+        // EntityTFTomeBolt's slowness has no beta counterpart
+        m_impact: Impact::Plain,
+        m_icon: Icon::Sheet(sheet::PAPER),
+        m_puff: "snowballpoof",
+        m_passes: None,
+    },
+    Shot
+    {
+        m_name: WAND_BOLT,
+        m_gravity: 0.003,
+        m_damage: 6,
+        m_impact: Impact::Plain,
+        m_icon: Icon::Texture(TWILIGHT_ORB),
+        m_puff: "portal",
+        m_passes: None,
+    },
+    Shot
+    {
+        m_name: SLIME_BLOB,
+        m_gravity: 0.006,
+        m_damage: 0,
+        m_impact: Impact::Plain,
+        m_icon: Icon::Sheet(sheet::SLIME_BALL),
+        m_puff: "slime",
+        m_passes: None,
+    },
+    Shot
+    {
+        m_name: ICE_SNOWBALL,
+        m_gravity: 0.006,
+        m_damage: 0,
+        m_impact: Impact::Plain,
+        m_icon: Icon::Sheet(sheet::SNOWBALL),
+        m_puff: "snowballpoof",
+        m_passes: None,
+    },
+    Shot
+    {
+        m_name: LICH_BOLT,
+        m_gravity: 0.001,
+        m_damage: 6,
+        m_impact: Impact::Plain,
+        m_icon: Icon::Texture(TWILIGHT_ORB),
+        m_puff: "portal",
+        m_passes: None,
+    },
+    // beta has no magma cream, the bomb shows the fire charge cell
+    Shot
+    {
+        m_name: LICH_BOMB,
+        m_gravity: 0.001,
+        m_damage: 0,
+        m_impact: Impact::Bomb,
+        m_icon: Icon::Sheet(sheet::FIRE),
+        m_puff: "smoke",
+        m_passes: None,
+    },
+    Shot
+    {
+        m_name: THROWN_AXE,
+        m_gravity: 0.001,
+        m_damage: 6,
+        m_impact: Impact::Plain,
+        m_icon: Icon::Texture("twilightforest:item/knightlyaxe"),
+        m_puff: "crit",
+        m_passes: Some(KNIGHT_PHANTOM),
+    },
+    Shot
+    {
+        m_name: THROWN_PICK,
+        m_gravity: 0.001,
+        m_damage: 3,
+        m_impact: Impact::Plain,
+        m_icon: Icon::Texture("twilightforest:item/knightlypick"),
+        m_puff: "crit",
+        m_passes: Some(KNIGHT_PHANTOM),
+    },
+    Shot
+    {
+        m_name: UR_FIREBALL,
+        m_gravity: 0.0,
+        m_damage: 16,
+        m_impact: Impact::Fireball,
+        m_icon: Icon::Sheet(sheet::FIRE),
+        m_puff: "smoke",
+        m_passes: None,
+    },
+    arrow(ARROW, Impact::Plain),
+    // the ice bow's slowness has no beta counterpart
+    arrow(ICE_ARROW, Impact::Plain),
+    arrow(ENDER_ARROW, Impact::Swap),
+    arrow(SEEKER_ARROW, Impact::Seek),
+    Shot
+    {
+        m_name: MOONWORM_SHOT,
+        m_gravity: 0.03,
+        m_damage: 0,
+        m_impact: Impact::Moonworm,
+        m_icon: Icon::Texture("twilightforest:block/tfmoonworm"),
+        m_puff: "slime",
+        m_passes: None,
+    },
+];
+
+// the twilight bows' arrows, drawn as the arrow icon, a full draw's damage
+const fn arrow(name: &'static str, impact: Impact) -> Shot
+{
+    Shot
+    {
+        m_name: name,
+        m_gravity: 0.05,
+        m_damage: effect::ARROW_DAMAGE,
+        m_impact: impact,
+        m_icon: Icon::Sheet(sheet::ARROW),
+        m_puff: "crit",
+        m_passes: None,
+    }
+}
+
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
+struct Flight
+{
+    m_owner: Option<i32>,
+    m_age: i32,
+}
+
+// EntityThrowable.setThrowableHeading toward a point at this speed with its inaccuracy
+pub fn fire(
+    world: World,
+    name: &str,
+    from: [f64; 3],
+    toward: [f64; 3],
+    speed: f64,
+    spread: f64,
+    owner: Option<i32>,
+) -> Option<Entity>
+{
+    let entity: Entity = match world.spawnEntity(&format!("twilightforest:{name}"), from)
+    {
+        Ok(entity) => entity,
+        Err(error) =>
+        {
+            warn(&format!("cannot fire {name}: {}", error.0));
+            return None;
+        }
+    };
+    let delta: [f64; 3] = [0, 1, 2].map(|axis| toward[axis] - from[axis]);
+    let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
+    let jitter = || (f64::from(world.random(2001)) / 1000.0 - 1.0) * 0.0075 * spread;
+    let motion: [f64; 3] = delta.map(|axis| (axis / length + jitter()) * speed);
+    let _ = entity.setMotion(motion);
+    let _ = entity.setData(&Flight { m_owner: owner, m_age: 0 });
+    if let Some(owner) = owner
+    {
+        entity.setField(EntityField::Shooter, f64::from(owner));
+    }
+    Some(entity)
+}
+
+struct Thrown
+{
+    m_shot: &'static Shot,
+}
+
+// what each shot does where it lands, the target first and the block after
+fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, owner: Option<i32>)
+{
+    let world: World = entity.world;
+    if let Some(target) = target
+    {
+        let victim: Entity = Entity { world, id: target.id };
+        if shot.m_damage > 0
+        {
+            victim.damage(shot.m_damage, owner);
+        }
+        match shot.m_impact
+        {
+            Impact::Swap =>
+            {
+                let shooter: Option<EntityInfo> = owner.and_then(|id| Entity { world, id }.info());
+                if let Some(shooter) = shooter
+                {
+                    let _ = Entity { world, id: shooter.id }.setPosition(target.pos);
+                    let _ = victim.setPosition(shooter.pos);
+                    world.playSound(target.pos, "mob.endermen.portal", 1.0, 1.0);
+                }
+            }
+            Impact::Plain | Impact::Nature | Impact::Bomb | Impact::Fireball | Impact::Seek | Impact::Moonworm =>
+            {}
+        }
+    }
+    if shot.m_impact == Impact::Nature && target.is_none()
+    {
+        let pos: BlockPos = BlockPos::new(at[0].floor() as i32, at[1].floor() as i32, at[2].floor() as i32);
+        let here: i32 = world.block(pos);
+        let info: BlockInfo = World::blockInfo(here);
+        // birch leaves grow where the bolt hits stone or wood, grass gets bone meal
+        let birch: i32 = 2;
+        if here == crate::ids::blockId("minecraft:grass")
+        {
+            let _ = world.fertilize(pos);
+        }
+        else if info.solid && info.hardness >= 0.0
+        {
+            let _ = world.setBlock(pos, crate::ids::blockId("minecraft:leaves"), birch);
+        }
+    }
+    if shot.m_impact == Impact::Bomb
+    {
+        blast(world, at, effect::BOMB_POWER, owner);
+    }
+    if shot.m_impact == Impact::Fireball
+        && let Err(error) = world.explode(at, effect::FIREBALL_POWER)
+    {
+        warn(&format!("ur-ghast fireball: {}", error.0));
+    }
+    for _ in 0..flight::PUFFS
+    {
+        crate::particles::spawn(world, shot.m_puff, at, [0.0; 3]);
+    }
+    entity.kill();
+}
+
+#[entity_behavior]
+impl EntityBehavior for Thrown
+{
+    // EntityThrowable.onUpdate after the loader moved it, the hit check runs back over this tick's path
+    fn onTick(&self, entity: Entity, info: &EntityInfo)
+    {
+        if !entity.world.isAuthority()
+        {
+            return;
+        }
+        let mut state: Flight = entity.data();
+        state.m_age += 1;
+        if state.m_age > flight::LIFETIME
+        {
+            entity.kill();
+            return;
+        }
+        let to: [f64; 3] = info.pos;
+        let from: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - info.motion[axis]);
+        let hit: Option<EntityInfo> =
+            entity.world.entitiesAlong(from, to, flight::HIT_RADIUS, state.m_owner).into_iter().find(|hit|
+            {
+                let passed: bool =
+                    self.m_shot.m_passes.is_some_and(|kind| hit.kind.as_ref().is_some_and(|hit| hit.path() == kind));
+                hit.id != entity.id && hit.health.is_some() && !passed
+            });
+        if let Some(target) = hit
+        {
+            land(self.m_shot, entity, to, Some(&target), state.m_owner);
+            return;
+        }
+        if let Some(block) = entity.world.rayTrace(from, to, false)
+        {
+            if self.m_shot.m_impact == Impact::Moonworm
+            {
+                crate::items::moonworm::attach(entity.world, block.pos, block.face);
+            }
+            land(self.m_shot, entity, block.point, None, state.m_owner);
+            return;
+        }
+        if self.m_shot.m_impact == Impact::Seek
+        {
+            seek(entity, info, state.m_owner);
+        }
+        let drag: f64 = flight::DRAG;
+        let _ = entity.setMotion([
+            info.motion[0] * drag,
+            info.motion[1] * drag - self.m_shot.m_gravity,
+            info.motion[2] * drag,
+        ]);
+        let _ = entity.setData(&state);
+    }
+
+    // RenderSnowball, the icon facing the camera
+    fn pose(&self, _input: &PoseInput) -> Pose
+    {
+        let mut program: Program = Program::new();
+        let [u0, v0, u1, v1]: [f32; 4] = match self.m_shot.m_icon
+        {
+            Icon::Sheet(cell) =>
+            {
+                program.texture("minecraft:gui/items");
+                let (column, row): (f32, f32) = ((cell % 16) as f32, (cell / 16) as f32);
+                [column / sheet::CELLS, row / sheet::CELLS, (column + 1.0) / sheet::CELLS, (row + 1.0) / sheet::CELLS]
+            }
+            Icon::Texture(texture) =>
+            {
+                program.texture(texture);
+                [0.0, 0.0, 1.0, 1.0]
+            }
+        };
+        program.faceCamera().scale(0.5, 0.5, 0.5).normal(0.0, 1.0, 0.0).quad([
+            [-0.5, -0.25, 0.0, u0, v1],
+            [0.5, -0.25, 0.0, u1, v1],
+            [0.5, 0.75, 0.0, u1, v0],
+            [-0.5, 0.75, 0.0, u0, v0],
+        ]);
+        Pose { pre: Vec::new(), model: program.take() }
+    }
+}
+
+pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+{
+    for shot in &SHOTS
+    {
+        ctx.entities().register(
+            shot.m_name,
+            EntitySpec
+            {
+                template: Identifier::parse("minecraft:projectile").ok(),
+                texture: Some("minecraft:gui/items".to_owned()),
+                size: Some([0.25, 0.25]),
+                tracking_range: Some(64),
+                update_frequency: Some(5),
+                send_velocity: Some(true),
+                model: Some(EntityModelSpec { shadow: 0.0, ..EntityModelSpec::default() }),
+                ..EntitySpec::default()
+            },
+            Some(std::rc::Rc::new(Thrown { m_shot: shot })),
+        )?;
+    }
+    Ok(())
+}
+
+// World.newExplosion with neither fire nor broken blocks, Explosion.doExplosionA's damage to what stands near
+pub fn blast(world: World, at: [f64; 3], power: f32, source: Option<i32>)
+{
+    let reach: f64 = f64::from(power) * 2.0;
+    world.playSound(at, "random.explode", 4.0, 0.7 + crate::ids::fraction(world) * 0.2);
+    crate::particles::spawn(world, "hugeexplosion", at, [0.0; 3]);
+    for other in world.entitiesNear(at, reach)
+    {
+        let gap: f64 = crate::entities::ai::distance(at, other.pos) / reach;
+        if gap > 1.0 || other.health.is_none()
+        {
+            continue;
+        }
+        let impact: f64 = 1.0 - gap;
+        let damage: i32 = ((impact * impact + impact) / 2.0 * 8.0 * reach + 1.0) as i32;
+        Entity { world, id: other.id }.damage(damage, source);
+    }
+}
+
+// EntitySeekerArrow.onUpdate, the arrow curves toward the creature most nearly ahead of it
+fn seek(entity: Entity, info: &EntityInfo, owner: Option<i32>)
+{
+    let world: World = entity.world;
+    let speed: f64 = info.motion.iter().map(|axis| axis * axis).sum::<f64>().sqrt();
+    if speed < 1.0e-3
+    {
+        return;
+    }
+
+    let course: [f64; 3] = info.motion.map(|axis| axis / speed);
+    let ahead: [f64; 3] = [0, 1, 2].map(|axis| info.pos[axis] + info.motion[axis] * effect::SEEK_AHEAD);
+    let best: Option<(f64, [f64; 3])> = world
+        .entitiesNear(ahead, speed * effect::SEEK_AHEAD)
+        .into_iter()
+        .filter(|near| near.health.is_some() && near.player.is_none() && Some(near.id) != owner && near.id != entity.id)
+        .map(|near|
+        {
+            let toward: [f64; 3] =
+                [near.pos[0] - info.pos[0], near.pos[1] + 1.0 - info.pos[1], near.pos[2] - info.pos[2]];
+            let length: f64 = toward.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
+            let dot: f64 = (0..3).map(|axis| course[axis] * toward[axis] / length).sum();
+            (dot, toward.map(|axis| axis / length))
+        })
+        .max_by(|a, b| a.0.total_cmp(&b.0));
+    let Some((dot, toward)) = best.filter(|(dot, _)| *dot > 0.0)
+    else
+    {
+        return;
+    };
+
+    let turn: f64 = effect::SEEK_TURN * dot;
+    let bent: [f64; 3] = [0, 1, 2].map(|axis| course[axis] * (1.0 - turn) + toward[axis] * turn);
+    let length: f64 = bent.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
+    let _ = entity.setMotion(bent.map(|axis| axis / length * speed));
+}
