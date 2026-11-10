@@ -9,6 +9,7 @@ const SILENT_CICADAS: &str = "general.silent_cicadas";
 const UNCRAFTING: &str = "general.disable_uncrafting";
 const PORTAL_ITEM: &str = "general.portal_creation_item";
 const PORTAL_ITEM_DEFAULT: &str = "minecraft:diamond";
+const SEED: &str = "general.twilight_forest_seed";
 const CANOPY: &str = "performance.canopy_coverage";
 const OAK_CHANCE: &str = "performance.twilight_oak_chance";
 const OAK_CHANCE_DEFAULT: i64 = 48;
@@ -36,6 +37,9 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         Setting::text(PORTAL_ITEM, PORTAL_ITEM_DEFAULT)
             .label("Portal Creation Item")
             .comment("Item to create the Twilight Forest portal, defaults to a diamond"),
+        Setting::text(SEED, "").label("Twilight Forest Seed").comment(
+            "If set, this will override the normal world seed when generating parts of the Twilight Forest Dimension",
+        ),
         Setting::float(CANOPY, CANOPY_DEFAULT, 0.0..=CANOPY_MOST).label("Canopy Coverage").comment(
             "Amount of canopy coverage, lower numbers improve chunk generation speed at the cost of a thinner forest",
         ),
@@ -46,6 +50,13 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 }
 
 pub fn enforced() -> bool { Config.getBool(ENFORCED) }
+
+// WorldProviderTwilightForest.getSeed, the text's Java hash code when one is set
+pub fn seed() -> Option<i64>
+{
+    let text: String = Config.get(SEED);
+    (!text.is_empty()).then(|| i64::from(crate::math::javaHash(&text)))
+}
 
 pub fn portals() -> bool { !Config.getBool(PORTAL_CREATION) }
 

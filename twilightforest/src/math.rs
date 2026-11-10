@@ -133,3 +133,10 @@ pub fn heading(motion: [f64; 3]) -> (f64, f64)
     let horizontal: f64 = motion[0].hypot(motion[2]);
     (motion[0].atan2(motion[2]).to_degrees(), motion[1].atan2(horizontal).to_degrees())
 }
+
+// String.hashCode, the seed a text setting stands for in Java
+pub fn javaHash(text: &str) -> i32
+{
+    let factor: i32 = 31;
+    text.encode_utf16().fold(0, |hash: i32, unit| hash.wrapping_mul(factor).wrapping_add(i32::from(unit)))
+}

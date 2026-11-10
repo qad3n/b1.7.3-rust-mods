@@ -84,6 +84,10 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         .terrain(terrain::generate)?
         .generator(decorate::populate)?
         .spawns(crate::entities::spawns::possible)?;
+    if let Some(seed) = crate::config::seed()
+    {
+        twilight.seed(seed)?;
+    }
     features::registerCommand(ctx)?;
     structures::register(ctx)?;
     // each side pins its own sky, again whenever the dimension's numeric id changes with a new server
