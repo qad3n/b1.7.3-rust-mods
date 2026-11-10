@@ -309,6 +309,8 @@ struct Brain
     m_quiet: i32,
     m_spin: f32,
     m_ticks: i32,
+    // ticks since its health ran out, zero while alive
+    m_death: i32,
 }
 
 // what the clients draw of a head: its state and how wide its mouth is
@@ -1106,6 +1108,107 @@ fn body(entity: Entity, info: &EntityInfo, brain: &mut Brain)
     destroyAround(world, back(hydra::TAIL_BACK), half, 2.0);
 }
 
+// EntityTFHydra.onDeathUpdate, ten seconds of explosions while the heads drop one by one
+mod death
+{
+    pub const LENGTH: i32 = 200;
+    pub const HEAD_EVERY: i32 = 20;
+    pub const LAST_HEAD: i32 = 140;
+    // beta removes a dying entity when its death time reaches twenty, so it is held just under that
+    pub const HOLD: f64 = 18.0;
+    pub const RELEASE: f64 = 19.0;
+    pub const PUFFS: i32 = 20;
+    pub const SPREAD: f64 = 0.02;
+}
+
+// the heads go quiet, then one more falls every second, then the hydra and its parts are gone
+fn dying(entity: Entity, info: &EntityInfo, brain: &mut Brain) -> bool
+{
+    brain.m_death += 1;
+    let time: i32 = brain.m_death;
+    if time == 1
+    {
+        for head in &mut brain.m_heads
+        {
+            head.m_respawn = -1;
+            if head.active()
+            {
+                head.m_next = Some(State::Idle);
+                head.end();
+            }
+        }
+    }
+    if time <= death::LAST_HEAD && time % death::HEAD_EVERY == 0
+    {
+        let head: &mut Head = &mut brain.m_heads[(time / death::HEAD_EVERY - 1) as usize];
+        if head.active()
+        {
+            head.m_next = Some(State::Dying);
+            head.end();
+        }
+    }
+    brain.m_ticks += 1;
+    let ticks: i32 = brain.m_ticks;
+    for number in 0..HEADS
+    {
+        updateHead(entity, info, ticks, number, &mut brain.m_heads[number]);
+    }
+
+    let done: bool = time >= death::LENGTH;
+    let hold: f64 = if done
+    {
+        death::RELEASE
+    }
+    else
+    {
+        death::HOLD.min(f64::from(time))
+    };
+    entity.setField(EntityField::DeathTime, hold);
+    done
+}
+
+// the clients' share of onDeathUpdate, explosions all over the body
+fn deathPuffs(world: World, info: &EntityInfo)
+{
+    let size: f64 = hydra::BODY_SIZE;
+    let jitter =
+        || crate::math::gaussian(f64::from(ids::fraction(world)), f64::from(ids::fraction(world))) * death::SPREAD;
+    for _ in 0..death::PUFFS
+    {
+        let name: &str = if world.random(2) == 0
+        {
+            "largeexplode"
+        }
+        else
+        {
+            "explode"
+        };
+        let at: [f64; 3] = [
+            info.pos[0] + f64::from(ids::fraction(world)) * size * 2.0 - size,
+            info.pos[1] + f64::from(ids::fraction(world)) * size,
+            info.pos[2] + f64::from(ids::fraction(world)) * size * 2.0 - size,
+        ];
+        crate::particles::spawn(world, name, at, [jitter(), jitter(), jitter()]);
+    }
+}
+
+// the hydra's heads and necks go with it
+fn removeParts(world: World, brain: Brain)
+{
+    for head in brain.m_heads
+    {
+        for id in std::iter::once(head.m_id).chain(head.m_necks).flatten()
+        {
+            if let Some(info) = (Entity { world, id }).info()
+            {
+                crate::particles::spawn(world, "largeexplode", info.pos, [0.0; 3]);
+            }
+            Entity { world, id }.kill();
+            PARTS.with(|parts| parts.borrow_mut().remove(&(world.dimension, id)));
+        }
+    }
+}
+
 struct Hydra;
 
 #[entity_behavior]
@@ -1147,22 +1250,32 @@ impl EntityBehavior for Hydra
         Some((amount as f32 / hydra::ARMOR).round() as i32)
     }
 
+    fn onTick(&self, entity: Entity, info: &EntityInfo)
+    {
+        let world: World = entity.world;
+        if info.health.is_none_or(|health| health > 0)
+        {
+            return;
+        }
+
+        if !world.isAuthority()
+        {
+            deathPuffs(world, info);
+            return;
+        }
+
+        let key: (i32, i32) = (world.dimension, entity.id);
+        let done: bool =
+            BRAINS.with(|brains| brains.borrow_mut().get_mut(&key).is_some_and(|brain| dying(entity, info, brain)));
+        if done && let Some(brain) = BRAINS.with(|brains| brains.borrow_mut().remove(&key))
+        {
+            removeParts(world, brain);
+        }
+    }
+
     fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
         let world: World = entity.world;
-        let brain: Option<Brain> = BRAINS.with(|brains| brains.borrow_mut().remove(&(world.dimension, entity.id)));
-        for head in brain.iter().flat_map(|brain| brain.m_heads)
-        {
-            for id in std::iter::once(head.m_id).chain(head.m_necks).flatten()
-            {
-                if let Some(info) = (Entity { world, id }).info()
-                {
-                    crate::particles::spawn(world, "largeexplode", info.pos, [0.0; 3]);
-                }
-                Entity { world, id }.kill();
-                PARTS.with(|parts| parts.borrow_mut().remove(&(world.dimension, id)));
-            }
-        }
         let Some(info) = entity.info()
         else
         {
