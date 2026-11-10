@@ -91,8 +91,13 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   charms of life and keeping (TFEventListener), magic tree cores (BlockTFMagicLogSpecial), uberous soil.
 - Machines: uncrafting table (ContainerTFUncrafting on a tile inventory, ghost ingredients drawn over the assembly
   grid) and cinder furnace (TileEntityTFCinderFurnace).
-- Block effects: knightmetal block pricks what touches it, trollsteinn glints red toward dark faces, transformation
-  leaves shed runes.
+- Block effects: knightmetal block pricks what touches it and shows its spikes, trollsteinn glints red toward dark
+  faces, transformation leaves shed runes, broken logs, cores, huge stalks and live thorns start nearby leaves decaying
+  (BlockLog.onBlockRemoval). Slider (BlockTFSlider, EntityTFSlideBlock on the loader's moving_block): wakes on its
+  four second beat while a player is within 32 of its column, slides out and back, hurts and knocks back what it
+  hits. Trophy pedestal: RenderBlockTFPedestal's base, column and cap with the four boss faces turned by meta, lit
+  while latent; a trophy set on it rewards nearby players first, so the first worthy visit opens it, and only the
+  access chamber's latent shields (Java meta 15, the port's facing "none") vanish.
 - Mobs: 46 entities from one table (`entities/mobs.rs`), models converted from every ModelTF* class, spawn rules by
   biome and depth (`entities/spawns.rs`), throwable shots (`entities/shots.rs`), the shared AI pieces
   (`entities/ai.rs`).
@@ -185,13 +190,13 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   cannot tick them.
 - Alpha yeti tells shots from blows by distance (over 4 blocks), the loader's hurt hook only names the shooter.
 - Not checked in a client yet: mob models, poses and textures, the uncrafting table ghosts, portal visuals.
-- Not ported: BlockTFSlider and EntityTFSlideBlock (no 2.4.3 structure places sliders).
-- Cinder furnace: the lit state gives no light (the loader has no per state light), the title sits left like
-  other mod screens instead of centred.
-- Trophy pedestal: every side shows the naga face, and opening it clears every shield within 5 blocks since the
-  stronghold's meta 15 shields map to facing 0.
-- Trollsteinn has no lit face texture, moss patches no spore aura (beta has no townaura), the huge stalk does not
-  decay leaves when broken, the knightmetal block renders as a plain cube.
+- Cinder furnace: the lit state gives no light. Beta keeps light per block id, so this needs Java's idle and lit
+  block swap, which needs a loader hook that keeps the tile entity and open screen across the swap. The title sits
+  left like other mod screens instead of centred.
+- Trophy pedestal stays breakable once placed (no relative hardness hook), the player placed one is never latent.
+- Slider sliding sideways shows its upright faces (falling sand draws a block without its meta).
+- Trollsteinn has no lit face texture and castle magic no full bright rune overlay (no world aware face texture or
+  overlay pass in the loader); moss patches have no spore aura (beta has no townaura).
 - Huge lily pad and huge water lily items cannot be placed on water: ItemBlockTFHugeLilyPad and
   ItemBlockTFHugeWaterLily ray trace onto water, the loader has no item behavior for a block's own item yet.
 
