@@ -11,6 +11,10 @@ mod life
     pub const FIRST_HEALTH: f64 = 8.0;
     // EntityPlayer.applyArmorCalculations scales by what twenty five armor points leave
     pub const ARMOR_WHOLE: i32 = 25;
+    // TFEventListener.applyDeathItems' regeneration, five seconds at one, thirty at four
+    pub const FIRST_TICKS: i32 = 100;
+    pub const SECOND_TICKS: i32 = 600;
+    pub const SECOND_REGEN: i32 = 3;
 }
 
 const MAIN_SLOTS: i32 = 36;
@@ -177,13 +181,14 @@ fn hurt(event: &mut Event)
     event.cancel();
     if second
     {
-        // the second charm's regeneration, resistance and fire resistance are potions beta lacks, the full heal stays
+        // the second charm's resistance and fire resistance have no beta stat, its regeneration and full heal stay
         entity.setField(EntityField::Health, entity.field(EntityField::MaxHealth));
+        crate::effects::give(entity, crate::effects::Effect::Regeneration, life::SECOND_REGEN, life::SECOND_TICKS);
     }
     else
     {
-        // the first charm's short regeneration is a potion beta lacks, its heal stays
         entity.setField(EntityField::Health, life::FIRST_HEALTH);
+        crate::effects::give(entity, crate::effects::Effect::Regeneration, 0, life::FIRST_TICKS);
     }
     release(
         world,

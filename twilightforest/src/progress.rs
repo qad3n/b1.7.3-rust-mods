@@ -162,16 +162,17 @@ mod enforce
     // TFBiome*.enforceProgession acts every three seconds, the highlands' acid every quarter second
     pub const CHECK: i64 = 60;
     pub const ACID: i64 = 5;
-    // beta has no slowness, the snow and the glacier bite with cold instead, the glacier harder
-    pub const SNOW_BITE: i32 = 1;
-    pub const GLACIER_BITE: i32 = 2;
+    // TFBiomeSnow and TFBiomeGlacier, five seconds of slowness three and four
+    pub const SNOW_SLOW: i32 = 2;
+    pub const GLACIER_SLOW: i32 = 3;
+    pub const SLOW_TICKS: i32 = 100;
     pub const BURN_TICKS: f64 = 8.0 * 20.0;
     // one check in four may bring a hint kobold for the feature that unlocks the biome
     pub const HINT_ODDS: i32 = 4;
 }
 
-// TFBiome*.enforceProgession, the forest pushes back on players who arrive too early; beta has no slowness,
-// blindness or hunger, so the cold biomes hurt instead and the swamp and the dark forest only send hint kobolds
+// TFBiome*.enforceProgession, the forest pushes back on players who arrive too early; beta has no blindness or
+// hunger, so the swamp and the dark forest only send hint kobolds
 fn punish(world: World, player: Player, info: &EntityInfo, biome: Biome, now: i64)
 {
     let entity: Entity = Entity { world, id: player.id };
@@ -186,8 +187,8 @@ fn punish(world: World, player: Player, info: &EntityInfo, biome: Biome, now: i6
     }
     match biome
     {
-        Biome::SnowyForest => frostbite(world, entity, info, enforce::SNOW_BITE),
-        Biome::Glacier => frostbite(world, entity, info, enforce::GLACIER_BITE),
+        Biome::SnowyForest => chill(world, entity, info, enforce::SNOW_SLOW),
+        Biome::Glacier => chill(world, entity, info, enforce::GLACIER_SLOW),
         Biome::FireSwamp => entity.setField(EntityField::FireTicks, enforce::BURN_TICKS),
         _ =>
         {}
@@ -210,9 +211,9 @@ fn punish(world: World, player: Player, info: &EntityInfo, biome: Biome, now: i6
     }
 }
 
-fn frostbite(world: World, entity: Entity, info: &EntityInfo, bite: i32)
+fn chill(world: World, entity: Entity, info: &EntityInfo, level: i32)
 {
-    entity.damage(bite, None);
+    crate::effects::give(entity, crate::effects::Effect::Slowness, level, enforce::SLOW_TICKS);
     crate::particles::spawn(world, "snowstuff", info.pos, [0.0; 3]);
 }
 

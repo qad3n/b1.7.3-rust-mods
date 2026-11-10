@@ -5,8 +5,6 @@ use crate::entities::shots::{self, WAND_BOLT};
 use crate::ids::{self, item};
 use crate::math::look;
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 // ItemTFTwilightWand, ItemTFScepterLifeDrain and ItemTFZombieWand, the lich's three scepters; beta has no held use so
@@ -23,8 +21,9 @@ mod scepter
     pub const DRAIN: i32 = 1;
     pub const SIPHON: i32 = 3;
     pub const SHATTER: i32 = 3;
-    // the source marks the target with twenty ticks of slowness, beta has none so the scepter keeps the mark itself
-    pub const HOLD_TICKS: i64 = 20;
+    // the source marks the target with twenty ticks of slowness three
+    pub const HOLD_TICKS: i32 = 20;
+    pub const HOLD_LEVEL: i32 = 2;
     pub const TRAIL: i32 = 32;
     pub const HEAL: f64 = 1.0;
 }
@@ -46,6 +45,8 @@ mod zombie
     pub const TINT: [f32; 3] = [0.25, 1.0, 0.25];
     pub const LEAP: f64 = 0.2;
     pub const WALK: f64 = 0.25;
+    pub const STRENGTH: i32 = 1;
+    pub const STRENGTH_TICKS: i32 = 1200;
 }
 
 fn eyes(info: &EntityInfo) -> [f64; 3] { [info.pos[0], info.pos[1], info.pos[2]] }
@@ -107,27 +108,12 @@ impl ItemBehavior for TwilightWand
     }
 }
 
-thread_local!
-{
-    // targets the life drain scepter holds, until the world time noted
-    static HELD: RefCell<HashMap<(i32, i32), i64>> = RefCell::new(HashMap::new());
-}
-
-fn held(victim: Entity) -> bool
-{
-    let now: i64 = victim.world.time();
-    HELD.with(|held| held.borrow().get(&(victim.world.dimension, victim.id)).is_some_and(|until| *until > now))
-}
+// ItemTFScepterLifeDrain marks a target with a second of slowness three and drains one that is still slowed
+fn held(victim: Entity) -> bool { victim.effectLevel("twilightforest:slowness").is_some() }
 
 fn hold(victim: Entity)
 {
-    let until: i64 = victim.world.time() + scepter::HOLD_TICKS;
-    HELD.with(|held|
-    {
-        let mut held = held.borrow_mut();
-        held.retain(|_, end| *end > until - scepter::HOLD_TICKS);
-        held.insert((victim.world.dimension, victim.id), until);
-    });
+    crate::effects::give(victim, crate::effects::Effect::Slowness, scepter::HOLD_LEVEL, scepter::HOLD_TICKS);
 }
 
 struct LifeDrain;
@@ -228,6 +214,8 @@ impl ItemBehavior for ZombieWand
             crate::entities::spawnAt(world, &format!("twilightforest:{LOYAL_ZOMBIE}"), hit.point, info.yaw)
             && spawned.setData(&Loyal { m_owner: Some(player.id), ..Loyal::default() }).is_ok()
         {
+            // ItemTFZombieWand, a minute of strength two
+            crate::effects::give(spawned, crate::effects::Effect::Strength, zombie::STRENGTH, zombie::STRENGTH_TICKS);
             wearHeld(player, 1);
         }
         Use::Done(player.held())

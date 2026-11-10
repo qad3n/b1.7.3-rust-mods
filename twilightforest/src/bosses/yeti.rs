@@ -75,6 +75,8 @@ mod ice
     pub const SEARCH_UP: i32 = 30;
     pub const RANDOM_RANGE: i32 = 30;
     pub const NEAR_RANGE: i32 = 15;
+    pub const CHILL: i32 = 2;
+    pub const CHILL_TICKS: i32 = 100;
 }
 
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
@@ -558,8 +560,9 @@ fn zone(entity: Entity, at: [f64; 3], owner: Option<i32>)
         }
         else
         {
-            // EntityTFIceBomb's slowness has no beta counterpart, the hit stands alone
+            // EntityTFIceBomb, a chill of five seconds at slowness three
             victim.damage(1, owner);
+            crate::effects::give(victim, crate::effects::Effect::Slowness, ice::CHILL, ice::CHILL_TICKS);
         }
     }
 }

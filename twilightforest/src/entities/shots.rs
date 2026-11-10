@@ -19,8 +19,10 @@ pub struct Shot
 pub enum Impact
 {
     Plain,
-    // EntityTFNatureBolt, leaves where it lands; its poison has no beta counterpart
+    // EntityTFNatureBolt, poisons what it hits, leaves where it lands
     Nature,
+    // EntityTFTomeBolt, slows what it hits
+    Tome,
     // EntityTFLichBomb, a small blast
     Bomb,
     // EntityTFUrGhastFireball, a ghast's block breaking explosion
@@ -93,8 +95,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: TOME_BOLT,
         m_gravity: 0.003,
         m_damage: 6,
-        // EntityTFTomeBolt's slowness has no beta counterpart
-        m_impact: Impact::Plain,
+        m_impact: Impact::Tome,
         m_icon: Icon::Sheet(sheet::PAPER),
         m_puff: "snowballpoof",
         m_passes: None,
@@ -243,6 +244,13 @@ struct Thrown
     m_shot: &'static Shot,
 }
 
+mod bolt
+{
+    // EntityTFNatureBolt's and EntityTFTomeBolt's effect seconds on normal difficulty
+    pub const POISON_TICKS: i32 = 3 * 20;
+    pub const SLOW_TICKS: i32 = 7 * 20;
+}
+
 // what each shot does where it lands, the target first and the block after
 fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, owner: Option<i32>)
 {
@@ -250,7 +258,16 @@ fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, 
     if let Some(target) = target
         && shot.m_damage > 0
     {
-        Entity { world, id: target.id }.damage(shot.m_damage, owner);
+        let victim: Entity = Entity { world, id: target.id };
+        victim.damage(shot.m_damage, owner);
+        // the source's normal difficulty lengths, beta keeps no difficulty a mod can read
+        match shot.m_impact
+        {
+            Impact::Nature => crate::effects::give(victim, crate::effects::Effect::Poison, 0, bolt::POISON_TICKS),
+            Impact::Tome => crate::effects::give(victim, crate::effects::Effect::Slowness, 1, bolt::SLOW_TICKS),
+            _ =>
+            {}
+        }
     }
     if shot.m_impact == Impact::Nature && target.is_none()
     {

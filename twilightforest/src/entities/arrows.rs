@@ -230,6 +230,13 @@ fn hurt(event: &mut Event)
     }
 
     let player: Player = Player { id: source };
+    // TFEventListener.entityHurts, an arrow from a player holding the ice bow chills for ten seconds at three
+    let icy: bool = player.held().is_some_and(|stack| stack.item.is(item::ICE_BOW));
+    if icy && world.entity(source).is_some_and(|shooter| shooter.player.is_some()) && arrowHit(world, &target, source)
+    {
+        let (level, ticks): (i32, i32) = (2, 200);
+        crate::effects::give(Entity { world, id: target.id }, crate::effects::Effect::Slowness, level, ticks);
+    }
     let holding: bool = player.held().is_some_and(|stack| stack.item.is(item::ENDER_BOW));
     let Some(shooter) = world.entity(source).filter(|shooter| shooter.player.is_some() && holding)
     else

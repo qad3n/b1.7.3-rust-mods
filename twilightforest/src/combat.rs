@@ -11,6 +11,9 @@ mod weapon
     pub const KNIGHTLY_BONUS: i32 = 2;
     pub const FLAMES: i32 = 20;
     pub const FLAKES: i32 = 20;
+    // ItemTFIceSword's chill
+    pub const CHILL: i32 = 2;
+    pub const CHILL_TICKS: i32 = 200;
 }
 
 mod aura
@@ -60,9 +63,10 @@ fn weaponHit(event: &mut Event, target: &EntityInfo, attacker: Player)
     {
         burn(world, entity, target);
     }
-    // ItemTFIceSword's slowness has no beta counterpart, the frost shows and the blade's damage stands alone
+    // ItemTFIceSword.hitEntity, ten seconds of slowness three
     if holding(attacker, item::ICE_SWORD)
     {
+        crate::effects::give(entity, crate::effects::Effect::Slowness, weapon::CHILL, weapon::CHILL_TICKS);
         for _ in 0..weapon::FLAKES
         {
             crate::particles::spawn(world, "snowstuff", target.pos, [0.0; 3]);

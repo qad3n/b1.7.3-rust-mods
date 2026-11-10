@@ -443,6 +443,19 @@ impl EntityBehavior for Minion
         }
     }
 
+    // EntityTFLichMinion.attackEntityFrom, a blow from its own lich spurs it on with speed five and strength two
+    fn onHurt(&self, entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
+    {
+        let master: i32 = entity.data::<Lich>().m_master;
+        if entity.world.isAuthority() && source == Some(master)
+        {
+            let (speed, strength, ticks): (i32, i32, i32) = (4, 1, 200);
+            crate::effects::give(entity, crate::effects::Effect::Speed, speed, ticks);
+            crate::effects::give(entity, crate::effects::Effect::Strength, strength, ticks);
+        }
+        Some(amount)
+    }
+
     fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
         if let Some(player) = killer(entity.world, source)

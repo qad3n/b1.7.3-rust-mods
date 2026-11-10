@@ -4,6 +4,7 @@ mod charms;
 mod colors;
 mod combat;
 mod config;
+mod effects;
 mod entities;
 mod hint_books;
 mod hints;
@@ -29,6 +30,7 @@ use b173_api::prelude::*;
 fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     config::register(ctx)?;
+    effects::register(ctx)?;
     blocks::register(ctx)?;
     items::register(ctx)?;
     recipes::register(ctx)?;
