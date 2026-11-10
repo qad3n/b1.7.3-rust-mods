@@ -110,27 +110,72 @@ fn crumble(world: World, pos: BlockPos) -> i32
     cost
 }
 
+// the held items used by holding the use key, ItemTFCrumbleHorn, ItemTFLampOfCinders and ItemTFOreMagnet
+pub mod held
+{
+    pub const LONGEST: i32 = 72000;
+    // the horn crumbles every fifth tick once ten have passed, the lamp and magnet act on release past a short hold
+    pub const HORN_EVERY: i32 = 5;
+    pub const HORN_WARMUP: i32 = 10;
+    pub const LAMP_HOLD: i32 = 12;
+    pub const MAGNET_HOLD: i32 = 10;
+}
+
+// starts holding the item in use and keeps the stack in hand
+pub fn holdInUse(player: Player) -> Use
+{
+    if let Err(error) = player.setItemInUse(held::LONGEST)
+    {
+        warn(&format!("hold item in use: {}", error.0));
+    }
+    Use::Done(player.held())
+}
+
 struct CrumbleHorn;
+
+fn bleat(world: World, info: &EntityInfo)
+{
+    let (volume, pitch): (f32, f32) = (1.0, 0.8);
+    world.playSound(info.pos, "mob.sheep", volume, pitch);
+}
 
 #[item_behavior]
 impl ItemBehavior for CrumbleHorn
 {
     fn onRightClick(&self, world: World, player: Player, _stack: ItemStack) -> Use
     {
+        if let Some(info) = player.info()
+        {
+            bleat(world, &info);
+        }
+        holdInUse(player)
+    }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Bow }
+
+    // ItemTFCrumbleHorn.onUsingTick, a blast of crumbling every fifth tick of the hold
+    fn onUsingTick(&self, world: World, player: Player, _stack: ItemStack, left: i32)
+    {
+        if left <= held::HORN_WARMUP || left % held::HORN_EVERY != 0 || !world.isAuthority()
+        {
+            return;
+        }
+
         let Some(info) = player.info()
         else
         {
-            return Use::Pass;
+            return;
         };
-        let (volume, pitch): (f32, f32) = (1.0, 0.8);
-        world.playSound(info.pos, "mob.sheep", volume, pitch);
-        if world.isAuthority()
+
+        let (low, high): ([i32; 3], [i32; 3]) = eyeBox(&info);
+        let crumbled: i32 = cells(low, high).map(|pos| crumble(world, pos)).sum();
+        if crumbled > 0
         {
-            let (low, high): ([i32; 3], [i32; 3]) = eyeBox(&info);
-            let crumbled: i32 = cells(low, high).map(|pos| crumble(world, pos)).sum();
             wearHeld(player, crumbled);
         }
-        Use::Done(player.held())
+        bleat(world, &info);
     }
 }
 
@@ -253,15 +298,31 @@ fn burn(world: World, pos: BlockPos) -> bool
 
 const LAMP_SOUND: &str = "mob.ghast.fireball";
 
-// ItemTFLampOfCinders, beta has no held charge so a click in the air burns every thorn around at once
+// ItemTFLampOfCinders, held to charge and let go to burn every thorn around
 struct LampOfCinders;
 
 #[item_behavior]
 impl ItemBehavior for LampOfCinders
 {
-    fn onRightClick(&self, world: World, player: Player, _stack: ItemStack) -> Use
+    fn onRightClick(&self, _world: World, player: Player, stack: ItemStack) -> Use
     {
-        let Some(info) = player.info()
+        if stack.damage >= b173_api::maxDamage(&stack.item)
+        {
+            return Use::Done(player.held());
+        }
+        holdInUse(player)
+    }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Bow }
+
+    // ItemTFLampOfCinders.onPlayerStoppedUsing, a hold past twelve ticks burns
+    fn onStoppedUsing(&self, world: World, player: Player, stack: ItemStack, left: i32) -> Use
+    {
+        let charged: bool =
+            held::LONGEST - left > held::LAMP_HOLD && stack.damage + 1 < b173_api::maxDamage(&stack.item);
+        let Some(info) = player.info().filter(|_| charged)
         else
         {
             return Use::Pass;
@@ -560,12 +621,20 @@ const AIMS: [[f32; 2]; 9] = [
 #[item_behavior]
 impl ItemBehavior for OreMagnet
 {
-    fn onRightClick(&self, world: World, player: Player, _stack: ItemStack) -> Use
+    fn onRightClick(&self, _world: World, player: Player, _stack: ItemStack) -> Use { holdInUse(player) }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Bow }
+
+    // ItemTFOreMagnet.onPlayerStoppedUsing, a hold past ten ticks pulls on release
+    fn onStoppedUsing(&self, world: World, player: Player, _stack: ItemStack, left: i32) -> Use
     {
-        let Some(info) = player.info().filter(|_| world.isAuthority())
+        let held: bool = held::LONGEST - left > held::MAGNET_HOLD;
+        let Some(info) = player.info().filter(|_| held && world.isAuthority())
         else
         {
-            return Use::Done(player.held());
+            return Use::Pass;
         };
         let moved: i32 = AIMS
             .iter()
