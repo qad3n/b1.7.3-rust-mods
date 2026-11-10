@@ -1,6 +1,6 @@
 use super::{Cube, Kind, Look, base, cube, faces, property, texture, tough, when};
 use crate::colors;
-use crate::ids::{block, item};
+use crate::ids::{NEIGHBORS, block, item};
 use b173_api::prelude::*;
 
 mod maze
@@ -484,6 +484,13 @@ struct Trollsteinn;
 
 const STEINN_DARK: i32 = 7;
 const STEINN_GLOW: [f64; 3] = [0.25, -1.0, 0.5];
+const STEINN_LIT: &str = "twilightforest:block/trollsteinn_light";
+
+// BlockTFTrollSteinn.isBlockLit, an open neighbor brighter than the dark threshold
+fn steinnLit(world: World, at: BlockPos) -> bool
+{
+    !World::blockInfo(world.block(at)).opaque && world.light(at) > STEINN_DARK
+}
 
 #[block_behavior]
 impl BlockBehavior for Trollsteinn
@@ -501,10 +508,19 @@ impl BlockBehavior for Trollsteinn
             !World::blockInfo(world.block(at)).opaque && world.light(at) <= STEINN_DARK
         });
     }
+
+    // BlockTFTrollSteinn.getIcon, a face looking into light shows the lit stone
+    fn faceTexture(&self, ctx: &mut BlockCtx, face: i32) -> Option<i32>
+    {
+        let [dx, dy, dz] = *NEIGHBORS.get(usize::try_from(face).ok()?)?;
+        steinnLit(ctx.world(), ctx.pos().offset(dx, dy, dz)).then(|| b173_api::world::terrainSlot(STEINN_LIT)).flatten()
+    }
 }
 
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
+    // no block spec names the lit face, asking for its slot now gives it room in the atlas
+    let _ = b173_api::world::terrainSlot(STEINN_LIT);
     for row in MAZE.iter().chain(CASTLE.iter())
     {
         super::put(ctx, row.m_name, super::build(row).behavior(Wearing))?;
