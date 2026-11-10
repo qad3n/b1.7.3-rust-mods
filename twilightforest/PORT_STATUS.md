@@ -125,6 +125,9 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   `twilightforest:hollow_tree`. A start is recorded with its piece boxes the first time a chunk builds part of it, so
   `/locate` and other mods see them. Protection and spawn lists still use the mod's own start cache, which also works on
   clients.
+- Cinder furnace idle and lit blocks (BlockTFCinderFurnace.updateFurnaceBlockState): the lit block gives light 1.0 and
+  drops the idle furnace, the swap goes through loader api 1.11 `World::swapBlock` so the tile entity, its slots and
+  an open screen stay.
 - Spawning is ChunkProviderTwilightForest.getPossibleCreatures through the dimension's spawn list handler (loader api
   1.9, `entities/spawns.rs` `possible`): inside a feature's pieces its own TFFeature lists with the source weights,
   nothing in a conquered feature's footprint, the underground lists below y 31, the dark forest, snowy forest and swamp
@@ -192,9 +195,7 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   cannot tick them.
 - Alpha yeti tells shots from blows by distance (over 4 blocks), the loader's hurt hook only names the shooter.
 - Not checked in a client yet: mob models, poses and textures, the uncrafting table ghosts, portal visuals.
-- Cinder furnace: the lit state gives no light. Beta keeps light per block id, so this needs Java's idle and lit
-  block swap, which needs a loader hook that keeps the tile entity and open screen across the swap. The title sits
-  left like other mod screens instead of centred.
+- Cinder furnace: the title sits left like other mod screens instead of centred.
 - Trophy pedestal stays breakable once placed (no relative hardness hook), the player placed one is never latent.
 - Slider sliding sideways shows its upright faces (falling sand draws a block without its meta).
 - Trollsteinn has no lit face texture and castle magic no full bright rune overlay (no world aware face texture or

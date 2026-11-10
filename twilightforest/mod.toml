@@ -4,7 +4,7 @@ name = "The Twilight Forest"
 description = "Port of The Twilight Forest to b1.7.3"
 authors = ["original authors", "b173 port"]
 license = "see the original mod, assets extracted from the user's jar"
-api = "1.10"
+api = "1.11"
 side = "both"
 
 [network]

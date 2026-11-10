@@ -48,6 +48,7 @@ mod gui
 const TABLE_NAME: &str = "uncrafting_table";
 const TABLE_TITLE: &str = "Uncrafting Table";
 const FURNACE_NAME: &str = "cinder_furnace";
+const FURNACE_LIT: &str = "cinder_furnace_lit";
 const FURNACE_TITLE: &str = "Cinder Furnace";
 // the block keeps its 2.4.3 name, the screen the furnace title
 const FURNACE_LABEL: &str = "Cinder Furnace [NYI]";
@@ -508,7 +509,7 @@ mod furnace
     pub const CINDER_EVERY: i32 = 5;
     pub const HARDNESS: f32 = 7.0;
     pub const MAX_STACK: i32 = 64;
-    pub const STATES: [&str; 2] = ["false", "true"];
+    pub const LIGHT: f32 = 1.0;
 }
 
 #[derive(Serialize, Deserialize, Default, Clone, Copy, PartialEq)]
@@ -737,7 +738,11 @@ fn furnaceTick(ctx: &mut BlockCtx)
     let lit: bool = state.m_burn > 0;
     if wasLit != lit
     {
-        ctx.setMeta(u8::from(lit));
+        let target: &str = if lit { FURNACE_LIT } else { FURNACE_NAME };
+        if let Err(error) = world.swapBlock(pos, ids::blockId(target), 0)
+        {
+            warn(&format!("cinder furnace at {pos:?}: {}", error.0));
+        }
     }
     if lit && state.m_burn % furnace::CINDER_EVERY == 0
     {
@@ -757,7 +762,11 @@ impl TileBehavior for FurnaceTile
     fn onTick(&self, ctx: &mut BlockCtx) { furnaceTick(ctx); }
 }
 
-struct FurnaceBlock;
+// BlockTFCinderFurnace, idle and lit are two blocks since beta keeps light per block id
+struct FurnaceBlock
+{
+    m_lit: bool,
+}
 
 #[block_behavior]
 impl BlockBehavior for FurnaceBlock
@@ -774,7 +783,7 @@ impl BlockBehavior for FurnaceBlock
     // BlockTFCinderFurnace.randomDisplayTick, smoke and flame from a random side
     fn onRandomDisplayTick(&self, ctx: &mut BlockCtx)
     {
-        if ctx.meta() == 0
+        if !self.m_lit
         {
             return;
         }
@@ -890,28 +899,20 @@ fn registerFurnace(ctx: &mut RegisterCtx) -> Result<()>
         side: Some(vanillaTexture(front)),
         front: None,
     };
-    ctx.blocks().register(
-        FURNACE_NAME,
-        BlockSpecBuilder::template("minecraft:block")
+    let spec = |front: i32, lit: bool| -> Result<BlockSpecBuilder>
+    {
+        Ok(BlockSpecBuilder::template("minecraft:block")
             .name(FURNACE_LABEL)
             .material("wood")
             .sound("stone")
             .hardness(furnace::HARDNESS)
-            .faces(look(off))
+            .faces(look(front))
+            .drops(vec![crate::blocks::drop(FURNACE_NAME, vec![1], 1.0)?])
             .tileEntity(FURNACE_NAME)
-            .behavior(FurnaceBlock),
-    )?;
-    let lit: StateVariantSpec =
-        StateVariantSpec { when: crate::blocks::when("lit", "true"), texture: None, textures: Some(look(on)) };
-    ctx.blocks().states(
-        FURNACE_NAME,
-        BlockStatesSpec
-        {
-            properties: vec![crate::blocks::property("lit", &furnace::STATES)],
-            variants: vec![lit],
-            ..BlockStatesSpec::default()
-        },
-    )?;
+            .behavior(FurnaceBlock { m_lit: lit }))
+    };
+    ctx.blocks().register(FURNACE_NAME, spec(off, false)?)?;
+    ctx.blocks().register(FURNACE_LIT, spec(on, true)?.light(furnace::LIGHT))?;
     ctx.screens().register(
         FURNACE_NAME,
         ScreenBuilder::new(FURNACE_TITLE, gui::WIDTH, gui::HEIGHT)
