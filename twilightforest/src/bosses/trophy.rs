@@ -128,6 +128,9 @@ impl BlockBehavior for Pedestal
         ctx.setMeta((turn | i32::from(ctx.meta()) & pedestal::LATENT) as u8);
     }
 
+    // BlockTFTrophyPedestal.getPlayerRelativeBlockHardness, any meta but the plain first one cannot be broken
+    fn strength(&self, ctx: &mut BlockCtx, _player: Player) -> Option<f32> { (ctx.meta() > 0).then_some(0.0) }
+
     fn onNeighborChanged(&self, ctx: &mut BlockCtx, _neighbor: i32)
     {
         let (world, pos): (World, BlockPos) = (ctx.world(), ctx.pos());
