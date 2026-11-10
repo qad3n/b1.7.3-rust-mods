@@ -68,12 +68,14 @@ mod text
     pub const CRAFTABLE: &str = "Craftable Only";
 }
 
+// counted in client ticks so the pace never follows the frame rate
 mod timing
 {
-    // frames between inventory reads for the craftable filter
-    pub const CRAFTABLE_REFRESH: u32 = 20;
-    // frames each damage of a wildcard ingredient shows
-    pub const CYCLE: u32 = 30;
+    // ticks between inventory reads for the craftable filter
+    pub const CRAFTABLE_REFRESH: u32 = 10;
+    // ticks each damage of a wildcard ingredient shows
+    pub const CYCLE: u32 = 20;
+    // GuiTextField flips its cursor every 6 ticks
     pub const BLINK: u32 = 6;
 }
 
@@ -213,7 +215,7 @@ struct State
     m_history: Vec<View>,
     m_visible: Vec<Key>,
     m_dirty: bool,
-    m_frame: u32,
+    m_ticks: u32,
     m_layout: Layout,
     m_hovered: Option<Key>,
     m_mouse: [i32; 2],
@@ -362,6 +364,15 @@ impl State
     {
         self.close();
         self.m_focused = false;
+    }
+
+    fn tick(&mut self)
+    {
+        self.m_ticks = self.m_ticks.wrapping_add(1);
+        if self.m_craftable && self.m_ticks.is_multiple_of(timing::CRAFTABLE_REFRESH)
+        {
+            self.m_dirty = true;
+        }
     }
 
     fn close(&mut self)
@@ -594,7 +605,7 @@ struct Painter<'a>
     m_draw: &'a mut Draw,
     m_catalog: &'a Catalog,
     m_mouse: [i32; 2],
-    m_frame: u32,
+    m_ticks: u32,
     m_hovered: Option<Key>,
     m_hint: Option<&'static str>,
     m_slots: Vec<(Rect, Key)>,
@@ -619,8 +630,7 @@ impl Painter<'_>
     // a wildcard ingredient cycles through every listed damage of its item, the host draws the count as vanilla slots do
     fn icon(&mut self, x: i32, y: i32, key: Key, count: i32) -> Key
     {
-        let variants: Vec<Key> = self.m_catalog.variants(key);
-        let shown: Key = variants[(self.m_frame / timing::CYCLE) as usize % variants.len()];
+        let shown: Key = self.m_catalog.variant(key, (self.m_ticks / timing::CYCLE) as usize);
         self.m_draw.item(x, y, &shown.stack(count));
         if inside(self.m_mouse, [x, y, layout::ICON, layout::ICON])
         {
@@ -760,7 +770,7 @@ impl Painter<'_>
             self.m_draw.text(textX, textY, &translate(text::SEARCH), color::HINT);
             return;
         }
-        let blink: bool = state.m_focused && (state.m_frame / timing::BLINK).is_multiple_of(2);
+        let blink: bool = state.m_focused && (state.m_ticks / timing::BLINK).is_multiple_of(2);
         self.m_draw.text(textX, textY, &format!("{shown}{}", if blink { "_" } else { "" }), color::TEXT);
     }
 
@@ -872,7 +882,6 @@ impl Painter<'_>
 
 fn drawFrame(draw: &mut Draw, state: &mut State, size: [i32; 2], mouse: [i32; 2])
 {
-    state.m_frame = state.m_frame.wrapping_add(1);
     state.m_hovered = None;
     state.m_mouse = mouse;
     state.m_slots.clear();
@@ -883,7 +892,7 @@ fn drawFrame(draw: &mut Draw, state: &mut State, size: [i32; 2], mouse: [i32; 2]
     let catalog: Rc<Catalog> = state.catalog();
     let layout: Layout = Layout::of(size);
     state.m_layout = layout;
-    if state.m_dirty || (state.m_craftable && state.m_frame.is_multiple_of(timing::CRAFTABLE_REFRESH))
+    if state.m_dirty
     {
         state.refilter(&catalog);
     }
@@ -893,7 +902,7 @@ fn drawFrame(draw: &mut Draw, state: &mut State, size: [i32; 2], mouse: [i32; 2]
         m_draw: draw,
         m_catalog: &catalog,
         m_mouse: mouse,
-        m_frame: state.m_frame,
+        m_ticks: state.m_ticks,
         m_hovered: None,
         m_hint: None,
         m_slots: Vec::new(),
@@ -970,6 +979,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         ctx.screens().overlay(target, Viewer)?;
     }
     ctx.events().on::<ScreenOpen>(Priority::Normal, |_| STATE.with(|state| state.borrow_mut().leave()))?;
+    ctx.events().on::<ClientTick>(Priority::Normal, |_| STATE.with(|state| state.borrow_mut().tick()))?;
     ctx.screens().tooltip(|stack, lines|
     {
         let catalog: Rc<Catalog> = catalog::get();

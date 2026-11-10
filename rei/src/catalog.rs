@@ -129,23 +129,16 @@ impl Catalog
         self.entry(key).map_or_else(|| displayName(&key.stack(1)), |entry| entry.m_name.clone())
     }
 
-    // every damage the catalog lists for an item, so a wildcard ingredient can cycle through them
-    pub fn variants(&self, key: Key) -> Vec<Key>
+    // the damage a wildcard ingredient shows at one step of its cycle through every damage listed for its item
+    pub fn variant(&self, key: Key, step: usize) -> Key
     {
         if key.m_damage != ANY_DAMAGE
         {
-            return vec![key];
+            return key;
         }
-        let listed: Vec<Key> =
-            self.m_entries.iter().map(|entry| entry.m_key).filter(|listed| key.accepts(*listed)).collect();
-        if listed.is_empty()
-        {
-            vec![Key { m_id: key.m_id, m_damage: 0 }]
-        }
-        else
-        {
-            listed
-        }
+
+        let count: usize = self.damages(key).count();
+        self.damages(key).nth(step % count.max(1)).unwrap_or(Key { m_id: key.m_id, m_damage: 0 })
     }
 
     pub fn recipesFor(&self, key: Key) -> Vec<usize>
@@ -190,6 +183,11 @@ impl Catalog
         outputs.sort_by_key(|key| (key.m_id, key.m_damage));
         outputs.dedup();
         outputs
+    }
+
+    fn damages(&self, key: Key) -> impl Iterator<Item = Key> + '_
+    {
+        self.m_entries.iter().map(|entry| entry.m_key).filter(move |listed| key.accepts(*listed))
     }
 }
 
