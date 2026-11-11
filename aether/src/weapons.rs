@@ -151,7 +151,7 @@ impl ItemBehavior for LightningKnife
             return Use::Pass;
         };
 
-        world.playSound(info.pos, "random.bow", 1.0, shootPitch(world));
+        world.playSound(info.pos, "aether.projectile.shoot", 1.0, shootPitch(world));
 
         if world.isAuthority()
         {
