@@ -186,8 +186,7 @@ fn sparkle(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
     let lich: Lich = entity.synced();
-    // the source turns with the body, the SDK gives the head's yaw
-    let yaw: f64 = f64::from(info.yaw).to_radians();
+    let yaw: f64 = entity.field(EntityField::BodyYaw).to_radians();
     let height: f64 = entity.field(EntityField::Height);
     let hand: [f64; 3] = [
         info.pos[0] + yaw.cos() * lich::HAND_AHEAD,

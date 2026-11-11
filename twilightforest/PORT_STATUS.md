@@ -264,8 +264,8 @@ Second pass (every entity, boss, item, block and tile entity class against the p
 - Fixed: knight phantom picks fall at their own 0.015; the lich's hand sparkles with spell specks tinted by its next
   attack (on the client, where the source draws them); mobile fireflies and fire beetles while breathing draw full
   bright.
-- Still differs: the mobile firefly draws the firefly block model instead of TF's pulsing camera facing glow sprite;
-  the lich turns its sparkles with its head's yaw, the SDK has no body yaw.
+- Still differs: the mobile firefly draws the firefly block model instead of TF's pulsing camera facing glow sprite.
+  The lich's sparkles turn with its body (api 1.36 `EntityField::BodyYaw`).
 - Checked and matching: every other mob and boss, magic leaves tints, trollsteinn's lit faces, force fields, lily
   pads, castle runes, the uncrafting table and the tower devices.
 
