@@ -37,7 +37,7 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
   (pig, pig saddle, slime, moa and flying cow saddle variants written out by hand). Animation is hand ported into each entity's
   `pose` draw program.
 - Mobs: aerbunny (hops, rides the player's head, slow fall and double jump), sheepuff (fleece colors, shearing, dyeing, grazing,
-  puff and float), phyg and flying cow (wings, saddles, steering with one air jump), aerwhale (course AI), moa (four types, eggs,
+  puff and float), phyg and flying cow (wings, saddles, mod-side flight on `onTravel` with one air jump), aerwhale (course AI), moa (four types, eggs,
   feeding babies, sitting, type jumps and speed), cockatrice (needles), zephyr (snowballs, charge squash, overlay), swet (hunts,
   swallows, three bounces, bursts), aechor plant (rooted, needles, size, sway).
 - Projectiles: golden, poison and enchanted darts, poison needle, zephyr snowball. Poison (inebriation) damage and wobble.

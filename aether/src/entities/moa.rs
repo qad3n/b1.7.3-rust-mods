@@ -1,4 +1,4 @@
-use super::mount::{SADDLE, steering};
+use super::mount::{SADDLE, Steering, forget, travel};
 use super::{bird, creature};
 use crate::models::{Program, combine, moa as model};
 use b173_api::prelude::*;
@@ -113,15 +113,12 @@ struct Moa;
 #[entity_behavior]
 impl EntityBehavior for Moa
 {
-    // EntityMoa.onUpdate: hunger, eggs, and the type's jumps and speed for the rider
+    // EntityMoa.onUpdate: hunger and eggs
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
         entity.setField(EntityField::FallDistance, 0.0);
 
         let mut current: MoaState = state(entity);
-        let kind: &MoaType = moaType(&current);
-        entity.setField(EntityField::AirJumps, kind.m_jumps as f64);
-        entity.setField(EntityField::MountSpeed, kind.m_speed as f64);
 
         if !entity.world.isAuthority() || entity.field(EntityField::TicksExisted) as i32 % moa::TICKS_PER_SECOND != 0
         {
@@ -147,7 +144,7 @@ impl EntityBehavior for Moa
             {
                 entity.world.playSound(info.pos, "mob.chickenplop", 1.0, 1.0);
 
-                let _ = entity.world.spawnItem(info.pos, ItemStack::of(eggName(kind).as_str(), 1));
+                let _ = entity.world.spawnItem(info.pos, ItemStack::of(eggName(moaType(&current)).as_str(), 1));
 
                 current.m_eggSeconds = moa::EGG_SECONDS + entity.world.random(moa::EGG_SPREAD);
             }
@@ -245,6 +242,24 @@ impl EntityBehavior for Moa
         {
             let _ = entity.world.spawnItem(info.pos, ItemStack::of(SADDLE, 1));
         }
+
+        forget(entity);
+    }
+
+    // a moa leaps high from the ground, then flaps as many times as its type allows once it falls
+    fn onTravel(&self, entity: Entity, _info: &EntityInfo, _strafe: f32, _forward: f32) -> bool
+    {
+        let kind: &MoaType = moaType(&state(entity));
+        let steering: Steering = Steering
+        {
+            m_speed: kind.m_speed,
+            m_jump: moa::GROUND_JUMP,
+            m_airJumps: kind.m_jumps,
+            m_airJump: moa::AIR_JUMP,
+            m_airJumpFalling: true,
+            m_glide: 1.0,
+        };
+        travel(entity, steering)
     }
 
     fn canSpawn(&self, entity: Entity, info: &EntityInfo) -> bool
@@ -319,15 +334,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             {
                 shadow: 1.0,
                 ..combine(vec![model::model(), crate::models::moa_saddle::model()])
-            }),
-
-            steering: Some(SteeringSpec
-            {
-                jump: moa::GROUND_JUMP,
-                air_jump: moa::AIR_JUMP,
-                air_jump_falling: true,
-                glide: 1.0,
-                ..steering(TYPES[0].m_jumps).unwrap_or_default()
             }),
             ..EntitySpec::default()
         },

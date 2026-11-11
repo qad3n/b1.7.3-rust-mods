@@ -1,4 +1,4 @@
-use super::mount::{Saddle, dropSaddle, saddleInteract, steering, wingPose};
+use super::mount::{Saddle, WINGED, dropSaddle, forget, saddleInteract, travel, wingPose};
 use super::{creature, drop, onAetherGrass};
 use crate::models::{Program, combine, phyg_wing, pig, pig_saddle, quadruped, quadrupedPose};
 use crate::progress::{self, Award};
@@ -47,7 +47,16 @@ impl EntityBehavior for Phyg
         }
     }
 
-    fn onDeath(&self, entity: Entity, _source: Option<i32>) { dropSaddle(entity); }
+    fn onDeath(&self, entity: Entity, _source: Option<i32>)
+    {
+        dropSaddle(entity);
+        forget(entity);
+    }
+
+    fn onTravel(&self, entity: Entity, _info: &EntityInfo, _strafe: f32, _forward: f32) -> bool
+    {
+        travel(entity, WINGED)
+    }
 
     fn canSpawn(&self, entity: Entity, info: &EntityInfo) -> bool
     {
@@ -97,7 +106,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 shadow: 0.7,
                 ..combine(vec![pig::model(), phyg_wing::model(), pig_saddle::model()])
             }),
-            steering: steering(1),
             ..EntitySpec::default()
         },
         Some(std::rc::Rc::new(Phyg)),

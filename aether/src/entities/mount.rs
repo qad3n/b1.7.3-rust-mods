@@ -71,15 +71,176 @@ pub(crate) fn dropSaddle(entity: Entity)
     }
 }
 
-pub(crate) fn steering(airJumps: i32) -> Option<SteeringSpec>
+// EntityLiving.moveEntityWithHeading and EntityMountable values the flight model reuses
+mod physics
 {
-    Some(SteeringSpec
+    pub const GROUND_ACCELERATION: f32 = 0.16277136;
+    pub const GRAVITY: f64 = 0.08;
+    pub const AIR_DRAG: f64 = 0.98;
+    // a mount turns its speed into air control at six tenths
+    pub const AIR_CONTROL: f32 = 0.6;
+    // backing up is a quarter as fast as going forward
+    pub const REVERSE: f32 = 0.25;
+    pub const STEP_HEIGHT: f64 = 1.0;
+}
+
+// how a player ridden mount walks, jumps and glides
+#[derive(Clone, Copy)]
+pub(crate) struct Steering
+{
+    pub m_speed: f32,
+    pub m_jump: f32,
+    // jumps allowed before landing again and the upward speed each gives
+    pub m_airJumps: i32,
+    pub m_airJump: f32,
+    // air jumps only start while the mount already falls
+    pub m_airJumpFalling: bool,
+    // falling speed is multiplied by this every tick while the rider is not sneaking
+    pub m_glide: f32,
+}
+
+// the phyg and flying cow flap once in the air and glide down
+pub(crate) const WINGED: Steering = Steering
+{
+    m_speed: ride::SPEED,
+    m_jump: ride::FLAP,
+    m_airJumps: 1,
+    m_airJump: ride::FLAP,
+    m_airJumpFalling: false,
+    m_glide: ride::GLIDE,
+};
+
+#[derive(Default, Clone, Copy)]
+struct Flight
+{
+    m_jumpsLeft: i32,
+    m_wasJumping: bool,
+}
+
+thread_local!
+{
+    static FLIGHTS: RefCell<HashMap<i32, Flight>> = RefCell::new(HashMap::new());
+}
+
+pub(crate) fn forget(entity: Entity) { FLIGHTS.with(|flights| flights.borrow_mut().remove(&entity.id)); }
+
+// EntityMountable.moveEntityWithHeading for a player ridden mount, false leaves the move to the template
+pub(crate) fn travel(mount: Entity, steering: Steering) -> bool
+{
+    let Some(rider) = mount.rider().map(|id| Entity { world: mount.world, id })
+    else
     {
-        speed: ride::SPEED,
-        jump: ride::FLAP,
-        air_jumps: airJumps,
-        glide: ride::GLIDE,
-        ..SteeringSpec::default()
+        return false;
+    };
+    let Some(info) = mount.info()
+    else
+    {
+        return false;
+    };
+
+    let ridden: bool = rider.info().is_some_and(|rider| rider.player.is_some());
+    if !ridden || mount.flag(EntityField::InWater) || mount.flag(EntityField::InLava)
+    {
+        return false;
+    }
+
+    let onGround: bool = mount.flag(EntityField::OnGround);
+    let sneaking: bool = rider.flag(EntityField::Sneaking);
+    if onGround && sneaking
+    {
+        let _ = rider.mount(None);
+        return false;
+    }
+
+    mount.setField(EntityField::Yaw, rider.field(EntityField::Yaw));
+    mount.setField(EntityField::Pitch, rider.field(EntityField::Pitch));
+    mount.setField(EntityField::StepHeight, physics::STEP_HEIGHT);
+
+    let strafe: f32 = rider.field(EntityField::MoveStrafe) as f32;
+    let input: f32 = rider.field(EntityField::MoveForward) as f32;
+    let forward: f32 = if input <= 0.0
+    {
+        input * physics::REVERSE
+    }
+    else
+    {
+        input
+    };
+
+    let [x, y, z] = info.motion;
+    let motionY: f64 = jump(mount, steering, onGround, rider.flag(EntityField::Jumping), y);
+    let falling: bool = motionY < 0.0 && !sneaking;
+    let motionY: f64 = if falling
+    {
+        motionY * steering.m_glide as f64
+    }
+    else
+    {
+        motionY
+    };
+    let _ = mount.setMotion([x, motionY, z]);
+
+    let slipperiness: f32 = mount.field(EntityField::Slipperiness) as f32;
+    let factor: f32 = if onGround
+    {
+        steering.m_speed * physics::GROUND_ACCELERATION / (slipperiness * slipperiness * slipperiness)
+    }
+    else
+    {
+        steering.m_speed * physics::AIR_CONTROL
+    };
+    let _ = mount.accelerate(strafe, forward, factor);
+
+    let Some(moving) = mount.info()
+    else
+    {
+        return true;
+    };
+
+    let _ = mount.step(moving.motion);
+
+    let Some(moved) = mount.info()
+    else
+    {
+        return true;
+    };
+
+    let [x, y, z] = moved.motion;
+    let drag: f64 = slipperiness as f64;
+    let _ = mount.setMotion([x * drag, (y - physics::GRAVITY) * physics::AIR_DRAG, z * drag]);
+    let _ = mount.animateWalk();
+    true
+}
+
+// a fresh jump press lifts the mount from the ground or spends an air jump, the motion it leaves
+fn jump(mount: Entity, steering: Steering, onGround: bool, jumping: bool, motionY: f64) -> f64
+{
+    FLIGHTS.with(|flights|
+    {
+        let mut flights: RefMut<HashMap<i32, Flight>> = flights.borrow_mut();
+        let flight: &mut Flight = flights.entry(mount.id).or_default();
+
+        if onGround
+        {
+            flight.m_jumpsLeft = steering.m_airJumps;
+        }
+
+        let pressed: bool = jumping && !flight.m_wasJumping;
+        flight.m_wasJumping = jumping;
+
+        let airReady: bool = flight.m_jumpsLeft > 0 && (!steering.m_airJumpFalling || motionY < 0.0);
+        if !pressed || !(onGround || airReady)
+        {
+            return motionY;
+        }
+
+        if onGround
+        {
+            return steering.m_jump as f64;
+        }
+
+        flight.m_jumpsLeft -= 1;
+        steering.m_airJump as f64
     })
 }
 
