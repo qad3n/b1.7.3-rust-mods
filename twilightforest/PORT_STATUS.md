@@ -31,7 +31,8 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
     zombie wand, lich minions, charms of life, the snowy forest and glacier locks); hunger, blindness, jump boost,
     resistance and fire resistance have no beta stat and stay out (swamp, dark forest, mosquitoes, mist wolves,
     charm extras), the effect lengths are the normal difficulty's, regeneration four heals four every fifty ticks
-    where 1.7 heals one every six, and yeti armor's chill aura is an enchantment beta lacks;
+    where 1.7 heals one every six; yeti armor's chill aura slows a mob that strikes the wearer one level per piece,
+    and it and the fiery aura only answer a mob's own blow (damage type mob) as TFEventListener does;
   - biome locks: every locked biome may still bring a hint kobold for the feature that unlocks it;
   - foods heal their hunger value in half hearts and stack to one;
   - no vines: hollow trees climb with ladders, WorldGenVines only draws its randoms;

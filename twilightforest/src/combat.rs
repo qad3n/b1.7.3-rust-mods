@@ -21,6 +21,10 @@ mod aura
     // TFEnchantment.getFieryAuraLevel counts five for every fiery piece worn, a mob burns on a roll under it in 25
     pub const FIERY_PER_PIECE: i32 = 5;
     pub const FIERY_ROLL: i32 = 25;
+    // TFEnchantment.getChillAuraLevel counts the yeti pieces worn, the attacker slows that many levels for five ticks
+    // a level and five more
+    pub const CHILL_TICKS_PER_PIECE: i32 = 5;
+    pub const CHILL_BASE_TICKS: i32 = 5;
 }
 
 // the vanilla damage types the source's DamageSources stand for, other mods read them through damageType
@@ -103,10 +107,15 @@ fn weaponHit(event: &mut Event, target: &EntityInfo, attacker: Player)
     }
 }
 
-// TFEventListener.entityHurts, fiery armor burns a mob that hits the wearer; yeti armor's chill aura is an
-// enchantment and a slowness, neither of which beta has
+// TFEventListener.entityHurts, a mob's own blow on the wearer sets it alight under fiery armor and chills it under
+// yeti armor
 fn armorAura(target: &EntityInfo, attacker: &EntityInfo)
 {
+    if !hurtBy(kind::MOB)
+    {
+        return;
+    }
+
     let world: World = World { dimension: target.world };
     let wearer: Player = Player { id: target.id };
     let mob: Entity = Entity { world, id: attacker.id };
@@ -114,6 +123,13 @@ fn armorAura(target: &EntityInfo, attacker: &EntityInfo)
     if fire > 0 && world.random(aura::FIERY_ROLL) < fire
     {
         mob.setField(EntityField::FireTicks, f64::from(fire / 2 * 20));
+    }
+
+    let chill: i32 = armorWorn(wearer, "yeti") as i32;
+    if chill > 0
+    {
+        let ticks: i32 = chill * aura::CHILL_TICKS_PER_PIECE + aura::CHILL_BASE_TICKS;
+        crate::effects::give(mob, crate::effects::Effect::Slowness, chill, ticks);
     }
 }
 
