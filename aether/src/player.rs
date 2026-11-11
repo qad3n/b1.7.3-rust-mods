@@ -4,8 +4,7 @@ use b173_api::terrain::Random;
 use std::cell::Cell;
 use std::rc::Rc;
 
-// EntityPlayer.health starts at twenty half hearts, life shards add two each
-pub(crate) const BASE_HEALTH: i32 = 20;
+// each life shard adds two half hearts to beta's twenty
 pub(crate) const SHARD_HEALTH: i32 = 2;
 
 mod inebriation

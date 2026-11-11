@@ -341,9 +341,6 @@ fn shardHealth(entity: Entity, worn: &Worn)
         return;
     }
 
-    // older saves raised the base health itself
-    entity.setField(EntityField::MaxHealth, f64::from(crate::player::BASE_HEALTH));
-
     let modifier: &str = "aether:life_shards";
     if let Err(error) = entity.setModifier("minecraft:max_health", modifier, worn.shardHealth(), ModifierOperation::Add)
     {
