@@ -1,6 +1,6 @@
 # The Aether
 
-Port of Aether Legacy 1.7.10 v1.1.2.5 to the b1.7.3_rewrite mod loader. One `.b173mod` runs on the client and the
+Port of Aether Legacy 1.7.10 v1.1.2.5 to the b1.7.3_rewrite mod loader. One `.bmod` runs on the client and the
 server.
 
 ## Assets
@@ -20,7 +20,7 @@ This fills `assets/aether/`, which stays untracked.
 ./build.sh
 ```
 
-The release build lands in `out/aether-<version>.b173mod`. Drop it into the `mods/` folder of the client and the server.
+The release build lands in `out/aether-<version>.bmod`. Drop it into the `mods/` folder of the client and the server.
 
 ## License
 

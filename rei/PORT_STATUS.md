@@ -1,7 +1,7 @@
 # Roughly Enough Items port status
 
 Source: RoughlyEnoughItems-16.0.799-fabric.jar (`reference/src`, Vineflower decompile, never committed).
-Target: b1.7.3_rewrite mod loader, one `rei-<version>.b173mod` for client and server. Needs loader API 1.5.
+Target: b1.7.3_rewrite mod loader, one `rei-<version>.bmod` for client and server. Needs loader API 1.5.
 Assets: never committed, `python3 -I tools/extract_assets.py <jar>` copies the lang lines the port uses into `assets/rei`.
 
 Not a 1:1 port: only the core concept, rebuilt small on the loader's overlay API. REI's plugin system, entry types,

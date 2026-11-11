@@ -1,7 +1,7 @@
 # Roughly Enough Items
 
 Small port of Roughly Enough Items (Fabric 16.0.799) to the b1.7.3_rewrite mod loader: item list, search, recipe pages
-and cheat mode. One `.b173mod` runs on the client and the server.
+and cheat mode. One `.bmod` runs on the client and the server.
 
 ## Assets
 
@@ -20,7 +20,7 @@ This writes `assets/rei/lang/en_US.lang`, which stays untracked.
 ./build.sh
 ```
 
-The release build lands in `out/rei-<version>.b173mod`. Drop it into the `mods/` folder of the client and the server.
+The release build lands in `out/rei-<version>.bmod`. Drop it into the `mods/` folder of the client and the server.
 
 ## License
 

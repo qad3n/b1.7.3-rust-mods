@@ -1,6 +1,6 @@
 # The Twilight Forest
 
-Port of The Twilight Forest to the b1.7.3_rewrite mod loader. One `.b173mod` runs on the client and the server.
+Port of The Twilight Forest to the b1.7.3_rewrite mod loader. One `.bmod` runs on the client and the server.
 
 ## Assets
 

@@ -1,7 +1,7 @@
 # b1.7.3 Rust mods
 
 Mods ported to the b1.7.3_rewrite mod loader. Each folder is a project of its own: its own `Cargo.toml`, `mod.toml`,
-sources, tools and status notes. One `.b173mod` per folder runs on both the client and the server.
+sources, tools and status notes. One `.bmod` per folder runs on both the client and the server.
 
 | Folder | Mod | Ported from |
 |---|---|---|
@@ -19,7 +19,7 @@ the rewrite checkout next to this one (override with `B173_SDK=<sdk dir>`):
 aether/build.sh
 ```
 
-The release build lands in `<mod>/out/<id>-<version>.b173mod`, which holds only the latest build of that mod. Drop it
+The release build lands in `<mod>/out/<id>-<version>.bmod`, which holds only the latest build of that mod. Drop it
 into the `mods/` folder of the client and the server.
 
 `build-all.sh` in the root runs every mod's `build.sh`, each into its own `out/`:

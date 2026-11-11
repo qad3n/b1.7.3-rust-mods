@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# builds the release .b173mod with cargo-b173 from PATH or from the modding SDK vendored in the rewrite, then puts it in out
+# builds the release .bmod with cargo-b173 from PATH or from the modding SDK vendored in the rewrite, then puts it in out
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -22,7 +22,7 @@ built="$("${tool[@]}" build --path "$PWD" | tail -n 1)"
 
 out="$PWD/out"
 mkdir -p "$out"
-id="$(basename "$built" | sed -E 's/-[^-]+\.b173mod$//')"
-rm -f "$out/$id"-*.b173mod
+id="$(basename "$built" | sed -E 's/-[^-]+\.bmod$//')"
+rm -f "$out/$id"-*.bmod
 cp "$built" "$out/"
 echo "$out/$(basename "$built")"

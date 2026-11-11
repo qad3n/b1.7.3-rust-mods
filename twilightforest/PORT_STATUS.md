@@ -1,7 +1,7 @@
 # The Twilight Forest port status
 
 Source: TwilightForest-2.4.3.jar for 1.7.10 (`reference/src`, Vineflower decompile, SRG names, never committed).
-Target: b1.7.3_rewrite mod loader, one `twilightforest-<version>.b173mod` for client and server.
+Target: b1.7.3_rewrite mod loader, one `twilightforest-<version>.bmod` for client and server.
 Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twilightforest` fills `assets/twilightforest`.
 
 ## Build and test
