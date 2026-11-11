@@ -51,6 +51,37 @@ mod wind
     pub const CHASE: f64 = 4.0;
     pub const SPAWN_LIFT: f64 = 0.5;
     pub const POP_VOLUME: f32 = 0.5;
+    // the creeper an evil whirlwind spits out drifts a little
+    pub const CREEPER_DRIFT: f64 = 0.125;
+    // swallowing another whirlwind turns a calm one evil with half its life left
+    pub const FIZZ_BASE: f32 = 1.2;
+    pub const FIZZ_SPREAD: f32 = 0.2;
+    // mob griefing whirlwinds tear at leaves around them, three wide and five up
+    pub const TEAR_SIDE: i32 = 3;
+    pub const TEAR_UP: i32 = 5;
+}
+
+thread_local!
+{
+    static LEAVES: RefCell<Option<Vec<i32>>> = const { RefCell::new(None) };
+}
+
+fn leaves(block: i32) -> bool
+{
+    LEAVES.with(|leaves|
+    {
+        leaves
+            .borrow_mut()
+            .get_or_insert_with(||
+            {
+                tagValues(RegistryKind::Block, "minecraft:leaves")
+                    .iter()
+                    .map(|name| crate::ids::blockId(&name.to_string()))
+                    .filter(|id| *id != 0)
+                    .collect()
+            })
+            .contains(&block)
+    })
 }
 
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
@@ -114,9 +145,52 @@ fn randomDrop(world: World) -> &'static str
     DROPS.iter().find(|(bound, _)| roll >= *bound).map_or("minecraft:sand", |(_, item)| item)
 }
 
-// the whirlwind pulls everything near into its funnel and spins it around
-fn pull(world: World, info: &EntityInfo, entity: Entity)
+// a calm whirlwind that swallows another turns evil with half its life
+fn sour(entity: Entity, info: &EntityInfo, current: &mut Course)
 {
+    let world: World = entity.world;
+    let state: Wind = entity.synced();
+    if state.m_evil
+    {
+        return;
+    }
+
+    current.m_life /= 2;
+
+    if let Err(error) = entity.setSynced(&Wind { m_evil: true, ..state })
+    {
+        warn(&format!("whirlwind turning evil: {}", error.0));
+    }
+
+    let volume: f32 = fraction(world) as f32 - fraction(world) as f32 * wind::FIZZ_SPREAD + wind::FIZZ_BASE;
+    world.playSound(info.pos, "random.fizz", volume, 1.0);
+}
+
+// with mob griefing on a whirlwind tears a leaf block out of the column around it
+fn tear(world: World, info: &EntityInfo)
+{
+    let griefing: bool = gameRule("minecraft:mob_griefing").is_ok_and(|rule| rule == GameRuleValue::Bool(true));
+    if !griefing
+    {
+        return;
+    }
+
+    let feet: BlockPos = blockOf(info.pos);
+    let spot: BlockPos =
+        feet.offset(world.random(wind::TEAR_SIDE) - 1, world.random(wind::TEAR_UP), world.random(wind::TEAR_SIDE) - 1);
+    if leaves(world.block(spot))
+    {
+        let _ = world.setBlock(spot, 0, 0);
+    }
+}
+
+// the whirlwind pulls everything near into its funnel and spins it around, and each one caught near a solid block
+// costs it life
+fn pull(world: World, info: &EntityInfo, entity: Entity, current: &mut Course)
+{
+    // the source tests the block at its truncated position
+    let here: BlockPos = BlockPos::new(info.pos[0] as i32, info.pos[1] as i32, info.pos[2] as i32);
+
     for other in world.entitiesNear(info.pos, wind::REACH).into_iter().filter(|other| other.id != entity.id)
     {
         let caught: Entity = Entity { world, id: other.id };
@@ -145,6 +219,7 @@ fn pull(world: World, info: &EntityInfo, entity: Entity)
             if other.kind.as_ref().is_some_and(|kind| kind.path() == NAME)
             {
                 caught.kill();
+                sour(entity, info, current);
             }
         }
         else
@@ -155,6 +230,16 @@ fn pull(world: World, info: &EntityInfo, entity: Entity)
                 other.motion[1],
                 other.motion[2] + toward.cos() * wind::DRIFT,
             ]);
+        }
+
+        if !world.isAir(here)
+        {
+            current.m_life -= wind::BLOCKED_COST;
+        }
+
+        if world.isAuthority()
+        {
+            tear(world, info);
         }
     }
 }
@@ -193,13 +278,6 @@ impl EntityBehavior for Whirlwind
 
         current.m_life -= 1;
 
-        let below: BlockPos = blockOf(info.pos);
-
-        if !world.isAir(below)
-        {
-            current.m_life -= wind::BLOCKED_COST;
-        }
-
         if world.isAuthority()
         {
             if current.m_life <= 0 || entity.flag(EntityField::InWater)
@@ -217,8 +295,13 @@ impl EntityBehavior for Whirlwind
             {
                 if state.m_evil
                 {
-                    let _ = world
-                        .spawnEntity("minecraft:creeper", [info.pos[0], info.pos[1] + wind::SPAWN_LIFT, info.pos[2]]);
+                    let at: [f64; 3] = [info.pos[0], info.pos[1] + wind::SPAWN_LIFT, info.pos[2]];
+                    if let Ok(creeper) = world.spawnEntity("minecraft:creeper", at)
+                    {
+                        let drift = || (fraction(world) - fraction(world)) * wind::CREEPER_DRIFT;
+                        let _ = creeper.setMotion([drift(), 0.0, drift()]);
+                        creeper.setField(EntityField::Yaw, fraction(world) * wind::FULL_TURN);
+                    }
                     world.playSound(info.pos, "random.pop", wind::POP_VOLUME, 1.0);
                     current.m_timer = 0;
                 }
@@ -232,7 +315,7 @@ impl EntityBehavior for Whirlwind
             }
         }
 
-        pull(world, info, entity);
+        pull(world, info, entity, &mut current);
         COURSES.with(|courses| courses.borrow_mut().insert(entity.id, current));
     }
 
