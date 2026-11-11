@@ -9,6 +9,8 @@ mod limits
     pub const MAIN_INVENTORY: i32 = 36;
     // chunks searched around the player, the loader answers up to 128
     pub const LOCATE: i32 = 64;
+    pub const EFFECT_SECONDS: i32 = 30;
+    pub const TICKS_PER_SECOND: i32 = 20;
 }
 
 mod clock
@@ -41,6 +43,7 @@ const COMMANDS: &[Spec] = &[
     Spec { m_name: "tp", m_usage: "<x> <y> <z>", m_run: teleport, m_vanilla: true },
     Spec { m_name: "summon", m_usage: "<entity> [count]", m_run: summon, m_vanilla: false },
     Spec { m_name: "locate", m_usage: "<structure> [radius]", m_run: locate, m_vanilla: false },
+    Spec { m_name: "effect", m_usage: "<effect> [level] [seconds] | remove <effect>", m_run: effect, m_vanilla: false },
 ];
 
 fn vanillaId(name: &str) -> Result<Identifier>
@@ -233,6 +236,25 @@ fn locate(args: &[String], player: Player) -> Result<String>
         "not built yet"
     };
     Ok(format!("{kind} at {} {}, {state}", found.x, found.z))
+}
+
+// mod status effects, beta has none of its own; level 1 is the first level
+fn effect(args: &[String], player: Player) -> Result<String>
+{
+    let usage: &str = "usage: /effect <mod:effect> [level] [seconds] or /effect remove <mod:effect>";
+    let (entity, _): (Entity, EntityInfo) = entityOf(player)?;
+    if arg(args, 0) == Some("remove")
+    {
+        let name: &str = arg(args, 1).ok_or(usage)?;
+        entity.removeEffect(name)?;
+        return Ok(format!("removed {name}"));
+    }
+
+    let name: &str = arg(args, 0).ok_or(usage)?;
+    let level: i32 = number(args, 1, 1)?.max(1);
+    let seconds: i32 = number(args, 2, limits::EFFECT_SECONDS)?.max(1);
+    entity.addEffect(name, level - 1, seconds * limits::TICKS_PER_SECOND)?;
+    Ok(format!("{name} {level} for {seconds} seconds"))
 }
 
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
