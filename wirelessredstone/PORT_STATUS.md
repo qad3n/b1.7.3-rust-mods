@@ -19,7 +19,9 @@ Build: `./build.sh`. Test: `../../tools/modport/test.sh deploy ports/wirelessred
   written with `setBlockState`, so the textures are state variants and the client needs no tile data for the look.
   Blocks are found by name (`World::is`), recipes key vanilla items by name, and a neighbour change counts as a real
   block unless it is `minecraft:air`. The only numeric ids left are the engine handles passed through to
-  `notifyNeighbors`, which takes no name.
+  `notifyNeighbors`: the source tells the neighbours "block 0" and, from its own add and remove hooks, its own id, so
+  the port passes 0 and the callback's handle. `notifyAround` would pass the block now there, which is air once the
+  receiver is removed.
 - Tile data (`Tile` in `tile.rs`) holds the frequency, the six direct and six indirect power routes, and for the
   clocker its period and running flag. It is synced so screens and the frequency labels read it on the client.
 - Every gui button is a serverbound message, validated by distance and block on the server, as the source changed
