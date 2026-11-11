@@ -281,7 +281,8 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             size: Some([1.0, 2.0]),
             health: Some(35),
             spawn: creature(5),
-            drops: Some(vec![super::drop("minecraft:feather", [0, 2])]),
+            // EntityMoa.dropFewItems, three feathers every time
+            drops: Some(vec![super::drop("minecraft:feather", [3, 3])]),
             sounds: super::sounds("aether.aemob.moa.say", "aether.aemob.moa.say", "aether.aemob.moa.say"),
             model: Some(EntityModelSpec {
                 shadow: 1.0,

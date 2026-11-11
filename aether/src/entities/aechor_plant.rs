@@ -174,14 +174,6 @@ impl EntityBehavior for AechorPlant
         false
     }
 
-    fn onDeath(&self, entity: Entity, _source: Option<i32>)
-    {
-        if let Some(info) = entity.info().filter(|_| entity.world.isAuthority())
-        {
-            let _ = entity.world.spawnItem(info.pos, ItemStack::of(item::AECHOR_PETAL, 2));
-        }
-    }
-
     fn canSpawn(&self, entity: Entity, info: &EntityInfo) -> bool
     {
         crate::config::spawnRoll(entity, "aechor_plant") && onAetherGrass(info)
@@ -273,7 +265,8 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             size: Some([plant::BASE_WIDTH + plant::WIDTH_PER_SIZE, plant::BASE_HEIGHT + plant::HEIGHT_PER_SIZE]),
             health: Some(20),
             spawn: creature(20).map(|spawn| SpawnSpec { kind: CreatureKind::Monster, ..spawn }),
-            drops: Some(Vec::new()),
+            // EntityAechorPlant.dropFewItems
+            drops: Some(vec![super::drop(item::AECHOR_PETAL, [2, 2])]),
             model: Some(EntityModelSpec { shadow: 0.3, ..model::model() }),
             ..EntitySpec::default()
         },

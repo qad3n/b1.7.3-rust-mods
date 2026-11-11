@@ -581,8 +581,6 @@ impl EntityBehavior for Slider
             let _ = world.setBlock(BlockPos::new(x + dx, y + 1, z + dz), trapdoor, meta);
         }
         world.playSound(info.pos, sound::DEATH, sound::VOLUME, pitch(world));
-        let stones: i32 = slide::STONE_DROPS + world.random(slide::STONE_SPREAD);
-        let _ = world.spawnItem(info.pos, ItemStack::of("carved_stone", stones));
         let _ =
             world.spawnItem([info.pos[0], info.pos[1] + slide::KEY_LIFT, info.pos[2]], ItemStack::of("bronze_key", 1));
         SLIDES.with(|slides| slides.borrow_mut().remove(&entity.id));
@@ -640,7 +638,11 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             texture: Some(texture::ASLEEP.to_owned()),
             size: Some([2.0, 2.0]),
             health: Some(slide::HEALTH),
-            drops: Some(Vec::new()),
+            // EntitySlider.dropFewItems, seven to nine carved stone; the key floats up on its own in onDeath
+            drops: Some(vec![crate::entities::drop(
+                "carved_stone",
+                [slide::STONE_DROPS, slide::STONE_DROPS + slide::STONE_SPREAD - 1],
+            )]),
             persistent: true,
             immovable: true,
             sounds: crate::entities::sounds("ambient.cave.cave", "step.stone", ""),

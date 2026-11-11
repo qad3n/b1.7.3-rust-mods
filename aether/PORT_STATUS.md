@@ -154,6 +154,10 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Golden oak, crystal and holiday leaf motes and whirlwind puffs are loader mod particles (`src/particles.rs`) with
   the source's colours, sizes and lifetimes. A whirlwind's own tint and rainbow puffs are one fixed grey; portal
   motes keep the loader `tintportal_RRGGBB` particle for their random brightness.
+- Fixed mob drops are entity spec drops as dropFewItems: aechor petals and the Slider's seven to nine carved stone
+  moved off `onDeath`, the zephyr now drops its cold aercloud (the port dropped nothing) and the moa three
+  feathers (the port dropped none to two). Drops that depend on state (swet type, sheepuff fleece, saddles, boss
+  keys that float up) stay in code.
 - The phoenix bow draws while the use key is held (bow pose, the three `bow_pulling` icons after 0, 13 and 17
   ticks) and looses its flaming arrow on release at three times the draw power, as ItemPhoenixBow. Power, Punch,
   Flame and Infinity and the full draw critical have no beta counterpart.
