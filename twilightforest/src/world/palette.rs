@@ -3,13 +3,15 @@ use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
-// a state as generators name it, a block and at most one property, or a vanilla block's metadata
+// up to three named properties of a state, unused places empty
+pub(crate) type Props = [Option<(&'static str, &'static str)>; 3];
+
+// a state as generators name it, a block with some named properties, or a vanilla block's metadata
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum Key
 {
     Plain(&'static str),
-    With(&'static str, &'static str, &'static str),
-    WithTwo(&'static str, [(&'static str, &'static str); 2]),
+    Props(&'static str, Props),
     Meta(&'static str, i32),
 }
 
@@ -42,8 +44,10 @@ fn build(key: Key) -> StateData
     match key
     {
         Key::Plain(name) => names::state(name),
-        Key::With(name, property, value) => names::state(name).with(property, value),
-        Key::WithTwo(name, [(first, one), (second, two)]) => names::state(name).with(first, one).with(second, two),
+        Key::Props(name, props) =>
+        {
+            props.into_iter().flatten().fold(names::state(name), |state, (property, value)| state.with(property, value))
+        }
         Key::Meta(name, meta) => names::state(name).with(names::META, meta),
     }
 }
@@ -53,12 +57,14 @@ pub(crate) fn plain(name: &'static str) -> (i32, i32) { resolve(Key::Plain(name)
 
 pub(crate) fn with(name: &'static str, property: &'static str, value: &'static str) -> (i32, i32)
 {
-    resolve(Key::With(name, property, value))
+    props(name, [Some((property, value)), None, None])
 }
 
-pub(crate) fn withTwo(name: &'static str, properties: [(&'static str, &'static str); 2]) -> (i32, i32)
+pub(crate) fn props(name: &'static str, props: Props) -> (i32, i32) { resolve(Key::Props(name, props)) }
+
+pub(crate) fn withTwo(name: &'static str, [first, second]: [(&'static str, &'static str); 2]) -> (i32, i32)
 {
-    resolve(Key::WithTwo(name, properties))
+    props(name, [Some(first), Some(second), None])
 }
 
 // a block without named states placed with the metadata beta stores for it

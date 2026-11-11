@@ -51,11 +51,11 @@ impl Blk
         match self
         {
             Self::Id(id) => (id, meta),
-            Self::Named(name) =>
+            Self::Named(name) => match legacy::resolve(name, meta)
             {
-                let (target, meta): legacy::Resolved = legacy::resolve(name, meta);
-                palette::meta(qualify(name, target), meta)
-            }
+                legacy::Resolved::Vanilla(path, meta) => palette::meta(vanillaName(path), meta),
+                legacy::Resolved::Twilight(name, props) => palette::props(name, props),
+            },
         }
     }
 
@@ -70,21 +70,18 @@ impl Blk
             return "minecraft:air";
         };
 
-        let (target, _): legacy::Resolved = legacy::resolve(name, 0);
-        qualify(name, target)
+        match legacy::resolve(name, 0)
+        {
+            legacy::Resolved::Vanilla(path, _) => vanillaName(path),
+            legacy::Resolved::Twilight(name, _) => name,
+        }
     }
 }
 
-// a forest block keeps its own bare name, a 1.7 block takes the minecraft namespace
-fn qualify(name: &'static str, target: &'static str) -> &'static str
+// a beta block's registry name from its 1.7 path, kept for the life of the mod so the palette can key by it
+fn vanillaName(path: &'static str) -> &'static str
 {
-    if name.starts_with("tf:")
-    {
-        return target;
-    }
-
-    QUALIFIED
-        .with(|names| *names.borrow_mut().entry(target).or_insert_with(|| String::leak(format!("minecraft:{target}"))))
+    QUALIFIED.with(|names| *names.borrow_mut().entry(path).or_insert_with(|| String::leak(format!("minecraft:{path}"))))
 }
 
 impl PartialEq for Blk
@@ -272,7 +269,7 @@ impl BoxExt for StructureBox
 // the World methods the structure code calls, on the generation world
 pub(crate) trait WorldExt
 {
-    fn setBlock(&self, x: i32, y: i32, z: i32, block: Blk, meta: i32, flags: i32);
+    fn place(&self, x: i32, y: i32, z: i32, block: Blk, data: i32, flags: i32);
     fn getBlock(&self, x: i32, y: i32, z: i32) -> Blk;
     fn seed(&self) -> i64;
     fn liquid(&self, x: i32, y: i32, z: i32) -> bool;
@@ -282,10 +279,9 @@ pub(crate) trait WorldExt
 
 impl WorldExt for GenWorld
 {
-    fn setBlock(&self, x: i32, y: i32, z: i32, block: Blk, meta: i32, _flags: i32)
+    fn place(&self, x: i32, y: i32, z: i32, block: Blk, data: i32, _flags: i32)
     {
-        let (id, meta): (i32, i32) = block.resolve(meta);
-        self.set(x, y, z, (id, meta));
+        self.set(x, y, z, block.resolve(data));
     }
 
     fn getBlock(&self, x: i32, y: i32, z: i32) -> Blk { Blk::Id(self.block(x, y, z)) }
@@ -479,7 +475,7 @@ impl Stones
 
     pub(crate) fn block(self) -> Blk { SELECTED.with(|selected| selected.get().0) }
 
-    pub(crate) fn meta(self) -> i32 { SELECTED.with(|selected| selected.get().1) }
+    pub(crate) fn data(self) -> i32 { SELECTED.with(|selected| selected.get().1) }
 
     fn pick(self, random: &Random, x: i32, z: i32) -> (Blk, i32)
     {
@@ -668,7 +664,7 @@ impl Piece
         let (wx, wy, wz): (i32, i32, i32) = (self.xTurned(x, z, turn), self.yAt(y), self.zTurned(x, z, turn));
         if sbb.contains(wx, wy, wz)
         {
-            world.setBlock(wx, wy, wz, block, meta, limits::NOTIFY);
+            world.place(wx, wy, wz, block, meta, limits::NOTIFY);
         }
     }
 
@@ -806,7 +802,7 @@ impl Piece
 
                     let wall: bool = y == minY || y == maxY || x == minX || x == maxX || z == minZ || z == maxZ;
                     stones.select(random, x, y, z, wall);
-                    self.placeBlock(world, stones.block(), stones.meta(), x, y, z, sbb);
+                    self.placeBlock(world, stones.block(), stones.data(), x, y, z, sbb);
                 }
             }
         }
@@ -895,7 +891,7 @@ impl Piece
 
         while (world.isAir(wx, wy, wz) || world.liquid(wx, wy, wz)) && wy > 1
         {
-            world.setBlock(wx, wy, wz, block, meta, limits::NOTIFY);
+            world.place(wx, wy, wz, block, meta, limits::NOTIFY);
             wy -= 1;
         }
     }
@@ -1166,7 +1162,7 @@ impl Piece
         let (wx, wy, wz): (i32, i32, i32) = (self.xAt(x, z), self.yAt(y), self.zAt(x, z));
         if sbb.contains(wx, wy, wz) && !world.is(wx, wy, wz, "minecraft:standing_sign")
         {
-            world.setBlock(wx, wy, wz, blk("standing_sign"), self.mode() * 2, limits::NOTIFY);
+            world.place(wx, wy, wz, blk("standing_sign"), self.mode() * 2, limits::NOTIFY);
         }
     }
 

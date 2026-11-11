@@ -463,12 +463,12 @@ pub(crate) fn placeStrongholdWalls(
                 {
                     let strongBlocks: Stones = Stones::stronghold();
                     strongBlocks.select(random, x, y, z, wall);
-                    this.placeBlock(world, strongBlocks.block(), strongBlocks.meta(), x, y, z, sbb);
+                    this.placeBlock(world, strongBlocks.block(), strongBlocks.data(), x, y, z, sbb);
                 }
                 else if (!wall) || (blockID != blk("dirt"))
                 {
                     randomBlocks.select(random, x, y, z, wall);
-                    this.placeBlock(world, randomBlocks.block(), randomBlocks.meta(), x, y, z, sbb);
+                    this.placeBlock(world, randomBlocks.block(), randomBlocks.data(), x, y, z, sbb);
                 }
             }
         }
@@ -507,13 +507,13 @@ pub(crate) fn placeUpperStrongholdWalls(
                     if (y != sy) && (y != dy)
                     {
                         randomBlocks.select(random, x, y, z, wall);
-                        this.placeBlock(world, randomBlocks.block(), randomBlocks.meta(), x, y, z, sbb);
+                        this.placeBlock(world, randomBlocks.block(), randomBlocks.data(), x, y, z, sbb);
                     }
                     else
                     {
                         let strongBlocks: Stones = Stones::stronghold();
                         strongBlocks.select(random, x, y, z, wall);
-                        this.placeBlock(world, strongBlocks.block(), strongBlocks.meta(), x, y, z, sbb);
+                        this.placeBlock(world, strongBlocks.block(), strongBlocks.data(), x, y, z, sbb);
                     }
                 }
             }

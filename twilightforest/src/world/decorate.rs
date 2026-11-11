@@ -150,13 +150,13 @@ impl Decorator<'_>
         for _ in 0..self.m_decor.m_lakes
         {
             let (x, z): (i32, i32) = self.column();
-            vanilla::lake(self.m_world, self.m_random, x, self.height(x, z), z, palette::plain("minecraft:water"));
+            vanilla::lake(self.m_world, self.m_random, x, self.height(x, z), z, "minecraft:water");
         }
 
         if self.m_random.nextFloat() <= self.m_decor.m_lava
         {
             let (x, z): (i32, i32) = self.column();
-            vanilla::lake(self.m_world, self.m_random, x, self.height(x, z), z, palette::plain("minecraft:lava"));
+            vanilla::lake(self.m_world, self.m_random, x, self.height(x, z), z, "minecraft:lava");
         }
 
         for _ in 0..self.m_decor.m_mycelium
@@ -240,15 +240,7 @@ impl Decorator<'_>
         for _ in 0..counts::SAND
         {
             let (x, z): (i32, i32) = self.column();
-            vanilla::disc(
-                self.m_world,
-                random,
-                [x, self.m_world.topSolid(x, z), z],
-                sand,
-                7,
-                2,
-                &["minecraft:dirt", "minecraft:grass"],
-            );
+            vanilla::disc(self.m_world, random, [x, self.m_world.topSolid(x, z), z], sand, 7, 2, &["#minecraft:dirt"]);
         }
 
         for _ in 0..self.m_decor.m_clay
@@ -266,15 +258,7 @@ impl Decorator<'_>
         }
 
         let (x, z): (i32, i32) = self.column();
-        vanilla::disc(
-            self.m_world,
-            random,
-            [x, self.m_world.topSolid(x, z), z],
-            gravel,
-            6,
-            2,
-            &["minecraft:dirt", "minecraft:grass"],
-        );
+        vanilla::disc(self.m_world, random, [x, self.m_world.topSolid(x, z), z], gravel, 6, 2, &["#minecraft:dirt"]);
 
         let trees: i32 = self.m_decor.m_trees + i32::from(random.nextIntBounded(odds::EXTRA_TREE) == 0);
         for _ in 0..trees
@@ -855,7 +839,7 @@ pub(crate) fn populate(chunk: ChunkInfo)
     {
         let (x, z): (i32, i32) = column();
         let y: i32 = random.nextIntBounded(height::SOURCE);
-        vanilla::lake(&world, &random, x, y, z, palette::plain("minecraft:water"));
+        vanilla::lake(&world, &random, x, y, z, "minecraft:water");
     }
 
     if open && random.nextIntBounded(odds::LAVA_LAKE) == 0
@@ -866,7 +850,7 @@ pub(crate) fn populate(chunk: ChunkInfo)
 
         if y < height::SEA || random.nextIntBounded(odds::SURFACE_LAVA) == 0
         {
-            vanilla::lake(&world, &random, x, y, z, palette::plain("minecraft:lava"));
+            vanilla::lake(&world, &random, x, y, z, "minecraft:lava");
         }
     }
 

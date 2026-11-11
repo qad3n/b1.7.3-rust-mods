@@ -17,13 +17,13 @@ mod queen
     pub const DRAW: i32 = 12;
 }
 
-// BlockTorch metadata by the face the moonworm clings to, the bottom face holds none
-const FACE_META: [Option<i32>; 6] = [None, Some(5), Some(4), Some(3), Some(2), Some(1)];
+// the facing a moonworm takes on each face of the block it is set against, the bottom face holds none
+const FACE_FACINGS: [Option<&str>; 6] = [None, Some("up"), Some("north"), Some("south"), Some("west"), Some("east")];
 
 // BlockTFMoonworm placement on a face of the block at pos
 pub(crate) fn attach(world: World, pos: BlockPos, face: i32) -> bool
 {
-    let Some(meta) = FACE_META.get(face as usize).copied().flatten()
+    let Some(facing) = FACE_FACINGS.get(face as usize).copied().flatten()
     else
     {
         return false;
@@ -36,8 +36,7 @@ pub(crate) fn attach(world: World, pos: BlockPos, face: i32) -> bool
         return false;
     }
 
-    // the moonworm keeps the torch template's metadata, which has no named state
-    let placed: bool = world.setBlockState(at, names::state(block::MOONWORM).with(names::META, meta)).is_ok();
+    let placed: bool = world.setBlockState(at, names::state(block::MOONWORM).with("facing", facing)).is_ok();
     if placed
     {
         world.playSound(crate::math::center(at), "mob.slime", 0.5, 0.8);

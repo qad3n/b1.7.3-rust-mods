@@ -166,7 +166,7 @@ pub(crate) fn placeLeafBlock(
         let whatsThere: Blk = world.getBlock(offX, offY, offZ);
         if (false) || whatsThere.canBeReplacedByLeaves(world, offX, offY, offZ)
         {
-            world.setBlock(offX, offY, offZ, blockID, meta, 2);
+            world.place(offX, offY, offZ, blockID, meta, 2);
         }
     }
 }

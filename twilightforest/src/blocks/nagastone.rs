@@ -1,5 +1,5 @@
 use super::{Kind, base, texture};
-use crate::names::block;
+use crate::names::{self, block};
 use b173_api::math::Face;
 use b173_api::prelude::*;
 
@@ -99,14 +99,53 @@ const DIRECTIONS: [[i32; 3]; 6] = [[0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0],
 // a block's meta counts from its item's source meta, so the item shows and places the source's item shape
 pub(crate) fn sourceHead(meta: i32) -> i32 { (meta + naga::HEAD_ITEM) % naga::HEADS }
 
-pub(crate) fn headMeta(source: i32) -> i32 { (source - naga::HEAD_ITEM).rem_euclid(naga::HEADS) }
-
 pub(crate) fn sourceBody(meta: i32) -> i32
 {
     (meta + naga::BODY_ITEM - naga::FIRST_BODY) % naga::BODIES + naga::FIRST_BODY
 }
 
-pub(crate) fn bodyMeta(source: i32) -> i32 { (source - naga::BODY_ITEM).rem_euclid(naga::BODIES) }
+// the source's shapes by its meta as named states, heads by the way the face looks, bodies by their run or bend
+const HEAD_FACINGS: [&str; 4] = ["north", "south", "west", "east"];
+const BODY_SHAPES: [&str; 12] = [
+    "down_north",
+    "down_south",
+    "down_west",
+    "down_east",
+    "up_north",
+    "up_south",
+    "up_west",
+    "up_east",
+    "x",
+    "z",
+    "y",
+    "flat",
+];
+
+// the block and named state a source meta stands for, as the 1.7 structures name nagastone
+pub(crate) fn sourceState(source: i32) -> (&'static str, &'static str, &'static str)
+{
+    match source
+    {
+        0..naga::FIRST_BODY => (block::NAGASTONE_HEAD, "facing", HEAD_FACINGS[source as usize]),
+        _ => (block::NAGASTONE, "shape", BODY_SHAPES[(source - naga::FIRST_BODY) as usize % BODY_SHAPES.len()]),
+    }
+}
+
+fn setSource(ctx: &BlockCtx, source: i32)
+{
+    let (_, property, value): (&str, &str, &str) = sourceState(source);
+    if let Err(error) = ctx.world().setProperty(ctx.pos(), property, value)
+    {
+        warn(&format!("nagastone at {:?}: {}", ctx.pos(), error.0));
+    }
+}
+
+fn headSource(ctx: &BlockCtx) -> usize { names::pick(ctx.stateAt(), "facing", &HEAD_FACINGS).unwrap_or(0) }
+
+fn bodySource(ctx: &BlockCtx) -> usize
+{
+    names::pick(ctx.stateAt(), "shape", &BODY_SHAPES).unwrap_or(0) + naga::FIRST_BODY as usize
+}
 
 fn sprite(sprite: Sprite) -> i32 { b173_api::world::terrainSlot(&texture(SPRITES[sprite as usize])).unwrap_or(0) }
 
@@ -172,7 +211,7 @@ impl BlockBehavior for Head
             Some(Face::East) => 3,
             _ => 1,
         };
-        ctx.setMeta(headMeta(source) as u8);
+        setSource(ctx, source);
     }
 
     fn onNeighborChanged(&self, ctx: &mut BlockCtx, _neighbor: i32)
@@ -183,18 +222,14 @@ impl BlockBehavior for Head
         }
 
         if let Some(source) = fitHead(ctx.world(), ctx.pos())
-            && let Err(error) = ctx.world().setMeta(ctx.pos(), headMeta(source))
         {
-            warn(&format!("nagastone head refit: {}", error.0));
+            setSource(ctx, source);
         }
     }
 
     fn texture(&self, face: i32, meta: i32) -> i32 { faceSprite(sourceHead(meta), face) }
 
-    fn faceRotations(&self, ctx: &mut BlockCtx) -> Option<[u8; 6]>
-    {
-        Some(SHAPES[sourceHead(i32::from(ctx.meta())) as usize].m_turns)
-    }
+    fn faceRotations(&self, ctx: &mut BlockCtx) -> Option<[u8; 6]> { Some(SHAPES[headSource(ctx)].m_turns) }
 }
 
 struct Body;
@@ -211,7 +246,7 @@ impl BlockBehavior for Body
             Some(Face::North | Face::South) => 1,
             _ => 0,
         };
-        ctx.setMeta(bodyMeta(naga::STRAIGHT + axis) as u8);
+        setSource(ctx, naga::STRAIGHT + axis);
     }
 
     fn onNeighborChanged(&self, ctx: &mut BlockCtx, _neighbor: i32)
@@ -222,18 +257,14 @@ impl BlockBehavior for Body
         }
 
         if let Some(source) = fitBody(ctx.world(), ctx.pos())
-            && let Err(error) = ctx.world().setMeta(ctx.pos(), bodyMeta(source))
         {
-            warn(&format!("nagastone body refit: {}", error.0));
+            setSource(ctx, source);
         }
     }
 
     fn texture(&self, face: i32, meta: i32) -> i32 { faceSprite(sourceBody(meta), face) }
 
-    fn faceRotations(&self, ctx: &mut BlockCtx) -> Option<[u8; 6]>
-    {
-        Some(SHAPES[sourceBody(i32::from(ctx.meta())) as usize].m_turns)
-    }
+    fn faceRotations(&self, ctx: &mut BlockCtx) -> Option<[u8; 6]> { Some(SHAPES[bodySource(ctx)].m_turns) }
 }
 
 fn faceSprite(source: i32, face: i32) -> i32
@@ -265,5 +296,18 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .resistance(naga::RESISTANCE)
             .texture(&texture("nagastone_long_side"))
             .behavior(Body),
+    )?;
+
+    // values in stored metadata order, which the texture callback still hands over
+    let heads: Vec<&str> = (0..naga::HEADS).map(|meta| HEAD_FACINGS[sourceHead(meta) as usize]).collect();
+    let bodies: Vec<&str> =
+        (0..naga::BODIES).map(|meta| BODY_SHAPES[(sourceBody(meta) - naga::FIRST_BODY) as usize]).collect();
+    ctx.blocks().states(
+        block::NAGASTONE_HEAD,
+        BlockStatesSpec { properties: vec![PropertySpec::new("facing", &heads)], ..BlockStatesSpec::default() },
+    )?;
+    ctx.blocks().states(
+        block::NAGASTONE,
+        BlockStatesSpec { properties: vec![PropertySpec::new("shape", &bodies)], ..BlockStatesSpec::default() },
     )
 }

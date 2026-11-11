@@ -1861,8 +1861,8 @@ pub(crate) fn makeStonePillar(
 
     if sbb.contains(sx, sy, sz)
     {
-        world.setBlock(sx, sy + 0, sz, forgeDeco.m_stairID, stairMeta, 0);
-        world.setBlock(sx, sy + 3, sz, forgeDeco.m_stairID, stairMeta + 4, 0);
+        world.place(sx, sy + 0, sz, forgeDeco.m_stairID, stairMeta, 0);
+        world.place(sx, sy + 3, sz, forgeDeco.m_stairID, stairMeta + 4, 0);
     }
 }
 

@@ -1566,7 +1566,7 @@ pub(crate) fn makeEncasedWalls(
                     {
                         let blocker: Stones = this.m_deco.get().m_randomBlocks;
                         blocker.select(random, x, y, z, true);
-                        this.placeBlock(world, blocker.block(), blocker.meta(), x, y, z, sbb);
+                        this.placeBlock(world, blocker.block(), blocker.data(), x, y, z, sbb);
                     }
                     else
                     {

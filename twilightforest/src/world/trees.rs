@@ -5,6 +5,7 @@ use crate::names::block;
 use crate::tags;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
+use std::rc::Rc;
 
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum Tree
@@ -21,7 +22,7 @@ pub(crate) enum Tree
     Rainbow,
 }
 
-// TF log metadata keeps the wood in the low bits and the orientation in bits 4 and 8, 12 is all bark
+// TF log data values keep the wood in the low bits and the orientation in bits 4 and 8, 12 is all bark
 mod orient
 {
     pub const X: i32 = 4;
@@ -36,26 +37,26 @@ const PLAIN_LEAVES: [&str; 4] =
 const MAGIC_LEAVES: [&str; 4] = [block::TIME_LEAVES, block::TRANS_LEAVES, block::MINE_LEAVES, block::SORT_LEAVES];
 const CORES: [&str; 4] = [block::TIME_CORE, block::TRANS_CORE, block::MINE_CORE, block::SORT_CORE];
 
-// TF log metadata to this port's block and axis state
-fn logFrom(woods: &[&'static str; 4], meta: i32) -> Placed
+// a TF log data value to this port's block and axis state
+fn logFrom(woods: &[&'static str; 4], data: i32) -> Placed
 {
-    let axis: &str = match meta & orient::BARK
+    let axis: &str = match data & orient::BARK
     {
         orient::X => "x",
         orient::Z => "z",
         orient::BARK => "none",
         _ => "y",
     };
-    palette::with(woods[(meta & 3) as usize], "axis", axis)
+    palette::with(woods[(data & 3) as usize], "axis", axis)
 }
 
-pub(crate) fn log(meta: i32) -> Placed { logFrom(&PLAIN_WOODS, meta) }
+pub(crate) fn log(data: i32) -> Placed { logFrom(&PLAIN_WOODS, data) }
 
-pub(crate) fn magicLog(meta: i32) -> Placed { logFrom(&MAGIC_WOODS, meta) }
+pub(crate) fn magicLog(data: i32) -> Placed { logFrom(&MAGIC_WOODS, data) }
 
-pub(crate) fn leaves(meta: i32) -> Placed { palette::plain(PLAIN_LEAVES[(meta & 3) as usize]) }
+pub(crate) fn leaves(data: i32) -> Placed { palette::plain(PLAIN_LEAVES[(data & 3) as usize]) }
 
-pub(crate) fn magicLeaves(meta: i32) -> Placed { palette::plain(MAGIC_LEAVES[(meta & 3) as usize]) }
+pub(crate) fn magicLeaves(data: i32) -> Placed { palette::plain(MAGIC_LEAVES[(data & 3) as usize]) }
 
 pub(crate) fn core(kind: i32) -> Placed { palette::plain(CORES[(kind & 3) as usize]) }
 
@@ -1005,17 +1006,22 @@ mod dark
 pub(crate) fn soil(block: i32) -> bool { blockTagged(block, tags::SOIL) }
 
 // BlockTFSapling.growTree, the sapling steps aside for its tree and comes back when the tree does not fit
-pub(crate) fn growSapling(world: World, pos: BlockPos, sapling: i32, tree: Tree)
+pub(crate) fn growSapling(world: World, pos: BlockPos, tree: Tree)
 {
     let generator: GenWorld = GenWorld::new(world);
     let builder: Builder = Builder { m_world: &generator, m_notify: true };
     let random: Random = Random::withSeed(world.time() ^ i64::from(pos.x) << 20 ^ i64::from(pos.z));
-    let meta: i32 = world.meta(pos);
-    let _ = world.setBlockQuiet(pos, 0, 0);
+    let sapling: Option<Rc<StateData>> = world.stateAt(pos);
+    generator.clear(pos.x, pos.y, pos.z);
     let grown: bool = grow(&builder, &random, tree, pos.x, pos.y, pos.z);
-    if !grown
+    if grown
     {
-        let _ = world.setBlockQuiet(pos, sapling, meta);
+        return;
+    }
+
+    if let Some(sapling) = sapling
+    {
+        let _ = StateHandle::new(StateData::clone(&sapling)).place(world, pos, false);
     }
 }
 

@@ -190,11 +190,11 @@ impl BlockBehavior for Slider
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, Copy)]
+// the slider's named state rides along so a remap while it slides cannot turn it into another block
+#[derive(Serialize, Deserialize, Default, Clone)]
 struct Slide
 {
-    m_block: i32,
-    m_meta: i32,
+    m_state: Option<StateData>,
     m_ticks: i32,
     m_way: [i32; 3],
 }
@@ -227,11 +227,11 @@ fn way(world: World, pos: BlockPos, axis: usize) -> [i32; 3]
     ways.iter().copied().find(|step| open(*step)).unwrap_or([0; 3])
 }
 
-// the slide carries the stored id and metadata, as the moving block entity draws and places them back
+// the slide carries the slider's state, which the moving block entity draws and places back
 fn launch(world: World, pos: BlockPos, axis: usize)
 {
-    let state: Slide =
-        Slide { m_block: world.block(pos), m_meta: world.meta(pos), m_ticks: 0, m_way: way(world, pos, axis) };
+    let carried: Option<StateData> = world.stateAt(pos).map(|state| StateData::clone(&state));
+    let state: Slide = Slide { m_state: carried, m_ticks: 0, m_way: way(world, pos, axis) };
 
     let entity: Entity = match world.spawnEntity(&format!("twilightforest:{}", slide::NAME), crate::math::center(pos))
     {
@@ -244,8 +244,10 @@ fn launch(world: World, pos: BlockPos, axis: usize)
         }
     };
 
-    entity.setField(EntityField::Block, f64::from(state.m_block));
-    entity.setField(EntityField::BlockMeta, f64::from(state.m_meta));
+    if let Some(carried) = &state.m_state
+    {
+        entity.setCarried(&StateHandle::new(carried.clone()));
+    }
 
     if let Err(error) = entity.setData(&state)
     {
@@ -292,7 +294,10 @@ impl EntityBehavior for SlideBlock
 
         if state.m_ticks == 1
         {
-            if world.block(here) != state.m_block
+            let same: bool = world
+                .stateAt(here)
+                .is_some_and(|there| state.m_state.as_ref().is_some_and(|own| own.block == there.block));
+            if !same
             {
                 entity.kill();
                 return;
@@ -323,7 +328,7 @@ impl EntityBehavior for SlideBlock
         let hit: bool = blocked(world, info.pos, motion);
         if hit || state.stopped()
         {
-            settle(world, entity, here, state);
+            settle(world, entity, here, &state);
             return;
         }
 
@@ -344,11 +349,12 @@ impl EntityBehavior for SlideBlock
 }
 
 // the slide stops where it is and becomes its slider again, or drops when the spot is taken
-fn settle(world: World, entity: Entity, here: BlockPos, state: Slide)
+fn settle(world: World, entity: Entity, here: BlockPos, state: &Slide)
 {
     entity.kill();
 
-    let placed: bool = world.isAir(here) && world.setBlock(here, state.m_block, state.m_meta).unwrap_or(false);
+    let placed: bool = world.isAir(here)
+        && state.m_state.clone().is_some_and(|carried| world.setBlockState(here, carried).unwrap_or(false));
     if !placed
     {
         spill(world, crate::math::center(here));

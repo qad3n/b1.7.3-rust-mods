@@ -319,7 +319,7 @@ impl BlockBehavior for SmallPlant
         if ctx.isAuthority() && !footed(self.m_footing, ctx.world(), ctx.pos())
         {
             let world: World = ctx.world();
-            let _ = world.dropBlockItems(ctx.pos(), ctx.block(), i32::from(ctx.meta()));
+            let _ = ctx.dropItems();
             let _ = world.clear(ctx.pos());
         }
     }
@@ -349,7 +349,7 @@ impl BlockBehavior for SmallPlant
             return;
         }
 
-        let _ = world.dropBlockItems(pos, ctx.block(), i32::from(ctx.meta()));
+        let _ = ctx.dropItems();
     }
 
     fn colorMultiplier(&self, ctx: &mut BlockCtx) -> u32
@@ -522,7 +522,7 @@ impl BlockBehavior for Thorns
         if entity.info().is_some_and(|info| info.health.is_some())
         {
             let world: World = ctx.world();
-            let _ = world.breakEffect(ctx.pos(), ctx.block(), i32::from(ctx.meta()));
+            let _ = ctx.breakEffect();
             let _ = world.clear(ctx.pos());
         }
     }
@@ -1021,6 +1021,7 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
                 .color(color)
                 .drops(Vec::new()),
         )?;
+        super::wood::leafStates(ctx, name)?;
     }
 
     Ok(())

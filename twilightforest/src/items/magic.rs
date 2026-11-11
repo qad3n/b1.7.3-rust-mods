@@ -602,9 +602,9 @@ fn ground(block: i32) -> bool
     ["minecraft:dirt", "c:gravels", "minecraft:base_stone_overworld"].iter().any(|tag| blockTagged(block, tag))
 }
 
-fn vein(world: World, pos: BlockPos, kind: (i32, i32), found: &mut Vec<BlockPos>)
+fn vein(world: World, pos: BlockPos, kind: &Rc<StateData>, found: &mut Vec<BlockPos>)
 {
-    if found.contains(&pos) || found.len() >= reach::VEIN || (world.block(pos), world.meta(pos)) != kind
+    if found.contains(&pos) || found.len() >= reach::VEIN || world.stateAt(pos).as_ref() != Some(kind)
     {
         return;
     }
@@ -651,12 +651,17 @@ pub(crate) fn pull(world: World, from: [i32; 3], to: [i32; 3]) -> i32
         return 0;
     };
 
-    let kind: (i32, i32) = (world.block(found), world.meta(found));
+    let Some(kind) = world.stateAt(found)
+    else
+    {
+        return 0;
+    };
     let mut blocks: Vec<BlockPos> = Vec::new();
-    vein(world, found, kind, &mut blocks);
+    vein(world, found, &kind, &mut blocks);
 
     let offset: [i32; 3] = [base.x - found.x, base.y - found.y, base.z - found.z];
     let stone: StateHandle = names::handle("minecraft:stone");
+    let carried: StateHandle = StateHandle::new(StateData::clone(&kind));
     let mut moved: i32 = 0;
 
     for pos in blocks
@@ -672,7 +677,7 @@ pub(crate) fn pull(world: World, from: [i32; 3], to: [i32; 3]) -> i32
 
         world.markBlockForRender(pos);
 
-        let _ = world.setBlockQuiet(target, kind.0, kind.1);
+        let _ = carried.place(world, target, false);
 
         world.markBlockForRender(target);
         moved += 1;

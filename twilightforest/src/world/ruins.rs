@@ -649,8 +649,8 @@ fn hollowLog(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         (false, true) => 4,
         (false, false) => 3,
     };
-    // the firefly keeps the torch template's facing metadata, which has no named state
-    set(at(side, 2, random.nextIntBounded(4) + 3), palette::meta(block::FIREFLY, facing));
+    let facing: &'static str = crate::blocks::CRITTER_FACINGS[facing as usize];
+    set(at(side, 2, random.nextIntBounded(4) + 3), palette::with(block::FIREFLY, "facing", facing));
 }
 
 // TFGenFallenSmallLog, a short fallen log of a random wood with a side branch

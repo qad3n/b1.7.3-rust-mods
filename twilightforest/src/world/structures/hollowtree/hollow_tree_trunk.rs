@@ -465,6 +465,6 @@ pub(crate) fn addInsect7(
     let oz: i32 = this.zAt(posX, posZ);
     if (sbb.contains(ox, oy, oz) && (true)) && blockID.canPlaceAt(world, ox, oy, oz)
     {
-        world.setBlock(ox, oy, oz, blockID, insectMeta, 2);
+        world.place(ox, oy, oz, blockID, insectMeta, 2);
     }
 }

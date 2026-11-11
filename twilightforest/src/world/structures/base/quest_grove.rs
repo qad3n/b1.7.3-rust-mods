@@ -64,7 +64,7 @@ pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: Structur
         if sbb.contains(bx, by, bz)
         {
             this.m_dispenserPlaced.set(true);
-            world.setBlock(bx, by, bz, blk("dispenser"), 2, 4);
+            world.place(bx, by, bz, blk("dispenser"), 2, 4);
 
             for i in 0..4
             {

@@ -40,9 +40,15 @@ impl BlockBehavior for Giant
             return;
         }
 
+        let Some(row) = rowOf(ctx.block())
+        else
+        {
+            return;
+        };
+
         for at in cells(ctx.pos())
         {
-            let _ = ctx.world().setBlockQuiet(at, ctx.block(), 0);
+            let _ = crate::world::palette::withPlain(row.m_name, |state| state.place(ctx.world(), at, false));
         }
     }
 
@@ -53,8 +59,14 @@ impl BlockBehavior for Giant
             return;
         }
 
+        let Some(row) = rowOf(ctx.block())
+        else
+        {
+            return;
+        };
+
         let world: World = ctx.world();
-        for at in cells(ctx.pos()).filter(|at| *at != ctx.pos() && world.block(*at) == ctx.block())
+        for at in cells(ctx.pos()).filter(|at| *at != ctx.pos() && world.is(*at, row.m_name))
         {
             let _ = world.clear(at);
         }

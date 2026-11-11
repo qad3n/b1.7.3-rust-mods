@@ -34,7 +34,7 @@ const BOSSES: [Boss; 6] = [
     Boss { m_entity: "twilightforest:snow_queen", m_range: 9.0, m_below: Some(4.0) },
 ];
 
-const KINDS: [&str; 6] = ["naga", "lich", "hydra", "ur_ghast", "knights", "snow_queen"];
+pub(crate) const KINDS: [&str; 6] = ["naga", "lich", "hydra", "ur_ghast", "knights", "snow_queen"];
 
 pub(crate) mod kind
 {

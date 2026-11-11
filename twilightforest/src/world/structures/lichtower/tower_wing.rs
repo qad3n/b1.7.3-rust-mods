@@ -2502,7 +2502,7 @@ pub(crate) fn makeGlyphBranches(this: &Piece, world: &GenWorld, random: &Random,
                 let mut dy: i32 = this.yAt(startHeight);
                 while (dy > 0) && (world.getBlock(dx, dy, dz) == blk("tf:castleBlock"))
                 {
-                    world.setBlock(dx, dy, dz, blk("tf:castleMagic"), meta, 2);
+                    world.place(dx, dy, dz, blk("tf:castleMagic"), meta, 2);
                     dy -= 1;
                 }
             }

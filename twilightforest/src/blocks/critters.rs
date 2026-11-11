@@ -5,6 +5,7 @@ use b173_api::math::distance;
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 // BlockTFCritter: tiny bugs that cling to a wall floor or ceiling like a torch
 #[derive(Clone, Copy, PartialEq)]
@@ -246,16 +247,19 @@ fn playerNear(pos: BlockPos) -> bool
     localPlayer().and_then(Player::info).is_some_and(|info| distance(info.pos, center) <= critter::FIREFLY_RANGE)
 }
 
-// TileEntityTFCritterRenderer's turn for the face the critter clings to, metadata as BlockTFCritter places it
-fn facing(meta: i32) -> (f32, f32)
+// the face a critter clings by, in BlockTFCritter's metadata order so the torch template reads the same metadata
+pub(crate) const FACINGS: [&str; 7] = ["none", "east", "west", "south", "north", "up", "down"];
+
+// TileEntityTFCritterRenderer's turn for the face the critter clings to
+fn facing(state: Option<Rc<StateData>>) -> (f32, f32)
 {
-    match meta
+    match state.as_ref().and_then(|state| state.get("facing"))
     {
-        1 => (90.0, -90.0),
-        2 => (90.0, 90.0),
-        4 => (90.0, 180.0),
-        5 => (0.0, 0.0),
-        6 => (180.0, 0.0),
+        Some("east") => (90.0, -90.0),
+        Some("west") => (90.0, 90.0),
+        Some("north") => (90.0, 180.0),
+        Some("up") => (0.0, 0.0),
+        Some("down") => (180.0, 0.0),
         _ => (90.0, 0.0),
     }
 }
@@ -322,7 +326,7 @@ impl TileBehavior for CritterTile
         let anim: Anim =
             ANIMS.with(|anims| anims.borrow().get(&(ctx.world().dimension, ctx.pos())).copied()).unwrap_or_default();
         let row: &CritterRow = row(self.m_critter);
-        let (tilt, roll): (f32, f32) = facing(i32::from(ctx.meta()));
+        let (tilt, roll): (f32, f32) = facing(ctx.stateAt());
         let mut body: Program = Program::new();
         body.translate(0.5, 0.5, 0.5)
             .rotate(tilt, 1.0, 0.0, 0.0)
@@ -430,6 +434,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         }
 
         super::put(ctx, row.m_name, spec)?;
+        ctx.blocks().states(
+            row.m_name,
+            BlockStatesSpec { properties: vec![PropertySpec::new("facing", &FACINGS)], ..BlockStatesSpec::default() },
+        )?;
     }
 
     let inset: f32 = 3.0;

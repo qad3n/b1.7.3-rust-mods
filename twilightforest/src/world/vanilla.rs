@@ -517,7 +517,13 @@ pub(crate) fn disc(
             for by in y - depth..=y + depth
             {
                 let there: i32 = world.block(bx, by, bz);
-                if replaces.iter().any(|name| blockIs(there, name))
+                // a leading # names a tag
+                let replaced: bool = replaces.iter().any(|entry| match entry.strip_prefix('#')
+                {
+                    Some(tag) => blockTagged(there, tag),
+                    None => blockIs(there, entry),
+                });
+                if replaced
                 {
                     world.set(bx, by, bz, block);
                 }
@@ -550,7 +556,7 @@ fn lakeEdge(shape: &[bool], x: i32, z: i32, y: i32) -> bool
 }
 
 // WorldGenLakes, a pond of water or lava sunk four blocks into the ground
-pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: Placed) -> bool
+pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: &'static str) -> bool
 {
     let (x, z): (i32, i32) = (x - 8, z - 8);
     let mut y: i32 = y;
@@ -606,7 +612,7 @@ pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, li
                 {
                     return false;
                 }
-                if ly < 4 && !world.isSolid(bx, by, bz) && world.block(bx, by, bz) != liquid.0
+                if ly < 4 && !world.isSolid(bx, by, bz) && !world.is(bx, by, bz, liquid)
                 {
                     return false;
                 }
@@ -622,7 +628,19 @@ pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, li
             {
                 if shape[lakeIndex(lx, lz, ly)]
                 {
-                    world.set(x + lx, y + ly, z + lz, if ly >= 4 { palette::AIR } else { liquid });
+                    world.set(
+                        x + lx,
+                        y + ly,
+                        z + lz,
+                        if ly >= 4
+                        {
+                            palette::AIR
+                        }
+                        else
+                        {
+                            palette::plain(liquid)
+                        },
+                    );
                 }
             }
         }
@@ -647,7 +665,7 @@ pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, li
         }
     }
 
-    if blockTagged(liquid.0, "minecraft:lava")
+    if blockTagged(palette::id(liquid), "minecraft:lava")
     {
         let stone: Placed = palette::plain("minecraft:stone");
 

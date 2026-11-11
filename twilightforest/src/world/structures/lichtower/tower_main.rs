@@ -498,8 +498,8 @@ pub(crate) fn generateTorchesOnWall(
         if (world.getBlock(tCoords[0], tCoords[1], tCoords[2]) == blk("air"))
             && (world.getBlock(tCoords[0], tCoords[1] + 1, tCoords[2]) == blk("air"))
         {
-            world.setBlock(tCoords[0], tCoords[1], tCoords[2], blk("fence"), 0, 2);
-            world.setBlock(tCoords[0], tCoords[1] + 1, tCoords[2], blk("torch"), 5, 2);
+            world.place(tCoords[0], tCoords[1], tCoords[2], blk("fence"), 0, 2);
+            world.place(tCoords[0], tCoords[1] + 1, tCoords[2], blk("torch"), 5, 2);
         }
     }
 }

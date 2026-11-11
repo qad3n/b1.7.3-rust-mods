@@ -4,6 +4,7 @@ use crate::names::{self, block, item};
 use crate::tags;
 use crate::world::trees::{self, Tree};
 use b173_api::prelude::*;
+use std::rc::Rc;
 
 mod fire
 {
@@ -408,7 +409,7 @@ impl BlockBehavior for SaplingGrowth
             return;
         }
 
-        trees::growSapling(world, ctx.pos(), ctx.block(), self.m_tree);
+        trees::growSapling(world, ctx.pos(), self.m_tree);
     }
 }
 
@@ -426,7 +427,7 @@ pub(crate) fn fertilize(world: World, pos: BlockPos) -> bool
 
     if world.isAuthority()
     {
-        trees::growSapling(world, pos, here, row.m_tree);
+        trees::growSapling(world, pos, row.m_tree);
     }
 
     true
@@ -526,7 +527,6 @@ impl BlockBehavior for MagicCore
 pub(crate) fn shedLeaves(world: World, pos: BlockPos)
 {
     let reach: i32 = 4;
-    let decaying: i32 = 8;
 
     for x in -reach..=reach
     {
@@ -540,20 +540,60 @@ pub(crate) fn shedLeaves(world: World, pos: BlockPos)
                     continue;
                 }
 
-                // template leaves keep vanilla BlockLeaves metadata, which has no named state
-                let meta: i32 = world.meta(at);
-                if meta & decaying != 0
-                {
-                    continue;
-                }
-
-                if let Err(error) = world.setMeta(at, meta | decaying)
+                if let Err(error) = checkDecay(world, at)
                 {
                     warn(&format!("leaf decay at {at:?}: {}", error.0));
                 }
             }
         }
     }
+}
+
+// the forest's leaves name BlockLeaves' metadata bits, check decay then persistent then the kind in the low bits,
+// so the engine's decay ticks read the same metadata the states store
+const LEAF_KINDS: [&str; 4] = ["0", "1", "2", "3"];
+// BlockLeaves' check decay bit, which leaves of other mods and vanilla ones carry in their plain metadata
+const CHECK_DECAY: i32 = 8;
+
+pub(crate) fn leafStates(ctx: &mut RegisterCtx, name: &str) -> Result<()>
+{
+    let flag: [&str; 2] = ["false", "true"];
+    ctx.blocks().states(
+        name,
+        BlockStatesSpec
+        {
+            properties: vec![
+                PropertySpec::new("check_decay", &flag),
+                PropertySpec::new("persistent", &flag),
+                PropertySpec::new("kind", &LEAF_KINDS),
+            ],
+            ..BlockStatesSpec::default()
+        },
+    )
+}
+
+// BlockLeaves.beginLeavesDecay, marks a leaf to check whether a log still holds it
+fn checkDecay(world: World, at: BlockPos) -> Result<bool>
+{
+    let state: Rc<StateData> = world.stateAt(at).ok_or("no leaf state")?;
+    if state.get("check_decay").is_some()
+    {
+        if state.flag("check_decay")
+        {
+            return Ok(false);
+        }
+
+        return world.setProperty(at, "check_decay", true);
+    }
+
+    // leaves without named states keep BlockLeaves' bits in their metadata
+    let meta: i32 = state.get(names::META).and_then(|meta| meta.parse().ok()).unwrap_or(0);
+    if meta & CHECK_DECAY != 0
+    {
+        return Ok(false);
+    }
+
+    world.setBlockState(at, StateData::clone(&state).with(names::META, meta | CHECK_DECAY))
 }
 
 // BlockLog, a plain log that lets its leaves go when broken
@@ -700,6 +740,7 @@ fn registerLeaves(ctx: &mut RegisterCtx) -> Result<()>
         }
 
         super::put(ctx, row.m_name, spec)?;
+        leafStates(ctx, row.m_name)?;
         ctx.tags().add(RegistryKind::Item, "minecraft:leaves", &[row.m_name])?;
     }
 

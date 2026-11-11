@@ -365,8 +365,8 @@ impl Hollow<'_>
 
         if self.m_builder.isAir(at[0], at[1], at[2])
         {
-            // critters keep the torch template's facing metadata, which has no named state
-            self.m_builder.set(at[0], at[1], at[2], super::palette::meta(name, meta));
+            let facing: &'static str = crate::blocks::CRITTER_FACINGS[meta as usize];
+            self.m_builder.set(at[0], at[1], at[2], super::palette::with(name, "facing", facing));
         }
     }
 

@@ -244,7 +244,7 @@ impl BlockBehavior for Wearing
             crate::items::wear(player, maze::WEAR, &[item::MAZEBREAKER_PICK]);
         }
 
-        let _ = ctx.world().dropBlockItems(ctx.pos(), ctx.block(), i32::from(ctx.meta()));
+        let _ = ctx.dropItems();
     }
 }
 
@@ -350,10 +350,8 @@ fn registerAurora(ctx: &mut RegisterCtx) -> Result<()>
 
 // BlockTFShield: unbreakable, the face it was placed against shows the inside
 // the six facings, then the latent shield the stronghold access chamber lays, outside on every face
-const SIDES: [&str; 7] = ["down", "up", "north", "south", "west", "east", "none"];
+pub(crate) const SIDES: [&str; 7] = ["down", "up", "north", "south", "west", "east", "none"];
 pub(crate) const SHIELD_LATENT: &str = SIDES[6];
-// the 1.7 shield metadata the structures name the latent shield by
-pub(crate) const LATENT_META: i32 = 6;
 
 // BlockTFShield, only the inside face can be dug, as fast as the player digs stone and a third slower
 struct Shield;
