@@ -342,6 +342,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .record(&format!("aether.record.{name}"), &format!("{artist} - {song}")),
         )?;
     }
+    crate::weapons::reservePulls();
     ctx.items().register(
         "phoenix_bow",
         ItemSpecBuilder::new()

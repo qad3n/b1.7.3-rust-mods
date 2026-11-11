@@ -124,8 +124,11 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Not ported yet, add their options with the features: Aether menu and menu button, trivia, holiday trees, tall grass,
   Sun Spirit dialogue repeat, legacy visuals, legacy altar name, portal frame start, first-entry gifts toggle.
 
-## Done (loader API 1.22, damage types, attributes and effects)
+## Done (loader API 1.23, damage types, attributes, effects and held use)
 
+- The phoenix bow draws while the use key is held (bow pose, the three `bow_pulling` icons after 0, 13 and 17
+  ticks) and looses its flaming arrow on release at three times the draw power, as ItemPhoenixBow. Power, Punch,
+  Flame and Infinity and the full draw critical have no beta counterpart.
 - Inebriation is the loader status effect `aether:inebriation` (PotionInebriation's colour and inventory icon, one
   magic damage every fifty ticks), saved with the entity and shown on the HUD. The mod still sways and spits for
   the entities it poisoned and sways the local player while the effect lasts; the custom poison channel is gone.
@@ -133,7 +136,7 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Life shard hearts are an `aether:life_shards` add modifier on `minecraft:max_health`, as the source's health
   attribute modifier, set again only when the shard count changes. Older saves that raised the base health get it
   reset to twenty once.
-- `mod.toml` needs API 1.22. Hits carry the vanilla damage type closest to the source's DamageSource (`src/damage.rs`):
+- `mod.toml` needs API 1.23. Hits carry the vanilla damage type closest to the source's DamageSource (`src/damage.rs`):
   darts, needles and flaming arrows as arrows, crystals as thrown, zephyr snowballs as fireballs, mob, boss, slider,
   sentry, pig slayer and hammer hits as mob, the holy sword's undead bonus as drown. Custom source names (incineration,
   crush, dart) have no beta type and take the nearest one.

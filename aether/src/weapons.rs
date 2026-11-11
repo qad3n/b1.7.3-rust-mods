@@ -21,6 +21,26 @@ mod weapon
     pub const SHOOT_PITCH_SPREAD: f64 = 0.4;
 }
 
+mod bow
+{
+    // ItemPhoenixBow.getMaxItemUseDuration, drawn until the use key is let go
+    pub const USE_TICKS: i32 = 72000;
+    // ItemPhoenixBow.getArrowVelocity is full after twenty ticks and a draw under a tenth looses nothing
+    pub const FULL_DRAW: f64 = 20.0;
+    pub const LEAST_DRAW: f64 = 0.1;
+    // EntityArrow flies one and a half times the bow's velocity of twice the draw
+    pub const SPEED: f64 = 3.0;
+    pub const PITCH_LOW: f64 = 1.2;
+    pub const PITCH_DRAW: f32 = 0.5;
+}
+
+// ItemPhoenixBow.getIcon, the pulling icon shown after these many ticks of drawing
+const PULLS: [(i32, &str); 3] = [
+    (0, "aether:item/weapons/bow_pulling_0"),
+    (13, "aether:item/weapons/bow_pulling_1"),
+    (17, "aether:item/weapons/bow_pulling_2"),
+];
+
 // a point a block ahead of the player's eyes along its look, where its shots leave from
 fn aim(info: &EntityInfo) -> ([f64; 3], [f64; 3])
 {
@@ -34,20 +54,31 @@ fn shootPitch(world: World) -> f32
     1.0 / (fraction(world) * weapon::SHOOT_PITCH_SPREAD + weapon::SHOOT_PITCH_LOW) as f32
 }
 
+// the first stack of an item in the player's main inventory
+fn find(player: Player, name: &str) -> Option<(i32, ItemStack)>
+{
+    (0..weapon::MAIN_SLOTS)
+        .find_map(|slot| player.slot(slot).filter(|stack| stack.item.is(name)).map(|stack| (slot, stack)))
+}
+
 // ItemDartShooter.consumeItem: the first stack of the shooter's dart in the main inventory loses one
 fn consume(player: Player, name: &str) -> bool
 {
-    for slot in 0..weapon::MAIN_SLOTS
+    let Some((slot, stack)) = find(player, name)
+    else
     {
-        let Some(stack) = player.slot(slot).filter(|stack| stack.item.is(name))
-        else
-        {
-            continue;
-        };
-        let _ = player.setSlot(slot, (stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }));
-        return true;
-    }
-    false
+        return false;
+    };
+
+    let _ = player.setSlot(slot, (stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }));
+    true
+}
+
+// ItemPhoenixBow.getArrowVelocity, a second held is a full draw and short draws hardly fly
+fn draw(held: i32) -> f64
+{
+    let seconds: f64 = f64::from(held) / bow::FULL_DRAW;
+    ((seconds * seconds + seconds * 2.0) / 3.0).min(1.0)
 }
 
 pub struct DartShooter
@@ -228,31 +259,71 @@ const SHOOTERS: [(&str, &str); 3] = [
     ("enchanted_dart_shooter", ENCHANTED_DART),
 ];
 
-// ItemPhoenixBow: a bow whose arrows fly burning, it uses vanilla arrows from the inventory
+// ItemPhoenixBow: a bow whose arrows fly burning, drawn while held and loosed on release with vanilla arrows
 pub struct PhoenixBow;
 
 #[item_behavior]
 impl ItemBehavior for PhoenixBow
 {
-    fn onRightClick(&self, world: World, player: Player, stack: ItemStack) -> Use
+    // ItemPhoenixBow.onItemRightClick: drawing starts only with an arrow to loose
+    fn onRightClick(&self, _world: World, player: Player, stack: ItemStack) -> Use
     {
-        let Some(info) = player.info()
+        if find(player, "minecraft:arrow").is_none()
+        {
+            return Use::Done(Some(stack));
+        }
+
+        if let Err(error) = player.setItemInUse(bow::USE_TICKS)
+        {
+            warn(&format!("phoenix bow draw: {error}"));
+        }
+        Use::Done(Some(stack))
+    }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { bow::USE_TICKS }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Bow }
+
+    fn useIcon(&self, _stack: ItemStack, used: i32) -> Option<i32>
+    {
+        let (_, icon) = PULLS.iter().rev().find(|(after, _)| used > *after)?;
+        b173_api::world::itemSlot(icon)
+    }
+
+    // ItemPhoenixBow.onPlayerStoppedUsing: the flaming arrow flies as fast as the bow was drawn
+    fn onStoppedUsing(&self, world: World, player: Player, stack: ItemStack, left: i32) -> Use
+    {
+        let power: f64 = draw(bow::USE_TICKS - left);
+        let Some(info) = player.info().filter(|_| power >= bow::LEAST_DRAW)
         else
         {
             return Use::Pass;
         };
+
         if !world.isAuthority()
         {
             return Use::Done(Some(stack));
         }
         if !consume(player, "minecraft:arrow")
         {
-            return Use::Done(Some(stack));
+            return Use::Pass;
         }
-        world.playSound(info.pos, "random.bow", 1.0, shootPitch(world));
+
         let (from, toward) = aim(&info);
-        projectile::fire(world, FLAMING_ARROW, from, toward, weapon::DART_SPEED, weapon::SPREAD, Some(player.id));
+        projectile::fire(world, FLAMING_ARROW, from, toward, bow::SPEED * power, weapon::SPREAD, Some(player.id));
+        let pitch: f32 = 1.0 / (fraction(world) * weapon::SHOOT_PITCH_SPREAD + bow::PITCH_LOW) as f32
+            + power as f32 * bow::PITCH_DRAW;
+        world.playSound(info.pos, "random.bow", 1.0, pitch);
         Use::Done(Some(ItemStack { damage: stack.damage + 1, ..stack }))
+    }
+}
+
+// no item spec names the pulling icons, asking for their slots now gives them room on the item sheet
+pub fn reservePulls()
+{
+    for (_, icon) in PULLS
+    {
+        let _ = b173_api::world::itemSlot(icon);
     }
 }
 
