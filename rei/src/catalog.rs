@@ -67,6 +67,8 @@ pub(crate) struct Catalog
     m_details: RefCell<HashMap<i32, Rc<[String]>>>,
     m_members: RefCell<HashMap<Identifier, Rc<[Key]>>>,
     m_chest: Option<Key>,
+    m_features: Rc<Vec<FeatureInfo>>,
+    m_containers: Vec<FluidContainerSpec>,
     pub m_generation: i32,
 }
 
@@ -135,6 +137,8 @@ impl Catalog
             m_details: RefCell::new(HashMap::new()),
             m_members: RefCell::new(HashMap::new()),
             m_chest: ItemRef::from(CHEST).id().ok().map(|id| Key { m_id: id, m_damage: 0 }),
+            m_features: featureList(),
+            m_containers: fluidContainers(),
             m_generation: generation,
         }
     }
@@ -190,7 +194,38 @@ impl Catalog
 
         let mut lines: Vec<String> = vec![item.to_string()];
         lines.extend(self.tags(id).iter().map(|tag| format!("#{tag}")));
+        lines.extend(self.generated(&item));
+        lines.extend(self.holds(&item));
         lines
+    }
+
+    // the worldgen features of any mod that place this block, by name and dimension
+    fn generated(&self, item: &Identifier) -> Vec<String>
+    {
+        self.m_features
+            .iter()
+            .filter(|feature| match &feature.spec.kind
+            {
+                FeatureKind::Ore(ore) => ore.block == *item,
+                FeatureKind::Tree(tree) => tree.log == *item || tree.leaves == *item,
+                FeatureKind::Custom => false,
+            })
+            .map(|feature|
+            {
+                let off: &str = if feature.enabled { "" } else { ", turned off" };
+                format!("Generates in {} by {}{off}", feature.spec.dimension, feature.id)
+            })
+            .collect()
+    }
+
+    // the fluid a container item holds
+    fn holds(&self, item: &Identifier) -> Vec<String>
+    {
+        self.m_containers
+            .iter()
+            .filter(|container| container.full == *item)
+            .map(|container| format!("Holds {} mB of {}", container.amount, container.fluid))
+            .collect()
     }
 
     pub(crate) fn name(&self, key: Key) -> String
