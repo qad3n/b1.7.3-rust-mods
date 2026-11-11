@@ -608,7 +608,7 @@ impl Decorator<'_>
     // getGroundLevel of the firefly forest, dark forest and thornlands, the first grass above the sea
     fn ground(&self, x: i32, z: i32, extra: &[&'static str]) -> i32
     {
-        let earth: [&str; 3] = ["minecraft:dirt", "minecraft:stone", "minecraft:gravel"];
+        let earth: [&str; 3] = ["minecraft:dirt", "minecraft:base_stone_overworld", "c:gravels"];
         let mut last: i32 = height::SEA;
 
         for y in height::SEA..super::terrain::height() - 1
@@ -619,7 +619,7 @@ impl Decorator<'_>
                 return y + 1;
             }
 
-            if earth.iter().chain(extra).any(|name| blockIs(block, name))
+            if earth.iter().chain(extra).any(|tag| blockTagged(block, tag))
             {
                 last = y + 1;
             }
@@ -732,8 +732,7 @@ impl Decorator<'_>
 
             Biome::Thornlands =>
             {
-                let extra: [&'static str; 4] =
-                    ["minecraft:sandstone", "minecraft:sand", "minecraft:clay", block::SOLID_DEADROCK];
+                let extra: [&'static str; 1] = [crate::tags::THORN_GROUND];
 
                 for _ in 0..counts::THORNS
                 {

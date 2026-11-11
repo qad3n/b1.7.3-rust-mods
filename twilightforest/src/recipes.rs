@@ -48,7 +48,7 @@ const STICK: &str = "minecraft:stick";
 const PAPER: &str = "minecraft:paper";
 // a recipe ingredient of this damage takes any damage, ShapelessRecipes' wildcard
 const ANY_DAMAGE: i32 = -1;
-const ORE_BLOCKS: [&str; 3] = ["minecraft:iron_block", "minecraft:diamond_block", "minecraft:gold_block"];
+const ORE_BLOCKS: [&str; 3] = ["c:storage_blocks/iron", "c:storage_blocks/diamond", "c:storage_blocks/gold"];
 const IRON: &str = "minecraft:iron_ingot";
 const REDSTONE: &str = "minecraft:redstone";
 // beta has no glass bottle, gold nugget, blaze rod or ghast tear, the closest beta item stands in for each
@@ -354,9 +354,17 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     for (name, base, damage) in
         [("ore_map_from_maze_map", item::MAZE_MAP, ANY_DAMAGE), ("ore_map", item::EMPTY_MAZE_MAP, 0)]
     {
-        let mut ingredients: Vec<ItemStack> = vec![ItemStack::of(base, 1).withDamage(damage)];
-        ingredients.extend(ORE_BLOCKS.map(|block| ItemStack::of(block, 1)));
-        ctx.recipes().shapeless(name, ItemStack::of(item::EMPTY_ORE_MAP, 1), &ingredients)?;
+        let map: IngredientSpec =
+            IngredientSpec { item: Some(Identifier::parseIn(base, &modId())?), tag: None, meta: damage };
+        let ingredients: Vec<IngredientSpec> = std::iter::once(map)
+            .chain(ORE_BLOCKS.iter().map(|tag| IngredientSpec
+            {
+                item: None,
+                tag: Identifier::parse(tag).ok(),
+                meta: 0,
+            }))
+            .collect();
+        ctx.recipes().shapelessTagged(name, ItemStack::of(item::EMPTY_ORE_MAP, 1), ingredients)?;
     }
 
     for (input, output, count) in SMELTING

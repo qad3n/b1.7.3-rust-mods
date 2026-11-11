@@ -756,7 +756,9 @@ impl EntityBehavior for FallingIce
         let below: BlockPos = blockOf([info.pos[0], info.pos[1] - 0.1, info.pos[2]]);
         let breakable = |block: i32|
         {
-            ["minecraft:ice", "minecraft:stone", "minecraft:glass"].iter().any(|name| blockIs(block, name))
+            ["minecraft:ice", "minecraft:base_stone_overworld", "c:glass_blocks"]
+                .iter()
+                .any(|tag| blockTagged(block, tag))
         };
         let half: i32 = 2;
         for x in -half..=half

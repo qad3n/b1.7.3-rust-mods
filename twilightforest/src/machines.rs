@@ -83,13 +83,8 @@ fn kind(stack: &ItemStack) -> Option<&'static str>
         .find(|kind| name == *kind || name.ends_with(&format!("_{kind}")))
 }
 
-// Item.hasContainerItem, buckets come back empty so they never come out of the table
-fn problematic(stack: &StackData) -> bool
-{
-    ["minecraft:water_bucket", "minecraft:lava_bucket", "minecraft:milk_bucket"]
-        .iter()
-        .any(|name| b173_api::named(RegistryKind::Item, stack.id, name))
-}
+// Item.hasContainerItem, buckets and any mod item that leaves something behind never come out of the table
+fn problematic(stack: &StackData) -> bool { containerItem(&ItemStack::fromRaw(stack.clone())).is_some() }
 
 // ContainerTFUncrafting.getRecipeFor, the first shaped recipe that makes the input
 fn recipeFor(input: &ItemStack) -> Option<(i32, Vec<Option<StackData>>, i32)>

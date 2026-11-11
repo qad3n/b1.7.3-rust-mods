@@ -16,6 +16,8 @@ pub(crate) const MAZESTONE: &str = "twilightforest:mazestone";
 pub(crate) const CROPS: &str = "minecraft:crops";
 pub(crate) const PLAINS_PLANTS: &str = "twilightforest:plains_plants";
 pub(crate) const CAVE_PLANTS: &str = "twilightforest:cave_plants";
+// what thorns grow from beside the usual ground, TFBiomeThornlands' sand stone and clay
+pub(crate) const THORN_GROUND: &str = "twilightforest:thorn_ground";
 // mobs that wear armor for the knightly weapons, EntityLivingBase.getTotalArmorValue above zero
 pub(crate) const ARMORED: &str = "twilightforest:armored";
 // the plain monsters a lich tears apart, EntityTFLich.popNearbyMob's instanceof checks
@@ -31,7 +33,7 @@ struct TagRow
 }
 
 // groups other mods share with the forest, most of its own blocks join their tags where they register
-const ROWS: [TagRow; 16] = [
+const ROWS: [TagRow; 17] = [
     blockTag(LEAVES, &["#minecraft:leaves"]),
     blockTag(
         STONY,
@@ -39,6 +41,7 @@ const ROWS: [TagRow; 16] = [
     ),
     blockTag(PLAINS_PLANTS, &["#minecraft:small_flowers", "#minecraft:saplings", "minecraft:tallgrass"]),
     blockTag(CAVE_PLANTS, &["minecraft:brown_mushroom", "minecraft:red_mushroom"]),
+    blockTag(THORN_GROUND, &["#c:sandstone_blocks", "#minecraft:sand", "minecraft:clay", "#twilightforest:stony"]),
     itemTag("c:ingots", &[item::IRONWOOD_INGOT, item::FIERY_INGOT, item::STEELEAF, item::KNIGHTMETAL]),
     itemTag("c:ingots/ironwood", &[item::IRONWOOD_INGOT]),
     itemTag("c:ingots/fiery", &[item::FIERY_INGOT]),
