@@ -205,6 +205,7 @@ impl ItemBehavior for LoreBook
         if world.isAuthority()
         {
             let _ = player.openScreen(NAME, None, Vec::new());
+            crate::progress::read(player);
         }
         Use::Pass
     }

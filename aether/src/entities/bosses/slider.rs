@@ -2,6 +2,7 @@ use super::{BossBar, Home, bossName, pitch, say, unlock};
 use crate::entities::fraction;
 use crate::ids::blockId;
 use crate::models::{Program, slider as model};
+use crate::progress::{self, Award};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -544,7 +545,7 @@ impl EntityBehavior for Slider
     }
 
     // the dying hit opens the door, frees the dungeon stone, lays the trapdoors over the treasure and leaves the key
-    fn onDeath(&self, entity: Entity, _source: Option<i32>)
+    fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
         let world: World = entity.world;
         let Some(info) = entity.info().filter(|_| world.isAuthority())
@@ -555,6 +556,13 @@ impl EntityBehavior for Slider
         let home: Home = entity.data();
         openDoor(entity);
         unlock(world, home.m_dungeon, &LOCKED);
+        // the killer and everyone in the dungeon earn it
+        let dungeonReach: f64 = 10.0;
+        progress::grantInside(world, home.m_dungeon, [dungeonReach; 3], Award::Bronze);
+        if let Some(killer) = source.and_then(|id| world.entity(id)).filter(|killer| killer.player.is_some())
+        {
+            progress::grant(Player { id: killer.id }, Award::Bronze);
+        }
         let [x, y, z] = home.m_dungeon;
         let trapdoor: i32 = blockId("minecraft:trapdoor");
         const TRAPDOORS: [([i32; 2], i32); 4] = [([7, 7], 3), ([8, 7], 2), ([7, 8], 3), ([8, 8], 2)];

@@ -124,6 +124,21 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Not ported yet, add their options with the features: Aether menu and menu button, trivia, holiday trees, tall grass,
   Sun Spirit dialogue repeat, legacy visuals, legacy altar name, portal frame start, first-entry gifts toggle.
 
+## Done (loader API 1.25, achievements)
+
+- `mod.toml` needs API 1.25. AchievementsAether's ten achievements are loader mod achievements (`src/progress.rs`),
+  each with the source's icon, en_US title and description, and `aether:enter_aether` as every other one's parent.
+- Unlocked where the source triggers them: dimension change into the Aether (`enter_aether`), the Slider's killer and
+  players within ten blocks of the dungeon point, the Valkyrie Queen's target, the Sun Spirit's target and players within
+  20 x 3 x 20 of its origin, crafting the altar or a gravitite shovel, axe or pickaxe, bouncing on a blue aercloud,
+  riding a phyg, a hatching incubator's owner, and a book of lore placed in the lore book's slot.
+- A first unlock plays the source's achievement jingle (bronze and silver variants for those bosses) at the player.
+  It is a world sound, so players nearby hear it too, where the source played it only to that player's client.
+- The incubator owner is the last player who opened it, kept in memory as the source did; the source took the player
+  who put the egg in. The loader has no slot callback, so the lore book slot is polled each tick for players who
+  opened the book; crafting a book of lore in the inventory grid after closing it without one can also unlock it.
+- The welcome gifts still follow the `entered_aether` player flag, not the achievement.
+
 ## Done (loader API 1.23, damage types, attributes, effects and held use)
 
 - Regeneration and weakness are loader effects beside inebriation (`src/effects.rs`): the healing stone gives 610
@@ -168,6 +183,6 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 
 ## Todo, in order
 
-1. Aether main menu and menu button (config, off by default in the source), achievements.
+1. Aether main menu and menu button (config, off by default in the source).
 2. Bug pass (list above), cargo fmt and clippy, client screenshots of the panel, layers, boss bar, wings, hearts and
    the lore book.

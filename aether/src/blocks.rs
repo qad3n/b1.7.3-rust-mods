@@ -1,6 +1,7 @@
 use crate::entities::floating_block::Floating;
 use crate::harvest;
 use crate::ids::{Palette, block, item};
+use crate::progress::{self, Award};
 use crate::world::GenWorld;
 use crate::world::trees::Tree;
 use b173_api::prelude::*;
@@ -457,6 +458,10 @@ impl BlockBehavior for Aercloud
         {
             return;
         };
+        if self.m_bounce && ctx.isAuthority() && info.player.is_some()
+        {
+            progress::grant(Player { id: entity.id }, Award::BlueCloud);
+        }
         let [motionX, motionY, motionZ] = info.motion;
         let slowed: [f64; 3] = [motionX, motionY * aercloud::DRAG, motionZ];
         if !self.m_bounce || info.player.is_some() && entity.flag(EntityField::Sneaking)

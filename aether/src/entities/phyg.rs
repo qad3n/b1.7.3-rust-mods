@@ -1,6 +1,7 @@
 use super::mount::{Saddle, dropSaddle, saddleInteract, steering, wingPose};
 use super::{creature, drop, onAetherGrass};
 use crate::models::{Program, combine, phyg_wing, pig, pig_saddle, quadruped, quadrupedPose};
+use crate::progress::{self, Award};
 use b173_api::prelude::*;
 
 const NAME: &str = "phyg";
@@ -15,7 +16,20 @@ struct Phyg;
 #[entity_behavior]
 impl EntityBehavior for Phyg
 {
-    fn onTick(&self, entity: Entity, _info: &EntityInfo) { entity.setField(EntityField::FallDistance, 0.0); }
+    fn onTick(&self, entity: Entity, _info: &EntityInfo)
+    {
+        entity.setField(EntityField::FallDistance, 0.0);
+        if !entity.world.isAuthority()
+        {
+            return;
+        }
+        // EntityPhyg.onUpdate, a player riding earns it
+        if let Some(rider) =
+            entity.rider().and_then(|id| entity.world.entity(id)).filter(|rider| rider.player.is_some())
+        {
+            progress::grant(Player { id: rider.id }, Award::FlyingPig);
+        }
+    }
 
     fn onInteract(&self, entity: Entity, player: Player) -> bool { saddleInteract(entity, player) }
 

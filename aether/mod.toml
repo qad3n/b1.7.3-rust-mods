@@ -4,7 +4,7 @@ name = "The Aether"
 description = "Port of Aether Legacy to b1.7.3: floating islands high in the sky, reached through a glowstone portal"
 authors = ["Aether Team and Modding Legacy (original)", "b173 port"]
 license = "LGPL-3.0 code, assets All Rights Reserved and extracted from the original jar"
-api = "1.23"
+api = "1.25"
 side = "both"
 
 [network]

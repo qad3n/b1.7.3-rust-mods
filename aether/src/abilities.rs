@@ -1,5 +1,6 @@
 use crate::accessories::Worn;
 use crate::entities::fraction;
+use crate::progress::{self, Award};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -339,9 +340,12 @@ fn welcome(event: &mut Event)
     {
         return;
     };
-    if Some(to) != crate::portal::aetherDimension()
-        || !(World { dimension: to }).isAuthority()
-        || player.data::<bool>(ENTERED)
+    if Some(to) != crate::portal::aetherDimension() || !(World { dimension: to }).isAuthority()
+    {
+        return;
+    }
+    progress::grant(player, Award::EnterAether);
+    if player.data::<bool>(ENTERED)
     {
         return;
     }

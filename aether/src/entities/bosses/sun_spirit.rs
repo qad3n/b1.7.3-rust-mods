@@ -4,6 +4,7 @@ use crate::entities::fire_minion::{SPIRIT_TEXTURE, spiritPose};
 use crate::entities::fraction;
 use crate::ids::blockId;
 use crate::models::Program;
+use crate::progress::{self, Award};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -492,6 +493,9 @@ impl EntityBehavior for SunSpirit
         if let Some(id) = state.m_bar.m_focus
         {
             line(Player { id }, AQUA, "dead");
+            let hallReach: [f64; 3] = [20.0, 3.0, 20.0];
+            progress::grantInside(world, home.m_dungeon, hallReach, Award::Gold);
+            progress::grant(Player { id }, Award::Gold);
         }
         state.m_bar.m_health = 0;
         let _ = entity.setSynced(&state);

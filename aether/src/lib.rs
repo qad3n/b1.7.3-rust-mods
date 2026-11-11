@@ -15,6 +15,7 @@ mod models;
 mod player;
 mod portal;
 mod portal_overlay;
+mod progress;
 mod recipes;
 mod shapes;
 mod sparkle;
@@ -46,5 +47,6 @@ fn register(ctx: &mut RegisterCtx) -> Result<()>
     player::register(ctx)?;
     tools::register(ctx)?;
     gear::register(ctx)?;
+    progress::register(ctx)?;
     Ok(())
 }

@@ -1,5 +1,6 @@
 use crate::entities::{fraction, moa};
 use crate::ids::{block, blockId, item};
+use crate::progress::{self, Award};
 use b173_api::prelude::*;
 use b173_api::screen::Draw;
 use std::rc::Rc;
@@ -400,6 +401,10 @@ fn hatchEgg(world: World, pos: BlockPos, egg: ItemStack)
     let spot: [f64; 3] =
         [pos.x as f64 + lit::CENTER, (pos.y + above) as f64 + machine::HATCH_LIFT, pos.z as f64 + lit::CENTER];
     moa::hatch(world, &egg, spot);
+    if let Some(owner) = progress::owner(world, pos)
+    {
+        progress::grant(owner, Award::Incubator);
+    }
     let _ = world.setTileSlot(pos, slot::EGG, takeOne(egg));
 }
 
@@ -493,6 +498,10 @@ impl BlockBehavior for ContainerBlock
     {
         if ctx.isAuthority()
         {
+            if self.m_screen == INCUBATOR
+            {
+                progress::setOwner(ctx.world(), ctx.pos(), player);
+            }
             let _ = player.openScreen(self.m_screen, Some(ctx.pos()), Vec::new());
         }
         true

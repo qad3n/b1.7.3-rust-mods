@@ -5,6 +5,7 @@ use crate::entities::valkyrie::{self, AIR_SINAGE, GROUND_SINAGE, valkyriePose};
 use crate::ids::blockId;
 use crate::ids::item::VICTORY_MEDAL;
 use crate::models::Phases;
+use crate::progress::{self, Award};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -432,6 +433,7 @@ impl EntityBehavior for ValkyrieQueen
             thinking.m_chatTime = 0;
             setMind(entity, thinking);
             chat(entity, Player { id }, "gui.queen.defeated");
+            progress::grant(Player { id }, Award::Silver);
         }
         let _ =
             world.spawnItem([info.pos[0], info.pos[1] + queen::KEY_LIFT, info.pos[2]], ItemStack::of("silver_key", 1));
