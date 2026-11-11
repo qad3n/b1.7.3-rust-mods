@@ -2,9 +2,9 @@ use super::loot;
 use super::writer::{AIR, Pick, RandomTracker, Writer, shuffle};
 use crate::entities::bosses;
 use crate::world::GenWorld;
+use b173_api::BlockPos;
 use b173_api::terrain::Random;
 use b173_api::terrain::structure::StructureBox;
-use b173_api::{BlockPos, ItemStack};
 
 mod size
 {
@@ -210,7 +210,7 @@ impl Bronze<'_>
         }
 
         self.m_writer.put(p, y + 2, q, Pick::of("minecraft:chest"));
-        fillChest(world, random, BlockPos::new(p, y + 2, q), loot::bronzeRoom);
+        fillChest(world, random, BlockPos::new(p, y + 2, q), loot::BRONZE_ROOM_TABLE);
     }
 
     fn nextRoom(&mut self, x: i32, y: i32, z: i32, direction: i32) -> bool
@@ -358,7 +358,7 @@ impl Bronze<'_>
 }
 
 // a few loot rolls into random slots of a chest, the same slot may be rolled twice
-pub(crate) fn fillChest(world: &GenWorld, random: &Random, pos: BlockPos, table: fn(&Random) -> loot::Loot)
+pub(crate) fn fillChest(world: &GenWorld, random: &Random, pos: BlockPos, table: &str)
 {
     // the Java loop draws a fresh bound every pass
     let mut roll: i32 = 0;
@@ -367,7 +367,9 @@ pub(crate) fn fillChest(world: &GenWorld, random: &Random, pos: BlockPos, table:
         roll += 1;
 
         let slot: i32 = random.nextIntBounded(size::CHEST_SLOTS);
-        let (name, count): loot::Loot = table(random);
-        let _ = world.m_world.setTileSlot(pos, slot, Some(ItemStack::of(name, count)));
+        if let Some(stack) = loot::pick(random, table)
+        {
+            let _ = world.m_world.setTileSlot(pos, slot, Some(stack));
+        }
     }
 }

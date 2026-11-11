@@ -452,7 +452,7 @@ impl Silver<'_>
                         self.m_writer.m_world,
                         self.random(),
                         BlockPos::new(at[0], at[1], at[2]),
-                        loot::silverRoom,
+                        loot::SILVER_ROOM_TABLE,
                     );
                 }
             }

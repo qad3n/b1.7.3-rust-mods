@@ -309,13 +309,13 @@ struct KeyRow
 {
     m_key: &'static str,
     m_title: &'static str,
-    m_loot: fn(&Random) -> loot::Loot,
+    m_loot: &'static str,
 }
 
 const KEYS: [KeyRow; 3] = [
-    KeyRow { m_key: "bronze_key", m_title: "aether.gui.treasure_chest.bronze", m_loot: loot::bronzeTreasure },
-    KeyRow { m_key: "silver_key", m_title: "aether.gui.treasure_chest.silver", m_loot: loot::silverTreasure },
-    KeyRow { m_key: "golden_key", m_title: "aether.gui.treasure_chest.gold", m_loot: loot::goldTreasure },
+    KeyRow { m_key: "bronze_key", m_title: "aether.gui.treasure_chest.bronze", m_loot: loot::BRONZE_TREASURE_TABLE },
+    KeyRow { m_key: "silver_key", m_title: "aether.gui.treasure_chest.silver", m_loot: loot::SILVER_TREASURE_TABLE },
+    KeyRow { m_key: "golden_key", m_title: "aether.gui.treasure_chest.gold", m_loot: loot::GOLD_TREASURE_TABLE },
 ];
 
 const TREASURE: &str = "treasure_chest";
@@ -348,8 +348,10 @@ impl BlockBehavior for TreasureChest
         for _ in 0..block::TREASURE_ROLLS + random.nextIntBounded(1)
         {
             let slot: i32 = random.nextIntBounded(block::CHEST_SLOTS);
-            let (name, count): loot::Loot = (KEYS[kind].m_loot)(&random);
-            let _ = world.setTileSlot(pos, slot, Some(ItemStack::of(name, count)));
+            if let Some(stack) = loot::pick(&random, KEYS[kind].m_loot)
+            {
+                let _ = world.setTileSlot(pos, slot, Some(stack));
+            }
         }
 
         let _ = player.setHeld((held.count > 1).then(|| ItemStack { count: held.count - 1, ..held }));
@@ -485,6 +487,7 @@ fn registerChests(ctx: &mut RegisterCtx) -> Result<()>
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
+    loot::register(ctx)?;
     registerKinds(ctx)?;
 
     for row in &STONES
