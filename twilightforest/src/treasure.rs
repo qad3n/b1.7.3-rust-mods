@@ -1,4 +1,5 @@
 use crate::world::generate::GenWorld;
+use crate::world::palette;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
@@ -528,7 +529,7 @@ pub(crate) fn place(world: &GenWorld, _random: &Random, table: Table, x: i32, y:
     let random: Random = Random::withSeed(seed);
     let pos: BlockPos = BlockPos::new(x, y, z);
 
-    world.set(x, y, z, world.id("minecraft:chest"));
+    world.set(x, y, z, palette::plain("minecraft:chest"));
 
     let mut filled: [bool; chest::SLOTS as usize] = [false; chest::SLOTS as usize];
     let draws: [(Tier, Tier, i32); 3] = [

@@ -69,7 +69,7 @@ impl Gen
 
             Self::Blob { block, size } =>
             {
-                scatter::groundBlob(world, random, x, y, z, block.id(), size);
+                scatter::groundBlob(world, random, x, y, z, block.resolve(0), size);
                 true
             }
         }

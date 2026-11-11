@@ -3,6 +3,7 @@ use super::scatter::suitable;
 use super::trees::{Placed, leaves, log};
 use crate::names::block;
 use crate::treasure::{self, Table};
+use crate::world::palette;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
@@ -83,18 +84,18 @@ pub(crate) fn generate(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
     }
 }
 
-fn mossy(world: &GenWorld) -> i32 { world.id("minecraft:mossy_cobblestone") }
+fn mossy() -> Placed { palette::plain("minecraft:mossy_cobblestone") }
 
 // TFGenerator.randStone, mossy one time in n
-fn randStone(world: &GenWorld, random: &Random, odds: i32) -> i32
+fn randStone(random: &Random, odds: i32) -> Placed
 {
     if random.nextIntBounded(odds) >= 1
     {
-        world.id("minecraft:cobblestone")
+        palette::plain("minecraft:cobblestone")
     }
     else
     {
-        mossy(world)
+        mossy()
     }
 }
 
@@ -112,7 +113,7 @@ fn stoneCircle(world: &GenWorld, x: i32, y: i32, z: i32)
     {
         for [dx, dz] in stones
         {
-            world.set(x + dx, y + cy, z + dz, mossy(world));
+            world.set(x + dx, y + cy, z + dz, mossy());
         }
     }
 }
@@ -130,23 +131,19 @@ fn well(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
     }
 
     let last: i32 = wide - 1;
-    let (fence, slab, planks, water): (i32, i32, i32, i32) = (
-        world.id("minecraft:fence"),
-        world.id("minecraft:stone_slab"),
-        world.id("minecraft:planks"),
-        world.id("minecraft:water"),
-    );
+    let (fence, planks, water): (Placed, Placed, Placed) =
+        (palette::plain("minecraft:fence"), palette::plain("minecraft:planks"), palette::plain("minecraft:water"));
 
     for dx in 0..wide
     {
         for dz in 0..wide
         {
             let rim: bool = dx == 0 || dx == last || dz == 0 || dz == last;
-            world.set(x + dx, y, z + dz, if rim { mossy(world) } else { water });
+            world.set(x + dx, y, z + dz, if rim { mossy() } else { water });
 
             if rim
             {
-                world.setMeta(x + dx, y + 3, z + dz, slab, WOODEN);
+                world.set(x + dx, y + 3, z + dz, palette::meta("minecraft:stone_slab", WOODEN));
             }
             else
             {
@@ -177,7 +174,7 @@ fn shaft(world: &GenWorld, random: &Random, top: [i32; 3], treasure: bool)
     let [x, y, z] = top;
     let digs: [&str; 3] = ["minecraft:dirt", "c:gravels", "minecraft:base_stone_overworld"];
 
-    let water: i32 = world.id("minecraft:water");
+    let water: Placed = palette::plain("minecraft:water");
     let deepest: i32 = 20;
     let hidden: i32 = 15;
     let mut found: bool = false;
@@ -196,8 +193,8 @@ fn shaft(world: &GenWorld, random: &Random, top: [i32; 3], treasure: bool)
         if treasure && depth > hidden && !found && random.nextIntBounded(8) == 0
         {
             world.set(x + 1, by, z, water);
-            world.set(x + 2, by + 1, z, 0);
-            world.set(x + 2, by, z, 0);
+            world.clear(x + 2, by + 1, z);
+            world.clear(x + 2, by, z);
             treasure::place(world, random, Table::Basement, x + 2, by, z);
             found = true;
         }
@@ -352,25 +349,25 @@ fn witchHut(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         return;
     }
 
-    let (brick, roof, eave, fire): (i32, i32, i32, i32) = (
-        world.id("minecraft:brick_block"),
-        world.id("minecraft:double_stone_slab"),
-        world.id("minecraft:stone_slab"),
-        world.id("minecraft:fire"),
+    let (brick, roof, eave, fire): (Placed, Placed, Placed, Placed) = (
+        palette::plain("minecraft:brick_block"),
+        palette::meta("minecraft:double_stone_slab", WOODEN),
+        palette::meta("minecraft:stone_slab", WOODEN),
+        palette::plain("minecraft:fire"),
     );
-    world.set(x + 1, y - 1, z + 3, world.id("minecraft:netherrack"));
+    world.set(x + 1, y - 1, z + 3, palette::plain("minecraft:netherrack"));
 
     for (dx, dy, dz, part) in HUT
     {
         let placed: Placed = match part
         {
-            Hut::Stone(odds) => (randStone(world, random, odds), 0),
-            Hut::Brick => (brick, 0),
-            Hut::Roof => (roof, WOODEN),
-            Hut::Eave => (eave, WOODEN),
-            Hut::Fire => (fire, 0),
+            Hut::Stone(odds) => randStone(random, odds),
+            Hut::Brick => brick,
+            Hut::Roof => roof,
+            Hut::Eave => eave,
+            Hut::Fire => fire,
         };
-        world.setMeta(x + dx, y + dy, z + dz, placed.0, placed.1);
+        world.set(x + dx, y + dy, z + dz, placed);
     }
 
     if let Err(error) = world.m_world.setSpawner(BlockPos::new(x + 3, y + 1, z + 3), crate::entities::SKELETON_DRUID)
@@ -389,7 +386,7 @@ fn foundation(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         return;
     }
 
-    let planks: i32 = world.id("minecraft:planks");
+    let planks: Placed = palette::plain("minecraft:planks");
 
     for cx in 0..=width
     {
@@ -408,7 +405,7 @@ fn foundation(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
             let height: i32 = random.nextIntBounded(4) + 1;
             for cy in 0..=height
             {
-                let stone: i32 = randStone(world, random, cy + 1);
+                let stone: Placed = randStone(random, cy + 1);
                 world.set(x + cx, y + cy - 1, z + cz, stone);
             }
         }
@@ -423,8 +420,8 @@ fn foundation(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
     {
         for cz in 1..depth
         {
-            world.set(x + cx, y - 3, z + cz, 0);
-            world.set(x + cx, y - 4, z + cz, 0);
+            world.clear(x + cx, y - 3, z + cz);
+            world.clear(x + cx, y - 4, z + cz);
         }
     }
 
@@ -448,7 +445,8 @@ fn monolith(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         (tallest, (f64::from(tallest) * 0.75) as i32, (f64::from(tallest) * 0.5) as i32);
     let shapes: [[i32; 4]; 4] =
         [[full, most, most, half], [half, full, most, most], [most, half, full, most], [most, most, half, full]];
-    let (lapis, obsidian): (i32, i32) = (world.id("minecraft:lapis_block"), world.id("minecraft:obsidian"));
+    let (lapis, obsidian): (Placed, Placed) =
+        (palette::plain("minecraft:lapis_block"), palette::plain("minecraft:obsidian"));
 
     for (column, [dx, dz]) in [[0, 0], [1, 0], [0, 1], [1, 1]].iter().enumerate()
     {
@@ -464,9 +462,9 @@ fn monolith(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 // beta has no stone bricks, mossy stone bricks become mossy cobblestone and chiseled ones plain stone
 fn groveRuins(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
-    let (moss, chiseled): (i32, i32) = (mossy(world), world.id("minecraft:stone"));
+    let (moss, chiseled): (Placed, Placed) = (mossy(), palette::plain("minecraft:stone"));
 
-    let put = |cells: &[[i32; 3]], block: i32|
+    let put = |cells: &[[i32; 3]], block: Placed|
     {
         for [dx, dy, dz] in cells
         {
@@ -566,8 +564,8 @@ fn hollowLog(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 
     let wood: Placed = log(if alongZ { 8 } else { 4 });
     let (moss, dirt, leaf): (Placed, Placed, Placed) =
-        ((world.id("moss_patch"), 0), (world.id("minecraft:dirt"), 0), leaves(0));
-    let set = |cell: [i32; 3], placed: Placed| world.setMeta(cell[0], cell[1], cell[2], placed.0, placed.1);
+        (palette::plain("moss_patch"), palette::plain("minecraft:dirt"), leaves(0));
+    let set = |cell: [i32; 3], placed: Placed| world.set(cell[0], cell[1], cell[2], placed);
     let jaggies: [[i32; 2]; 6] = [[0, 0], [3, 0], [0, 1], [3, 1], [1, 2], [2, 2]];
     for [across, dy] in jaggies
     {
@@ -651,7 +649,8 @@ fn hollowLog(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         (false, true) => 4,
         (false, false) => 3,
     };
-    set(at(side, 2, random.nextIntBounded(4) + 3), (world.id(block::FIREFLY), facing));
+    // the firefly keeps the torch template's facing metadata, which has no named state
+    set(at(side, 2, random.nextIntBounded(4) + 3), palette::meta(block::FIREFLY, facing));
 }
 
 // TFGenFallenSmallLog, a short fallen log of a random wood with a side branch
@@ -675,7 +674,6 @@ fn smallLog(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         return;
     }
 
-    let vanilla: i32 = world.id("minecraft:log");
     let kind: i32 = random.nextIntBounded(7);
 
     // beta logs have no orientation, its spruce and birch lie upright and jungle becomes oak
@@ -684,9 +682,9 @@ fn smallLog(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         match kind
         {
             1 | 2 => log(kind | bits),
-            3 | 6 => (vanilla, 0),
-            4 => (vanilla, 1),
-            5 => (vanilla, 2),
+            3 | 6 => palette::plain("minecraft:log"),
+            4 => palette::meta("minecraft:log", 1),
+            5 => palette::meta("minecraft:log", 2),
             _ => log(bits),
         }
     };
@@ -699,7 +697,7 @@ fn smallLog(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
     {
         (wood(8), wood(4))
     };
-    let moss: i32 = world.id("moss_patch");
+    let moss: Placed = palette::plain("moss_patch");
 
     let at = |along: i32, side: i32|
     {
@@ -716,7 +714,7 @@ fn smallLog(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
     for along in 0..length
     {
         let (bx, bz): (i32, i32) = at(along, 1);
-        world.setMeta(bx, y, bz, lying.0, lying.1);
+        world.set(bx, y, bz, lying);
 
         if random.nextIntBounded(3) > 0
         {
@@ -740,7 +738,7 @@ fn smallLog(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         (random.nextIntBounded(length), side)
     };
     let (bx, bz): (i32, i32) = at(along, side);
-    world.setMeta(bx, y, bz, branch.0, branch.1);
+    world.set(bx, y, bz, branch);
 
     if random.nextBoolean()
     {

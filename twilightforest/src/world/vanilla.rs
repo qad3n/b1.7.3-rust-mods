@@ -1,6 +1,7 @@
 use super::generate::GenWorld;
 use super::palette;
 use crate::tags;
+use crate::world::palette::Placed;
 use b173_api::prelude::*;
 use b173_api::terrain::{Random, math};
 
@@ -66,9 +67,10 @@ pub(crate) fn tree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, mi
         return false;
     }
 
-    let (leaves, log): (i32, i32) = (world.id("minecraft:leaves"), world.id("minecraft:log"));
+    let (leaves, log): (Placed, Placed) =
+        (palette::meta("minecraft:leaves", meta), palette::meta("minecraft:log", meta));
 
-    world.set(x, y - 1, z, world.id("minecraft:dirt"));
+    world.set(x, y - 1, z, palette::plain("minecraft:dirt"));
 
     for cy in y - 3 + height..=y + height
     {
@@ -85,7 +87,7 @@ pub(crate) fn tree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, mi
 
                 if !world.isOpaque(cx, cy, cz)
                 {
-                    world.setMeta(cx, cy, cz, leaves, meta);
+                    world.set(cx, cy, cz, leaves);
                 }
             }
         }
@@ -94,9 +96,9 @@ pub(crate) fn tree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, mi
     for dy in 0..height
     {
         let there: i32 = world.block(x, y + dy, z);
-        if there == 0 || there == leaves
+        if there == 0 || blockIs(there, "minecraft:leaves")
         {
-            world.setMeta(x, y + dy, z, log, meta);
+            world.set(x, y + dy, z, log);
         }
     }
 
@@ -133,9 +135,10 @@ pub(crate) fn taiga1(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) 
         return false;
     }
 
-    let (leaves, log): (i32, i32) = (world.id("minecraft:leaves"), world.id("minecraft:log"));
+    // spruce leaves and logs are metadata one
+    let (leaves, log): (Placed, Placed) = (palette::meta("minecraft:leaves", 1), palette::meta("minecraft:log", 1));
 
-    world.set(x, y - 1, z, world.id("minecraft:dirt"));
+    world.set(x, y - 1, z, palette::plain("minecraft:dirt"));
 
     let mut radius: i32 = 0;
 
@@ -148,7 +151,7 @@ pub(crate) fn taiga1(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) 
                 let corner: bool = (cx - x).abs() == radius && (cz - z).abs() == radius && radius > 0;
                 if !corner && !world.isOpaque(cx, cy, cz)
                 {
-                    world.setMeta(cx, cy, cz, leaves, 1);
+                    world.set(cx, cy, cz, leaves);
                 }
             }
         }
@@ -166,9 +169,9 @@ pub(crate) fn taiga1(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) 
     for dy in 0..height - 1
     {
         let there: i32 = world.block(x, y + dy, z);
-        if there == 0 || there == leaves
+        if there == 0 || blockIs(there, "minecraft:leaves")
         {
-            world.setMeta(x, y + dy, z, log, 1);
+            world.set(x, y + dy, z, log);
         }
     }
 
@@ -191,9 +194,9 @@ pub(crate) fn taiga2(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) 
         return false;
     }
 
-    let (leaves, log): (i32, i32) = (world.id("minecraft:leaves"), world.id("minecraft:log"));
+    let (leaves, log): (Placed, Placed) = (palette::meta("minecraft:leaves", 1), palette::meta("minecraft:log", 1));
 
-    world.set(x, y - 1, z, world.id("minecraft:dirt"));
+    world.set(x, y - 1, z, palette::plain("minecraft:dirt"));
 
     let mut radius: i32 = random.nextIntBounded(2);
     let mut limit: i32 = 1;
@@ -210,7 +213,7 @@ pub(crate) fn taiga2(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) 
                 let corner: bool = (cx - x).abs() == radius && (cz - z).abs() == radius && radius > 0;
                 if !corner && !world.isOpaque(cx, cy, cz)
                 {
-                    world.setMeta(cx, cy, cz, leaves, 1);
+                    world.set(cx, cy, cz, leaves);
                 }
             }
         }
@@ -231,9 +234,9 @@ pub(crate) fn taiga2(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) 
     for dy in 0..height - cut
     {
         let there: i32 = world.block(x, y + dy, z);
-        if there == 0 || there == leaves
+        if there == 0 || blockIs(there, "minecraft:leaves")
         {
-            world.setMeta(x, y + dy, z, log, 1);
+            world.set(x, y + dy, z, log);
         }
     }
 
@@ -260,7 +263,7 @@ pub(crate) fn shrub(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i3
     }
 
     y += 1;
-    world.set(x, y, z, world.id("minecraft:log"));
+    world.set(x, y, z, palette::plain("minecraft:log"));
 
     for cy in y..=y + 2
     {
@@ -274,7 +277,7 @@ pub(crate) fn shrub(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i3
 
                 if !corner && !world.isOpaque(cx, cy, cz)
                 {
-                    world.set(cx, cy, cz, world.id("minecraft:leaves"));
+                    world.set(cx, cy, cz, palette::plain("minecraft:leaves"));
                 }
             }
         }
@@ -324,7 +327,7 @@ pub(crate) fn tallGrass(
         let (px, py, pz): (i32, i32, i32) = scatter(random, x, ground, z, 8, 4);
         if world.isAir(px, py, pz) && stays(world, px, py, pz)
         {
-            world.setMeta(px, py, pz, plant.0, plant.1);
+            world.set(px, py, pz, plant);
         }
     }
 
@@ -338,7 +341,7 @@ pub(crate) fn flowers(
     x: i32,
     y: i32,
     z: i32,
-    plant: i32,
+    plant: Placed,
     stays: impl Fn(&GenWorld, i32, i32, i32) -> bool,
 ) -> bool
 {
@@ -369,7 +372,7 @@ pub(crate) fn lit(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 pub(crate) fn deadBush(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let ground: i32 = surfaceBelow(world, x, y, z);
-    let bush: i32 = world.id("minecraft:deadbush");
+    let bush: Placed = palette::plain("minecraft:deadbush");
 
     for _ in 0..4
     {
@@ -388,7 +391,7 @@ pub(crate) fn deadBush(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
 // WorldGenReed, sugar cane beside water
 pub(crate) fn reeds(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
-    let reed: i32 = world.id("minecraft:reeds");
+    let reed: Placed = palette::plain("minecraft:reeds");
     let wet = |px: i32, py: i32, pz: i32| blockTagged(world.block(px, py, pz), "minecraft:water");
 
     for _ in 0..20
@@ -418,14 +421,12 @@ pub(crate) fn reeds(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -
 // WorldGenPumpkin
 pub(crate) fn pumpkins(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
-    let pumpkin: i32 = world.id("minecraft:pumpkin");
-
     for _ in 0..64
     {
         let (px, py, pz): (i32, i32, i32) = scatter(random, x, y, z, 8, 4);
         if world.isAir(px, py, pz) && world.is(px, py - 1, pz, "minecraft:grass")
         {
-            world.setMeta(px, py, pz, pumpkin, random.nextIntBounded(4));
+            world.set(px, py, pz, palette::meta("minecraft:pumpkin", random.nextIntBounded(4)));
         }
     }
 
@@ -433,7 +434,7 @@ pub(crate) fn pumpkins(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
 }
 
 // WorldGenMinable, an ore vein of this many blocks through stone
-pub(crate) fn ore(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32, size: i32)
+pub(crate) fn ore(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: Placed, size: i32)
 {
     let pi: f32 = std::f32::consts::PI;
     let angle: f32 = random.nextFloat() * pi;
@@ -491,7 +492,7 @@ pub(crate) fn disc(
     world: &GenWorld,
     random: &Random,
     at: [i32; 3],
-    block: i32,
+    block: Placed,
     radius: i32,
     depth: i32,
     replaces: &[&str],
@@ -549,7 +550,7 @@ fn lakeEdge(shape: &[bool], x: i32, z: i32, y: i32) -> bool
 }
 
 // WorldGenLakes, a pond of water or lava sunk four blocks into the ground
-pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: i32) -> bool
+pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: Placed) -> bool
 {
     let (x, z): (i32, i32) = (x - 8, z - 8);
     let mut y: i32 = y;
@@ -605,7 +606,7 @@ pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, li
                 {
                     return false;
                 }
-                if ly < 4 && !world.isSolid(bx, by, bz) && world.block(bx, by, bz) != liquid
+                if ly < 4 && !world.isSolid(bx, by, bz) && world.block(bx, by, bz) != liquid.0
                 {
                     return false;
                 }
@@ -621,13 +622,13 @@ pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, li
             {
                 if shape[lakeIndex(lx, lz, ly)]
                 {
-                    world.set(x + lx, y + ly, z + lz, if ly >= 4 { 0 } else { liquid });
+                    world.set(x + lx, y + ly, z + lz, if ly >= 4 { palette::AIR } else { liquid });
                 }
             }
         }
     }
 
-    let grass: i32 = world.id("minecraft:grass");
+    let grass: Placed = palette::plain("minecraft:grass");
 
     for lx in 0..LAKE_WIDTH
     {
@@ -646,9 +647,9 @@ pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, li
         }
     }
 
-    if blockTagged(liquid, "minecraft:lava")
+    if blockTagged(liquid.0, "minecraft:lava")
     {
-        let stone: i32 = world.id("minecraft:stone");
+        let stone: Placed = palette::plain("minecraft:stone");
 
         for lx in 0..LAKE_WIDTH
         {
@@ -739,7 +740,8 @@ pub(crate) fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         return false;
     }
 
-    let (cobble, mossy): (i32, i32) = (world.id("minecraft:cobblestone"), world.id("minecraft:mossy_cobblestone"));
+    let (cobble, mossy): (Placed, Placed) =
+        (palette::plain("minecraft:cobblestone"), palette::plain("minecraft:mossy_cobblestone"));
 
     for bx in x - halfX - 1..=x + halfX + 1
     {
@@ -756,13 +758,13 @@ pub(crate) fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 
                 if !shell
                 {
-                    world.setNotify(bx, by, bz, 0, 0);
+                    world.setNotify(bx, by, bz, palette::AIR);
                     continue;
                 }
 
                 if by >= 0 && !world.isSolid(bx, by - 1, bz)
                 {
-                    world.setNotify(bx, by, bz, 0, 0);
+                    world.setNotify(bx, by, bz, palette::AIR);
                     continue;
                 }
 
@@ -771,7 +773,7 @@ pub(crate) fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
                     continue;
                 }
 
-                let stone: i32 = if by == y - 1 && random.nextIntBounded(4) != 0
+                let stone: Placed = if by == y - 1 && random.nextIntBounded(4) != 0
                 {
                     mossy
                 }
@@ -779,7 +781,7 @@ pub(crate) fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
                 {
                     cobble
                 };
-                world.setNotify(bx, by, bz, stone, 0);
+                world.setNotify(bx, by, bz, stone);
             }
         }
     }
@@ -802,7 +804,7 @@ pub(crate) fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
                 continue;
             }
 
-            world.setNotify(cx, y, cz, world.id("minecraft:chest"), 0);
+            world.setNotify(cx, y, cz, palette::plain("minecraft:chest"));
 
             let slots: i32 = 27;
 
@@ -834,7 +836,7 @@ pub(crate) fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 }
 
 // WorldGenLiquids, a spring in a stone wall
-pub(crate) fn spring(world: &GenWorld, x: i32, y: i32, z: i32, liquid: i32) -> bool
+pub(crate) fn spring(world: &GenWorld, x: i32, y: i32, z: i32, liquid: Placed) -> bool
 {
     let stone = |x: i32, y: i32, z: i32| world.is(x, y, z, "minecraft:stone");
     if !stone(x, y + 1, z) || !stone(x, y - 1, z)
@@ -852,7 +854,7 @@ pub(crate) fn spring(world: &GenWorld, x: i32, y: i32, z: i32, liquid: i32) -> b
     let open: usize = sides.iter().filter(|[dx, dz]| world.isAir(x + dx, y, z + dz)).count();
     if walls == 3 && open == 1
     {
-        world.setNotify(x, y, z, liquid, 0);
+        world.setNotify(x, y, z, liquid);
     }
 
     true
@@ -890,16 +892,15 @@ pub(crate) fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: 
         return false;
     }
 
-    let block: i32 = world.id(
-        if red
-        {
-            crate::names::block::HUGE_RED_MUSHROOM
-        }
-        else
-        {
-            crate::names::block::HUGE_BROWN_MUSHROOM
-        },
-    );
+    let name: &'static str = if red
+    {
+        crate::names::block::HUGE_RED_MUSHROOM
+    }
+    else
+    {
+        crate::names::block::HUGE_BROWN_MUSHROOM
+    };
+    let block: Placed = palette::plain(name);
 
     let top: i32 = y + height;
     let bottom: i32 = if red { top - 3 } else { top };
@@ -932,7 +933,7 @@ pub(crate) fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: 
     {
         if world.isReplaceable(x, y + dy, z)
         {
-            world.setMeta(x, y + dy, z, block, 1);
+            world.set(x, y + dy, z, palette::with(name, "part", "stem"));
         }
     }
 
@@ -940,7 +941,7 @@ pub(crate) fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: 
 }
 
 // WorldGenBlockBlob, three overlapping balls rolling downhill from the ground
-pub(crate) fn boulder(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32, block: i32) -> bool
+pub(crate) fn boulder(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32, block: Placed) -> bool
 {
     let ground = |block: i32| blockTagged(block, "minecraft:dirt") || blockIs(block, "minecraft:stone");
     let lowest: i32 = 3;
@@ -1013,7 +1014,7 @@ pub(crate) fn waterlily(random: &Random, x: i32, y: i32, z: i32)
 // WorldGenDoublePlant, beta has no double plants so each kind places its closest single plant
 pub(crate) fn doublePlant(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, kind: i32) -> bool
 {
-    let plant: (i32, i32) = match kind
+    let plant: Placed = match kind
     {
         0 => palette::plain("minecraft:yellow_flower"),
         2 => palette::meta("minecraft:tallgrass", 1),
@@ -1028,7 +1029,7 @@ pub(crate) fn doublePlant(world: &GenWorld, random: &Random, x: i32, y: i32, z: 
         let (px, py, pz): (i32, i32, i32) = scatter(random, x, y, z, 8, 4);
         if world.isAir(px, py, pz) && world.isAir(px, py + 1, pz) && lit(world, px, py, pz)
         {
-            world.setMeta(px, py, pz, plant.0, plant.1);
+            world.set(px, py, pz, plant);
             placed = true;
         }
     }

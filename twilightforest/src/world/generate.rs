@@ -1,3 +1,4 @@
+use super::palette::{self, Placed};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -20,22 +21,22 @@ impl GenWorld
     pub(crate) fn isAir(&self, x: i32, y: i32, z: i32) -> bool { self.block(x, y, z) == 0 }
 
     // world generation places blocks without neighbour updates, as WorldGenerator.setBlockAndNotifyAdequately
-    pub(crate) fn set(&self, x: i32, y: i32, z: i32, block: i32) { self.setMeta(x, y, z, block, 0); }
-
-    pub(crate) fn setMeta(&self, x: i32, y: i32, z: i32, block: i32, meta: i32)
+    pub(crate) fn set(&self, x: i32, y: i32, z: i32, placed: Placed)
     {
         if !(0..crate::world::WORLD_HEIGHT).contains(&y)
         {
             return;
         }
 
-        let _ = self.m_world.setBlockQuiet(BlockPos::new(x, y, z), block, meta);
+        let _ = self.m_world.setBlockQuiet(BlockPos::new(x, y, z), placed.0, placed.1);
     }
 
+    pub(crate) fn clear(&self, x: i32, y: i32, z: i32) { self.set(x, y, z, palette::AIR); }
+
     // a sapling growing into a tree notifies its neighbours as World.setBlock does
-    pub(crate) fn setNotify(&self, x: i32, y: i32, z: i32, block: i32, meta: i32)
+    pub(crate) fn setNotify(&self, x: i32, y: i32, z: i32, placed: Placed)
     {
-        let _ = self.m_world.setBlock(BlockPos::new(x, y, z), block, meta);
+        let _ = self.m_world.setBlock(BlockPos::new(x, y, z), placed.0, placed.1);
     }
 
     // World.getHeightValue, the first air above the topmost light blocking block
@@ -58,10 +59,9 @@ impl GenWorld
         -1
     }
 
-    // the id a block's default state is stored as this epoch, for code that places or compares many
-    pub(crate) fn id(&self, name: &'static str) -> i32 { super::palette::id(name) }
-
     pub(crate) fn is(&self, x: i32, y: i32, z: i32, name: &str) -> bool { blockIs(self.block(x, y, z), name) }
+
+    pub(crate) fn tagged(&self, x: i32, y: i32, z: i32, tag: &str) -> bool { blockTagged(self.block(x, y, z), tag) }
 
     pub(crate) fn info(&self, block: i32) -> BlockInfo
     {

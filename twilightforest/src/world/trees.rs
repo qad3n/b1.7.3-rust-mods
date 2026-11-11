@@ -1,12 +1,10 @@
 use super::generate::GenWorld;
 use super::palette;
+pub(crate) use super::palette::Placed;
 use crate::names::block;
 use crate::tags;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
-
-// a block and its metadata as the generators place it
-pub(crate) type Placed = (i32, i32);
 
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) enum Tree
@@ -184,11 +182,11 @@ impl Builder<'_>
     {
         if self.m_notify
         {
-            self.m_world.setNotify(x, y, z, placed.0, placed.1);
+            self.m_world.setNotify(x, y, z, placed);
         }
         else
         {
-            self.m_world.setMeta(x, y, z, placed.0, placed.1);
+            self.m_world.set(x, y, z, placed);
         }
     }
 
@@ -352,7 +350,7 @@ impl Builder<'_>
     // a firefly on one of four sides of the trunk, TFGenCanopyTree.addFirefly
     pub(crate) fn firefly(&self, x: i32, y: i32, z: i32, height: i32, angle: f64)
     {
-        let firefly: Placed = (self.m_world.id(block::FIREFLY), 0);
+        let firefly: Placed = palette::plain(block::FIREFLY);
 
         match (angle * 4.0) as i32
         {
@@ -437,7 +435,7 @@ mod small
             return false;
         }
 
-        builder.set(x, y - 1, z, (builder.m_world.id("minecraft:dirt"), 0));
+        builder.set(x, y - 1, z, palette::plain("minecraft:dirt"));
 
         let crown: i32 = 3;
         for cy in y - crown + height..=y + height
@@ -759,21 +757,15 @@ mod canopy
         }
 
         let red: bool = random.nextIntBounded(3) == 0;
-        let cap: Placed = (
-            builder.m_world.id(
-                if red
-                {
-                    block::HUGE_RED_MUSHROOM
-                }
-                else
-                {
-                    block::HUGE_BROWN_MUSHROOM
-                },
-            ),
-            0,
-        );
-
-        let stem: Placed = (cap.0, 1);
+        let name: &'static str = if red
+        {
+            block::HUGE_RED_MUSHROOM
+        }
+        else
+        {
+            block::HUGE_BROWN_MUSHROOM
+        };
+        let (cap, stem): (Placed, Placed) = (palette::plain(name), palette::with(name, "part", "stem"));
 
         let stalk = |height: i32, length: f64, angle: f64, tilt: f64, trunk: bool|
         {
@@ -945,13 +937,8 @@ mod dark
     // TFGenDarkCanopyTree, a short trunk carrying four boughs of dark leaves
     pub fn canopy(builder: &Builder, random: &Random, x: i32, mut y: i32, z: i32) -> bool
     {
-        let woods: Woods = Woods
-        {
-            m_trunk: log(3),
-            m_branch: log(15),
-            m_leaf: (builder.m_world.id(block::DARK_LEAVES), 0),
-            m_root: root(),
-        };
+        let woods: Woods =
+            Woods { m_trunk: log(3), m_branch: log(15), m_leaf: palette::plain(block::DARK_LEAVES), m_root: root() };
 
         let mut found: bool = false;
         let mut dy: i32 = y;

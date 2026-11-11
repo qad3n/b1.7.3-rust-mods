@@ -2,6 +2,7 @@ use super::generate::GenWorld;
 use super::palette;
 use crate::names::block;
 use crate::tags;
+use crate::world::palette::Placed;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
@@ -104,7 +105,7 @@ pub(crate) fn suitable(world: &GenWorld, x: i32, y: i32, z: i32, size: [i32; 3])
 // TFGenPlantRoots, root strands hanging under the dirt
 pub(crate) fn plantRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
-    let strand: i32 = world.id(block::ROOT_STRAND);
+    let strand: Placed = palette::plain(block::ROOT_STRAND);
     let (mut bx, mut bz): (i32, i32) = (x, z);
 
     for by in (reach::ROOT_FLOOR + 1..=y).rev()
@@ -124,7 +125,7 @@ pub(crate) fn plantRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i
 // TFGenTorchBerries, one torchberry plant under the first root that takes it
 pub(crate) fn torchBerries(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
-    let berries: i32 = world.id(block::TORCHBERRY_PLANT);
+    let berries: Placed = palette::plain(block::TORCHBERRY_PLANT);
     let (mut bx, mut bz): (i32, i32) = (x, z);
 
     for by in (reach::ROOT_FLOOR + 1..=y).rev()
@@ -143,7 +144,7 @@ pub(crate) fn torchBerries(world: &GenWorld, random: &Random, x: i32, y: i32, z:
 // TFGenTrollRoots, troll roots and the odd unripe trollber under the highland stone
 pub(crate) fn trollRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
-    let (root, berry): (i32, i32) = (world.id(block::TROLL_ROOT), world.id(block::UNRIPE_TROLLBER));
+    let (root, berry): (Placed, Placed) = (palette::plain(block::TROLL_ROOT), palette::plain(block::UNRIPE_TROLLBER));
     let (mut bx, mut bz): (i32, i32) = (x, z);
 
     for by in (reach::ROOT_FLOOR + 1..=y).rev()
@@ -183,7 +184,7 @@ fn placeRoot(world: &GenWorld, at: [i32; 3], placed: (i32, i32))
     let builder: super::trees::Builder = super::trees::Builder { m_world: world, m_notify: false };
     if builder.rootFits(at[0], at[1], at[2])
     {
-        world.setMeta(at[0], at[1], at[2], placed.0, placed.1);
+        world.set(at[0], at[1], at[2], placed);
     }
 }
 
@@ -198,7 +199,7 @@ fn woodRoot(world: &GenWorld, random: &Random, origin: [i32; 3], from: [i32; 3],
         return;
     }
 
-    let (root, ore): ((i32, i32), (i32, i32)) = ((world.id(block::ROOT), 0), (world.id(block::LIVEROOT), 0));
+    let (root, ore): (Placed, Placed) = (palette::plain(block::ROOT), palette::plain(block::LIVEROOT));
 
     for at in super::trees::line(from, dest)
     {
@@ -233,7 +234,7 @@ fn woodRoot(world: &GenWorld, random: &Random, origin: [i32; 3], from: [i32; 3],
 }
 
 // TFGenMyceliumBlob, a disc that turns the ground over, beta has no mycelium so it lays dirt
-pub(crate) fn groundBlob(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32, size: i32)
+pub(crate) fn groundBlob(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: Placed, size: i32)
 {
     let range: i32 = random.nextIntBounded(size - 2) + 2;
     let turns: [&str; 2] = ["minecraft:dirt", "minecraft:base_stone_overworld"];
@@ -272,7 +273,7 @@ pub(crate) fn plants(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, 
         }
     }
 
-    let id: i32 = world.id(plant);
+    let id: Placed = palette::plain(plant);
 
     for _ in 0..amount
     {
@@ -287,13 +288,13 @@ pub(crate) fn plants(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, 
 // the vanilla WorldGenTallGrass placing one of the twilight plants
 pub(crate) fn plantPatch(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, plant: &'static str)
 {
-    let id: i32 = world.id(plant);
+    let id: Placed = palette::plain(plant);
 
     let stays = |world: &GenWorld, bx: i32, by: i32, bz: i32|
     {
         crate::blocks::plantStays(world.m_world, BlockPos::new(bx, by, bz), plant)
     };
-    super::vanilla::tallGrass(world, random, x, y, z, (id, 0), stays);
+    super::vanilla::tallGrass(world, random, x, y, z, id, stays);
 }
 
 fn surroundedByAir(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
@@ -320,9 +321,9 @@ pub(crate) fn hangingLamp(world: &GenWorld, x: i32, y: i32, z: i32)
         return;
     }
 
-    world.set(x, y, z, world.id(block::FIREFLY_JAR));
+    world.set(x, y, z, palette::plain(block::FIREFLY_JAR));
 
-    let fence: i32 = world.id("minecraft:fence");
+    let fence: Placed = palette::plain("minecraft:fence");
 
     for cy in 1..HANG
     {
@@ -348,20 +349,21 @@ pub(crate) fn lamppost(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
         return;
     }
 
-    let fence: i32 = world.id("minecraft:fence");
+    let fence: Placed = palette::plain("minecraft:fence");
 
     for dy in 0..height
     {
         world.set(x, y + dy, z, fence);
     }
 
-    world.set(x, y + height, z, world.id(block::FIREFLY_JAR));
+    world.set(x, y + height, z, palette::plain(block::FIREFLY_JAR));
 }
 
 // TFGenFireJet, a smoker or fire jet in the grass over a pocket of lava ringed in stone
 pub(crate) fn fireJet(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, jet: &'static str)
 {
-    let (stone, flowing): (i32, i32) = (world.id("minecraft:stone"), world.id("minecraft:flowing_lava"));
+    let (stone, flowing): (Placed, Placed) =
+        (palette::plain("minecraft:stone"), palette::plain("minecraft:flowing_lava"));
 
     for _ in 0..4
     {
@@ -375,7 +377,7 @@ pub(crate) fn fireJet(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32,
             continue;
         }
 
-        world.set(bx, by - 1, bz, world.id(jet));
+        world.set(bx, by - 1, bz, palette::plain(jet));
 
         for rx in -2..=2i32
         {
@@ -440,7 +442,7 @@ fn thornArm(
     let spread: i32 = 7;
     let axis: &'static str = crate::blocks::AXES[crate::blocks::axisOf(dir)];
     let thorn: (i32, i32) = palette::with(block::BROWN_THORNS, "axis", axis);
-    let (leaves, rose): (i32, i32) = (world.id(block::THORN_LEAVES), world.id(block::THORN_ROSE));
+    let (leaves, rose): (Placed, Placed) = (palette::plain(block::THORN_LEAVES), palette::plain(block::THORN_ROSE));
     let mut complete: bool = false;
 
     for i in 0..length
@@ -451,7 +453,7 @@ fn thornArm(
             break;
         }
 
-        world.setMeta(at[0], at[1], at[2], thorn.0, thorn.1);
+        world.set(at[0], at[1], at[2], thorn);
 
         if i < length - 1
         {
@@ -463,7 +465,7 @@ fn thornArm(
         let tip: [i32; 3] = step(at, dir, 1);
         if random.nextIntBounded(odds::THORN_FLOWER) == 0 && world.isAir(tip[0], tip[1], tip[2])
         {
-            let flower: i32 = if random.nextIntBounded(odds::THORN_ROSE) > 0
+            let flower: Placed = if random.nextIntBounded(odds::THORN_ROSE) > 0
             {
                 leaves
             }
@@ -530,8 +532,7 @@ pub(crate) fn lilyPads(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
         {
             let quarter: [(&str, &str); 2] =
                 [("piece", crate::blocks::QUARTERS[piece]), ("orient", crate::blocks::QUARTERS[turn as usize])];
-            let (pad, meta): (i32, i32) = palette::withTwo(block::HUGE_LILY_PAD, quarter);
-            world.setMeta(bx + dx, by, bz + dz, pad, meta);
+            world.set(bx + dx, by, bz + dz, palette::withTwo(block::HUGE_LILY_PAD, quarter));
         }
     }
 }
@@ -539,7 +540,7 @@ pub(crate) fn lilyPads(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
 // TFGenHugeWaterLily
 pub(crate) fn waterLilies(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
-    let lily: i32 = world.id(block::HUGE_WATER_LILY);
+    let lily: Placed = palette::plain(block::HUGE_WATER_LILY);
 
     for _ in 0..4
     {
@@ -565,12 +566,12 @@ pub(crate) fn bigMushgloom(world: &GenWorld, random: &Random, x: i32, y: i32, z:
         return false;
     }
 
-    let gloom: i32 = world.id(block::HUGE_GLOOM);
+    let gloom: Placed = palette::plain(block::HUGE_GLOOM);
     let stem: (i32, i32) = palette::with(block::HUGE_GLOOM, "part", "stem");
 
     for dy in 0..height - 2
     {
-        world.setMeta(x, y + dy, z, stem.0, stem.1);
+        world.set(x, y + dy, z, stem);
     }
 
     let cap = |cy: i32|
@@ -728,7 +729,7 @@ pub(crate) fn stalagmite(world: &GenWorld, random: &Random, x: i32, y: i32, z: i
 fn makeSpike(world: &GenWorld, random: &Random, at: [i32; 3], longest: i32, spike: &Spike)
 {
     let [x, y, z] = at;
-    let block: i32 = world.id(spike.m_block);
+    let block: Placed = palette::plain(spike.m_block);
     let diameter: i32 = (f64::from(longest) / 4.5) as i32;
     let dir: i32 = if spike.m_hang { -1 } else { 1 };
 

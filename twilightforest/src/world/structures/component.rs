@@ -274,7 +274,6 @@ pub(crate) trait WorldExt
 {
     fn setBlock(&self, x: i32, y: i32, z: i32, block: Blk, meta: i32, flags: i32);
     fn getBlock(&self, x: i32, y: i32, z: i32) -> Blk;
-    fn clear(&self, x: i32, y: i32, z: i32);
     fn seed(&self) -> i64;
     fn liquid(&self, x: i32, y: i32, z: i32) -> bool;
     fn rand(&self) -> &'static Random;
@@ -286,12 +285,10 @@ impl WorldExt for GenWorld
     fn setBlock(&self, x: i32, y: i32, z: i32, block: Blk, meta: i32, _flags: i32)
     {
         let (id, meta): (i32, i32) = block.resolve(meta);
-        self.setMeta(x, y, z, id, meta);
+        self.set(x, y, z, (id, meta));
     }
 
     fn getBlock(&self, x: i32, y: i32, z: i32) -> Blk { Blk::Id(self.block(x, y, z)) }
-
-    fn clear(&self, x: i32, y: i32, z: i32) { self.set(x, y, z, 0); }
 
     fn seed(&self) -> i64 { self.m_world.seed() }
 
@@ -1065,8 +1062,7 @@ impl Piece
     )
     {
         let (wx, wy, wz): (i32, i32, i32) = (self.xTurned(x, z, turn), self.yAt(y), self.zTurned(x, z, turn));
-        let spawner: i32 = world.id("minecraft:mob_spawner");
-        if !sbb.contains(wx, wy, wz) || world.block(wx, wy, wz) == spawner
+        if !sbb.contains(wx, wy, wz) || world.is(wx, wy, wz, "minecraft:mob_spawner")
         {
             return;
         }
@@ -1244,13 +1240,9 @@ impl Piece
     pub(crate) fn dirtLevel(&self, world: &GenWorld, sbb: StructureBox) -> i32
     {
         let (x, z): (i32, i32) = (sbb.centerX(), sbb.centerZ());
-        let ground: [i32; 4] = [
-            world.id("minecraft:dirt"),
-            world.id("minecraft:stone"),
-            world.id("minecraft:grass"),
-            world.id("minecraft:gravel"),
-        ];
-        (1..=limits::DIRT_TOP).rev().find(|&y| ground.contains(&world.block(x, y, z))).unwrap_or(limits::NO_DIRT)
+        let ground: [&str; 3] = ["minecraft:dirt", "minecraft:base_stone_overworld", "c:gravels"];
+        let grounded = |y: i32| ground.iter().any(|tag| world.tagged(x, y, z, tag));
+        (1..=limits::DIRT_TOP).rev().find(|&y| grounded(y)).unwrap_or(limits::NO_DIRT)
     }
 }
 

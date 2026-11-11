@@ -4,6 +4,8 @@ use super::generate::GenWorld;
 use super::trees::Builder;
 use super::{features, ruins, scatter, trees, vanilla};
 use crate::names::block;
+use crate::world::palette;
+use crate::world::palette::Placed;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
@@ -124,8 +126,6 @@ impl Decorator<'_>
         }
     }
 
-    fn id(&self, name: &'static str) -> i32 { self.m_world.id(name) }
-
     // TFBiomeDecorator.genDecorations
     fn decorate(&self)
     {
@@ -150,20 +150,28 @@ impl Decorator<'_>
         for _ in 0..self.m_decor.m_lakes
         {
             let (x, z): (i32, i32) = self.column();
-            vanilla::lake(self.m_world, self.m_random, x, self.height(x, z), z, self.id("minecraft:water"));
+            vanilla::lake(self.m_world, self.m_random, x, self.height(x, z), z, palette::plain("minecraft:water"));
         }
 
         if self.m_random.nextFloat() <= self.m_decor.m_lava
         {
             let (x, z): (i32, i32) = self.column();
-            vanilla::lake(self.m_world, self.m_random, x, self.height(x, z), z, self.id("minecraft:lava"));
+            vanilla::lake(self.m_world, self.m_random, x, self.height(x, z), z, palette::plain("minecraft:lava"));
         }
 
         for _ in 0..self.m_decor.m_mycelium
         {
             let (x, z): (i32, i32) = self.column();
             let size: i32 = 5;
-            scatter::groundBlob(self.m_world, self.m_random, x, self.height(x, z), z, self.id("minecraft:dirt"), size);
+            scatter::groundBlob(
+                self.m_world,
+                self.m_random,
+                x,
+                self.height(x, z),
+                z,
+                palette::plain("minecraft:dirt"),
+                size,
+            );
         }
 
         self.vanilla();
@@ -226,8 +234,8 @@ impl Decorator<'_>
 
         self.ores();
 
-        let (sand, gravel, clay): (i32, i32, i32) =
-            (self.id("minecraft:sand"), self.id("minecraft:gravel"), self.id("minecraft:clay"));
+        let (sand, gravel, clay): (Placed, Placed, Placed) =
+            (palette::plain("minecraft:sand"), palette::plain("minecraft:gravel"), palette::plain("minecraft:clay"));
 
         for _ in 0..counts::SAND
         {
@@ -346,18 +354,32 @@ impl Decorator<'_>
                 Flower::Rose => "minecraft:red_flower",
                 Flower::Dandelion => "minecraft:yellow_flower",
             };
-            vanilla::flowers(self.m_world, random, x, y, z, self.id(name), vanilla::lit);
+            vanilla::flowers(self.m_world, random, x, y, z, palette::plain(name), vanilla::lit);
         }
     }
 
     fn grass(&self, kind: Grass, x: i32, y: i32, z: i32)
     {
-        let tallgrass: i32 = self.id("minecraft:tallgrass");
-
         match kind
         {
-            Grass::Grass => vanilla::tallGrass(self.m_world, self.m_random, x, y, z, (tallgrass, 1), vanilla::lit),
-            Grass::Fern => vanilla::tallGrass(self.m_world, self.m_random, x, y, z, (tallgrass, 2), vanilla::lit),
+            Grass::Grass => vanilla::tallGrass(
+                self.m_world,
+                self.m_random,
+                x,
+                y,
+                z,
+                palette::meta("minecraft:tallgrass", 1),
+                vanilla::lit,
+            ),
+            Grass::Fern => vanilla::tallGrass(
+                self.m_world,
+                self.m_random,
+                x,
+                y,
+                z,
+                palette::meta("minecraft:tallgrass", 2),
+                vanilla::lit,
+            ),
 
             Grass::Twilight(plant) =>
             {
@@ -383,7 +405,7 @@ impl Decorator<'_>
         {
             world.m_world.light(BlockPos::new(bx, by, bz)) < brightest && world.isOpaque(bx, by - 1, bz)
         };
-        vanilla::flowers(self.m_world, self.m_random, x, y, z, self.id(name), dim);
+        vanilla::flowers(self.m_world, self.m_random, x, y, z, palette::plain(name), dim);
     }
 
     fn mushrooms(&self)
@@ -421,7 +443,8 @@ impl Decorator<'_>
     fn springs(&self)
     {
         let random: &Random = self.m_random;
-        let (water, lava): (i32, i32) = (self.id("minecraft:flowing_water"), self.id("minecraft:flowing_lava"));
+        let (water, lava): (Placed, Placed) =
+            (palette::plain("minecraft:flowing_water"), palette::plain("minecraft:flowing_lava"));
 
         for _ in 0..counts::WATER_SPRINGS
         {
@@ -458,7 +481,7 @@ impl Decorator<'_>
 
         for (name, count, size, top) in rows
         {
-            let block: i32 = self.id(name);
+            let block: Placed = palette::plain(name);
 
             for _ in 0..count
             {
@@ -473,7 +496,7 @@ impl Decorator<'_>
         let x: i32 = self.m_x + random.nextIntBounded(chunk::SIZE);
         let y: i32 = random.nextIntBounded(spread) + random.nextIntBounded(spread) + center - spread;
         let z: i32 = self.m_z + random.nextIntBounded(chunk::SIZE);
-        vanilla::ore(self.m_world, random, x, y, z, self.id("minecraft:lapis_ore"), 6);
+        vanilla::ore(self.m_world, random, x, y, z, palette::plain("minecraft:lapis_ore"), 6);
     }
 
     // TFBiomeDecorator.decorateUnderground
@@ -497,7 +520,7 @@ impl Decorator<'_>
 
         if self.m_decor.m_springs
         {
-            let water: i32 = self.id("minecraft:flowing_water");
+            let water: Placed = palette::plain("minecraft:flowing_water");
 
             for _ in 0..counts::CAVE_SPRINGS
             {
@@ -775,7 +798,14 @@ impl Decorator<'_>
         for _ in 0..boulders
         {
             let (x, z): (i32, i32) = self.column();
-            vanilla::boulder(self.m_world, random, x, self.height(x, z), z, self.id("minecraft:mossy_cobblestone"));
+            vanilla::boulder(
+                self.m_world,
+                random,
+                x,
+                self.height(x, z),
+                z,
+                palette::plain("minecraft:mossy_cobblestone"),
+            );
         }
 
         self.doublePlants(double::FERN, counts::DOUBLE_PLANTS);
@@ -826,7 +856,7 @@ pub(crate) fn populate(chunk: ChunkInfo)
     {
         let (x, z): (i32, i32) = column();
         let y: i32 = random.nextIntBounded(height::SOURCE);
-        vanilla::lake(&world, &random, x, y, z, world.id("minecraft:water"));
+        vanilla::lake(&world, &random, x, y, z, palette::plain("minecraft:water"));
     }
 
     if open && random.nextIntBounded(odds::LAVA_LAKE) == 0
@@ -837,7 +867,7 @@ pub(crate) fn populate(chunk: ChunkInfo)
 
         if y < height::SEA || random.nextIntBounded(odds::SURFACE_LAVA) == 0
         {
-            vanilla::lake(&world, &random, x, y, z, world.id("minecraft:lava"));
+            vanilla::lake(&world, &random, x, y, z, palette::plain("minecraft:lava"));
         }
     }
 
@@ -868,7 +898,7 @@ pub(crate) fn populate(chunk: ChunkInfo)
 fn freeze(world: &GenWorld, x: i32, z: i32)
 {
     let seed: i64 = world.m_world.seed();
-    let (ice, snow): (i32, i32) = (world.id("minecraft:ice"), world.id("minecraft:snow_layer"));
+    let (ice, snow): (Placed, Placed) = (palette::plain("minecraft:ice"), palette::plain("minecraft:snow_layer"));
 
     for dx in 0..16
     {

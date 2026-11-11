@@ -57,3 +57,8 @@ pub(crate) fn withTwo(name: &'static str, properties: [(&'static str, &'static s
 pub(crate) fn meta(name: &'static str, meta: i32) -> (i32, i32) { resolve(Key::Meta(name, meta)) }
 
 pub(crate) fn id(name: &'static str) -> i32 { plain(name).0 }
+
+// a block and its metadata as generators place it, resolved from a named state this epoch
+pub(crate) type Placed = (i32, i32);
+
+pub(crate) const AIR: Placed = (0, 0);
