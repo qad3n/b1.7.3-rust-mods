@@ -80,6 +80,7 @@ pub(crate) fn closestPlayer(world: World, info: &EntityInfo, range: f64) -> Opti
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     mobs::register(ctx)?;
+    spawns::register(ctx)?;
     roving_cube::register(ctx)?;
     quest_ram::register(ctx)?;
     arrows::register(ctx)?;

@@ -184,11 +184,13 @@ fn creatureOffered(mob: &Mob, biome: Biome, ambient: bool) -> Option<(i32, [i32;
     }
 }
 
+// the biomes TFBiomeBase's vanilla creatures live in
+fn base(biome: Biome) -> bool { !matches!(biome, Biome::Thornlands | Biome::Stream | Biome::FinalPlateau) }
+
 // a creature list of names with their weights and group sizes
 fn creatureRows(biome: Biome, ambient: bool) -> Vec<(&'static str, i32, [i32; 2])>
 {
-    let base: bool = !matches!(biome, Biome::Thornlands | Biome::Stream | Biome::FinalPlateau);
-    let vanilla: &[(&'static str, i32, [i32; 2])] = if base { VANILLA_CREATURES } else { &[] };
+    let vanilla: &[(&'static str, i32, [i32; 2])] = if base(biome) { VANILLA_CREATURES } else { &[] };
     let twilight = MOBS
         .iter()
         .chain(GHASTS.iter())
@@ -196,9 +198,50 @@ fn creatureRows(biome: Biome, ambient: bool) -> Vec<(&'static str, i32, [i32; 2]
     vanilla.iter().copied().chain(twilight).collect()
 }
 
-fn creatures(biome: Biome) -> Vec<SpawnEntry>
+fn biomeIds(offered: impl Fn(Biome) -> bool) -> Vec<Identifier>
 {
-    entries(creatureRows(biome, true).into_iter().map(|(name, weight, _)| (name, weight)))
+    biomes::BIOMES
+        .iter()
+        .filter(|row| offered(row.m_biome))
+        .filter_map(|row| Identifier::parseIn(row.m_name, &modId()).ok())
+        .collect()
+}
+
+// the twilight biomes whose creature lists offer a mob, as a registry spawn rule so the loader builds those lists and
+// other mods' spawn changes join them
+pub(crate) fn creatureSpawn(mob: &Mob) -> Option<SpawnSpec>
+{
+    let (weight, _): (i32, [i32; 2]) = biomes::BIOMES.iter().find_map(|row| creatureOffered(mob, row.m_biome, true))?;
+    let biomes: Vec<Identifier> = biomeIds(|biome| creatureOffered(mob, biome, true).is_some());
+    Some(SpawnSpec { kind: CreatureKind::Creature, weight, biomes })
+}
+
+fn addSpawns(
+    ctx: &mut RegisterCtx,
+    entity: &str,
+    kind: CreatureKind,
+    weight: i32,
+    biomes: Vec<Identifier>,
+) -> Result<()>
+{
+    let entity: Identifier = Identifier::parse(entity)?;
+    ctx.blocks().modifySpawns(SpawnModifySpec { entity, spawn: SpawnSpec { kind, weight, biomes } })
+}
+
+// the vanilla creatures and lake squid the twilight biomes offer, as registry spawn changes
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
+{
+    for (name, weight, _) in VANILLA_CREATURES
+    {
+        addSpawns(ctx, name, CreatureKind::Creature, *weight, biomeIds(base))?;
+    }
+
+    for (name, weight) in LAKE_WATER
+    {
+        addSpawns(ctx, name, CreatureKind::Water, *weight, biomeIds(|biome| biome == Biome::Lake))?;
+    }
+
+    Ok(())
 }
 
 mod worldgen
@@ -320,9 +363,10 @@ fn monsters(world: World, biome: Biome) -> Vec<SpawnEntry>
     entries(surface.m_entries.iter().copied())
 }
 
-fn biomeList(world: World, biome: Biome, kind: CreatureKind, y: i32) -> Vec<SpawnEntry>
+// creatures and water creatures come from the biome spawn lists the loader builds from the registry
+fn biomeList(world: World, biome: Biome, kind: CreatureKind, y: i32) -> Option<Vec<SpawnEntry>>
 {
-    match kind
+    let list: Vec<SpawnEntry> = match kind
     {
         CreatureKind::Monster if y < depth::SEA =>
         {
@@ -338,10 +382,9 @@ fn biomeList(world: World, biome: Biome, kind: CreatureKind, y: i32) -> Vec<Spaw
         }
 
         CreatureKind::Monster => monsters(world, biome),
-        CreatureKind::Creature => creatures(biome),
-        CreatureKind::Water if biome == Biome::Lake => entries(LAKE_WATER.iter().copied()),
-        CreatureKind::Water => Vec::new(),
-    }
+        CreatureKind::Creature | CreatureKind::Water => return None,
+    };
+    Some(list)
 }
 
 // the dimension's spawn list handler, every natural spawn attempt in the twilight forest asks it
@@ -363,5 +406,5 @@ pub(crate) fn possible(query: &SpawnQuery) -> Option<Vec<SpawnEntry>>
     }
 
     let biome: Biome = biomes::at(world.seed(), x, z);
-    Some(biomeList(world, biome, query.kind, y))
+    biomeList(world, biome, query.kind, y)
 }

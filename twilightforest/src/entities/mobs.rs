@@ -1605,6 +1605,7 @@ fn registerMob(ctx: &mut RegisterCtx, mob: &'static Mob) -> Result<()>
             ),
             sounds,
             model: Some(EntityModelSpec { shadow: mob.m_shadow, ..wornModel(mob) }),
+            spawn: super::spawns::creatureSpawn(mob),
             ..EntitySpec::default()
         },
         Some(Rc::new(Posed { m_mob: mob })),
