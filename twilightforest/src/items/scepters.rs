@@ -1,4 +1,4 @@
-use super::magic::wearHeld;
+use super::magic::{held, holdInUse, letGo, wearHeld};
 use super::{put, texture};
 use crate::entities::ai::{distance, face};
 use crate::entities::shots::{self, WAND_BOLT};
@@ -7,8 +7,7 @@ use crate::math::look;
 use b173_api::prelude::*;
 use std::rc::Rc;
 
-// ItemTFTwilightWand, ItemTFScepterLifeDrain and ItemTFZombieWand, the lich's three scepters; beta has no held use so
-// each click does one of the source's use ticks
+// ItemTFTwilightWand, ItemTFScepterLifeDrain and ItemTFZombieWand, the lich's three scepters, held in use
 const LOYAL_ZOMBIE: &str = "loyal_zombie";
 
 mod scepter
@@ -26,6 +25,12 @@ mod scepter
     pub const HOLD_LEVEL: i32 = 2;
     pub const TRAIL: i32 = 32;
     pub const HEAL: f64 = 1.0;
+    // while held the wand fires every sixth tick, the life drain works every fifth and heals every tenth
+    pub const WAND_EVERY: i32 = 6;
+    pub const DRAIN_EVERY: i32 = 5;
+    pub const HEAL_EVERY: i32 = 10;
+    // ItemTFZombieWand stays raised for a second and a half after each zombie
+    pub const ZOMBIE_USE: i32 = 30;
 }
 
 mod zombie
@@ -82,18 +87,33 @@ struct TwilightWand;
 #[item_behavior]
 impl ItemBehavior for TwilightWand
 {
-    fn onRightClick(&self, world: World, player: Player, stack: ItemStack) -> Use
+    fn onRightClick(&self, _world: World, player: Player, stack: ItemStack) -> Use
     {
-        let Some(info) = player.info()
-        else
-        {
-            return Use::Pass;
-        };
-
         if !charged(&stack, scepter::CHARGES)
         {
             return Use::Pass;
         }
+        holdInUse(player, held::LONGEST)
+    }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Bow }
+
+    // ItemTFTwilightWand.onUsingTick, a bolt every sixth tick of the hold until the charges run out
+    fn onUsingTick(&self, world: World, player: Player, stack: ItemStack, left: i32)
+    {
+        if !charged(&stack, scepter::CHARGES)
+        {
+            letGo(player);
+            return;
+        }
+        let Some(info) = player.info().filter(|_| left % scepter::WAND_EVERY == 0)
+        else
+        {
+            return;
+        };
+
         let pitch: f32 = (ids::fraction(world) - ids::fraction(world)) * 0.2 + 1.0;
         world.playSound(info.pos, "mob.ghast.fireball", 1.0, pitch);
         if world.isAuthority()
@@ -104,7 +124,6 @@ impl ItemBehavior for TwilightWand
             shots::fire(world, WAND_BOLT, from, toward, scepter::BOLT_SPEED, 1.0, Some(player.id));
             wearHeld(player, 1);
         }
-        Use::Done(player.held())
     }
 }
 
@@ -121,22 +140,36 @@ struct LifeDrain;
 #[item_behavior]
 impl ItemBehavior for LifeDrain
 {
-    fn onRightClick(&self, world: World, player: Player, stack: ItemStack) -> Use
+    fn onRightClick(&self, _world: World, player: Player, stack: ItemStack) -> Use
     {
-        let Some(info) = player.info()
-        else
-        {
-            return Use::Pass;
-        };
-
         if !charged(&stack, scepter::CHARGES)
         {
             return Use::Pass;
         }
+        holdInUse(player, held::LONGEST)
+    }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Bow }
+
+    // ItemTFScepterLifeDrain.onUsingTick, every fifth tick of the hold works on the target in sight
+    fn onUsingTick(&self, world: World, player: Player, stack: ItemStack, left: i32)
+    {
+        if !charged(&stack, scepter::CHARGES)
+        {
+            letGo(player);
+            return;
+        }
+        let Some(info) = player.info().filter(|_| left % scepter::DRAIN_EVERY == 0)
+        else
+        {
+            return;
+        };
         let Some(target) = lookTarget(world, player, &info)
         else
         {
-            return Use::Pass;
+            return;
         };
 
         let victim: Entity = Entity { world, id: target.id };
@@ -159,19 +192,22 @@ impl ItemBehavior for LifeDrain
                     world.particle("explode", target.pos, [0.0; 3]);
                 }
                 crate::combat::hit(victim, health.max(1) * 10, Some(player.id), crate::combat::kind::MAGIC);
+                letGo(player);
             }
             else
             {
                 crate::combat::hit(victim, scepter::SIPHON, Some(player.id), crate::combat::kind::MAGIC);
                 let _ = victim.setMotion([0.0, 0.2, 0.0]);
                 hold(victim);
-                let own: Entity = Entity { world, id: player.id };
-                let max: f64 = own.field(EntityField::MaxHealth);
-                own.setField(EntityField::Health, (own.field(EntityField::Health) + scepter::HEAL).min(max));
+                if left % scepter::HEAL_EVERY == 0
+                {
+                    let own: Entity = Entity { world, id: player.id };
+                    let max: f64 = own.field(EntityField::MaxHealth);
+                    own.setField(EntityField::Health, (own.field(EntityField::Health) + scepter::HEAL).min(max));
+                }
             }
             wearHeld(player, 1);
         }
-        Use::Done(player.held())
     }
 }
 
@@ -197,9 +233,14 @@ impl ItemBehavior for ZombieWand
             return Use::Pass;
         };
 
-        if !charged(&stack, scepter::ZOMBIES) || !world.isAuthority()
+        if !charged(&stack, scepter::ZOMBIES)
         {
             return Use::Pass;
+        }
+        let using: Use = holdInUse(player, scepter::ZOMBIE_USE);
+        if !world.isAuthority()
+        {
+            return using;
         }
         let from: [f64; 3] = eyes(&info);
         let aim: [f64; 3] = look(info.yaw, info.pitch);
@@ -207,7 +248,7 @@ impl ItemBehavior for ZombieWand
         let Some(hit) = world.rayTrace(from, to, false)
         else
         {
-            return Use::Pass;
+            return using;
         };
 
         if let Some(spawned) =
@@ -218,8 +259,12 @@ impl ItemBehavior for ZombieWand
             crate::effects::give(spawned, crate::effects::Effect::Strength, zombie::STRENGTH, zombie::STRENGTH_TICKS);
             wearHeld(player, 1);
         }
-        Use::Done(player.held())
+        using
     }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { scepter::ZOMBIE_USE }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Bow }
 }
 
 // EntityTFLoyalZombie: follows its summoner, fights the monsters near it and burns when its strength runs out

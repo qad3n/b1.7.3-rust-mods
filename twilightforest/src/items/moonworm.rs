@@ -1,16 +1,19 @@
+use super::magic::{held, holdInUse};
 use super::{put, texture};
 use crate::entities::shots::{self, MOONWORM_SHOT};
 use crate::ids::{self, block, item};
 use crate::math::look;
 use b173_api::prelude::*;
 
-// ItemTFMoonwormQueen: sets moonworms on the face clicked, or fires one that sticks where it lands
+// ItemTFMoonwormQueen: sets moonworms on the face clicked, or drawn and let go fires one that sticks where it lands
 mod queen
 {
     pub const CHARGES: i32 = 256;
-    // a fired moonworm costs two charges and needs three left
+    // a fired moonworm costs two charges and needs two left after it
     pub const SHOT_COST: i32 = 2;
     pub const SHOT_SPEED: f64 = 1.5;
+    // ItemTFMoonwormQueen.onPlayerStoppedUsing fires only after more than twelve ticks of drawing
+    pub const DRAW: i32 = 12;
 }
 
 // BlockTorch metadata by the face the moonworm clings to, the bottom face holds none
@@ -57,18 +60,29 @@ impl ItemBehavior for MoonwormQueen
         Use::Done(player.held())
     }
 
-    fn onRightClick(&self, world: World, player: Player, stack: ItemStack) -> Use
+    fn onRightClick(&self, _world: World, player: Player, stack: ItemStack) -> Use
     {
-        let Some(info) = player.info()
+        if stack.damage >= queen::CHARGES
+        {
+            return Use::Pass;
+        }
+        holdInUse(player, held::LONGEST)
+    }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Bow }
+
+    // ItemTFMoonwormQueen.onPlayerStoppedUsing, a long enough draw fires a moonworm
+    fn onStoppedUsing(&self, world: World, player: Player, stack: ItemStack, left: i32) -> Use
+    {
+        let drawn: bool = held::LONGEST - left > queen::DRAW;
+        let Some(info) = player.info().filter(|_| drawn && stack.damage + 1 < queen::CHARGES)
         else
         {
             return Use::Pass;
         };
 
-        if stack.damage + queen::SHOT_COST >= queen::CHARGES
-        {
-            return Use::Pass;
-        }
         if world.isAuthority()
         {
             let aim: [f64; 3] = look(info.yaw, info.pitch);

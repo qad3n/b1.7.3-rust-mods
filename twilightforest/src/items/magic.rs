@@ -110,10 +110,12 @@ fn crumble(world: World, pos: BlockPos) -> i32
     cost
 }
 
-// the held items used by holding the use key, ItemTFCrumbleHorn, ItemTFLampOfCinders and ItemTFOreMagnet
+// the held items used by holding the use key, ItemTFCrumbleHorn, ItemTFLampOfCinders, ItemTFOreMagnet and the rest
 pub mod held
 {
     pub const LONGEST: i32 = 72000;
+    // ItemTFPeacockFan stays raised for a second after each fan
+    pub const FAN: i32 = 20;
     // the horn crumbles every fifth tick once ten have passed, the lamp and magnet act on release past a short hold
     pub const HORN_EVERY: i32 = 5;
     pub const HORN_WARMUP: i32 = 10;
@@ -121,14 +123,23 @@ pub mod held
     pub const MAGNET_HOLD: i32 = 10;
 }
 
-// starts holding the item in use and keeps the stack in hand
-pub fn holdInUse(player: Player) -> Use
+// starts holding the item in use for ticks and keeps the stack in hand
+pub fn holdInUse(player: Player, ticks: i32) -> Use
 {
-    if let Err(error) = player.setItemInUse(held::LONGEST)
+    if let Err(error) = player.setItemInUse(ticks)
     {
         warn(&format!("hold item in use: {}", error.0));
     }
     Use::Done(player.held())
+}
+
+// EntityPlayer.stopUsingItem, as when a charged out item lets go by itself
+pub fn letGo(player: Player)
+{
+    if let Err(error) = player.stopUsingItem()
+    {
+        warn(&format!("stop using item: {}", error.0));
+    }
 }
 
 struct CrumbleHorn;
@@ -148,7 +159,7 @@ impl ItemBehavior for CrumbleHorn
         {
             bleat(world, &info);
         }
-        holdInUse(player)
+        holdInUse(player, held::LONGEST)
     }
 
     fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
@@ -272,8 +283,12 @@ impl ItemBehavior for PeacockFan
         let volume: f32 = 1.0 + ids::fraction(world);
         let pitch: f32 = ids::fraction(world) * 0.7 + 0.3;
         world.playSound(info.pos, "random.breath", volume, pitch);
-        Use::Done(player.held())
+        holdInUse(player, held::FAN)
     }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { held::FAN }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Block }
 }
 
 fn thorny(world: World, pos: BlockPos) -> bool
@@ -310,7 +325,7 @@ impl ItemBehavior for LampOfCinders
         {
             return Use::Done(player.held());
         }
-        holdInUse(player)
+        holdInUse(player, held::LONGEST)
     }
 
     fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
@@ -628,7 +643,7 @@ const AIMS: [[f32; 2]; 9] = [
 #[item_behavior]
 impl ItemBehavior for OreMagnet
 {
-    fn onRightClick(&self, _world: World, player: Player, _stack: ItemStack) -> Use { holdInUse(player) }
+    fn onRightClick(&self, _world: World, player: Player, _stack: ItemStack) -> Use { holdInUse(player, held::LONGEST) }
 
     fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
 

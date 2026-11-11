@@ -97,6 +97,10 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   release after a short hold (ItemTFCrumbleHorn, ItemTFLampOfCinders, ItemTFOreMagnet); trophies are tile entities
   drawing the bosses' heads (TileEntityTFTrophyRenderer) on a floor turned in sixteenths or against a wall, and drop
   their trophy when broken.
+- Held use (loader api 1.20) as the source: the twilight wand fires a bolt every sixth tick of the hold, the life
+  drain scepter works every fifth tick and heals every tenth, the zombie wand and peacock fan stay raised for 30
+  and 20 ticks after use, the block and chain and cube of annihilation are held up while out (the cube returns
+  when the use key is let go), and the moonworm queen fires a moonworm when let go after twelve ticks.
 - Batch 3: the armored giant and redcaps wear their armor (RenderBiped's two armor layers over their own limb swing,
   `models/armor.rs`), chunks are populated with creature herds (SpawnerAnimals.performWorldGenSpawning with the
   creature list's SpawnListEntry group sizes, fireflies stay ambient), the tree of transformation turns columns to

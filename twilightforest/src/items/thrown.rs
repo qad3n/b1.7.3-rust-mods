@@ -1,3 +1,4 @@
+use super::magic::{held, holdInUse};
 use super::{put, texture};
 use crate::entities::ai::distance;
 use crate::ids::{self, block, item};
@@ -244,7 +245,7 @@ struct Cube;
 #[entity_behavior]
 impl EntityBehavior for Cube
 {
-    // EntityTFCubeOfAnnihilation.onUpdate, it chases the spot 16 blocks along the owner's gaze while they hold it
+    // EntityTFCubeOfAnnihilation.onUpdate, it chases the spot 16 blocks along the owner's gaze while they use it
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
         let world: World = entity.world;
@@ -262,8 +263,9 @@ impl EntityBehavior for Cube
             return;
         };
 
-        let holding: bool = player.held().is_some_and(|stack| stack.item.is(item::CUBE_OF_ANNIHILATION));
-        let returning: bool = state.m_blocked || !holding;
+        // EntityTFCubeOfAnnihilation.isReturning, it comes back once the owner lets go of the use key
+        let using: bool = player.itemInUse() > 0;
+        let returning: bool = state.m_blocked || !using;
         if returning && distance(owner.pos, info.pos) < cube::CATCH
         {
             setOut(state.m_owner, CUBE, None);
@@ -333,14 +335,19 @@ struct ChainBlock;
 #[item_behavior]
 impl ItemBehavior for ChainBlock
 {
+    // ItemTFChainBlock.onItemRightClick, the block flies out and the chain stays raised while the use key is held
     fn onRightClick(&self, world: World, player: Player, _stack: ItemStack) -> Use
     {
         if world.isAuthority() && launch(world, player, CHAIN_BALL, chain::SPEED)
         {
             super::magic::wearHeld(player, 1);
         }
-        Use::Done(player.held())
+        holdInUse(player, held::LONGEST)
     }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Block }
 }
 
 struct CubeOfAnnihilation;
@@ -348,14 +355,19 @@ struct CubeOfAnnihilation;
 #[item_behavior]
 impl ItemBehavior for CubeOfAnnihilation
 {
+    // ItemTFCubeOfAnnihilation.onItemRightClick, the cube flies out and works while the use key is held
     fn onRightClick(&self, world: World, player: Player, _stack: ItemStack) -> Use
     {
         if world.isAuthority()
         {
             launch(world, player, CUBE, cube::MAX_SPEED);
         }
-        Use::Done(player.held())
+        holdInUse(player, held::LONGEST)
     }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { held::LONGEST }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Block }
 }
 
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>

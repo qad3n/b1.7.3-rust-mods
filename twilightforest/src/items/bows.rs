@@ -87,7 +87,7 @@ impl ItemBehavior for Bow
         {
             return Use::Done(player.held());
         }
-        super::magic::holdInUse(player)
+        super::magic::holdInUse(player, super::magic::held::LONGEST)
     }
 
     fn useDuration(&self, _stack: ItemStack) -> i32 { super::magic::held::LONGEST }
