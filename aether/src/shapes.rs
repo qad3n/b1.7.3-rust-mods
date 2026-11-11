@@ -1,4 +1,5 @@
 use crate::ids::{block, blockId};
+use b173_api::math::floor;
 use b173_api::prelude::*;
 
 // a building stone or wood the Aether makes stairs, slabs and walls from
@@ -109,7 +110,7 @@ fn cuboid(bounds: [f32; 6], metas: Vec<i32>, connect: Option<i32>) -> Cuboid
 fn quarter(entity: Entity) -> usize
 {
     let yaw: f32 = entity.info().map_or(0.0, |info| info.yaw);
-    ((yaw * shape::QUARTERS / shape::FULL_TURN + 0.5).floor() as i32 & 3) as usize
+    (floor(f64::from(yaw * shape::QUARTERS / shape::FULL_TURN + 0.5)) & 3) as usize
 }
 
 struct Stairs;
