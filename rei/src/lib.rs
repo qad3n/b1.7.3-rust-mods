@@ -2,6 +2,7 @@ mod catalog;
 mod cheat;
 mod config;
 mod overlay;
+mod spawner;
 
 use b173_api::prelude::*;
 
@@ -10,5 +11,6 @@ fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     config::register(ctx)?;
     cheat::register(ctx)?;
+    spawner::register(ctx)?;
     overlay::register(ctx)
 }

@@ -1,5 +1,5 @@
-use crate::catalog::{self, Catalog, Key};
-use crate::{cheat, config};
+use crate::catalog::{self, Catalog, Entry, Key};
+use crate::{cheat, config, spawner};
 use b173_api::prelude::*;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
@@ -1070,6 +1070,13 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     ctx.screens().tooltip(|stack, lines|
     {
         let catalog: Rc<Catalog> = catalog::get();
+        // beta names every spawner Mob Spawner so the mob it holds takes the name line
+        let spawner: Option<&Entry> = Key::ofStack(stack).filter(spawner::held).and_then(|key| catalog.entry(key));
+        if let (Some(entry), Some(name)) = (spawner, lines.first_mut())
+        {
+            name.clone_from(&entry.m_name);
+        }
+
         if let Some(origin) = Key::ofStack(stack).and_then(|key| origin(&catalog, key))
         {
             lines.push(origin.to_owned());

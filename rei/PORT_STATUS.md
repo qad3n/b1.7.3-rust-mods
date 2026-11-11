@@ -36,6 +36,7 @@ time and gamemode buttons are left out.
 - [x] Items and recipes come from the loader registries, so every mod's items and its recipes (`ctx.recipes()` or `data/<modid>/recipes/*.toml`) appear with no REI plugin. Recipe pages show the recipe registry name. The cache reloads on each content generation (remap, server recipe sync)
 - [x] Mod name line: `§9§o` mod name under every item tooltip, REI list and vanilla slots (API 1.4 tooltip hook), behind the client option `tooltip.mod_name` (default on, mod menu "Mod Name")
 - [x] Loader API 1.5: the recipe page reports it covers the container, so vanilla slots under it show no highlight, tooltip or key lookup stack
+- [x] Mob spawners: one per living entity in the loader entity registry (API 1.31 `mobList`), vanilla and every mod's mobs, damage = entity id as old item viewers did. Placing one sets the spawner's mob on the authority, vanilla slot tooltips name the mob. Beta difference: a multiplayer client mirrors spawners as pigs since beta never syncs the mob
 - [x] Build, clippy and fmt clean for the mod and the rewrite
 
 ## Bugs to check at the end

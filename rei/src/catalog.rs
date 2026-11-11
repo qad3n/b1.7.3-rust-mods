@@ -1,3 +1,4 @@
+use crate::spawner;
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::{BTreeSet, HashMap};
@@ -100,6 +101,13 @@ impl Catalog
     fn build(generation: i32) -> Self
     {
         let mut entries: Vec<Entry> = itemCatalog().into_iter().filter_map(Self::listed).collect();
+        let spawners: Vec<Entry> = spawner::stacks().into_iter().filter_map(Self::named).collect();
+        // each mob's spawner sits right after the plain one
+        let at: usize = spawners
+            .first()
+            .and_then(|first| entries.iter().position(|entry| entry.m_key.m_id == first.m_key.m_id))
+            .map_or(entries.len(), |index| index + 1);
+        entries.splice(at..at, spawners);
         entries.sort_by(|left, right| left.group().cmp(&right.group()));
 
         let byKey: HashMap<Key, usize> =
@@ -137,6 +145,14 @@ impl Catalog
             m_namespace: namespace,
             m_vanilla: registered.as_ref().is_some_and(Identifier::isVanilla),
         })
+    }
+
+    fn named((stack, name): (ItemStack, String)) -> Option<Entry>
+    {
+        let mut entry: Entry = Self::listed(stack)?;
+        entry.m_search = name.to_lowercase();
+        entry.m_name = name;
+        Some(entry)
     }
 
     pub(crate) fn entry(&self, key: Key) -> Option<&Entry>
