@@ -84,9 +84,13 @@ fn help(_: &[String], _: Player) -> Result<String>
 fn give(args: &[String], player: Player) -> Result<String>
 {
     let name: &str = arg(args, 0).ok_or("usage: /give <item> [count] [damage]")?;
+    // a typed number is beta's item id, read back as the name it has in this session
     let item: ItemRef = match name.parse::<i32>()
     {
-        Ok(numeric) => ItemRef::Numeric(numeric),
+        Ok(numeric) =>
+        {
+            ItemRef::Named(nameOf(RegistryKind::Item, numeric).ok_or_else(|| Error(format!("unknown item {name}")))?)
+        }
         Err(_) => ItemRef::Named(vanillaId(name)?),
     };
     item.id().map_err(|_| Error(format!("unknown item {name}")))?;
