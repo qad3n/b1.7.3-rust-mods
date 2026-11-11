@@ -667,9 +667,7 @@ fn registerPages(ctx: &mut RegisterCtx, source: &Source) -> Result<()>
 
     let fuelPage = |ctx: &mut RegisterCtx, item: &str, ticks: i32| -> Result<()>
     {
-        ctx.machines()
-            .recipe(name)
-            .input(ItemStack::of(item, 1).withDamage(-1))
+        super::processing::input(ctx.machines().recipe(name), item)
             .note(&format!("{} EU at {rate} EU/t", ticks * rate))
             .build()
     };
@@ -678,7 +676,7 @@ fn registerPages(ctx: &mut RegisterCtx, source: &Source) -> Result<()>
     {
         Kind::Fuel =>
         {
-            for (item, burn) in super::processing::fuels()
+            for (item, burn) in super::processing::FUELS
             {
                 fuelPage(ctx, item, burn / 2)?;
             }

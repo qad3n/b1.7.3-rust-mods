@@ -29,9 +29,42 @@ const fn shaped(result: Part, pattern: &'static [&'static str], keys: &'static [
 
 const fn shapeless(result: Part, inputs: &'static [Part]) -> Recipe { Recipe::Shapeless(result, inputs) }
 
+// beta's materials by their shared tag, IC2's own come from their item rows
+const VANILLA_MATERIALS: [(&str, &str); 7] = [
+    ("minecraft:iron_ingot", "c:ingots/iron"),
+    ("minecraft:gold_ingot", "c:ingots/gold"),
+    ("minecraft:diamond", "c:gems/diamond"),
+    ("minecraft:redstone", "c:dusts/redstone"),
+    ("minecraft:glowstone_dust", "c:dusts/glowstone"),
+    ("minecraft:stick", "c:rods/wooden"),
+    ("minecraft:glass", "c:glass_blocks"),
+];
+
 impl Part
 {
     fn stack(self) -> ItemStack { ItemStack::of(self.m_item, self.m_count).withDamage(self.m_damage) }
+
+    // a plain material ingredient as its tag, so other mods' ingots, circuits and dusts craft IC2 items
+    fn tag(self) -> Option<&'static str>
+    {
+        if self.m_damage != 0 || self.m_count != 1
+        {
+            return None;
+        }
+
+        crate::items::materialTag(self.m_item)
+            .or_else(|| VANILLA_MATERIALS.iter().find(|(item, _)| *item == self.m_item).map(|(_, tag)| *tag))
+    }
+
+    fn ingredient(self) -> Result<IngredientSpec>
+    {
+        let ingredient: IngredientSpec = match self.tag()
+        {
+            Some(tag) => IngredientSpec { item: None, tag: Some(Identifier::parse(tag)?), meta: -1 },
+            None => IngredientSpec { item: Some(Identifier::parse(self.m_item)?), tag: None, meta: self.m_damage },
+        };
+        Ok(ingredient)
+    }
 }
 
 // mod_IC2's static block in its order, charged and empty variants of the electric parts kept apart by damage
@@ -1109,7 +1142,11 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                     ctx.recipes().shaped(&name("shaped", index, result), result.stack()).rows(pattern);
                 for (symbol, part) in keys.iter()
                 {
-                    builder = builder.keyStack(*symbol, part.stack());
+                    builder = match part.tag()
+                    {
+                        Some(tag) => builder.keyTag(*symbol, tag),
+                        None => builder.keyStack(*symbol, part.stack()),
+                    };
                 }
 
                 builder.build()?;
@@ -1117,8 +1154,9 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 
             Recipe::Shapeless(result, inputs) =>
             {
-                let inputs: Vec<ItemStack> = inputs.iter().map(|part| part.stack()).collect();
-                ctx.recipes().shapeless(&name("shapeless", index, result), result.stack(), &inputs)?;
+                let ingredients: Vec<IngredientSpec> =
+                    inputs.iter().map(|part| part.ingredient()).collect::<Result<_>>()?;
+                ctx.recipes().shapelessTagged(&name("shapeless", index, result), result.stack(), ingredients)?;
             }
         }
     }

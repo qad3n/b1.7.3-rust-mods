@@ -93,18 +93,12 @@ pub(crate) fn distribute(world: World, pos: BlockPos, stack: ItemStack)
             continue;
         }
 
-        // putIntoChest only fills a slot that takes the whole stack
-        for slot in 0..world.inventorySize(at)
+        // putIntoChest only stores a find the chest takes whole, through the inventory's item capability
+        let side: i32 = dir::reverse(face);
+        let fits: bool = world.insertItem(at, side, stack.clone(), true).is_ok_and(|left| left == 0);
+        if fits && world.insertItem(at, side, stack.clone(), false).is_ok_and(|left| left == 0)
         {
-            let held: Option<ItemStack> = world.tileSlot(at, slot);
-            let fits: bool = held
-                .as_ref()
-                .is_none_or(|held| stacks::same(held, &stack) && held.count + stack.count <= stacks::maxStack(held));
-            if fits
-            {
-                stacks::set(world, at, slot, Some(stacks::merged(held, &stack)));
-                return;
-            }
+            return;
         }
     }
 

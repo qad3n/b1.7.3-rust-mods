@@ -177,47 +177,60 @@ static PROCESSES: [Process; 7] = [
     process("canning_machine", Kind::Canner, (1, 600, 32), "machineCannerLoop", 64),
 ];
 
-// TileEntityMacerator, TileEntityExtractor and TileEntityCompressor.initRecipes, keyed by the input item alone
-const MACERATOR: [(&str, &str, i32); 17] = [
-    ("minecraft:iron_ore", "ic2:iron_dust", 2),
-    ("minecraft:gold_ore", "ic2:gold_dust", 2),
-    ("ic2:tin_ore", "ic2:tin_dust", 2),
-    ("ic2:copper_ore", "ic2:copper_dust", 2),
-    ("minecraft:coal", "ic2:coal_dust", 1),
-    ("ic2:refined_iron", "ic2:iron_dust", 1),
-    ("ic2:tin_ingot", "ic2:tin_dust", 1),
-    ("ic2:copper_ingot", "ic2:copper_dust", 1),
-    ("minecraft:iron_ingot", "ic2:iron_dust", 1),
-    ("minecraft:gold_ingot", "ic2:gold_dust", 1),
-    ("minecraft:wool", "minecraft:string", 1),
-    ("minecraft:gravel", "minecraft:flint", 1),
-    ("minecraft:stone", "minecraft:cobblestone", 1),
-    ("minecraft:cobblestone", "minecraft:sand", 1),
-    ("minecraft:sandstone", "minecraft:sand", 1),
-    ("minecraft:ice", "minecraft:snowball", 1),
-    ("ic2:bronze_ingot", "ic2:bronze_dust", 1),
+// one job of TileEntityMacerator, TileEntityExtractor or TileEntityCompressor.initRecipes, an input starting with #
+// is a tag so other mods' ores, ingots and blocks take part
+struct Job
+{
+    m_input: &'static str,
+    m_output: &'static str,
+    m_count: i32,
+}
+
+const fn job(input: &'static str, output: &'static str, count: i32) -> Job
+{
+    Job { m_input: input, m_output: output, m_count: count }
+}
+
+const MACERATOR: [Job; 17] = [
+    job("#c:ores/iron", "ic2:iron_dust", 2),
+    job("#c:ores/gold", "ic2:gold_dust", 2),
+    job("#c:ores/tin", "ic2:tin_dust", 2),
+    job("#c:ores/copper", "ic2:copper_dust", 2),
+    job("#minecraft:coals", "ic2:coal_dust", 1),
+    job("#c:ingots/refined_iron", "ic2:iron_dust", 1),
+    job("#c:ingots/tin", "ic2:tin_dust", 1),
+    job("#c:ingots/copper", "ic2:copper_dust", 1),
+    job("#c:ingots/iron", "ic2:iron_dust", 1),
+    job("#c:ingots/gold", "ic2:gold_dust", 1),
+    job("#minecraft:wool", "minecraft:string", 1),
+    job("minecraft:gravel", "minecraft:flint", 1),
+    job("minecraft:stone", "minecraft:cobblestone", 1),
+    job("minecraft:cobblestone", "minecraft:sand", 1),
+    job("#c:sandstone_blocks", "minecraft:sand", 1),
+    job("minecraft:ice", "minecraft:snowball", 1),
+    job("#c:ingots/bronze", "ic2:bronze_dust", 1),
 ];
 
-const EXTRACTOR: [(&str, &str, i32); 6] = [
-    ("ic2:rubber_wood", "ic2:rubber", 1),
-    ("ic2:rubber_sapling", "ic2:rubber", 1),
-    ("ic2:sticky_resin", "ic2:rubber", 3),
-    ("ic2:bio_cell", "ic2:biofuel_cell", 1),
-    ("ic2:coal_cell", "ic2:coalfuel_cell", 1),
-    ("ic2:water_cell", "ic2:coolant_cell", 1),
+const EXTRACTOR: [Job; 6] = [
+    job("ic2:rubber_wood", "ic2:rubber", 1),
+    job("ic2:rubber_sapling", "ic2:rubber", 1),
+    job("ic2:sticky_resin", "ic2:rubber", 3),
+    job("ic2:bio_cell", "ic2:biofuel_cell", 1),
+    job("ic2:coal_cell", "ic2:coalfuel_cell", 1),
+    job("ic2:water_cell", "ic2:coolant_cell", 1),
 ];
 
-const COMPRESSOR: [(&str, &str, i32); 10] = [
-    ("ic2:plantball", "ic2:compressed_plants", 1),
-    ("ic2:hydrated_coal_dust", "ic2:hydrated_coal", 1),
-    ("minecraft:sand", "minecraft:sandstone", 1),
-    ("minecraft:snowball", "minecraft:ice", 1),
-    ("ic2:water_cell", "minecraft:snowball", 1),
-    ("ic2:uranium_chunk", "ic2:refined_uranium", 1),
-    ("ic2:mixed_metal_ingot", "ic2:advanced_alloy", 1),
-    ("ic2:raw_carbon_mesh", "ic2:carbon_plate", 1),
-    ("ic2:coal_ball", "ic2:compressed_coal_ball", 1),
-    ("ic2:coal_chunk", "ic2:industrial_diamond", 1),
+const COMPRESSOR: [Job; 10] = [
+    job("ic2:plantball", "ic2:compressed_plants", 1),
+    job("ic2:hydrated_coal_dust", "ic2:hydrated_coal", 1),
+    job("#minecraft:sand", "minecraft:sandstone", 1),
+    job("minecraft:snowball", "minecraft:ice", 1),
+    job("ic2:water_cell", "minecraft:snowball", 1),
+    job("#c:raw_materials/uranium", "ic2:refined_uranium", 1),
+    job("ic2:mixed_metal_ingot", "ic2:advanced_alloy", 1),
+    job("ic2:raw_carbon_mesh", "ic2:carbon_plate", 1),
+    job("ic2:coal_ball", "ic2:compressed_coal_ball", 1),
+    job("ic2:coal_chunk", "ic2:industrial_diamond", 1),
 ];
 
 thread_local!
@@ -250,20 +263,20 @@ pub(crate) fn smelted(input: &ItemStack) -> Option<ItemStack>
     })
 }
 
-fn tableResult(table: &[(&str, &str, i32)], input: &ItemStack) -> Option<ItemStack>
+// the machine registry's first output for the input, so recipes other mods add for a machine run in it too
+fn registered(machine: &str, input: &ItemStack) -> Option<ItemStack>
 {
-    table.iter().find(|(from, _, _)| input.item.is(from)).map(|(_, to, count)| ItemStack::of(*to, *count))
+    let recipe: std::rc::Rc<MachineRecipeView> = machineRecipe(machine, std::slice::from_ref(input))?;
+    recipe.outputs.first()?.stacks.first().cloned().map(ItemStack::fromRaw)
 }
 
 // TileEntityElectricMachine.getResultFor per machine
-fn result(kind: Kind, input: &ItemStack) -> Option<ItemStack>
+fn result(process: &Process, input: &ItemStack) -> Option<ItemStack>
 {
-    match kind
+    match process.m_kind
     {
         Kind::IronFurnace | Kind::Furnace => smelted(input),
-        Kind::Macerator => tableResult(&MACERATOR, input),
-        Kind::Extractor => tableResult(&EXTRACTOR, input),
-        Kind::Compressor => tableResult(&COMPRESSOR, input),
+        Kind::Macerator | Kind::Extractor | Kind::Compressor => registered(process.m_name, input),
         Kind::Recycler | Kind::Canner => None,
     }
 }
@@ -348,7 +361,7 @@ fn canOperate(process: &Process, slots: &Slots) -> bool
         }
 
         Kind::Canner => canning::possible(slots.m_world, slots.m_pos, &input, process),
-        kind => result(kind, &input).is_some_and(|made| stacks::fits(&slots.get(slot::OUTPUT), &made)),
+        _ => result(process, &input).is_some_and(|made| stacks::fits(&slots.get(slot::OUTPUT), &made)),
     }
 }
 
@@ -375,9 +388,9 @@ fn operate(process: &Process, slots: &Slots, work: &mut Work)
         }
 
         Kind::Canner => canning::operate(slots.m_world, slots.m_pos, work),
-        kind =>
+        _ =>
         {
-            let Some(made) = result(kind, &input)
+            let Some(made) = result(process, &input)
             else
             {
                 return;
@@ -445,67 +458,38 @@ fn electricTick(process: &Process, world: World, pos: BlockPos, work: &mut Work)
     setActive(world, pos, operating);
 }
 
-// TileEntityIronFurnace.getFuelValueFor: wood, sticks, coal, lava, saplings and the fuel can, then other fuels
+// TileEntityIronFurnace.getFuelValueFor: lava burns a tenth as long and the fuel can only here, every other fuel as the
+// fuel registry has it, where wood material, sticks, coal and saplings already burn as IC2 counted them
 fn ironFuel(stack: &ItemStack) -> i32
 {
-    const WOOD: i32 = 300;
-    const STICK: i32 = 100;
-    const COAL: i32 = 1600;
     const LAVA: i32 = 2000;
-    const SAPLING: i32 = 100;
     const FUEL_CAN: i32 = 720000;
 
-    let wooden: bool =
-        stack.info().is_some_and(|info| info.block) && stack.item.name().is_some_and(|id| woodBlock(&id.to_string()));
-
-    match stack.item.name().map(|id| id.to_string()).as_deref()
+    if stack.item.is("minecraft:lava_bucket")
     {
-        _ if wooden => WOOD,
-        Some("minecraft:stick") => STICK,
-        Some("minecraft:coal") => COAL,
-        Some("minecraft:lava_bucket") => LAVA,
-        Some("minecraft:sapling") => SAPLING,
-        Some("ic2:fuel_can") => FUEL_CAN,
-        _ => fuelTicks(stack),
+        return LAVA;
     }
+
+    if stack.item.is("ic2:fuel_can")
+    {
+        return FUEL_CAN;
+    }
+
+    fuelTicks(stack)
 }
-
-// Block.blockMaterial == Material.wood for the blocks beta makes of wood
-const WOODEN: [&str; 16] = [
-    "minecraft:planks",
-    "minecraft:log",
-    "minecraft:bookshelf",
-    "minecraft:chest",
-    "minecraft:locked_chest",
-    "minecraft:crafting_table",
-    "minecraft:oak_stairs",
-    "minecraft:fence",
-    "minecraft:wooden_door",
-    "minecraft:standing_sign",
-    "minecraft:wall_sign",
-    "minecraft:noteblock",
-    "minecraft:jukebox",
-    "minecraft:wooden_pressure_plate",
-    "minecraft:trapdoor",
-    "ic2:rubber_wood",
-];
-
-fn woodBlock(name: &str) -> bool { WOODEN.contains(&name) }
 
 pub(crate) fn burnValue(stack: &ItemStack) -> i32 { ironFuel(stack) }
 
-// the furnace fuels by name with their burn ticks, as recipe viewers list them
-pub(crate) fn fuels() -> Vec<(&'static str, i32)>
-{
-    const WOOD: i32 = 300;
-    const NAMED: [(&str, i32); 4] =
-        [("minecraft:stick", 100), ("minecraft:coal", 1600), ("minecraft:sapling", 100), ("ic2:fuel_can", 720000)];
-
-    // wooden blocks only a placed item makes
-    const PLACED: [&str; 3] = ["minecraft:standing_sign", "minecraft:wall_sign", "minecraft:locked_chest"];
-
-    WOODEN.iter().filter(|name| !PLACED.contains(name)).map(|name| (*name, WOOD)).chain(NAMED).collect()
-}
+// the iron furnace fuels as recipe viewers list them, an input starting with # is a tag
+pub(crate) const FUELS: [(&str, i32); 7] = [
+    ("#minecraft:logs", 300),
+    ("#minecraft:planks", 300),
+    ("#c:rods/wooden", 100),
+    ("#minecraft:coals", 1600),
+    ("#minecraft:saplings", 100),
+    ("minecraft:lava_bucket", 2000),
+    ("ic2:fuel_can", 720000),
+];
 
 // TileEntityIronFurnace.updateEntity
 fn ironTick(process: &Process, world: World, pos: BlockPos, work: &mut Work)
@@ -993,17 +977,25 @@ fn registerScreen(ctx: &mut RegisterCtx, process: &'static Process) -> Result<()
     ctx.screens().register(process.m_name, builder, ProcessScreen { m_process: process, m_pos: None })
 }
 
-// a recipe viewer category for a table machine, one page a recipe with the machine's rates
-fn tablePages(ctx: &mut RegisterCtx, process: &Process, table: &[(&str, &str, i32)], rates: &str) -> Result<()>
+// an input written as an item, or as a tag when it starts with #
+pub(crate) fn input(recipe: MachineRecipeBuilder, input: &str) -> MachineRecipeBuilder
+{
+    match input.strip_prefix('#')
+    {
+        Some(tag) => recipe.inputTag(tag, 1),
+        None => recipe.input(ItemStack::of(input, 1).withDamage(ANY_DAMAGE)),
+    }
+}
+
+// a table machine's jobs in the machine registry, which its tick reads back and recipe viewers show
+fn registerJobs(ctx: &mut RegisterCtx, process: &Process, jobs: &[Job], rates: &str) -> Result<()>
 {
     ctx.machines().register(process.m_name, None, &[process.m_name])?;
 
-    for (from, to, count) in table
+    for job in jobs
     {
-        ctx.machines()
-            .recipe(process.m_name)
-            .input(ItemStack::of(*from, 1).withDamage(ANY_DAMAGE))
-            .output(ItemStack::of(*to, *count))
+        input(ctx.machines().recipe(process.m_name), job.m_input)
+            .output(ItemStack::of(job.m_output, job.m_count))
             .note(rates)
             .build()?;
     }
@@ -1022,9 +1014,9 @@ fn registerPages(ctx: &mut RegisterCtx, process: &Process) -> Result<()>
     match process.m_kind
     {
         Kind::IronFurnace | Kind::Furnace => ctx.machines().workstation("minecraft:smelting", process.m_name),
-        Kind::Macerator => tablePages(ctx, process, &MACERATOR, &rates),
-        Kind::Extractor => tablePages(ctx, process, &EXTRACTOR, &rates),
-        Kind::Compressor => tablePages(ctx, process, &COMPRESSOR, &rates),
+        Kind::Macerator => registerJobs(ctx, process, &MACERATOR, &rates),
+        Kind::Extractor => registerJobs(ctx, process, &EXTRACTOR, &rates),
+        Kind::Compressor => registerJobs(ctx, process, &COMPRESSOR, &rates),
         Kind::Recycler =>
         {
             ctx.machines().register(process.m_name, None, &[process.m_name])?;

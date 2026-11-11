@@ -210,6 +210,13 @@ impl ItemBehavior for Treetap
     }
 }
 
+// the shared material tag an IC2 item joins, such as c:ingots/copper, which recipes take instead of the item
+pub(crate) fn materialTag(item: &str) -> Option<&'static str>
+{
+    let name: &str = item.strip_prefix("ic2:")?;
+    PLAIN.iter().find(|row| row.m_name == name).and_then(|row| row.m_tags.first().copied())
+}
+
 // Item.damageItem: the stack breaks once worn past its last point
 pub(crate) fn wear(stack: ItemStack, amount: i32) -> Option<ItemStack>
 {
@@ -340,10 +347,13 @@ const SCRAP_DROPS: [&str; 33] = [
     "minecraft:grass",
 ];
 
-// the scrap box as a recipe viewer category, one page a drop with its share of the 33 picks
+const SCRAP_BOX: &str = "scrap_box";
+
+// the scrap box's drops in the machine registry, one recipe a drop with its share of the 33 picks, so opening a box
+// reads them back and other mods can add their own
 fn registerScrapPages(ctx: &mut RegisterCtx) -> Result<()>
 {
-    const NAME: &str = "scrap_box";
+    const NAME: &str = SCRAP_BOX;
 
     ctx.machines().register(NAME, None, &[NAME])?;
 
@@ -368,6 +378,26 @@ fn registerScrapPages(ctx: &mut RegisterCtx) -> Result<()>
     Ok(())
 }
 
+// ItemScrapbox.randomizeDropID over the registered drops, each as likely as its chance
+fn scrapDrop(world: World) -> Option<ItemStack>
+{
+    let recipes: std::rc::Rc<Vec<std::rc::Rc<MachineRecipeView>>> = machineRecipes(SCRAP_BOX);
+    let drops = || recipes.iter().filter_map(|recipe| recipe.outputs.first());
+    let total: f32 = drops().map(|slot| slot.chance).sum();
+    let mut roll: f32 = crate::core::random::float(world) as f32 * total;
+
+    for slot in drops()
+    {
+        roll -= slot.chance;
+        if roll < 0.0
+        {
+            return slot.stacks.first().cloned().map(ItemStack::fromRaw);
+        }
+    }
+
+    None
+}
+
 struct ScrapBox;
 
 #[item_behavior]
@@ -382,15 +412,20 @@ impl ItemBehavior for ScrapBox
             return Use::Done(Some(stack));
         }
 
-        let thing: &str = SCRAP_DROPS[world.random(SCRAP_DROPS.len() as i32) as usize];
+        let Some(thing) = scrapDrop(world)
+        else
+        {
+            return Use::Done(Some(stack));
+        };
+
         if let Some(info) = player.info()
         {
             let look: [f64; 3] = crate::core::math::look(info.yaw, info.pitch);
             let at: [f64; 3] = [info.pos[0], info.pos[1] + cell::EYE - TOSS, info.pos[2]];
             let motion: [f64; 3] = [look[0] * TOSS, look[1] * TOSS, look[2] * TOSS];
-            if let Err(error) = world.dropItem(at, &ItemStack::of(thing, 1), motion, 40)
+            if let Err(error) = world.dropItem(at, &thing, motion, 40)
             {
-                warn(&format!("the scrap box could not drop {thing}: {error}"));
+                warn(&format!("the scrap box could not drop {:?}: {error}", thing.item));
             }
         }
 

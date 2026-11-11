@@ -31,12 +31,40 @@ Build: `./build.sh`. Test: `../../tools/modport/test.sh deploy ports/ic2`.
   4 (2.5 EU per BuildCraft MJ); IC2 sinks take foreign energy through `energyDemand`/`receiveEnergy` capped at their
   rating, and IC2 sources feed foreign sinks next to cables or generators.
 
+## Registries
+
+What each subsystem hands the loader, so other mods see and extend it without IC2 knowing them:
+
+| Subsystem | Registers | Where |
+|---|---|---|
+| Blocks, items, tile entities, entities, screens | every block with its named states, items, tiles, the explosive and laser entities, every gui | `blocks.rs`, `items.rs`, `machines/`, `explosives.rs` |
+| Tags | `c:ores/*`, `c:ingots/*`, `c:dusts/*`, `c:plates/*`, `c:circuits/*`, `c:rubbers`, `c:storage_blocks/*`, `minecraft:logs/leaves/saplings`, IC2's own block, item and entity lists | `data/`, item rows in `items.rs` |
+| Crafting | all shaped and shapeless recipes; ingots, dusts, plates, circuits, rubber, redstone, glowstone, diamond, sticks and glass go in as tags | `recipes.rs` |
+| Smelting and fuels | dust smelting, `mod_IC2.AddFuel` fuels; the iron furnace and generator burn what the fuel registry gives (lava 2000 and the fuel can stay iron furnace only) | `recipes.rs`, `machines/processing.rs` |
+| Machine recipes | macerator, extractor and compressor jobs with tag inputs (`c:ores/*`, `c:ingots/*`, `minecraft:coals`, `minecraft:wool`, `minecraft:sand`, `c:sandstone_blocks`, `c:raw_materials/uranium`); their ticks look jobs up with `machineRecipe`, so another mod's macerator recipe runs in IC2's macerator. The scrap box's drops are its recipes and opening one draws from them. Generator, canner, recycler, electrolyzer, magnetizer, mass fabricator and reactor pages describe the rest | `machines/`, `items.rs` |
+| Energy | `ic2:eu` with worth 4, demand and receive on every sink, foreign sinks fed beside cables and generators | `energy/` |
+| Item moves | induction furnace and miner store output through `insertItem` into `c:chests` and personal safes | `machines/special.rs`, `machines/mining.rs` |
+| Lang | `assets/ic2/lang/en_US.lang` | `assets/` |
+
+Not in a registry yet, and why:
+- Ore and rubber tree generation stay IC2's own chunk populate: `ctx.worldgen()` ores draw a flat height range and
+  replace one block, while IC2's copper height is a sum of two draws, and there is no tree feature. Both need a new
+  worldgen spec (a new ABI struct), so they wait for a loader feature.
+- The canner's food and fuel quality tables, the recycler's any-item rule, the electrolyzer's cell swap and the
+  reactor's component rules are logic, not input to output jobs; they only describe themselves in the machine registry.
+- The pump takes buckets from a chest and the Trade-O-Mat pays into chest slots by slot, which `extractItem` cannot
+  pick by item; the IC2 energy net walks IC2's own conductors and only meets other mods through the energy capability.
+- Cells are not fluid containers: the fluid registry has no container entries.
+
 ## Loader additions (API 1.33, generic)
 
 - `World::explosionResistance`, `World::blastBlock(pos, chance)`, `World::blockDensity(from, entity)` in
   `crates/modloader/src/blast.rs` and `b173_api/src/world/blast.rs`: mods run their own explosions the way
   `Explosion` does. Used for `ExplosionIC2`, `PointExplosion` and the mining laser.
 - `minecraft:door` block template (`BlockDoor`), used by the reinforced door.
+- SDK only, no API bump: `machineRecipe` / `machineRecipes` (registered machine recipes by machine, cached per
+  epoch and content generation), and the loader now seeds item tags `c:ores/*`, `c:storage_blocks/*`, `c:gravels` and
+  `minecraft:ice` like their block tags.
 - SDK only, no API bump: `World::stateAt`, `BlockCtx::stateAt` (the per epoch `stateOf` cache at a spot), `World::clear`
   and `PropertySpec::new`.
 - Fixed `itemInfo` in `tech.rs` reading the block table with item ids above 4096 (crashed the server thread).
@@ -87,6 +115,8 @@ Everything else is checked by build and clippy only.
   restart then.
 - Machines accept and give items through other mods' pipes by the loader's chest rule, as IC2's plain
   inventories did.
+- Machine and crafting inputs take tags, so other mods' ores, ingots and circuits work in IC2 and IC2's in theirs. A
+  miner find stores into a chest whenever the chest takes all of it, split over slots or not; IC2 wanted one slot.
 - Tags widen IC2's vanilla lists to other mods' content: any `c:chests` takes miner, induction furnace and
   Trade-O-Mat output, any `c:glass_blocks` lets the sun reach a solar panel, any `minecraft:water` turns a water
   mill. Lasers and hot reactors burn every wood material block (IC2 listed logs, leaves, planks and wool).
