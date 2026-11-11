@@ -116,13 +116,6 @@ const FREEZING: [Recipe; 11] = [
     turn("golden_pendant", "ice_pendant", 2500),
 ];
 
-// Item.getContainerItem: a bucket going in leaves its empty bucket behind
-const CONTAINERS: [(&str, &str); 3] = [
-    ("minecraft:water_bucket", "minecraft:bucket"),
-    ("minecraft:lava_bucket", "minecraft:bucket"),
-    ("skyroot_water_bucket", "skyroot_bucket"),
-];
-
 const AMBROSIUM_TORCH: &str = "ambrosium_torch";
 const ALTAR_SHEET: &str = "aether:gui/altar";
 const INCUBATOR_SHEET: &str = "aether:gui/incubator";
@@ -297,11 +290,8 @@ fn finish(world: World, pos: BlockPos, recipe: &Recipe, input: &ItemStack)
         None => result,
     };
     let _ = world.setTileSlot(pos, slot::OUTPUT, Some(merged));
-    let left: Option<ItemStack> = match CONTAINERS.iter().find(|(full, _)| input.item.is(full))
-    {
-        Some((_, empty)) => Some(ItemStack::of(*empty, 1)),
-        None => takeOne(input.clone()),
-    };
+    // Item.getContainerItem: a bucket going in leaves its empty bucket behind
+    let left: Option<ItemStack> = containerItem(input).or_else(|| takeOne(input.clone()));
     let _ = world.setTileSlot(pos, slot::INPUT, left);
 }
 

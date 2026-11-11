@@ -95,7 +95,8 @@ const WEAPONS: [(&str, &str, Tier, Option<i32>); 8] = [
     ("valkyrie_lance", "valkyrie_lance", EMERALD, None),
 ];
 
-// plain items whose behavior lives in their own systems: name, icon under item/, stack size
+// plain items whose behavior lives in their own systems: name, icon under item/, stack size and the item one
+// leaves behind in a crafting grid or machine, as ItemSkyrootBucket.setContainerItem
 // ItemAetherDisc rows: name, artist and the song title from item.tooltip
 const DISCS: [(&str, &str, &str); 4] = [
     ("aether_tune", "Noisestorm", "Aether Tune"),
@@ -104,28 +105,28 @@ const DISCS: [(&str, &str, &str); 4] = [
     ("legacy", "Jon Lachney", "Legacy"),
 ];
 
-const SINGLES: [(&str, &str, i32); 21] = [
-    ("bronze_key", "misc/keys/bronze_key", 1),
-    ("silver_key", "misc/keys/silver_key", 1),
-    ("golden_key", "misc/keys/golden_key", 1),
-    ("skyroot_bucket", "misc/buckets/skyroot_bucket", 16),
-    ("skyroot_water_bucket", "misc/buckets/skyroot_water_bucket", 1),
-    ("skyroot_milk_bucket", "misc/buckets/skyroot_milk_bucket", 1),
-    ("skyroot_poison_bucket", "misc/buckets/skyroot_poison_bucket", 1),
-    ("skyroot_remedy_bucket", "misc/buckets/skyroot_remedy_bucket", 1),
-    ("cold_parachute", "misc/parachutes/cold_parachute", 1),
-    ("golden_parachute", "misc/parachutes/golden_parachute", 1),
-    ("life_shard", "misc/life_shard", 1),
-    ("cloud_staff", "staff/cloud_staff", 1),
-    ("nature_staff", "staff/nature_staff", 1),
-    ("golden_dart_shooter", "projectile/golden_dart_shooter", 1),
-    ("poison_dart_shooter", "projectile/poison_dart_shooter", 1),
-    ("enchanted_dart_shooter", "projectile/enchanted_dart_shooter", 1),
-    ("golden_dart", "projectile/golden_dart", 64),
-    ("poison_dart", "projectile/poison_dart", 64),
-    ("enchanted_dart", "projectile/enchanted_dart", 64),
-    ("lightning_knife", "weapons/lightning_knife", 16),
-    ("aether_portal_frame", "aether_portal_frame", 1),
+const SINGLES: [(&str, &str, i32, Option<&str>); 21] = [
+    ("bronze_key", "misc/keys/bronze_key", 1, None),
+    ("silver_key", "misc/keys/silver_key", 1, None),
+    ("golden_key", "misc/keys/golden_key", 1, None),
+    ("skyroot_bucket", "misc/buckets/skyroot_bucket", 16, None),
+    ("skyroot_water_bucket", "misc/buckets/skyroot_water_bucket", 1, Some("skyroot_bucket")),
+    ("skyroot_milk_bucket", "misc/buckets/skyroot_milk_bucket", 1, Some("skyroot_bucket")),
+    ("skyroot_poison_bucket", "misc/buckets/skyroot_poison_bucket", 1, Some("skyroot_bucket")),
+    ("skyroot_remedy_bucket", "misc/buckets/skyroot_remedy_bucket", 1, Some("skyroot_bucket")),
+    ("cold_parachute", "misc/parachutes/cold_parachute", 1, None),
+    ("golden_parachute", "misc/parachutes/golden_parachute", 1, None),
+    ("life_shard", "misc/life_shard", 1, None),
+    ("cloud_staff", "staff/cloud_staff", 1, None),
+    ("nature_staff", "staff/nature_staff", 1, None),
+    ("golden_dart_shooter", "projectile/golden_dart_shooter", 1, None),
+    ("poison_dart_shooter", "projectile/poison_dart_shooter", 1, None),
+    ("enchanted_dart_shooter", "projectile/enchanted_dart_shooter", 1, None),
+    ("golden_dart", "projectile/golden_dart", 64, None),
+    ("poison_dart", "projectile/poison_dart", 64, None),
+    ("enchanted_dart", "projectile/enchanted_dart", 64, None),
+    ("lightning_knife", "weapons/lightning_knife", 16, None),
+    ("aether_portal_frame", "aether_portal_frame", 1, None),
 ];
 // ItemPhoenixBow and the staffs wear out
 const PHOENIX_BOW_USES: i32 = 384;
@@ -327,7 +328,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         ItemSpecBuilder::new().texture(&texture(item::VICTORY_MEDAL)).maxStack(VICTORY_MEDAL_STACK),
     )?;
 
-    for (name, icon, stack) in SINGLES
+    for (name, icon, stack, container) in SINGLES
     {
         let uses: Option<i32> = match name
         {
@@ -341,6 +342,11 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         if let Some(uses) = uses
         {
             spec = spec.maxDamage(uses);
+        }
+
+        if let Some(container) = container
+        {
+            spec.m_spec.container_item = Some(Identifier::parseIn(container, "aether")?);
         }
 
         if let Some(shooter) = crate::weapons::shooter(name)
