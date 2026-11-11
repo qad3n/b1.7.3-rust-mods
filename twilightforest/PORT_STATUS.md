@@ -294,11 +294,17 @@ and cinder furnace, chests for the sorting core, buttons for protection), magic 
 as their `sustains_leaves` flag says, and the ore magnet no longer takes any block with "ore" in its name.
 
 Not converted, and why:
-- Nagastone shapes still reach the `texture(face, meta)` callback and block model cuboids filter by stored metadata
-  (`Cuboid::metas`); the nagastone, pedestal, trophy, slider and critter tables keep the source's metadata layout, and
-  the forest's leaves name BlockLeaves' bits, so the engine and those callbacks read the same values the states store.
-- Leaves of vanilla and other mods without named states get BlockLeaves' check decay bit through their `meta`
-  property when a forest log breaks (`wood.rs` `checkDecay`).
+- Pedestal, trophy, slider and critter cuboids still filter by stored metadata (`Cuboid::metas`); `stateModel` (API
+  1.45) would carry them, not converted yet. Nagastone faces come from `textureFor` by named state. The forest's leaves
+  keep BlockLeaves' layout with `check_decay` first, which the loader's leaf decay (API 1.46) reads; logs, cores and live
+  thorns are in `minecraft:logs` and no longer mark leaves by hand.
+- Worldgen herds keep TF's creature rows: the loader's biome spawn lists (`World::biomeSpawns`) carry no group sizes
+  and list entries in another order, which would change the picks.
+- Named features (API 1.41): `twilightforest:structures` (hollow hills and the rest), `hollow_trees` and `ruins`, placed
+  by the dimension's generator in the source's order on its chunk random; lakes, trees and the biome decorations stay
+  inside the generator. Lich drops (only the lich itself) and kobold hint books are conditional loot pools (API 1.42).
+  The biomes are in `twilightforest:is_twilight` and the shared forest, savanna, swamp, snowy, plains, mushroom and
+  magical tags.
 - Shot icons draw a cell of `minecraft:gui/items` in an entity model program, which binds texture files, not sprites.
 - Air is still id 0 in `isAir` style checks.
 - Checked by build and unit tests, not in a game; worldgen output was not compared with the golden harness.
