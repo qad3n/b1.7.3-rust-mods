@@ -25,8 +25,6 @@ mod repel
     pub const HALF: f64 = 0.5;
     pub const NOBODY: i32 = -1;
     pub const NOT_A_PROJECTILE: i32 = -2;
-    // b1.7.3 blames a projectile's hit on its shooter, a hit from farther than melee reach came from a projectile
-    pub const MELEE_REACH: f64 = 3.5;
 }
 
 mod flight
@@ -122,23 +120,12 @@ pub fn repel(player: Player, worn: &mut Worn)
 // AbilityRepulsion.onPlayerAttacked: hits the shield wearer takes from projectiles do no harm
 fn shielded(event: &mut Event)
 {
-    let EventData::Attack { entity, source: Some(source), .. } = event.data().clone()
+    let EventData::Attack { entity, .. } = event.data().clone()
     else
     {
         return;
     };
-    if entity.player.is_none() || !Worn::of(Player { id: entity.id }).wearing(SHIELD)
-    {
-        return;
-    }
-    let Some(attacker) = (Entity { world: World { dimension: entity.world }, id: source }).info()
-    else
-    {
-        return;
-    };
-    let distance: f64 =
-        attacker.pos.iter().zip(entity.pos.iter()).map(|(from, to)| (from - to).powi(2)).sum::<f64>().sqrt();
-    if distance > repel::MELEE_REACH
+    if entity.player.is_some() && crate::damage::projectile() && Worn::of(Player { id: entity.id }).wearing(SHIELD)
     {
         event.cancel();
     }

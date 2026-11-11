@@ -311,7 +311,7 @@ fn touch(entity: Entity, info: &EntityInfo, look: Look, state: &mut Flight) -> b
             continue;
         }
         let before: Option<i32> = victim.info().and_then(|info| info.health);
-        victim.damage(crystal::DAMAGE, Some(entity.id));
+        crate::damage::hit(victim, crystal::DAMAGE, Some(entity.id), crate::damage::kind::THROWN);
         let landed: bool = victim.info().and_then(|info| info.health) != before;
         if !landed
         {

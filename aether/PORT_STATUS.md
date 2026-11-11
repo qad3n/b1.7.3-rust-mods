@@ -68,8 +68,9 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Clippy: clean except five `module_inception` warnings (constant modules named after their file) and one complex type.
 - Valkyrie and queen arm swing on attack not shown (b1.7.3 mobs have no swing).
 - Sun Spirit ice slowness and crystal crashes on hard difficulty skipped.
-- Repulsion shield damage cancel is a heuristic: b1.7.3 blames a projectile hit on its shooter, so hits from farther
-  than 3.5 blocks count as projectiles. Deflection itself matches the source.
+- Repulsion shield cancels hits whose damage type is a projectile (arrow, thrown, fireball). The source asks whether
+  the hit's attacker is a projectile, which for vanilla arrows is the shooter, so its cancel almost never fired; the
+  port follows its intent. Deflection itself matches the source.
 - Inebriation poison spits red dye icon bits through the new `iconcrack_351_1` particle; check it renders in a client.
 - Life shard hearts past ten, sun altar slider, lore book pages, valkyrie wings, invisibility and record playback are
   built but not seen in a client yet.
@@ -122,6 +123,13 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Later: `gameplay.max_life_shards`, `gameplay.sun_altar_multiplayer`, `gameplay.disable_eternal_day`.
 - Not ported yet, add their options with the features: Aether menu and menu button, trivia, holiday trees, tall grass,
   Sun Spirit dialogue repeat, legacy visuals, legacy altar name, portal frame start, first-entry gifts toggle.
+
+## Done (loader API 1.17, damage types)
+
+- `mod.toml` needs API 1.17. Hits carry the vanilla damage type closest to the source's DamageSource (`src/damage.rs`):
+  darts, needles and flaming arrows as arrows, crystals as thrown, zephyr snowballs as fireballs, mob, boss, slider,
+  sentry, pig slayer and hammer hits as mob, the holy sword's undead bonus as drown. Custom source names (incineration,
+  crush, dart) have no beta type and take the nearest one.
 
 ## Done (loader API 1.10, structure registry)
 

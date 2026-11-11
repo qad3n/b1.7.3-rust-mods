@@ -204,7 +204,7 @@ fn burn(entity: Entity, info: &EntityInfo)
             continue;
         }
         let victim: Entity = Entity { world, id: other.id };
-        victim.damage(spirit::BURN_DAMAGE, Some(entity.id));
+        crate::damage::hit(victim, spirit::BURN_DAMAGE, Some(entity.id), crate::damage::kind::MOB);
         victim.setField(EntityField::FireTicks, spirit::BURN_TICKS);
     }
 }

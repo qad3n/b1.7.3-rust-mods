@@ -383,7 +383,7 @@ fn crushEntities(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &m
         .filter(|other| other.id != entity.id && other.health.is_some())
     {
         let hit: Entity = Entity { world: entity.world, id: other.id };
-        if !hit.damage(slide::CRUSH, Some(entity.id))
+        if !crate::damage::hit(hit, slide::CRUSH, Some(entity.id), crate::damage::kind::MOB)
         {
             continue;
         }

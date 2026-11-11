@@ -180,7 +180,7 @@ impl ItemBehavior for Sword
             {
                 if UNDEAD.contains(&kindOf(target).as_str())
                 {
-                    target.damage(weapon::HOLY_DAMAGE, None);
+                    crate::damage::hit(target, weapon::HOLY_DAMAGE, None, crate::damage::kind::DROWN);
                 }
             }
             Blade::Vampire =>
@@ -197,7 +197,7 @@ impl ItemBehavior for Sword
                 let kind: String = kindOf(target);
                 if PIGS.iter().any(|pig| kind.contains(pig))
                 {
-                    target.damage(weapon::PIG_SLAIN, Some(attacker));
+                    crate::damage::hit(target, weapon::PIG_SLAIN, Some(attacker), crate::damage::kind::MOB);
                 }
             }
             Blade::CandyCane =>

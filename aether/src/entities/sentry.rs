@@ -59,7 +59,7 @@ fn setAwake(entity: Entity, awake: bool)
 fn burst(entity: Entity, info: &EntityInfo, target: &EntityInfo)
 {
     let victim: Entity = Entity { world: entity.world, id: target.id };
-    victim.damage(sentry::DAMAGE, Some(entity.id));
+    crate::damage::hit(victim, sentry::DAMAGE, Some(entity.id), crate::damage::kind::MOB);
     let [dx, dz] = [target.pos[0] - info.pos[0], target.pos[2] - info.pos[2]];
     let length: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-4);
     let _ = victim.setMotion([

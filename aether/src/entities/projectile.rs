@@ -1,3 +1,4 @@
+use crate::damage::kind;
 use crate::models::Program;
 use b173_api::prelude::*;
 
@@ -10,6 +11,8 @@ pub struct Shot
     pub m_drag: f64,
     // EntityArrow damage scales with speed, a zero damage shot only pushes
     pub m_damage: f64,
+    // the vanilla damage type closest to the source's DamageSource for this shot
+    pub m_kind: &'static str,
     pub m_poison: bool,
     pub m_knockback: Option<(f64, f64)>,
     pub m_lifetime: i32,
@@ -65,6 +68,7 @@ pub const SHOTS: [Shot; 8] = [
         m_gravity: arrow::GRAVITY,
         m_drag: arrow::DRAG,
         m_damage: 4.0,
+        m_kind: kind::ARROW,
         m_poison: false,
         m_knockback: None,
         m_lifetime: arrow::STUCK_TICKS,
@@ -78,6 +82,7 @@ pub const SHOTS: [Shot; 8] = [
         m_gravity: arrow::GRAVITY,
         m_drag: arrow::DRAG,
         m_damage: 0.0,
+        m_kind: kind::ARROW,
         m_poison: true,
         m_knockback: None,
         m_lifetime: arrow::STUCK_TICKS,
@@ -91,6 +96,7 @@ pub const SHOTS: [Shot; 8] = [
         m_gravity: arrow::GRAVITY,
         m_drag: arrow::DRAG,
         m_damage: 6.0,
+        m_kind: kind::ARROW,
         m_poison: false,
         m_knockback: None,
         m_lifetime: arrow::STUCK_TICKS,
@@ -104,6 +110,7 @@ pub const SHOTS: [Shot; 8] = [
         m_gravity: arrow::GRAVITY,
         m_drag: arrow::DRAG,
         m_damage: 0.0,
+        m_kind: kind::ARROW,
         m_poison: true,
         m_knockback: None,
         m_lifetime: arrow::STUCK_TICKS,
@@ -118,6 +125,7 @@ pub const SHOTS: [Shot; 8] = [
         m_gravity: 0.0,
         m_drag: 1.0,
         m_damage: 0.0,
+        m_kind: kind::FIREBALL,
         m_poison: false,
         m_knockback: Some((1.5, 0.5)),
         m_lifetime: 150,
@@ -132,6 +140,7 @@ pub const SHOTS: [Shot; 8] = [
         m_gravity: 0.0,
         m_drag: 1.0,
         m_damage: 0.0,
+        m_kind: kind::MOB,
         m_poison: false,
         m_knockback: Some((1.0, 0.6)),
         m_lifetime: 100,
@@ -146,6 +155,7 @@ pub const SHOTS: [Shot; 8] = [
         m_gravity: throwable::GRAVITY,
         m_drag: arrow::DRAG,
         m_damage: 0.0,
+        m_kind: kind::THROWN,
         m_poison: false,
         m_knockback: None,
         m_lifetime: arrow::STUCK_TICKS,
@@ -160,6 +170,7 @@ pub const SHOTS: [Shot; 8] = [
         m_gravity: arrow::GRAVITY,
         m_drag: arrow::DRAG,
         m_damage: 2.0,
+        m_kind: kind::ARROW,
         m_poison: false,
         m_knockback: None,
         m_lifetime: arrow::STUCK_TICKS,
@@ -249,7 +260,7 @@ fn strike(shot: &Shot, world: World, target: &EntityInfo, motion: [f64; 3], owne
     let speed: f64 = (motion[0] * motion[0] + motion[1] * motion[1] + motion[2] * motion[2]).sqrt();
     if shot.m_damage > 0.0
     {
-        victim.damage((speed * shot.m_damage).ceil() as i32, owner);
+        crate::damage::hit(victim, (speed * shot.m_damage).ceil() as i32, owner, shot.m_kind);
     }
     if shot.m_poison
     {
@@ -305,7 +316,12 @@ impl EntityBehavior for Projectile
         {
             if self.m_shot.m_impact == Impact::Blast
             {
-                Entity { world: entity.world, id: target.id }.damage(throwable::HAMMER_DAMAGE, flight.m_owner);
+                crate::damage::hit(
+                    Entity { world: entity.world, id: target.id },
+                    throwable::HAMMER_DAMAGE,
+                    flight.m_owner,
+                    kind::MOB,
+                );
             }
             strike(self.m_shot, entity.world, &target, motion, flight.m_owner);
             land(self.m_shot, entity, to);

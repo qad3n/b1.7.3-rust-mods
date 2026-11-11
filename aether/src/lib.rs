@@ -2,6 +2,7 @@ mod abilities;
 mod accessories;
 mod blocks;
 mod config;
+mod damage;
 mod entities;
 mod gear;
 mod harvest;
