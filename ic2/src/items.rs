@@ -259,15 +259,16 @@ impl ItemBehavior for EmptyCell
             return Use::Pass;
         };
         let pos: BlockPos = hit.pos;
-        let filled: &str = match world.fluidAt(pos)
+        // any fluid some cell holds, as the loader's fluid containers name them
+        let Some((filled, _)) =
+            world.fluidAt(pos).filter(|fluid| fluid.source).and_then(|fluid| fill(&stack, &fluid.fluid.to_string()))
+        else
         {
-            Some(fluid) if fluid.source && fluid.fluid.to_string() == "minecraft:water" => "water_cell",
-            Some(fluid) if fluid.source && fluid.fluid.to_string() == "minecraft:lava" => "lava_cell",
-            _ => return Use::Pass,
+            return Use::Pass;
         };
 
         let _ = world.clear(pos);
-        if let Err(error) = player.give(ItemStack::of(own(filled).as_str(), 1))
+        if let Err(error) = player.give(filled)
         {
             warn(&format!("could not give a filled cell: {error}"));
         }
@@ -560,9 +561,20 @@ fn registerBronze(ctx: &mut RegisterCtx) -> Result<()>
     Ok(())
 }
 
+// the cells that carry a fluid and drain back to an empty cell
+const CELLS: [(&str, &str); 2] = [("water_cell", "minecraft:water"), ("lava_cell", "minecraft:lava")];
+
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
+    const BUCKET: i32 = 1000;
+
     registerPlain(ctx)?;
+
+    for (cell, fluid) in CELLS
+    {
+        ctx.fluids().container(cell, Some("empty_cell"), fluid, BUCKET)?;
+    }
+
     registerTools(ctx)?;
     registerBronze(ctx)
 }

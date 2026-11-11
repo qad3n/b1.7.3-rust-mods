@@ -545,9 +545,7 @@ fn chestWithBucket(world: World, pos: BlockPos) -> Option<(BlockPos, i32)>
 pub(crate) fn pumpHarvests(world: World, pos: BlockPos) -> bool
 {
     let pumping: Pumping = world.tileData(pos);
-    let held: bool = world
-        .tileSlot(pos, pump::CONTAINER)
-        .is_some_and(|stack| stack.item.is("ic2:empty_cell") || stack.item.is("minecraft:bucket"));
+    let held: bool = world.tileSlot(pos, pump::CONTAINER).is_some_and(|stack| fill(&stack, WATER).is_some());
     pumping.m_charge >= pump::READY && (held || chestWithBucket(world, pos).is_some())
 }
 
@@ -572,65 +570,43 @@ fn deliverLava(world: World, pos: BlockPos) -> bool
 pub(crate) fn pumpThis(world: World, pos: BlockPos, fluid: &str) -> bool
 {
     let mut pumping: Pumping = world.tileData(pos);
-    let lava: bool = fluid == "minecraft:lava";
-    let done: bool = pumpInto(world, pos, lava);
+    let done: bool = pumpInto(world, pos, fluid);
     pumping.m_charge = 0;
     let _ = world.setTileData(pos, &pumping);
     done
 }
 
-fn pumpInto(world: World, pos: BlockPos, lava: bool) -> bool
+// any mod's empty container the pump holds fills, buckets and cells alike
+fn pumpInto(world: World, pos: BlockPos, fluid: &str) -> bool
 {
-    if lava && deliverLava(world, pos)
+    if fluid == LAVA && deliverLava(world, pos)
     {
         return true;
     }
 
-    let filledBucket: &str = if lava
+    let held: Option<ItemStack> = world.tileSlot(pos, pump::CONTAINER);
+    if let Some((container, (filled, _))) = held.and_then(|stack| fill(&stack, fluid).map(|filled| (stack, filled)))
     {
-        "minecraft:lava_bucket"
+        stacks::set(world, pos, pump::CONTAINER, stacks::less(container, 1));
+        distribute(world, pos, filled);
+        return true;
     }
+
+    // the source fills only buckets waiting in a chest beside the pump
+    let Some((chest, slot)) = chestWithBucket(world, pos)
     else
     {
-        "minecraft:water_bucket"
+        return false;
     };
-    let filledCell: &str = if lava
-    {
-        "ic2:lava_cell"
-    }
+    let Some((bucket, (filled, _))) =
+        world.tileSlot(chest, slot).and_then(|stack| fill(&stack, fluid).map(|filled| (stack, filled)))
     else
     {
-        "ic2:water_cell"
+        return false;
     };
 
-    match world.tileSlot(pos, pump::CONTAINER)
-    {
-        Some(bucket) if bucket.item.is("minecraft:bucket") =>
-        {
-            distribute(world, pos, ItemStack::of(filledBucket, bucket.count));
-            stacks::set(world, pos, pump::CONTAINER, None);
-            true
-        }
-
-        Some(cell) if cell.item.is("ic2:empty_cell") =>
-        {
-            stacks::set(world, pos, pump::CONTAINER, stacks::less(cell, 1));
-            distribute(world, pos, ItemStack::of(filledCell, 1));
-            true
-        }
-
-        _ =>
-        {
-            let Some((chest, slot)) = chestWithBucket(world, pos)
-            else
-            {
-                return false;
-            };
-            let count: i32 = world.tileSlot(chest, slot).map_or(1, |stack| stack.count);
-            stacks::set(world, chest, slot, Some(ItemStack::of(filledBucket, count)));
-            true
-        }
-    }
+    stacks::set(world, chest, slot, Some(ItemStack { count: bucket.count, ..filled }));
+    true
 }
 
 // TileEntityPump.fountain: with nothing to fill, water below is pushed up to three blocks above
