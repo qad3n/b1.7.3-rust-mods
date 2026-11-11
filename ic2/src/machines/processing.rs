@@ -222,31 +222,31 @@ const COMPRESSOR: [(&str, &str, i32); 10] = [
 
 thread_local!
 {
-    // FurnaceRecipes.getSmeltingResult by input item, rebuilt when the content changes
-    static SMELTING: RefCell<(i32, HashMap<i32, StackData>)> = RefCell::new((-1, HashMap::new()));
+    // FurnaceRecipes.getSmeltingResult by input item name, rebuilt when the content changes
+    static SMELTING: RefCell<(i32, HashMap<Identifier, StackData>)> = RefCell::new((-1, HashMap::new()));
 }
 
 pub(crate) fn smelted(input: &ItemStack) -> Option<ItemStack>
 {
-    let id: i32 = input.item.id().ok()?;
+    let name: Identifier = input.item.name()?;
     SMELTING.with(|cache|
     {
         let mut cache = cache.borrow_mut();
         let generation: i32 = contentGeneration();
         if cache.0 != generation
         {
-            let table: HashMap<i32, StackData> = recipeList()
+            let table: HashMap<Identifier, StackData> = recipeList()
                 .into_iter()
                 .filter_map(|recipe| match recipe.shape
                 {
-                    RecipeShape::Smelting { input } => Some((input.id, recipe.output)),
+                    RecipeShape::Smelting { input } => Some((nameOf(RegistryKind::Item, input.id)?, recipe.output)),
                     _ => None,
                 })
                 .collect();
             *cache = (generation, table);
         }
 
-        cache.1.get(&id).cloned().map(ItemStack::fromRaw)
+        cache.1.get(&name).cloned().map(ItemStack::fromRaw)
     })
 }
 

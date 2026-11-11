@@ -2,7 +2,6 @@ pub(crate) mod cable;
 pub(crate) mod net;
 pub(crate) mod storage;
 
-use crate::core::ids;
 use b173_api::prelude::*;
 use std::cell::RefCell;
 
@@ -50,12 +49,7 @@ pub(crate) fn add(block: String, tile: &'static dyn EnergyTile)
 pub(crate) fn tileAt(world: World, pos: BlockPos) -> Option<&'static dyn EnergyTile>
 {
     let block: i32 = world.block(pos);
-    if block == 0
-    {
-        return None;
-    }
-
-    TILES.with(|tiles| tiles.borrow().iter().find(|(name, _)| ids::block(name) == Some(block)).map(|(_, tile)| *tile))
+    TILES.with(|tiles| tiles.borrow().iter().find(|(name, _)| blockIs(block, name)).map(|(_, tile)| *tile))
 }
 
 // a block of another mod that takes EU through the loader's energy registry

@@ -1,0 +1,2 @@
+# TileEntityMiner.distributeDrop fills a chest or a personal safe next to it
+values = ["#c:chests", "ic2:personal_safe"]

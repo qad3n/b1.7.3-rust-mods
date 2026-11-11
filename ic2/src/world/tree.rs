@@ -1,5 +1,5 @@
-use crate::blocks::{RUBBER_LEAVES, RUBBER_SAPLING, RUBBER_WOOD, plain};
-use crate::core::ids;
+use crate::blocks::{RUBBER_LEAVES, RUBBER_SAPLING, Sap, rubberWood};
+use crate::core::dir;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
@@ -11,8 +11,8 @@ mod shape
     pub const HOLE_CHANCE: i32 = 25;
     pub const HOLE_FALLOFF: i32 = 10;
     pub const PERCENT: i32 = 100;
+    // the hole's face is drawn from north, south, west and east
     pub const HOLE_FACES: i32 = 4;
-    pub const FIRST_HOLE: i32 = 2;
     pub const RADIUS: i32 = 2;
     pub const LEAF_START: i32 = 4;
     pub const SHORT: i32 = 4;
@@ -25,18 +25,21 @@ mod shape
     pub const FAILED: i32 = 3;
 }
 
+// the states a rubber tree places, resolved once per tree
 struct Grower
 {
     m_world: World,
-    m_wood: i32,
-    m_leaves: i32,
+    m_plain: StateHandle,
+    // a full resin hole on each side, in face order from north
+    m_holes: Vec<StateHandle>,
+    m_leaves: StateHandle,
 }
 
 impl Grower
 {
-    fn set(&self, pos: BlockPos, block: i32, meta: i32)
+    fn set(&self, pos: BlockPos, state: &StateHandle)
     {
-        if let Err(error) = self.m_world.setBlock(pos, block, meta)
+        if let Err(error) = state.place(self.m_world, pos, true)
         {
             warn(&format!("a rubber tree could not place a block at {pos:?}: {error}"));
         }
@@ -46,9 +49,8 @@ impl Grower
     fn room(&self, pos: BlockPos) -> i32
     {
         let world: World = self.m_world;
-        let grass: bool = ids::block("minecraft:grass") == Some(world.block(pos.offset(0, -1, 0)));
-        let here: i32 = world.block(pos);
-        let open: bool = here == 0 || ids::block(RUBBER_SAPLING) == Some(here);
+        let grass: bool = world.is(pos.offset(0, -1, 0), "minecraft:grass");
+        let open: bool = world.isAir(pos) || world.is(pos, RUBBER_SAPLING);
         if !grass || !open
         {
             return 0;
@@ -57,7 +59,7 @@ impl Grower
         let mut height: i32 = 1;
         let mut y: i32 = pos.y;
 
-        while world.block(BlockPos::new(pos.x, y + 1, pos.z)) == 0 && height < shape::MAX_HEIGHT
+        while world.isAir(BlockPos::new(pos.x, y + 1, pos.z)) && height < shape::MAX_HEIGHT
         {
             height += 1;
             y += 1;
@@ -68,9 +70,9 @@ impl Grower
 
     fn leafAt(&self, pos: BlockPos)
     {
-        if self.m_world.block(pos) == 0
+        if self.m_world.isAir(pos)
         {
-            self.set(pos, self.m_leaves, 0);
+            self.set(pos, &self.m_leaves);
         }
     }
 
@@ -113,16 +115,16 @@ impl Grower
         for level in 0..height
         {
             let log: BlockPos = base.offset(0, level, 0);
-            let meta: i32 = if random.nextIntBounded(shape::PERCENT) <= holeChance
+            let wood: &StateHandle = if random.nextIntBounded(shape::PERCENT) <= holeChance
             {
                 holeChance -= shape::HOLE_FALLOFF;
-                random.nextIntBounded(shape::HOLE_FACES) + shape::FIRST_HOLE
+                &self.m_holes[random.nextIntBounded(shape::HOLE_FACES) as usize]
             }
             else
             {
-                plain()
+                &self.m_plain
             };
-            self.set(log, self.m_wood, meta);
+            self.set(log, wood);
 
             let leafy: bool =
                 height < shape::SHORT || height < shape::MEDIUM && level > 1 || level > shape::CROWN_EXTRA;
@@ -142,9 +144,32 @@ impl Grower
     }
 }
 
+fn build(world: World) -> Result<Grower>
+{
+    let holes: Result<Vec<StateHandle>> = [dir::NORTH, dir::SOUTH, dir::WEST, dir::EAST]
+        .into_iter()
+        .map(|face| rubberWood(Sap::Wet, face).map(StateHandle::new))
+        .collect();
+    Ok(Grower
+    {
+        m_world: world,
+        m_plain: StateHandle::new(rubberWood(Sap::Plain, dir::NORTH)?),
+        m_holes: holes?,
+        m_leaves: StateHandle::named(RUBBER_LEAVES)?,
+    })
+}
+
 fn grower(world: World) -> Option<Grower>
 {
-    Some(Grower { m_world: world, m_wood: ids::block(RUBBER_WOOD)?, m_leaves: ids::block(RUBBER_LEAVES)? })
+    match build(world)
+    {
+        Ok(grower) => Some(grower),
+        Err(error) =>
+        {
+            warn(&format!("rubber trees cannot grow: {error}"));
+            None
+        }
+    }
 }
 
 // BlockRubSapling.growTree, with the world's random
@@ -173,7 +198,7 @@ pub(crate) fn generate(world: World, random: &Random, start: [i32; 2], count: i3
     while tries > 0
     {
         let mut y: i32 = shape::TOP;
-        while y > 0 && world.block(BlockPos::new(x, y - 1, z)) == 0
+        while y > 0 && world.isAir(BlockPos::new(x, y - 1, z))
         {
             y -= 1;
         }

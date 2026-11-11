@@ -2,7 +2,6 @@ mod minable;
 pub(crate) mod tree;
 
 use crate::blocks::{COPPER_ORE, TIN_ORE, URANIUM_ORE};
-use crate::core::ids;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
@@ -94,17 +93,21 @@ fn populate(world: World, chunkX: i32, chunkZ: i32)
 
     for ore in &ORES
     {
-        let Some(block) = ids::block(ore.m_block)
-        else
+        let block: StateHandle = match StateHandle::named(ore.m_block)
         {
-            continue;
+            Ok(block) => block,
+            Err(error) =>
+            {
+                warn(&format!("{} names no ore block: {error}", ore.m_block));
+                continue;
+            }
         };
 
         for _ in 0..ore.m_veins
         {
             let at: [i32; 3] =
                 [x + random.nextIntBounded(CHUNK), (ore.m_height)(&random), z + random.nextIntBounded(CHUNK)];
-            minable::generate(world, &random, block, ore.m_size, at);
+            minable::generate(world, &random, &block, ore.m_size, at);
         }
     }
 }

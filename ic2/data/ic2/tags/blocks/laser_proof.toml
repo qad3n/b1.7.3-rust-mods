@@ -1,0 +1,2 @@
+# EntityMiningLaser.unmineableBlocks
+values = ["minecraft:brick_block", "#c:obsidians", "#minecraft:lava", "#minecraft:water", "minecraft:bedrock", "#c:glass_blocks"]

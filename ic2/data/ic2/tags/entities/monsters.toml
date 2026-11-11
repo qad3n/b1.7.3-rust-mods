@@ -1,0 +1,2 @@
+# the EntityMob kinds the luminator sets alight
+values = ["minecraft:zombie", "minecraft:skeleton", "minecraft:spider", "minecraft:creeper", "minecraft:zombie_pigman", "minecraft:monster"]

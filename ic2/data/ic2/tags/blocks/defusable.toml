@@ -1,0 +1,2 @@
+# ItemToolWrench defuses TNT material blocks
+values = ["minecraft:tnt", "ic2:industrial_tnt", "ic2:nuke", "#ic2:dynamite_sticks"]

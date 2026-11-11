@@ -1,8 +1,8 @@
 use super::processing::{provide, smelted};
 use super::screen::{self, Bar};
 use super::{Faces, Look, Machine, registerBlock, setActive};
-use crate::blocks::IRON_FENCE;
-use crate::core::{dir, ids, own, sound, stacks};
+use crate::blocks::{IRON_FENCE, fenceCharge, setFenceCharge};
+use crate::core::{dir, own, sound, stacks};
 use crate::energy::storage::{Bank, bankAt, bankEnergy, setBankEnergy};
 use crate::energy::{self, EnergyTile, net};
 use crate::explosives;
@@ -229,12 +229,6 @@ fn smeltLine(world: World, pos: BlockPos, line: (i32, i32))
 // the GretoxTweaks change in this build: finished items move into a chest next to the furnace
 fn deposit(world: World, pos: BlockPos)
 {
-    let Some(chest) = ids::block("minecraft:chest")
-    else
-    {
-        return;
-    };
-
     for dx in -1..=1
     {
         for dz in -1..=1
@@ -242,7 +236,7 @@ fn deposit(world: World, pos: BlockPos)
             for dy in -1..=1
             {
                 let at: BlockPos = pos.offset(dx, dy, dz);
-                if at == pos || world.block(at) != chest
+                if at == pos || !world.tagged(at, "c:chests")
                 {
                     continue;
                 }
@@ -390,11 +384,6 @@ fn magnetize(world: World, pos: BlockPos, state: &mut State)
         return;
     }
 
-    let Some(fence) = ids::block(IRON_FENCE)
-    else
-    {
-        return;
-    };
     let mut charged: bool = false;
 
     for step in [-1, 1]
@@ -404,17 +393,18 @@ fn magnetize(world: World, pos: BlockPos, state: &mut State)
         while y > 0 && y < magnet::TOP && (y - pos.y).abs() <= magnet::REACH && state.m_energy > 0
         {
             let at: BlockPos = BlockPos::new(pos.x, y, pos.z);
-            if world.block(at) != fence
+            let Some(charge) = fenceCharge(world, at)
+            else
             {
                 break;
-            }
+            };
 
-            let need: i32 = magnet::FULL - world.meta(at);
+            let need: i32 = magnet::FULL - charge;
             if need > 0
             {
                 charged = true;
                 state.m_energy = state.m_energy.max(need);
-                let _ = world.setMeta(at, world.meta(at) + need);
+                setFenceCharge(world, at, charge + need);
                 state.m_energy -= need;
             }
 
@@ -529,7 +519,7 @@ impl Special
         {
             if self.m_kind == Kind::Matter
             {
-                let _ = world.setBlock(pos, 0, 0);
+                let _ = world.clear(pos);
                 explosives::blast(world, [pos.x as f64, pos.y as f64, pos.z as f64], matter::BLAST, explosives::MATTER);
                 net::changed(world);
             }

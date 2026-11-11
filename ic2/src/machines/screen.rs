@@ -70,8 +70,13 @@ pub(crate) fn flames(name: &str, ctx: &mut BlockCtx)
     const SPREAD: f64 = 0.6;
     const SIDE: f64 = 0.3;
 
-    let meta: i32 = i32::from(ctx.meta());
-    if !matches!(name, "iron_furnace" | "generator") || !active(meta)
+    let Some(state) = ctx.stateAt()
+    else
+    {
+        return;
+    };
+
+    if !matches!(name, "iron_furnace" | "generator") || !active(&state)
     {
         return;
     }
@@ -80,7 +85,7 @@ pub(crate) fn flames(name: &str, ctx: &mut BlockCtx)
     let [x, _, z] = dir::center(ctx.pos());
     let y: f64 = ctx.pos().y as f64 + random::float(world) * HEIGHT;
     let side: f64 = random::float(world) * SPREAD - SIDE;
-    let spot: [f64; 3] = match facing(meta)
+    let spot: [f64; 3] = match facing(&state)
     {
         dir::WEST => [x - REACH, y, z + side],
         dir::EAST => [x + REACH, y, z + side],

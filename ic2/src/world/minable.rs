@@ -16,13 +16,8 @@ mod shape
 fn inside(offset: f64, radius: f64) -> f64 { offset / (radius / 2.0) }
 
 // WorldGenMinable.generate: a blob of ore replacing stone, drawn with the same random draws as vanilla
-pub(crate) fn generate(world: World, random: &Random, ore: i32, size: i32, at: [i32; 3])
+pub(crate) fn generate(world: World, random: &Random, ore: &StateHandle, size: i32, at: [i32; 3])
 {
-    let Some(stone) = crate::core::ids::block("minecraft:stone")
-    else
-    {
-        return;
-    };
     let [x, y, z] = at;
     let angle: f32 = random.nextFloat() * std::f32::consts::PI;
     let spread: f32 = size as f32 / shape::REACH;
@@ -64,9 +59,9 @@ pub(crate) fn generate(world: World, random: &Random, ore: i32, size: i32, at: [
                 {
                     let dz: f64 = inside(f64::from(bz) + shape::HALF - cz, wide);
                     let pos: BlockPos = BlockPos::new(bx, by, bz);
-                    if dx * dx + dy * dy + dz * dz < 1.0 && world.block(pos) == stone
+                    if dx * dx + dy * dy + dz * dz < 1.0 && world.tagged(pos, "minecraft:base_stone_overworld")
                     {
-                        let _ = world.setBlockQuiet(pos, ore, 0);
+                        let _ = ore.place(world, pos, false);
                     }
                 }
             }

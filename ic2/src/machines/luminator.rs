@@ -1,4 +1,4 @@
-use crate::core::{blockTexture, dir, ids, own};
+use crate::core::{blockTexture, dir, own};
 use crate::energy::{self, Conductor, EnergyTile, net};
 use crate::explosives;
 use b173_api::prelude::*;
@@ -28,15 +28,8 @@ mod lamp
 // TileEntityLuminator as a conductor: no loss, and it bursts on 33 EU
 static LAMP_CONDUCTOR: Conductor = Conductor { m_loss: 0.0, m_absorption: 32, m_breakdown: 33 };
 
-// the hostile mobs EntityMob covers in beta
-const MOBS: [&str; 6] = [
-    "minecraft:zombie",
-    "minecraft:skeleton",
-    "minecraft:spider",
-    "minecraft:creeper",
-    "minecraft:zombie_pigman",
-    "minecraft:monster",
-];
+// the hostile mobs, EntityMob and its kinds in beta
+const MOBS: &str = "ic2:monsters";
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(crate) struct Lamp
@@ -49,7 +42,7 @@ pub(crate) struct Lamp
 
 fn poof(world: World, pos: BlockPos)
 {
-    let _ = world.setBlock(pos, 0, 0);
+    let _ = world.clear(pos);
     explosives::blast(world, dir::center(pos), lamp::POOF, explosives::LUMINATOR);
     net::changed(world);
 }
@@ -57,9 +50,8 @@ fn poof(world: World, pos: BlockPos)
 // the reach of burnMobs on one axis: three blocks toward open air or glass, one block otherwise
 fn reach(world: World, pos: BlockPos, face: i32, crossOpen: bool) -> i32
 {
-    let glass: [Option<i32>; 2] = [ids::block("minecraft:glass"), ids::block("ic2:reinforced_glass")];
-    let block: i32 = world.block(dir::step(pos, face));
-    let open: bool = block == 0 || glass.contains(&Some(block));
+    let at: BlockPos = dir::step(pos, face);
+    let open: bool = world.isAir(at) || world.tagged(at, "c:glass_blocks") || world.is(at, "reinforced_glass");
     match (open, crossOpen)
     {
         (true, _) => lamp::OPEN_REACH,
@@ -86,9 +78,11 @@ fn burnMobs(world: World, pos: BlockPos)
     let near: [f64; 3] = center.map(|value| value - lamp::BURN_REACH);
     let far: [f64; 3] = center.map(|value| value + lamp::BURN_REACH);
 
+    let mobs: Rc<std::collections::HashSet<Identifier>> = tagMembers(RegistryKind::Entity, MOBS);
+
     for mob in world.entitiesIn(near, far)
     {
-        let hostile: bool = mob.kind.as_ref().is_some_and(|kind| MOBS.contains(&kind.to_string().as_str()));
+        let hostile: bool = mob.kind.as_ref().is_some_and(|kind| mobs.contains(kind));
         let inside: bool = (0..3).all(|axis| mob.pos[axis] >= low[axis] && mob.pos[axis] <= high[axis]);
         if !hostile || !inside
         {
@@ -176,10 +170,10 @@ impl EnergyTile for Luminator
         left
     }
 
-    // TileEntityLuminator.canCableConnectFrom: only the cable on the side its metadata names
+    // TileEntityLuminator.canCableConnectFrom: only the cable behind the face its facing names
     fn joins(&self, world: World, pos: BlockPos, from: BlockPos) -> bool
     {
-        dir::step(pos, dir::reverse(world.meta(pos))) == from
+        dir::step(pos, dir::reverse(super::facingAt(world, pos))) == from
     }
 }
 
@@ -231,7 +225,7 @@ impl BlockBehavior for LampBlock
     fn onRemoved(&self, ctx: &mut BlockCtx) { net::changed(ctx.world()); }
 }
 
-pub(crate) fn isLuminator(world: World, pos: BlockPos) -> bool { ids::block(&own(NAME)) == Some(world.block(pos)) }
+pub(crate) fn isLuminator(world: World, pos: BlockPos) -> bool { world.is(pos, NAME) }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
@@ -252,6 +246,15 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .tileEntity(NAME)
             .drops(Vec::new())
             .behavior(LampBlock),
+    )?;
+    // BlockLuminator metadata, the side it faces, which only the item damage sets
+    ctx.blocks().states(
+        NAME,
+        BlockStatesSpec
+        {
+            properties: vec![PropertySpec::new(super::state::FACING, &dir::NAMES)],
+            ..BlockStatesSpec::default()
+        },
     )?;
     energy::add(own(NAME), &LUMINATOR);
     Ok(())

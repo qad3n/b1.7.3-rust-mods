@@ -1,4 +1,4 @@
-use crate::core::{blockTexture, dir, ids, itemTexture, math, own, random, sound, stacks};
+use crate::core::{FLAG, blockTexture, dir, itemTexture, math, own, random, sound, stacks};
 use b173_api::prelude::*;
 use b173_api::terrain::math::floor;
 use std::collections::BTreeSet;
@@ -289,6 +289,9 @@ fn prime(world: World, pos: BlockPos, charge: Charge, fuse: Option<i32>)
     world.playSound(dir::center(pos), "random.fuse", 1.0, 1.0);
 }
 
+// a neighbour change caused by a real block, as onNeighborBlockChange's id above zero, air has no name
+fn real(neighbor: i32) -> bool { nameOf(RegistryKind::Block, neighbor).is_some() }
+
 // BlockIC2Explosive: lit by redstone, a flint and steel click or another blast; ITNT also goes off by hand
 struct ExplosiveBlock
 {
@@ -297,7 +300,8 @@ struct ExplosiveBlock
 
 mod lit
 {
-    pub const META: u8 = 1;
+    // BlockIC2Explosive metadata 1, a flint and steel click that waits for the block to break
+    pub const LIT: &str = "lit";
     pub const CHAIN_SHARE: i32 = 4;
     pub const CHAIN_FLOOR: i32 = 8;
 }
@@ -311,27 +315,34 @@ impl BlockBehavior for ExplosiveBlock
         if ctx.isAuthority() && world.isPowered(ctx.pos())
         {
             prime(world, ctx.pos(), self.m_charge, None);
-            let _ = world.setBlock(ctx.pos(), 0, 0);
+            let _ = world.clear(ctx.pos());
         }
     }
 
     fn onNeighborChanged(&self, ctx: &mut BlockCtx, neighbor: i32)
     {
         let world: World = ctx.world();
-        if !ctx.isAuthority() || neighbor <= 0 || !world.isPowered(ctx.pos())
+        if !ctx.isAuthority() || !real(neighbor) || !world.isPowered(ctx.pos())
         {
             return;
         }
 
         prime(world, ctx.pos(), self.m_charge, None);
-        let _ = world.setBlock(ctx.pos(), 0, 0);
+        let _ = world.clear(ctx.pos());
     }
 
     fn onClicked(&self, ctx: &mut BlockCtx, player: Player)
     {
-        if player.held().is_some_and(|held| held.item.is("minecraft:flint_and_steel"))
+        let Some(state) = ctx.stateAt()
+        else
         {
-            ctx.setMeta(lit::META);
+            return;
+        };
+
+        if player.held().is_some_and(|held| held.item.is("minecraft:flint_and_steel"))
+            && let Err(error) = ctx.setState((*state).clone().with(lit::LIT, true))
+        {
+            warn(&format!("could not light the explosive: {error}"));
         }
     }
 
@@ -353,7 +364,7 @@ impl BlockBehavior for ExplosiveBlock
             return;
         }
 
-        let lit: bool = ctx.meta() & 1 != 0 || self.m_charge == Charge::Industrial;
+        let lit: bool = ctx.stateAt().is_some_and(|state| state.flag(lit::LIT)) || self.m_charge == Charge::Industrial;
         if lit
         {
             prime(world, ctx.pos(), self.m_charge, None);
@@ -545,27 +556,18 @@ impl ItemBehavior for DynamiteItem
         }
 
         let at: BlockPos = dir::step(pos, face);
-        let Some(block) = ids::block(DYNAMITE_BLOCK)
-        else
-        {
-            return Use::Pass;
-        };
-
         if !world.isAir(at) || !mounted(world, at)
         {
             return Use::Done(Some(stack));
         }
 
-        let _ = world.setBlock(at, block, 0);
+        let _ = world.place(at, DYNAMITE_BLOCK);
         Use::Done(stacks::less(stack, 1))
     }
 }
 
-fn solid(world: World, pos: BlockPos) -> bool
-{
-    let block: i32 = world.block(pos);
-    block != 0 && World::blockInfo(block).opaque
-}
+// air reports no block info, so it is never solid
+fn solid(world: World, pos: BlockPos) -> bool { World::blockInfo(world.block(pos)).opaque }
 
 // BlockDynamite.canPlaceBlockAt: a solid block beside it or below
 fn mounted(world: World, pos: BlockPos) -> bool
@@ -573,20 +575,26 @@ fn mounted(world: World, pos: BlockPos) -> bool
     [dir::WEST, dir::EAST, dir::NORTH, dir::SOUTH, dir::DOWN].iter().any(|face| solid(world, dir::step(pos, *face)))
 }
 
-// the face a placed stick leans on, as BlockDynamite stores it: 1 to 4 on a wall, 5 on the floor
-fn lean(world: World, pos: BlockPos) -> Option<u8>
+mod lean
 {
-    const FLOOR: u8 = 5;
+    // BlockDynamite metadata as a state in metadata order, so the torch template draws the stick leaning right
+    pub const LEAN: &str = "lean";
+    pub const SIDES: [&str; 6] = ["none", "west", "east", "north", "south", "floor"];
+    pub const FLOOR: &str = "floor";
+}
 
+// the side a placed stick leans on, the floor first and then the walls in BlockDynamite's order
+fn lean(world: World, pos: BlockPos) -> Option<&'static str>
+{
     if solid(world, pos.offset(0, -1, 0))
     {
-        return Some(FLOOR);
+        return Some(lean::FLOOR);
     }
 
     [dir::WEST, dir::EAST, dir::NORTH, dir::SOUTH]
         .iter()
-        .position(|face| solid(world, dir::step(pos, *face)))
-        .map(|index| index as u8 + 1)
+        .find(|face| solid(world, dir::step(pos, **face)))
+        .map(|face| dir::name(*face))
 }
 
 thread_local!
@@ -622,17 +630,25 @@ impl BlockBehavior for DynamiteBlock
         if world.isPowered(ctx.pos())
         {
             spawnDynamite(world, dir::center(ctx.pos()), false, [0.0; 3], stick::PLACED_FUSE);
-            let _ = world.setBlock(ctx.pos(), 0, 0);
+            let _ = world.clear(ctx.pos());
             return;
         }
 
         match lean(world, ctx.pos())
         {
-            Some(meta) => ctx.setMeta(meta),
+            Some(side) =>
+            {
+                let state: Option<StateData> = ctx.stateAt().map(|state| (*state).clone().with(lean::LEAN, side));
+                if let Some(state) = state
+                    && let Err(error) = ctx.setState(state)
+                {
+                    warn(&format!("dynamite could not lean on its wall: {error}"));
+                }
+            }
             None =>
             {
                 spawnDynamite(world, dir::center(ctx.pos()), false, [0.0; 3], stick::CHAIN_FUSE);
-                let _ = world.setBlock(ctx.pos(), 0, 0);
+                let _ = world.clear(ctx.pos());
             }
         }
     }
@@ -641,12 +657,9 @@ impl BlockBehavior for DynamiteBlock
     fn onUpdateTick(&self, ctx: &mut BlockCtx)
     {
         let world: World = ctx.world();
-        if self.m_remote
-            && ctx.isAuthority()
-            && !linked(world, ctx.pos())
-            && let Some(plain) = ids::block(DYNAMITE_BLOCK)
+        if self.m_remote && ctx.isAuthority() && !linked(world, ctx.pos())
         {
-            let _ = world.setBlock(ctx.pos(), plain, i32::from(ctx.meta()));
+            swapDynamite(ctx.world(), ctx.pos(), DYNAMITE_BLOCK);
         }
     }
 
@@ -658,7 +671,7 @@ impl BlockBehavior for DynamiteBlock
             return;
         }
 
-        if neighbor > 0 && world.isPowered(ctx.pos()) || !mounted(world, ctx.pos())
+        if real(neighbor) && world.isPowered(ctx.pos()) || !mounted(world, ctx.pos())
         {
             let fuse: i32 = if mounted(world, ctx.pos())
             {
@@ -669,7 +682,7 @@ impl BlockBehavior for DynamiteBlock
                 stick::CHAIN_FUSE
             };
             spawnDynamite(world, dir::center(ctx.pos()), false, [0.0; 3], fuse);
-            let _ = world.setBlock(ctx.pos(), 0, 0);
+            let _ = world.clear(ctx.pos());
         }
     }
 
@@ -688,6 +701,18 @@ impl BlockBehavior for DynamiteBlock
     }
 }
 
+// plain and remote dynamite swap into each other keeping their lean
+fn swapDynamite(world: World, pos: BlockPos, name: &str)
+{
+    let (Some(state), Ok(block)) = (world.stateAt(pos), Identifier::parse(name))
+    else
+    {
+        return;
+    };
+
+    let _ = world.setBlockState(pos, StateData { block, ..(*state).clone() });
+}
+
 // ItemRemote: tags dynamite with its frequency, a right click sets off everything on it
 struct Remote;
 
@@ -702,8 +727,8 @@ impl ItemBehavior for Remote
     fn onUseOnBlock(&self, world: World, _player: Player, stack: ItemStack, pos: BlockPos, _face: i32) -> Use
     {
         let block: i32 = world.block(pos);
-        let plain: bool = ids::block(DYNAMITE_BLOCK) == Some(block);
-        let wired: bool = ids::block(REMOTE_BLOCK) == Some(block);
+        let plain: bool = blockIs(block, DYNAMITE_BLOCK);
+        let wired: bool = blockIs(block, REMOTE_BLOCK);
         if !world.isAuthority()
         {
             return if plain || wired
@@ -726,9 +751,9 @@ impl ItemBehavior for Remote
         };
         let stack: ItemStack = ItemStack { damage: frequency, ..stack };
 
-        if plain && let Some(remoteBlock) = ids::block(REMOTE_BLOCK)
+        if plain
         {
-            let _ = world.setBlock(pos, remoteBlock, world.meta(pos));
+            swapDynamite(world, pos, REMOTE_BLOCK);
         }
 
         if plain || wired
@@ -765,7 +790,7 @@ impl ItemBehavior for Remote
 
         for pos in fired
         {
-            let _ = world.setBlock(pos, 0, 0);
+            let _ = world.clear(pos);
             spawnDynamite(world, dir::center(pos), false, [0.0; 3], stick::CHAIN_FUSE);
         }
 
@@ -789,16 +814,9 @@ mod beam
 }
 
 // EntityMiningLaser.unmineableBlocks
-const UNMINEABLE: [&str; 8] = [
-    "minecraft:brick_block",
-    "minecraft:obsidian",
-    "minecraft:flowing_lava",
-    "minecraft:lava",
-    "minecraft:flowing_water",
-    "minecraft:water",
-    "minecraft:bedrock",
-    "minecraft:glass",
-];
+const UNMINEABLE: &str = "ic2:laser_proof";
+// what the laser sets alight: Material.wood, leaves and cloth
+const LASER_BURNABLE: &str = "ic2:burnable";
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug, Default)]
 struct Beam
@@ -813,19 +831,6 @@ struct Beam
 
 // EntityMiningLaser: burns through blocks until its range runs out, sets what it hits alight
 struct LaserBeam;
-
-fn burnable(block: i32) -> bool
-{
-    nameOf(RegistryKind::Block, block).is_some_and(|id|
-    {
-        let tags: Vec<Identifier> = tagsOf(RegistryKind::Block, &id);
-        let tagged: bool = tags.iter().any(|tag|
-        {
-            ["minecraft:logs", "minecraft:leaves", "minecraft:mineable/axe"].contains(&tag.to_string().as_str())
-        });
-        tagged || id.to_string() == "minecraft:wool"
-    })
-}
 
 #[entity_behavior]
 impl EntityBehavior for LaserBeam
@@ -892,7 +897,7 @@ impl EntityBehavior for LaserBeam
             }
 
             let block: i32 = world.block(hit.pos);
-            if UNMINEABLE.iter().any(|name| ids::block(name) == Some(block))
+            if blockTagged(block, UNMINEABLE)
             {
                 entity.kill();
                 return;
@@ -900,11 +905,9 @@ impl EntityBehavior for LaserBeam
 
             beam.m_range -= (World::explosionResistance(block) + ray::RESIST_PAD) / beam::RESIST_SCALE;
             let _ = world.blastBlock(hit.pos, beam::DROP_CHANCE);
-            if world.random(beam::IGNITE_CHANCE) == 0
-                && burnable(block)
-                && let Some(fire) = ids::block("minecraft:fire")
+            if world.random(beam::IGNITE_CHANCE) == 0 && blockTagged(block, LASER_BURNABLE)
             {
-                let _ = world.setBlock(hit.pos, fire, 0);
+                let _ = world.place(hit.pos, "minecraft:fire");
             }
         }
 
@@ -990,6 +993,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .drops(Vec::new())
                 .behavior(ExplosiveBlock { m_charge: primed.m_charge }),
         )?;
+        ctx.blocks().states(
+            primed.m_block,
+            BlockStatesSpec { properties: vec![PropertySpec::new(lit::LIT, &FLAG)], ..BlockStatesSpec::default() },
+        )?;
     }
 
     for (name, sprite, remote) in
@@ -1005,6 +1012,14 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .drops(Vec::new())
                 .tickRandomly()
                 .behavior(DynamiteBlock { m_remote: remote }),
+        )?;
+        ctx.blocks().states(
+            name,
+            BlockStatesSpec
+            {
+                properties: vec![PropertySpec::new(lean::LEAN, &lean::SIDES)],
+                ..BlockStatesSpec::default()
+            },
         )?;
     }
 

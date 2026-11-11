@@ -1,0 +1,2 @@
+# ItemElectricToolDrill.mineableBlocks with rock and iron material
+values = ["#minecraft:mineable/pickaxe", "#minecraft:mineable/shovel", "#c:ores/redstone", "minecraft:brick_block", "minecraft:glowstone"]

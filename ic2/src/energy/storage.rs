@@ -2,7 +2,7 @@ use super::{EnergyTile, net};
 use crate::core::{own, stacks};
 use crate::electric;
 use crate::machines::screen::{self, Bar};
-use crate::machines::{Faces, Look, Machine, facing, registerBlock};
+use crate::machines::{Faces, Look, Machine, facingAt, registerBlock};
 use b173_api::prelude::*;
 use std::rc::Rc;
 
@@ -195,9 +195,9 @@ fn transformerTick(transformer: &Transformer, world: World, pos: BlockPos, charg
 
 impl EnergyTile for Store
 {
-    fn accepts(&self, world: World, pos: BlockPos, face: i32) -> bool { facing(world.meta(pos)) != face }
+    fn accepts(&self, world: World, pos: BlockPos, face: i32) -> bool { facingAt(world, pos) != face }
 
-    fn emits(&self, world: World, pos: BlockPos, face: i32) -> bool { facing(world.meta(pos)) == face }
+    fn emits(&self, world: World, pos: BlockPos, face: i32) -> bool { facingAt(world, pos) == face }
 
     fn sink(&self) -> bool { true }
 
@@ -223,12 +223,12 @@ impl EnergyTile for Transformer
 {
     fn accepts(&self, world: World, pos: BlockPos, face: i32) -> bool
     {
-        world.tileData::<Charge>(pos).m_redstone != (facing(world.meta(pos)) == face)
+        world.tileData::<Charge>(pos).m_redstone != (facingAt(world, pos) == face)
     }
 
     fn emits(&self, world: World, pos: BlockPos, face: i32) -> bool
     {
-        world.tileData::<Charge>(pos).m_redstone == (facing(world.meta(pos)) == face)
+        world.tileData::<Charge>(pos).m_redstone == (facingAt(world, pos) == face)
     }
 
     fn sink(&self) -> bool { true }
@@ -341,7 +341,7 @@ impl TileBehavior for TransformerTile
 // BlockElectric.alterFacing through the wrench: false when it already faces there
 pub(crate) fn turn(world: World, pos: BlockPos, face: i32) -> bool
 {
-    if facing(world.meta(pos)) == face
+    if facingAt(world, pos) == face
     {
         return false;
     }
@@ -354,7 +354,13 @@ pub(crate) fn turn(world: World, pos: BlockPos, face: i32) -> bool
 pub(crate) fn isStorage(world: World, pos: BlockPos) -> bool
 {
     let block: i32 = world.block(pos);
-    MACHINES.iter().any(|row| crate::core::ids::block(&own(row.m_name)) == Some(block))
+    MACHINES.iter().any(|row| blockIs(block, row.m_name))
+}
+
+fn storeAt(world: World, pos: BlockPos) -> Option<&'static Store>
+{
+    let block: i32 = world.block(pos);
+    STORES.iter().find(|row| blockIs(block, row.m_name))
 }
 
 // GuiElectricBlock: the charge arrow and the numbers
@@ -446,16 +452,14 @@ pub(crate) struct Bank
 
 pub(crate) fn bankAt(world: World, pos: BlockPos) -> Option<Bank>
 {
-    let block: i32 = world.block(pos);
-    let store: &Store = STORES.iter().find(|row| crate::core::ids::block(&own(row.m_name)) == Some(block))?;
+    let store: &Store = storeAt(world, pos)?;
     (store.m_tier > 1).then_some(Bank { m_pos: pos, m_capacity: store.m_capacity })
 }
 
 // TileEntityTeleporter.isElectricBlock takes any storage block
 pub(crate) fn anyBankAt(world: World, pos: BlockPos) -> Option<Bank>
 {
-    let block: i32 = world.block(pos);
-    let store: &Store = STORES.iter().find(|row| crate::core::ids::block(&own(row.m_name)) == Some(block))?;
+    let store: &Store = storeAt(world, pos)?;
     Some(Bank { m_pos: pos, m_capacity: store.m_capacity })
 }
 

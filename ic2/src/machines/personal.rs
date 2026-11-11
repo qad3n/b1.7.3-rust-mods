@@ -1,5 +1,5 @@
 use super::{Faces, Look, Machine, registerBlock, screen};
-use crate::core::{dir, ids, own, sound};
+use crate::core::{dir, sound};
 use b173_api::prelude::*;
 use std::rc::Rc;
 
@@ -96,7 +96,7 @@ pub(crate) fn canAccess(world: World, pos: BlockPos, player: Player) -> bool
 pub(crate) fn isPersonal(world: World, pos: BlockPos) -> bool
 {
     let block: i32 = world.block(pos);
-    MACHINES.iter().any(|row| ids::block(&own(row.m_name)) == Some(block))
+    MACHINES.iter().any(|row| blockIs(block, row.m_name))
 }
 
 fn same(a: &Option<ItemStack>, b: &Option<ItemStack>) -> bool
@@ -111,14 +111,12 @@ fn same(a: &Option<ItemStack>, b: &Option<ItemStack>) -> bool
 // TileEntityTradeOMat.isAccessibleChest: a chest, or a personal safe of the same owner
 fn tradeChest(world: World, pos: BlockPos, owner: &Option<String>) -> Option<BlockPos>
 {
-    let chest: Option<i32> = ids::block("minecraft:chest");
-    let safe: Option<i32> = ids::block("ic2:personal_safe");
-
     [dir::UP, dir::DOWN, dir::EAST, dir::WEST, dir::SOUTH, dir::NORTH].iter().map(|face| dir::step(pos, *face)).find(
         |at|
         {
             let block: i32 = world.block(*at);
-            Some(block) == chest || Some(block) == safe && &world.tileData::<Owned>(*at).m_owner == owner
+            blockTagged(block, "c:chests")
+                || blockIs(block, "personal_safe") && &world.tileData::<Owned>(*at).m_owner == owner
         },
     )
 }

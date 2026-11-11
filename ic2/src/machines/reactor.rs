@@ -1,5 +1,5 @@
 use super::{Faces, Look, Machine, registerBlock, screen, setActive};
-use crate::core::{blockTexture, dir, ids, own, random, sound, stacks};
+use crate::core::{blockTexture, dir, own, random, sound, stacks};
 use crate::energy::{self, EnergyTile, net};
 use crate::explosives;
 use b173_api::prelude::*;
@@ -148,7 +148,6 @@ impl Grid
 // TileEntityNuclearReactor.getReactorSize: three columns and one more per chamber around it
 pub(crate) fn size(world: World, pos: BlockPos) -> i32
 {
-    let chamber: Option<i32> = ids::block(CHAMBER);
     let mut size: i32 = grid::BASE;
 
     for dx in -1..=1
@@ -157,7 +156,7 @@ pub(crate) fn size(world: World, pos: BlockPos) -> i32
         {
             for dz in -1..=1
             {
-                if Some(world.block(pos.offset(dx, dy, dz))) == chamber
+                if world.is(pos.offset(dx, dy, dz), CHAMBER)
                 {
                     size += 1;
                 }
@@ -168,19 +167,8 @@ pub(crate) fn size(world: World, pos: BlockPos) -> i32
     size
 }
 
-const USEFUL: [&str; 11] = [
-    "ic2:uranium_cell",
-    "ic2:coolant_cell",
-    "ic2:reactor_plating",
-    "minecraft:ice",
-    "minecraft:water_bucket",
-    "minecraft:lava_bucket",
-    "minecraft:bucket",
-    "ic2:heat_disperser",
-    "ic2:depleted_isotope_cell",
-    "ic2:re_enriched_uranium_cell",
-    "ic2:near_depleted_uranium_cell",
-];
+// TileEntityNuclearReactor.isUsefulItem
+const USEFUL: &str = "ic2:reactor_components";
 
 // dropAllUnfittingStuff: what sits outside the grid's width or does nothing in a reactor falls out
 fn dropUnfitting(grid: &mut Grid) -> Vec<ItemStack>
@@ -203,7 +191,7 @@ fn dropUnfitting(grid: &mut Grid) -> Vec<ItemStack>
                 continue;
             }
 
-            if x >= grid.m_size || !USEFUL.iter().any(|name| stack.item.is(name))
+            if x >= grid.m_size || !stack.item.tagged(USEFUL)
             {
                 ejected.push(stack);
                 grid.set(x, y, None);
@@ -213,15 +201,6 @@ fn dropUnfitting(grid: &mut Grid) -> Vec<ItemStack>
 
     ejected
 }
-
-fn named(world: World, pos: BlockPos, names: &[&str]) -> bool
-{
-    let block: i32 = world.block(pos);
-    names.iter().any(|name| ids::block(name) == Some(block))
-}
-
-const WATER: [&str; 2] = ["minecraft:water", "minecraft:flowing_water"];
-const LAVA: [&str; 2] = ["minecraft:lava", "minecraft:flowing_lava"];
 
 // coolReactorFromOutside: chambers and water cool it, air helps a little, fire and lava heat it
 fn outsideCooling(world: World, pos: BlockPos) -> i32
@@ -241,12 +220,13 @@ fn outsideCooling(world: World, pos: BlockPos) -> i32
             for dz in -1..=1
             {
                 let at: BlockPos = pos.offset(dx, dy, dz);
-                if named(world, at, &[CHAMBER])
+                let block: i32 = world.block(at);
+                if blockIs(block, CHAMBER)
                 {
                     cooling += CHAMBER_COOLING;
                 }
 
-                if named(world, at, &WATER)
+                if blockTagged(block, "minecraft:water")
                 {
                     cooling += 1;
                 }
@@ -256,12 +236,12 @@ fn outsideCooling(world: World, pos: BlockPos) -> i32
                     air += 1;
                 }
 
-                if named(world, at, &["minecraft:fire"])
+                if blockTagged(block, "minecraft:fire")
                 {
                     air -= FIRE_HEATING;
                 }
 
-                if named(world, at, &LAVA)
+                if blockTagged(block, "minecraft:lava")
                 {
                     cooling -= LAVA_HEATING;
                 }
@@ -283,36 +263,17 @@ fn randomAround(world: World, pos: BlockPos) -> Option<BlockPos>
     (at != pos).then_some(at)
 }
 
-fn hasTag(block: i32, tag: &str) -> bool
-{
-    nameOf(RegistryKind::Block, block)
-        .is_some_and(|id| tagsOf(RegistryKind::Block, &id).iter().any(|found| found.to_string() == tag))
-}
-
 // Material.rock, iron, lava, ground and clay melt into lava, the rest catches fire
-fn melts(block: i32) -> bool
-{
-    const GROUND: [&str; 4] = ["minecraft:dirt", "minecraft:grass", "minecraft:farmland", "minecraft:clay"];
-
-    hasTag(block, "minecraft:mineable/pickaxe")
-        || GROUND.iter().chain(LAVA.iter()).any(|name| ids::block(name) == Some(block))
-}
+fn melts(block: i32) -> bool { blockTagged(block, "ic2:meltable") }
 
 // Material.wood, leaves and cloth
-fn burns(block: i32) -> bool
-{
-    const CLOTH: [&str; 2] = ["minecraft:wool", "minecraft:planks"];
-
-    hasTag(block, "minecraft:logs")
-        || hasTag(block, "minecraft:leaves")
-        || CLOTH.iter().any(|name| ids::block(name) == Some(block))
-}
+fn burns(block: i32) -> bool { blockTagged(block, "ic2:burnable") }
 
 fn place(world: World, pos: BlockPos, name: &str)
 {
-    if let Some(block) = ids::block(name)
+    if let Err(error) = world.place(pos, name)
     {
-        let _ = world.setBlock(pos, block, 0);
+        warn(&format!("the reactor could not set {name} at {pos:?}: {error}"));
     }
 }
 
@@ -347,7 +308,7 @@ fn heatEffects(world: World, pos: BlockPos, grid: &Grid, core: &Core) -> bool
             .filter(|(x, y)| grid.is(*x, *y, "ic2:uranium_cell"))
             .count() as i32;
         let power: i32 = (heat::BLAST_BASE + heat::BLAST_PER_CELL * cells - platings).min(heat::BLAST_MAX);
-        let _ = world.setBlock(pos, 0, 0);
+        let _ = world.clear(pos);
         explosives::blast(world, [pos.x as f64, pos.y as f64, pos.z as f64], power as f32, explosives::MATTER);
         net::changed(world);
         return true;
@@ -358,13 +319,17 @@ fn heatEffects(world: World, pos: BlockPos, grid: &Grid, core: &Core) -> bool
         && let Some(at) = randomAround(world, pos)
     {
         let block: i32 = world.block(at);
-        match block
+        if world.isAir(at)
         {
-            0 => place(world, at, "minecraft:fire"),
-            block if ids::block("minecraft:bedrock") == Some(block) =>
-            {}
-            block if melts(block) => place(world, at, "minecraft:flowing_lava"),
-            _ => place(world, at, "minecraft:fire"),
+            place(world, at, "minecraft:fire");
+        }
+        else if melts(block)
+        {
+            place(world, at, "minecraft:flowing_lava");
+        }
+        else if !blockIs(block, "minecraft:bedrock")
+        {
+            place(world, at, "minecraft:fire");
         }
     }
 
@@ -380,9 +345,9 @@ fn heatEffects(world: World, pos: BlockPos, grid: &Grid, core: &Core) -> bool
 
     if ratio >= BOIL
         && let Some(at) = randomAround(world, pos)
-        && named(world, at, &WATER)
+        && world.tagged(at, "minecraft:water")
     {
-        let _ = world.setBlock(at, 0, 0);
+        let _ = world.clear(at);
     }
 
     if ratio >= IGNITE
@@ -671,7 +636,7 @@ fn send(world: World, pos: BlockPos, amount: i32)
     for face in [dir::UP, dir::DOWN, dir::EAST, dir::WEST, dir::SOUTH, dir::NORTH]
     {
         let at: BlockPos = dir::step(pos, face);
-        if left > 0 && named(world, at, &[CHAMBER])
+        if left > 0 && world.is(at, CHAMBER)
         {
             left = net::emit(world, at, left);
         }
@@ -777,12 +742,12 @@ fn reactorBeside(world: World, pos: BlockPos) -> Option<BlockPos>
     [dir::EAST, dir::WEST, dir::UP, dir::DOWN, dir::SOUTH, dir::NORTH]
         .iter()
         .map(|face| dir::step(pos, *face))
-        .find(|at| named(world, *at, &["ic2:nuclear_reactor"]))
+        .find(|at| world.is(*at, "nuclear_reactor"))
 }
 
 fn reactorsBeside(world: World, pos: BlockPos) -> usize
 {
-    dir::all().filter(|face| named(world, dir::step(pos, *face), &["ic2:nuclear_reactor"])).count()
+    dir::all().filter(|face| world.is(dir::step(pos, *face), "nuclear_reactor")).count()
 }
 
 pub(crate) fn openScreen(world: World, pos: BlockPos, player: Player)

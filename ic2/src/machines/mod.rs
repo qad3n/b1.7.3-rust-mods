@@ -9,34 +9,44 @@ pub(crate) mod special;
 pub(crate) mod teleporter;
 pub(crate) mod terraformer;
 
-use crate::core::{blockTexture, dir, own, sprites, stacks};
+use crate::core::{FLAG, blockTexture, dir, own, sprites, stacks};
 use crate::energy::net;
 use b173_api::prelude::*;
 use std::rc::Rc;
 
-// TileEntityBlock.facing and .active live in the block's metadata: the facing in the low bits, active above them
-mod meta
+// TileEntityBlock.facing and .active as block states, so the texture hooks and the client need no tile data
+mod state
 {
-    pub const FACING: i32 = 7;
-    pub const ACTIVE: i32 = 8;
+    pub const FACING: &str = "facing";
+    pub const ACTIVE: &str = "active";
 }
 
-pub(crate) fn facing(meta: i32) -> i32 { meta & meta::FACING }
+// a machine state's front face, down when it was never turned
+pub(crate) fn facing(state: &StateData) -> i32 { state.get(state::FACING).and_then(dir::parse).unwrap_or(dir::DOWN) }
 
-pub(crate) fn active(meta: i32) -> bool { meta & meta::ACTIVE != 0 }
+pub(crate) fn active(state: &StateData) -> bool { state.flag(state::ACTIVE) }
 
-fn pack(facing: i32, active: bool) -> i32 { facing | if active { meta::ACTIVE } else { 0 } }
+// the front face of the machine at pos
+pub(crate) fn facingAt(world: World, pos: BlockPos) -> i32
+{
+    world.stateAt(pos).map_or(dir::DOWN, |state| facing(&state))
+}
 
 // TileEntityBlock.active changes redraw the block, as markBlocksDirty
 pub(crate) fn setActive(world: World, pos: BlockPos, on: bool)
 {
-    let meta: i32 = world.meta(pos);
-    if active(meta) == on
+    let Some(state) = world.stateAt(pos)
+    else
+    {
+        return;
+    };
+
+    if active(&state) == on
     {
         return;
     }
 
-    if let Err(error) = world.setMeta(pos, pack(facing(meta), on))
+    if let Err(error) = world.setBlockState(pos, (*state).clone().with(state::ACTIVE, on))
     {
         warn(&format!("the machine at {pos:?} could not change its look: {error}"));
     }
@@ -44,10 +54,24 @@ pub(crate) fn setActive(world: World, pos: BlockPos, on: bool)
 
 pub(crate) fn setFacing(world: World, pos: BlockPos, face: i32)
 {
-    let meta: i32 = world.meta(pos);
-    if let Err(error) = world.setMeta(pos, pack(face, active(meta)))
+    let Some(state) = world.stateAt(pos)
+    else
+    {
+        return;
+    };
+
+    if let Err(error) = world.setBlockState(pos, (*state).clone().with(state::FACING, dir::name(face)))
     {
         warn(&format!("the machine at {pos:?} could not turn: {error}"));
+    }
+}
+
+fn states() -> BlockStatesSpec
+{
+    BlockStatesSpec
+    {
+        properties: vec![PropertySpec::new(state::FACING, &dir::NAMES), PropertySpec::new(state::ACTIVE, &FLAG)],
+        ..BlockStatesSpec::default()
     }
 }
 
@@ -85,14 +109,11 @@ impl Look
     }
 
     // BlockMultiID.getBlockTexture and its overrides
-    fn world(&self, face: i32, meta: i32) -> i32
+    fn world(&self, face: i32, front: i32, on: bool) -> i32
     {
         const BOTTOM: usize = 0;
         const SIDE: usize = 2;
         const FRONT: usize = 3;
-
-        let front: i32 = facing(meta);
-        let on: bool = active(meta);
 
         match self.m_faces
         {
@@ -144,9 +165,13 @@ impl BlockBehavior for MachineBlock
 {
     fn texture(&self, face: i32, _meta: i32) -> i32 { self.m_machine.m_look.item(face) }
 
+    // the facing state also turns the spec's faces, this hook draws the look IC2 gave each family instead
     fn faceTexture(&self, ctx: &mut BlockCtx, face: i32) -> Option<i32>
     {
-        Some(self.m_machine.m_look.world(face, i32::from(ctx.meta())))
+        let state: Option<std::rc::Rc<StateData>> = ctx.stateAt();
+        let front: i32 = state.as_ref().map_or(dir::DOWN, |state| facing(state));
+        let on: bool = state.is_some_and(|state| active(&state));
+        Some(self.m_machine.m_look.world(face, front, on))
     }
 
     fn onPlacedBy(&self, ctx: &mut BlockCtx, entity: Entity)
@@ -267,7 +292,7 @@ pub(crate) fn dismantle(world: World, pos: BlockPos, machine: &Machine)
         }
     }
 
-    let _ = world.setBlock(pos, 0, 0);
+    let _ = world.clear(pos);
     net::changed(world);
 }
 
@@ -303,6 +328,7 @@ pub(crate) fn registerBlock(
             .tag("ic2:machines")
             .behavior(MachineBlock { m_machine: machine }),
     )?;
+    ctx.blocks().states(machine.m_name, states())?;
     Ok(())
 }
 

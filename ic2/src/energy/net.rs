@@ -246,7 +246,7 @@ fn burn(world: World, pos: BlockPos)
     const PUFFS: i32 = 8;
     const PUFF_HEIGHT: f64 = 1.2;
 
-    let _ = world.setBlock(pos, 0, 0);
+    let _ = world.clear(pos);
     let spread: f64 = crate::core::random::float(world) - crate::core::random::float(world);
     world.playSound(dir::center(pos), "random.fizz", FIZZ_VOLUME, FIZZ_PITCH + (spread * FIZZ_SPREAD) as f32);
 
@@ -408,7 +408,7 @@ pub(crate) fn overload(world: World, pos: BlockPos)
 {
     const POWER: f32 = 2.5;
 
-    let _ = world.setBlock(pos, 0, 0);
+    let _ = world.clear(pos);
     crate::explosives::blast(world, dir::center(pos), POWER, crate::explosives::MACHINE);
     world.playSound(dir::center(pos), &sound("electricOverload"), 1.0, 1.0);
     changed(world);

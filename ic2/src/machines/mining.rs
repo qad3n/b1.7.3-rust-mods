@@ -2,7 +2,7 @@ use super::processing::provide;
 use super::screen::{self, Bar};
 use super::{Faces, Look, Machine, registerBlock, setActive};
 use crate::blocks::{MINING_PIPE, MINING_TIP};
-use crate::core::{dir, ids, own, sound, stacks};
+use crate::core::{dir, own, sound, stacks};
 use crate::electric;
 use crate::energy::{self, EnergyTile, net};
 use b173_api::prelude::*;
@@ -48,77 +48,36 @@ pub(crate) static MACHINES: [Machine; 2] = [
     ),
 ];
 
-// ItemScanner.blockValues, what the scanners and the miner look for
+// ItemScanner.blockValues, what the scanners and the miner look for, by ore tag
 const ORE_VALUES: [(&str, i32); 9] = [
-    ("minecraft:coal_ore", 1),
-    ("ic2:tin_ore", 2),
-    ("ic2:copper_ore", 2),
-    ("minecraft:gold_ore", 3),
-    ("minecraft:redstone_ore", 3),
-    ("minecraft:lapis_ore", 3),
-    ("minecraft:iron_ore", 4),
-    ("ic2:uranium_ore", 4),
-    ("minecraft:diamond_ore", 5),
+    ("c:ores/coal", 1),
+    ("c:ores/tin", 2),
+    ("c:ores/copper", 2),
+    ("c:ores/gold", 3),
+    ("c:ores/redstone", 3),
+    ("c:ores/lapis", 3),
+    ("c:ores/iron", 4),
+    ("c:ores/uranium", 4),
+    ("c:ores/diamond", 5),
 ];
 
 pub(crate) fn oreValue(block: i32) -> i32
 {
-    ORE_VALUES.iter().find(|(name, _)| ids::block(name) == Some(block)).map_or(0, |(_, value)| *value)
+    ORE_VALUES.iter().find(|(tag, _)| blockTagged(block, tag)).map_or(0, |(_, value)| *value)
 }
 
-// ItemElectricToolDrill.mineableBlocks, the diamond drill adds obsidian; rock and metal are always fine
-const DRILL_BLOCKS: [&str; 29] = [
-    "minecraft:cobblestone",
-    "minecraft:double_stone_slab",
-    "minecraft:stone_slab",
-    "minecraft:stone",
-    "minecraft:sandstone",
-    "minecraft:mossy_cobblestone",
-    "minecraft:iron_ore",
-    "minecraft:iron_block",
-    "minecraft:coal_ore",
-    "minecraft:gold_block",
-    "minecraft:gold_ore",
-    "minecraft:diamond_ore",
-    "minecraft:diamond_block",
-    "minecraft:ice",
-    "minecraft:netherrack",
-    "minecraft:lapis_ore",
-    "minecraft:lapis_block",
-    "minecraft:redstone_ore",
-    "minecraft:lit_redstone_ore",
-    "minecraft:brick_block",
-    "minecraft:glowstone",
-    "minecraft:grass",
-    "minecraft:dirt",
-    "minecraft:sand",
-    "minecraft:gravel",
-    "minecraft:snow_layer",
-    "minecraft:snow",
-    "minecraft:clay",
-    "minecraft:farmland",
-];
-
-// ItemElectricToolDrill.canHarvestBlock: rock and iron material by the pickaxe tag, or a listed block
+// ItemElectricToolDrill.canHarvestBlock: its mineable list and rock and iron material, the diamond drill adds obsidian
 pub(crate) fn drillHarvests(block: i32, diamond: bool) -> bool
 {
-    let listed: bool = DRILL_BLOCKS.iter().any(|name| ids::block(name) == Some(block));
-    let obsidian: bool = diamond && ids::block("minecraft:obsidian") == Some(block);
-    let rocky: bool = nameOf(RegistryKind::Block, block).is_some_and(|id|
-    {
-        tagsOf(RegistryKind::Block, &id).iter().any(|tag| tag.to_string() == "minecraft:mineable/pickaxe")
-    });
-    listed || obsidian || rocky
+    blockTagged(block, "ic2:mineable/drill") || diamond && blockTagged(block, "c:obsidians")
 }
+
+// a still source block, as the miner and pump only take metadata 0 liquid
+fn source(world: World, pos: BlockPos) -> bool { world.fluidAt(pos).is_some_and(|fluid| fluid.source) }
 
 fn fluid(block: i32) -> Option<&'static str>
 {
-    match nameOf(RegistryKind::Block, block).map(|id| id.to_string()).as_deref()
-    {
-        Some("minecraft:water" | "minecraft:flowing_water") => Some("minecraft:water"),
-        Some("minecraft:lava" | "minecraft:flowing_lava") => Some("minecraft:lava"),
-        _ => None,
-    }
+    ["minecraft:water", "minecraft:lava"].into_iter().find(|tag| blockTagged(block, tag))
 }
 
 // TileEntityMiner.distributeDrop: into a chest or personal safe next to the machine, else onto the ground
@@ -126,12 +85,10 @@ pub(crate) fn distribute(world: World, pos: BlockPos, stack: ItemStack)
 {
     const PICKUP_DELAY: i32 = 10;
 
-    let chests: [Option<i32>; 2] = [ids::block("minecraft:chest"), ids::block("ic2:personal_safe")];
-
     for face in [dir::UP, dir::DOWN, dir::EAST, dir::WEST, dir::SOUTH, dir::NORTH]
     {
         let at: BlockPos = dir::step(pos, face);
-        if !chests.contains(&Some(world.block(at)))
+        if !world.tagged(at, "ic2:miner_outputs")
         {
             continue;
         }
@@ -208,10 +165,9 @@ impl Miner
 
     fn block(&self, x: i32, y: i32, z: i32) -> i32 { self.m_world.block(BlockPos::new(x, y, z)) }
 
-    fn shaft(&self, block: i32) -> bool
-    {
-        ids::block(MINING_PIPE) == Some(block) || ids::block(MINING_TIP) == Some(block)
-    }
+    fn air(&self, x: i32, y: i32, z: i32) -> bool { self.m_world.isAir(BlockPos::new(x, y, z)) }
+
+    fn shaft(&self, block: i32) -> bool { blockIs(block, MINING_PIPE) || blockIs(block, MINING_TIP) }
 
     // TileEntityMiner.getPipeTip
     fn tip(&self) -> i32
@@ -245,13 +201,15 @@ impl Miner
         [dir::UP, dir::DOWN, dir::EAST, dir::WEST, dir::SOUTH, dir::NORTH]
             .iter()
             .map(|face| dir::step(self.m_pos, *face))
-            .find(|at| ids::block("ic2:pump") == Some(self.m_world.block(*at)) && pumpHarvests(self.m_world, *at))
+            .find(|at| self.m_world.is(*at, "pump") && pumpHarvests(self.m_world, *at))
     }
 
     // TileEntityMiner.canMine
-    fn canMine(&self, block: i32) -> bool
+    fn canMine(&self, at: [i32; 3]) -> bool
     {
-        if block == 0 || fluid(block).is_some() && self.pump().is_some()
+        let [x, y, z] = at;
+        let block: i32 = self.block(x, y, z);
+        if self.air(x, y, z) || fluid(block).is_some() && self.pump().is_some()
         {
             return true;
         }
@@ -261,9 +219,11 @@ impl Miner
     }
 
     // TileEntityMiner.canPass, what the miner's reach goes through sideways
-    fn canPass(&self, block: i32) -> bool
+    fn canPass(&self, at: [i32; 3]) -> bool
     {
-        block == 0 || fluid(block).is_some() || self.shaft(block) || ids::block("ic2:machine") == Some(block)
+        let [x, y, z] = at;
+        let block: i32 = self.block(x, y, z);
+        self.air(x, y, z) || fluid(block).is_some() || self.shaft(block) || blockIs(block, "machine")
     }
 
     // TileEntityMiner.canReachTarget, stepping back toward the shaft along the longer axis
@@ -279,7 +239,7 @@ impl Miner
                 return true;
             }
 
-            if !first && !self.canPass(self.block(x, y, z))
+            if !first && !self.canPass([x, y, z])
             {
                 return false;
             }
@@ -320,9 +280,9 @@ impl Miner
             {
                 let at: BlockPos = BlockPos::new(x, tip, z);
                 let block: i32 = self.m_world.block(at);
-                let ore: bool = oreValue(block) > 0 && self.canMine(block);
+                let ore: bool = oreValue(block) > 0 && self.canMine([x, tip, z]);
                 let lava: bool =
-                    self.pump().is_some() && self.m_world.meta(at) == 0 && fluid(block) == Some("minecraft:lava");
+                    self.pump().is_some() && source(self.m_world, at) && fluid(block) == Some("minecraft:lava");
                 if ore || lava
                 {
                     dig.m_target = [x, tip, z];
@@ -335,12 +295,6 @@ impl Miner
     // TileEntityMiner.updateMineTip
     fn setTip(&self, tip: i32)
     {
-        let (Some(pipe), Some(end)) = (ids::block(MINING_PIPE), ids::block(MINING_TIP))
-        else
-        {
-            return;
-        };
-
         if tip == self.m_pos.y
         {
             return;
@@ -349,13 +303,13 @@ impl Miner
         for y in (tip + 1..self.m_pos.y).rev()
         {
             let at: BlockPos = BlockPos::new(self.m_pos.x, y, self.m_pos.z);
-            if self.m_world.block(at) != pipe
+            if !self.m_world.is(at, MINING_PIPE)
             {
-                let _ = self.m_world.setBlock(at, pipe, 0);
+                let _ = self.m_world.place(at, MINING_PIPE);
             }
         }
 
-        let _ = self.m_world.setBlock(BlockPos::new(self.m_pos.x, tip, self.m_pos.z), end, 0);
+        let _ = self.m_world.place(BlockPos::new(self.m_pos.x, tip, self.m_pos.z), MINING_TIP);
     }
 
     // TileEntityMiner.mineBlock
@@ -373,7 +327,8 @@ impl Miner
 
         let block: i32 = world.block(at);
         let liquid: Option<&str> = fluid(block);
-        let kept: bool = block != 0 && (liquid.is_none() || world.meta(at) == 0);
+        let air: bool = world.isAir(at);
+        let kept: bool = !air && (liquid.is_none() || source(world, at));
 
         if kept
         {
@@ -385,7 +340,7 @@ impl Miner
             {
                 Vec::new()
             };
-            let _ = world.setBlock(at, 0, 0);
+            let _ = world.clear(at);
 
             for stack in drops
             {
@@ -399,16 +354,16 @@ impl Miner
 
             dig.m_energy -= miner::DEPTH_COST * (self.m_pos.y - y);
         }
-        else if block != 0
+        else if !air
         {
-            let _ = world.setBlock(at, 0, 0);
+            let _ = world.clear(at);
         }
 
         if x == self.m_pos.x && z == self.m_pos.z
         {
-            if let (Some(pipe), Some(pipes)) = (ids::block(MINING_PIPE), self.slot(miner::PIPES))
+            if let Some(pipes) = self.slot(miner::PIPES)
             {
-                let _ = world.setBlockQuiet(at, pipe, 0);
+                let _ = StateHandle::named(MINING_PIPE).and_then(|pipe| pipe.place(world, at, false));
                 stacks::set(world, self.m_pos, miner::PIPES, stacks::less(pipes, 1));
             }
 
@@ -437,7 +392,7 @@ impl Miner
         }
 
         let [x, y, z] = dig.m_target;
-        if !self.canMine(self.block(x, y, z))
+        if !self.canMine([x, y, z])
         {
             dig.m_ticker = -1;
             return;
@@ -471,15 +426,15 @@ impl Miner
         let world: World = self.m_world;
         let tip: i32 = self.tip();
         let at: BlockPos = BlockPos::new(self.m_pos.x, tip, self.m_pos.z);
-        let _ = world.setBlock(at, 0, 0);
+        let _ = world.clear(at);
         distribute(world, self.m_pos, ItemStack::of(MINING_PIPE, 1));
 
         if let Some(filler) = self
             .slot(miner::PIPES)
             .filter(|stack| !stack.item.is(MINING_PIPE) && stack.info().is_some_and(|info| info.block))
-            && let Ok(block) = filler.item.id()
+            && let Some(block) = filler.item.name()
         {
-            let _ = world.setBlock(at, block, 0);
+            let _ = world.setBlockState(at, StateData::of(block));
             stacks::set(world, self.m_pos, miner::PIPES, stacks::less(filler, 1));
         }
 
@@ -572,12 +527,10 @@ pub(crate) struct Pumping
 
 fn chestWithBucket(world: World, pos: BlockPos) -> Option<(BlockPos, i32)>
 {
-    let chest: i32 = ids::block("minecraft:chest")?;
-
     [dir::UP, dir::DOWN, dir::EAST, dir::WEST, dir::SOUTH, dir::NORTH]
         .iter()
         .map(|face| dir::step(pos, *face))
-        .filter(|at| world.block(*at) == chest)
+        .filter(|at| world.tagged(*at, "c:chests"))
         .find_map(|at|
         {
             (0..world.inventorySize(at))
@@ -604,7 +557,7 @@ fn deliverLava(world: World, pos: BlockPos) -> bool
     for face in [dir::UP, dir::DOWN, dir::EAST, dir::WEST, dir::SOUTH, dir::NORTH]
     {
         let at: BlockPos = dir::step(pos, face);
-        if lava > 0 && ids::block("ic2:geothermal_generator") == Some(world.block(at))
+        if lava > 0 && world.is(at, "geothermal_generator")
         {
             lava = super::generators::addLava(world, at, lava);
         }
@@ -686,16 +639,18 @@ fn fountain(world: World, pos: BlockPos, pumping: &mut Pumping)
         pumping.m_charge -= 1;
     }
 
-    let flowing: Option<i32> = ids::block("minecraft:flowing_water");
+    let flowing: &str = "minecraft:flowing_water";
     let top: Option<i32> = (1..pump::FOUNTAIN_HEIGHT).rfind(|height|
     {
-        let block: i32 = world.block(pos.offset(0, *height, 0));
-        block == 0 || Some(block) == flowing
+        let at: BlockPos = pos.offset(0, *height, 0);
+        world.isAir(at) || world.is(at, flowing)
     });
 
-    if let (Some(height), Some(water)) = (top, flowing)
+    // TileEntityPump.fountain places flowing water one step from a source
+    if let Some(height) = top
+        && let Ok(water) = Identifier::parse(flowing)
     {
-        let _ = world.setBlock(pos.offset(0, height, 0), water, 1);
+        let _ = world.setBlockState(pos.offset(0, height, 0), StateData::of(water).with("meta", 1));
     }
 }
 
@@ -729,9 +684,9 @@ fn pumpTick(world: World, pos: BlockPos, pumping: &mut Pumping)
         {
             fountain(world, pos, pumping);
         }
-        else if let Some(liquid) = liquid.filter(|_| world.meta(below) == 0)
+        else if let Some(liquid) = liquid.filter(|_| source(world, below))
         {
-            let _ = world.setBlock(below, 0, 0);
+            let _ = world.clear(below);
             pumpThis(world, pos, liquid);
             *pumping = Pumping { m_energy: pumping.m_energy, m_sound: pumping.m_sound, ..world.tileData(pos) };
         }

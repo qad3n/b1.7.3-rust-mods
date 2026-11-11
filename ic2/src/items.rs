@@ -1,5 +1,5 @@
-use crate::blocks::{RESIN, RUBBER_WOOD, dried, dry, hole, holed, plain, rubberWoodTickRate, tapChance, tapSound};
-use crate::core::{dir, ids, itemTexture, own, sound, stacks};
+use crate::blocks::{RESIN, Sap, resinAt, rubberWoodTickRate, setResin, tapChance, tapSound};
+use crate::core::{dir, itemTexture, own, sound, stacks};
 use b173_api::prelude::*;
 
 // a plain ItemIC2 or ItemGradual: its stack size, damage range and the shared tags it joins
@@ -124,18 +124,12 @@ impl ItemBehavior for ResinItem
     fn onUseOnBlock(&self, world: World, _player: Player, stack: ItemStack, pos: BlockPos, face: i32) -> Use
     {
         let above: BlockPos = pos.offset(0, 1, 0);
-        let Some(resin) = ids::block(RESIN)
-        else
-        {
-            return Use::Pass;
-        };
-
         if face != dir::UP || !world.isAir(above) || !crate::blocks::resinHolds(world, above)
         {
             return Use::Pass;
         }
 
-        if let Err(error) = world.setBlock(above, resin, 0)
+        if let Err(error) = world.place(above, RESIN)
         {
             warn(&format!("could not place resin at {above:?}: {error}"));
             return Use::Pass;
@@ -176,20 +170,20 @@ impl ItemBehavior for Treetap
 {
     fn onUseOnBlock(&self, world: World, _player: Player, stack: ItemStack, pos: BlockPos, face: i32) -> Use
     {
-        if ids::block(RUBBER_WOOD) != Some(world.block(pos))
+        let Some((sap, hole)) = resinAt(world, pos)
+        else
+        {
+            return Use::Pass;
+        };
+
+        if !matches!(sap, Sap::Wet | Sap::Dry) || hole != face
         {
             return Use::Pass;
         }
 
-        let meta: i32 = world.meta(pos);
-        if !holed(meta) || hole(meta) != face
+        if sap == Sap::Wet
         {
-            return Use::Pass;
-        }
-
-        if !dry(meta)
-        {
-            let _ = world.setMeta(pos, dried(meta));
+            setResin(world, pos, Sap::Dry);
             if world.isAuthority()
             {
                 ejectResin(world, pos, face, world.random(tap::FRESH_SPREAD) + 1);
@@ -202,7 +196,7 @@ impl ItemBehavior for Treetap
         {
             if tapChance(world)
             {
-                let _ = world.setMeta(pos, plain());
+                setResin(world, pos, Sap::Plain);
             }
 
             if tapChance(world) && world.isAuthority()
@@ -265,7 +259,7 @@ impl ItemBehavior for EmptyCell
             _ => return Use::Pass,
         };
 
-        let _ = world.setBlock(pos, 0, 0);
+        let _ = world.clear(pos);
         if let Err(error) = player.give(ItemStack::of(own(filled).as_str(), 1))
         {
             warn(&format!("could not give a filled cell: {error}"));
@@ -426,7 +420,7 @@ pub(crate) const COLORS: [&str; 16] = [
 // ItemToolPainter: sixteen coats of one color on cables, then the plain painter is left
 struct Painter
 {
-    m_color: i32,
+    m_color: usize,
 }
 
 mod paint
@@ -486,7 +480,7 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
                 .texture(&itemTexture(&name))
                 .maxStack(1)
                 .maxDamage(paint::COATS)
-                .behavior(Painter { m_color: color as i32 }),
+                .behavior(Painter { m_color: color }),
         )?;
     }
 

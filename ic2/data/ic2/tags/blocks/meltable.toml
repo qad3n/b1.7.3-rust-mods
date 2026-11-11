@@ -1,0 +1,2 @@
+# Material.rock, iron, ground, clay and lava, what a melting reactor turns to lava
+values = ["#minecraft:mineable/pickaxe", "#minecraft:dirt", "minecraft:farmland", "minecraft:clay", "#minecraft:lava"]

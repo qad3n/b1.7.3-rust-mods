@@ -1,5 +1,5 @@
 use super::{Faces, Look, Machine, registerBlock};
-use crate::core::{dir, ids, itemTexture, own, sound, stacks};
+use crate::core::{dir, itemTexture, own, sound, stacks};
 use crate::energy::{self, EnergyTile, net};
 use b173_api::prelude::*;
 use std::rc::Rc;
@@ -73,40 +73,46 @@ const PLANTS: [&str; 9] = [
     "minecraft:pumpkin",
 ];
 
+// the plants cultivation puts down, desertification clears, ItemTFBPCultivation's list as a tag
+const PLANT_TAG: &str = "ic2:terraformer_plants";
 // ItemTFBPFlatification.loadRemoveables
-const REMOVABLE: [&str; 20] = [
-    "minecraft:snow_layer",
-    "minecraft:ice",
-    "minecraft:grass",
-    "minecraft:stone",
-    "minecraft:gravel",
-    "minecraft:sand",
-    "minecraft:dirt",
-    "ic2:rubber_leaves",
-    "ic2:rubber_sapling",
-    "ic2:rubber_wood",
-    "minecraft:leaves",
-    "minecraft:log",
-    "minecraft:tallgrass",
-    "minecraft:red_flower",
-    "minecraft:yellow_flower",
-    "minecraft:sapling",
-    "minecraft:wheat",
-    "minecraft:red_mushroom",
-    "minecraft:brown_mushroom",
-    "minecraft:pumpkin",
-];
-
-fn id(name: &str) -> i32 { ids::block(name).unwrap_or(-1) }
+const REMOVABLE: &str = "ic2:flattenable";
+// vanilla blocks without named states report their metadata under this property
+const META: &str = "meta";
 
 fn at(x: i32, y: i32, z: i32) -> BlockPos { BlockPos::new(x, y, z) }
 
-fn set(world: World, pos: BlockPos, name: &str, meta: i32)
+fn setState(world: World, pos: BlockPos, state: StateData)
 {
-    let block: i32 = if name.is_empty() { 0 } else { id(name) };
-    if let Err(error) = world.setBlock(pos, block, meta)
+    if let Err(error) = world.setBlockState(pos, state)
     {
         warn(&format!("the terraformer could not change {pos:?}: {error}"));
+    }
+}
+
+fn set(world: World, pos: BlockPos, name: &str)
+{
+    if let Err(error) = world.place(pos, name)
+    {
+        warn(&format!("the terraformer could not change {pos:?}: {error}"));
+    }
+}
+
+// a vanilla block with the metadata IC2 gave it, tall grass type or crop age
+fn placeVariant(world: World, pos: BlockPos, name: &str, meta: &str)
+{
+    match Identifier::parse(name)
+    {
+        Ok(block) => setState(world, pos, StateData::of(block).with(META, meta)),
+        Err(error) => warn(&format!("the terraformer names no block {name}: {error}")),
+    }
+}
+
+fn remove(world: World, pos: BlockPos)
+{
+    if let Err(error) = world.clear(pos)
+    {
+        warn(&format!("the terraformer could not clear {pos:?}: {error}"));
     }
 }
 
@@ -115,14 +121,14 @@ fn firstFrom(world: World, x: i32, z: i32, mut y: i32, solid: bool) -> i32
 {
     while y > 0
     {
-        let block: i32 = world.block(at(x, y, z));
+        let pos: BlockPos = at(x, y, z);
         let found: bool = if solid
         {
-            block != 0 && World::blockInfo(block).opaque
+            World::blockInfo(world.block(pos)).opaque
         }
         else
         {
-            block != 0
+            !world.isAir(pos)
         };
         if found
         {
@@ -144,7 +150,7 @@ fn switchGround(world: World, from: &str, to: &str, x: i32, y: i32, z: i32, upwa
     {
         y += 1;
         let start: i32 = y;
-        while world.block(at(x, y - 1, z)) == id(from) && id(from) > 0
+        while world.is(at(x, y - 1, z), from)
         {
             y -= 1;
         }
@@ -154,21 +160,21 @@ fn switchGround(world: World, from: &str, to: &str, x: i32, y: i32, z: i32, upwa
             return false;
         }
 
-        set(world, at(x, y, z), to, 0);
+        set(world, at(x, y, z), to);
         return true;
     }
 
-    while world.block(at(x, y, z)) == id(to) && id(to) > 0
+    while world.is(at(x, y, z), to)
     {
         y -= 1;
     }
 
-    if world.block(at(x, y, z)) != id(from) || id(from) <= 0
+    if !world.is(at(x, y, z), from)
     {
         return false;
     }
 
-    set(world, at(x, y, z), to, 0);
+    set(world, at(x, y, z), to);
     true
 }
 
@@ -196,20 +202,20 @@ fn cultivate(world: World, x: i32, z: i32, top: i32) -> bool
         return true;
     }
 
-    let block: i32 = world.block(at(x, y, z));
-    if block == id("minecraft:dirt")
+    let ground: BlockPos = at(x, y, z);
+    if world.is(ground, "minecraft:dirt")
     {
-        set(world, at(x, y, z), "minecraft:grass", 0);
+        set(world, ground, "minecraft:grass");
         return true;
     }
 
-    if block != id("minecraft:grass")
+    if !world.is(ground, "minecraft:grass")
     {
         return false;
     }
 
-    let above: i32 = world.block(at(x, y + 1, z));
-    if above != 0 && !(above == id("minecraft:tallgrass") && world.random(GRASS_REPLACE) == 0)
+    let above: BlockPos = at(x, y + 1, z);
+    if !world.isAir(above) && !(world.is(above, "minecraft:tallgrass") && world.random(GRASS_REPLACE) == 0)
     {
         return false;
     }
@@ -217,12 +223,20 @@ fn cultivate(world: World, x: i32, z: i32, top: i32) -> bool
     let plant: &str = randomPlant(world);
     if plant == "minecraft:wheat"
     {
-        set(world, at(x, y, z), "minecraft:farmland", 0);
+        set(world, ground, "minecraft:farmland");
     }
 
-    set(world, at(x, y + 1, z), plant, i32::from(plant == "minecraft:tallgrass"));
+    match plant
+    {
+        "minecraft:tallgrass" => placeVariant(world, above, plant, TALL_GRASS),
+        _ => set(world, above, plant),
+    }
+
     true
 }
+
+// BlockTallGrass metadata 1, the plain grass tuft
+const TALL_GRASS: &str = "1";
 
 fn spreadGrass(world: World, x: i32, y: i32, z: i32) -> bool
 {
@@ -232,28 +246,29 @@ fn spreadGrass(world: World, x: i32, y: i32, z: i32) -> bool
     }
 
     let y: i32 = firstFrom(world, x, z, y, false);
-    let block: i32 = world.block(at(x, y, z));
+    let ground: BlockPos = at(x, y, z);
 
-    if block == id("minecraft:dirt")
+    if world.is(ground, "minecraft:dirt")
     {
-        set(world, at(x, y, z), "minecraft:grass", 0);
+        set(world, ground, "minecraft:grass");
         return true;
     }
 
-    if block == id("minecraft:grass")
+    if world.is(ground, "minecraft:grass")
     {
-        set(world, at(x, y + 1, z), "minecraft:tallgrass", 1);
+        placeVariant(world, at(x, y + 1, z), "minecraft:tallgrass", TALL_GRASS);
         return true;
     }
 
     false
 }
 
-fn leaves(world: World, pos: BlockPos, meta: i32)
+// leaves of the log's wood type, which both keep in their metadata
+fn leaves(world: World, pos: BlockPos, wood: &str)
 {
     if world.isAir(pos)
     {
-        set(world, pos, "minecraft:leaves", meta);
+        placeVariant(world, pos, "minecraft:leaves", wood);
     }
 }
 
@@ -262,7 +277,7 @@ fn irrigate(world: World, x: i32, z: i32, top: i32) -> bool
     const RAIN_CHANCE: i32 = 48000;
     const RAIN_TICKS: i32 = 12000;
     const REACH: i32 = 10;
-    const RIPE: i32 = 7;
+    const RIPE: &str = "7";
 
     if world.random(RAIN_CHANCE) == 0
     {
@@ -283,9 +298,8 @@ fn irrigate(world: World, x: i32, z: i32, top: i32) -> bool
     }
 
     let pos: BlockPos = at(x, y, z);
-    let block: i32 = world.block(pos);
 
-    if block == id("minecraft:tallgrass")
+    if world.is(pos, "minecraft:tallgrass")
     {
         return spreadGrass(world, x + 1, y, z)
             || spreadGrass(world, x - 1, y, z)
@@ -293,57 +307,54 @@ fn irrigate(world: World, x: i32, z: i32, top: i32) -> bool
             || spreadGrass(world, x, y, z - 1);
     }
 
-    if block == id("minecraft:sapling")
+    if world.is(pos, "minecraft:sapling")
     {
         let _ = world.fertilize(pos);
         return true;
     }
 
-    if block == id("ic2:rubber_sapling")
+    if world.is(pos, "ic2:rubber_sapling")
     {
         crate::world::tree::grow(world, pos);
         return true;
     }
 
-    if block == id("minecraft:log")
+    if world.is(pos, "minecraft:log")
+        && let Some(log) = world.stateAt(pos)
     {
-        let meta: i32 = world.meta(pos);
-        set(world, at(x, y + 1, z), "minecraft:log", meta);
+        let wood: &str = log.get(META).unwrap_or("0");
+        setState(world, at(x, y + 1, z), (*log).clone());
         for spot in
             [at(x, y + 2, z), at(x + 1, y + 1, z), at(x - 1, y + 1, z), at(x, y + 1, z + 1), at(x, y + 1, z - 1)]
         {
-            leaves(world, spot, meta);
+            leaves(world, spot, wood);
         }
 
         return true;
     }
 
-    if block == id("minecraft:wheat")
+    if world.is(pos, "minecraft:wheat")
     {
-        let _ = world.setMeta(pos, RIPE);
+        placeVariant(world, pos, "minecraft:wheat", RIPE);
         return true;
     }
 
-    if block == id("minecraft:fire")
+    if world.is(pos, "minecraft:fire")
     {
-        set(world, pos, "", 0);
+        remove(world, pos);
         return true;
     }
 
     false
 }
 
-fn water(world: World, pos: BlockPos) -> bool
-{
-    let block: i32 = world.block(pos);
-    block == id("minecraft:water") || block == id("minecraft:flowing_water")
-}
+fn water(world: World, pos: BlockPos) -> bool { world.tagged(pos, "minecraft:water") }
 
 // BlockSnow.canPlaceBlockAt: an opaque solid block below
 fn snowFits(world: World, pos: BlockPos) -> bool
 {
-    let below: i32 = world.block(pos.offset(0, -1, 0));
-    world.isAir(pos) && below != 0 && World::blockInfo(below).opaque && World::blockInfo(below).solid
+    let below: BlockInfo = World::blockInfo(world.block(pos.offset(0, -1, 0)));
+    world.isAir(pos) && below.opaque && below.solid
 }
 
 fn snowHere(world: World, x: i32, y: i32, z: i32) -> bool
@@ -356,15 +367,15 @@ fn snowHere(world: World, x: i32, y: i32, z: i32) -> bool
         return false;
     }
 
-    let block: i32 = world.block(at(x, top, z));
-    if block == id("minecraft:snow_layer") || block == id("minecraft:snow")
+    let surface: BlockPos = at(x, top, z);
+    if world.tagged(surface, "minecraft:snow")
     {
         return true;
     }
 
-    if snowFits(world, at(x, top + 1, z)) || block == id("minecraft:ice")
+    if snowFits(world, at(x, top + 1, z)) || world.tagged(surface, "minecraft:ice")
     {
-        set(world, at(x, top + 1, z), "minecraft:snow_layer", 0);
+        set(world, at(x, top + 1, z), "minecraft:snow_layer");
     }
 
     false
@@ -383,14 +394,14 @@ fn chill(world: World, x: i32, z: i32, top: i32) -> bool
     let pos: BlockPos = at(x, y, z);
     if water(world, pos)
     {
-        set(world, pos, "minecraft:ice", 0);
+        set(world, pos, "minecraft:ice");
         return true;
     }
 
-    let block: i32 = world.block(pos);
-    if block == id("minecraft:ice") && water(world, at(x, y - 1, z))
+    let ice: bool = world.tagged(pos, "minecraft:ice");
+    if ice && water(world, at(x, y - 1, z))
     {
-        set(world, at(x, y - 1, z), "minecraft:ice", 0);
+        set(world, at(x, y - 1, z), "minecraft:ice");
         return true;
     }
 
@@ -398,15 +409,15 @@ fn chill(world: World, x: i32, z: i32, top: i32) -> bool
         && snowHere(world, x - 1, y, z)
         && snowHere(world, x, y, z + 1)
         && snowHere(world, x, y, z - 1);
-    if block == id("minecraft:snow_layer") && surrounded
+    if world.is(pos, "minecraft:snow_layer") && surrounded
     {
-        set(world, pos, "minecraft:snow", 0);
+        set(world, pos, "minecraft:snow");
         return true;
     }
 
-    if snowFits(world, at(x, y + 1, z)) || block == id("minecraft:ice")
+    if snowFits(world, at(x, y + 1, z)) || ice
     {
-        set(world, at(x, y + 1, z), "minecraft:snow_layer", 0);
+        set(world, at(x, y + 1, z), "minecraft:snow_layer");
     }
 
     false
@@ -435,27 +446,26 @@ fn desertify(world: World, x: i32, z: i32, top: i32) -> bool
     let pos: BlockPos = at(x, y, z);
     let block: i32 = world.block(pos);
     let cleared: bool = water(world, pos)
-        || ["minecraft:snow_layer", "minecraft:leaves", "ic2:rubber_leaves"]
-            .iter()
-            .chain(PLANTS.iter())
-            .any(|name| block == id(name));
+        || blockIs(block, "minecraft:snow_layer")
+        || blockTagged(block, "minecraft:leaves")
+        || blockTagged(block, PLANT_TAG);
 
     if cleared
     {
-        set(world, pos, "", 0);
+        remove(world, pos);
         return true;
     }
 
-    if block == id("minecraft:ice") || block == id("minecraft:snow")
+    if blockTagged(block, "minecraft:ice") || blockIs(block, "minecraft:snow")
     {
-        set(world, pos, "minecraft:flowing_water", 0);
+        set(world, pos, "minecraft:flowing_water");
         return true;
     }
 
-    let wooden: bool = ["minecraft:planks", "minecraft:log", "ic2:rubber_wood"].iter().any(|name| block == id(name));
+    let wooden: bool = blockTagged(block, "minecraft:planks") || blockTagged(block, "minecraft:logs");
     if wooden && world.random(BURN) == 0
     {
-        set(world, pos, "minecraft:fire", 0);
+        set(world, pos, "minecraft:fire");
         return true;
     }
 
@@ -472,7 +482,7 @@ fn flatten(world: World, x: i32, z: i32, top: i32) -> bool
         return false;
     }
 
-    if world.block(at(x, y, z)) == id("minecraft:snow_layer")
+    if world.is(at(x, y, z), "minecraft:snow_layer")
     {
         y -= 1;
     }
@@ -484,17 +494,16 @@ fn flatten(world: World, x: i32, z: i32, top: i32) -> bool
 
     if y < top
     {
-        set(world, at(x, y + 1, z), "minecraft:dirt", 0);
+        set(world, at(x, y + 1, z), "minecraft:dirt");
         return true;
     }
 
-    let block: i32 = world.block(at(x, y, z));
-    if !REMOVABLE.iter().any(|name| block == id(name))
+    if !world.tagged(at(x, y, z), REMOVABLE)
     {
         return false;
     }
 
-    set(world, at(x, y, z), "", 0);
+    remove(world, at(x, y, z));
     true
 }
 
@@ -594,10 +603,7 @@ pub(crate) fn eject(world: World, pos: BlockPos) -> bool
     true
 }
 
-pub(crate) fn isTerraformer(world: World, pos: BlockPos) -> bool
-{
-    ids::block(&own(MACHINE.m_name)) == Some(world.block(pos))
-}
+pub(crate) fn isTerraformer(world: World, pos: BlockPos) -> bool { world.is(pos, MACHINE.m_name) }
 
 struct Terraformer;
 

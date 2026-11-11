@@ -1,4 +1,4 @@
-use crate::core::{dir, ids, itemTexture, sound, sprites, stacks};
+use crate::core::{dir, itemTexture, sound, sprites, stacks};
 use crate::electric;
 use crate::energy::{cable, net, storage, tileAt};
 use crate::items::wear;
@@ -28,8 +28,10 @@ mod wrench
     pub const ELECTRIC_USES: i32 = 202;
 }
 
-const EXPLOSIVES: [&str; 5] =
-    ["minecraft:tnt", "ic2:industrial_tnt", "ic2:nuke", "ic2:dynamite_block", "ic2:remote_dynamite_block"];
+// what the wrench defuses, ItemToolWrench's list of TNT and IC2's explosives
+const DEFUSABLE: &str = "ic2:defusable";
+// placed sticks give back the dynamite item, every other explosive itself
+const STICKS: &str = "ic2:dynamite_sticks";
 
 // ItemToolWrenchElectric.canTakeDamage: the electric wrench stops short of empty, the plain one wears through
 fn canWear(stack: &ItemStack, amount: i32) -> bool
@@ -92,42 +94,35 @@ fn useWrench(world: World, player: Player, stack: ItemStack, pos: BlockPos, face
     {
         if world.isAuthority()
         {
-            stacks::drop(world, pos, &ItemStack::of("ic2:luminator", 1).withDamage(world.meta(pos)));
+            // BlockLuminator.wrench keeps its metadata, the facing, as the item damage
+            let facing: i32 = machines::facingAt(world, pos);
+            stacks::drop(world, pos, &ItemStack::of("ic2:luminator", 1).withDamage(facing));
         }
 
-        let _ = world.setBlock(pos, 0, 0);
+        let _ = world.clear(pos);
         net::changed(world);
         wearWrench(player, stack, wrench::DISMANTLE);
         world.playSound(center, &sound("wrench"), 1.0, 1.0);
         return true;
     }
 
-    let explosive: bool = block.as_ref().is_some_and(|id| EXPLOSIVES.contains(&id.to_string().as_str()));
-    if explosive && canWear(&stack, wrench::DEFUSE)
+    if world.tagged(pos, DEFUSABLE) && canWear(&stack, wrench::DEFUSE)
     {
         if world.isAuthority()
             && let Some(id) = &block
         {
-            let dropped: &str = if id.to_string().ends_with("dynamite_block")
+            let item: ItemRef = if world.tagged(pos, STICKS)
             {
-                "ic2:dynamite"
+                ItemRef::from("ic2:dynamite")
             }
             else
             {
-                ""
+                ItemRef::Named(id.clone())
             };
-            let item: String = if dropped.is_empty()
-            {
-                id.to_string()
-            }
-            else
-            {
-                dropped.to_owned()
-            };
-            stacks::drop(world, pos, &ItemStack::of(item.as_str(), 1).withDamage(world.meta(pos)));
+            stacks::drop(world, pos, &ItemStack { item, count: 1, damage: 0 });
         }
 
-        let _ = world.setBlock(pos, 0, 0);
+        let _ = world.clear(pos);
         wearWrench(player, stack, wrench::DEFUSE);
         world.playSound(center, &sound("wrench"), 1.0, 1.0);
         return true;
@@ -253,22 +248,10 @@ mod speed
     pub const HIT_COST: i32 = 2;
 }
 
-const CHAINSAW_BLOCKS: [&str; 6] = [
-    "minecraft:planks",
-    "minecraft:bookshelf",
-    "minecraft:log",
-    "minecraft:chest",
-    "minecraft:leaves",
-    "ic2:rubber_leaves",
-];
-
+// ItemElectricToolChainsaw.canHarvestBlock: wood material by the axe tag, and leaves
 fn chainsawCuts(block: i32) -> bool
 {
-    let wooden: bool = nameOf(RegistryKind::Block, block).is_some_and(|id|
-    {
-        tagsOf(RegistryKind::Block, &id).iter().any(|tag| tag.to_string() == "minecraft:mineable/axe")
-    });
-    wooden || CHAINSAW_BLOCKS.iter().any(|name| ids::block(name) == Some(block))
+    blockTagged(block, "minecraft:mineable/axe") || blockTagged(block, "minecraft:leaves")
 }
 
 impl ElectricTool
@@ -391,7 +374,7 @@ impl ItemBehavior for NanoSaber
 
     fn strVsBlock(&self, _stack: ItemStack, _block: i32) -> f32 { if self.m_active { saber::WEB_SPEED } else { 1.0 } }
 
-    fn canHarvest(&self, block: i32) -> bool { ids::block("minecraft:web") == Some(block) }
+    fn canHarvest(&self, block: i32) -> bool { blockIs(block, "minecraft:web") }
 
     fn onRightClick(&self, world: World, player: Player, stack: ItemStack) -> Use
     {

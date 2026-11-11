@@ -1,0 +1,2 @@
+# TileEntityNuclearReactor.isUsefulItem
+values = ["ic2:uranium_cell", "ic2:coolant_cell", "ic2:reactor_plating", "ic2:heat_disperser", "ic2:depleted_isotope_cell", "ic2:re_enriched_uranium_cell", "ic2:near_depleted_uranium_cell", "minecraft:ice", "minecraft:water_bucket", "minecraft:lava_bucket", "minecraft:bucket"]

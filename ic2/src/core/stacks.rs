@@ -34,9 +34,15 @@ pub(crate) fn less(stack: ItemStack, count: i32) -> Option<ItemStack>
     (left > 0).then_some(ItemStack { count: left, ..stack })
 }
 
+// two stacks read from the world carry the same kind of handle, so only mixed ones compare by name
 pub(crate) fn same(a: &ItemStack, b: &ItemStack) -> bool
 {
-    a.item.id().ok() == b.item.id().ok() && a.damage == b.damage
+    let item: bool = match (&a.item, &b.item)
+    {
+        (ItemRef::Numeric(_), ItemRef::Numeric(_)) | (ItemRef::Named(_), ItemRef::Named(_)) => a.item == b.item,
+        _ => a.item.name() == b.item.name(),
+    };
+    item && a.damage == b.damage
 }
 
 pub(crate) fn maxStack(stack: &ItemStack) -> i32

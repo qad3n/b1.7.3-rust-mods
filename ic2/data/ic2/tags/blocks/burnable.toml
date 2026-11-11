@@ -1,0 +1,2 @@
+# Material.wood, leaves and cloth, what lasers and hot reactors set alight
+values = ["#minecraft:logs", "#minecraft:leaves", "#minecraft:mineable/axe", "#minecraft:planks", "#minecraft:wool"]

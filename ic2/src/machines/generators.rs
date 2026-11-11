@@ -1,7 +1,7 @@
 use super::processing::burnValue;
 use super::screen::{self, Bar};
 use super::{Faces, Look, Machine, registerBlock, setActive};
-use crate::core::{dir, ids, own, sound, stacks};
+use crate::core::{dir, own, sound, stacks};
 use crate::electric;
 use crate::energy::{self, EnergyTile, net};
 use b173_api::prelude::*;
@@ -249,7 +249,7 @@ pub(crate) fn addLava(world: World, pos: BlockPos, amount: i32) -> i32
     amount - need
 }
 
-fn countAround(world: World, pos: BlockPos, low: [i32; 3], high: [i32; 3], test: impl Fn(i32) -> bool) -> i32
+fn countAround(pos: BlockPos, low: [i32; 3], high: [i32; 3], test: impl Fn(BlockPos) -> bool) -> i32
 {
     let mut count: i32 = 0;
 
@@ -259,7 +259,7 @@ fn countAround(world: World, pos: BlockPos, low: [i32; 3], high: [i32; 3], test:
         {
             for z in low[2]..high[2]
             {
-                if test(world.block(pos.offset(x, y, z)))
+                if test(pos.offset(x, y, z))
                 {
                     count += 1;
                 }
@@ -276,12 +276,11 @@ fn sunVisible(world: World, pos: BlockPos) -> bool
     const DAY: i64 = 24000;
     const DUSK: i64 = 12000;
 
-    let glass: Option<i32> = ids::block("minecraft:glass");
     let day: bool = world.time().rem_euclid(DAY) < DUSK;
     day && (pos.y + 1..fuel::SKY).all(|y|
     {
-        let block: i32 = world.block(BlockPos::new(pos.x, y, pos.z));
-        block == 0 || Some(block) == glass
+        let at: BlockPos = BlockPos::new(pos.x, y, pos.z);
+        world.isAir(at) || world.tagged(at, "c:glass_blocks")
     })
 }
 
@@ -382,8 +381,7 @@ fn flowPower(world: World, pos: BlockPos, power: &mut Power)
 
     if ticker % fuel::RECHECK == 0 || !power.m_checked
     {
-        let water: [Option<i32>; 2] = [ids::block("minecraft:water"), ids::block("minecraft:flowing_water")];
-        power.m_found = countAround(world, pos, [-1; 3], [2; 3], |block| water.contains(&Some(block)));
+        power.m_found = countAround(pos, [-1; 3], [2; 3], |at| world.tagged(at, "minecraft:water"));
         power.m_checked = true;
     }
 
@@ -411,7 +409,7 @@ fn windPower(world: World, pos: BlockPos, power: &mut Power)
     {
         if power.m_ticker % (fuel::WIND_RECOUNT * fuel::RECHECK) != 0 || !power.m_checked
         {
-            power.m_found = countAround(world, pos, [-4, -2, -4], [5, 5, 5], |block| block != 0) - 1;
+            power.m_found = countAround(pos, [-4, -2, -4], [5, 5, 5], |at| !world.isAir(at)) - 1;
             power.m_checked = true;
         }
 

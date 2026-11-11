@@ -3,7 +3,7 @@
 Source: IndustrialCraft 2 v1.00 for b1.7.3 (ModLoader, Forge), `b1.7.3_files/IndustrialCraft2 v1.00.zip`. Its classes were
 remapped from obfuscated beta names to MCP names with tiny-remapper and `b1.7.3_decomp/mappings/b1.7.3-client.tiny`,
 then decompiled with Vineflower into `reference/src` (never committed).
-Target: b1.7.3_rewrite loader API 1.33, one `ic2-1.00.bmod` for client and server.
+Target: b1.7.3_rewrite loader API 1.39, one `ic2-1.00.bmod` for client and server.
 Assets: `python3 -I tools/extract_assets.py "<IndustrialCraft2 v1.00.zip>"` cuts the block, cable and item sheets into
 sprites, copies the guis and armor layers and writes the lang file. The zip has no sounds.
 Build: `./build.sh`. Test: `../../tools/modport/test.sh deploy ports/ic2`.
@@ -11,8 +11,19 @@ Build: `./build.sh`. Test: `../../tools/modport/test.sh deploy ports/ic2`.
 ## Design
 
 - One block per IC2 metadata variant (machines, generators, storage, cables, metal blocks), named by what it is.
-- `TileEntityBlock.facing` and `.active` live in the block metadata (`machines::facing`, `machines::active`), so the
-  texture hooks and the client need no tile data for the look. A cable's paint color is its metadata.
+- Names, tags and states only, never numeric ids or metadata. Blocks are found with `world.is`, `blockIs`,
+  `world.tagged` and `blockTagged`, placed with `world.place`, `setBlockState` or a `StateHandle` in world generation,
+  and read with the per epoch `world.stateAt` / `ctx.stateAt` cache, so ticks and renders allocate nothing.
+- Named block states replace every IC2 metadata value: machines `facing` and `active` (`TileEntityBlock`, the texture
+  hooks draw IC2's per family looks from them), cable `color`, rubber wood `resin` (placed, plain, wet, dry) and
+  `facing` of its hole, rubber sheet `supported`, iron fence `charge`, ITNT and nuke `lit`, dynamite `lean`,
+  luminator `facing`, and the reinforced door's `half`, `open` and `facing`, listed so each state index is the
+  metadata the vanilla door template reads. Vanilla blocks have no named states, so the terraformer still sets their
+  `meta` state (tall grass type, ripe wheat, leaves of the log's wood type).
+- Tags (`data/`): IC2 blocks and items join `c:ores/*`, `c:storage_blocks/*`, `minecraft:logs`, `leaves` and
+  `saplings`. IC2's own lists are `ic2:` tags built from the seeded vanilla tags: `mineable/drill`, `laser_proof`,
+  `burnable`, `meltable`, `defusable`, `dynamite_sticks`, `miner_outputs`, `terraformer_plants`, `flattenable`, item
+  `reactor_components` and entity `monsters`. Scanner ore values go by `c:ores/*` tag, so other mods' ores count.
 - Charge stays in item damage exactly as IC2 kept it (1 full, max-1 empty), so recipe damages carry over unchanged.
 - The energy net (`energy/net.rs`) is a port of `EnergyNet`: cheapest-path discovery from each source with cable loss,
   packets split by 1/loss, shocks, cable burn-out, overload explosions. Paths are cached per source and dropped for the
@@ -26,6 +37,8 @@ Build: `./build.sh`. Test: `../../tools/modport/test.sh deploy ports/ic2`.
   `crates/modloader/src/blast.rs` and `b173_api/src/world/blast.rs`: mods run their own explosions the way
   `Explosion` does. Used for `ExplosionIC2`, `PointExplosion` and the mining laser.
 - `minecraft:door` block template (`BlockDoor`), used by the reinforced door.
+- SDK only, no API bump: `World::stateAt`, `BlockCtx::stateAt` (the per epoch `stateOf` cache at a spot), `World::clear`
+  and `PropertySpec::new`.
 - Fixed `itemInfo` in `tech.rs` reading the block table with item ids above 4096 (crashed the server thread).
 - Kit: `MODTEST_HOME` and `MODTEST_PORT` give a parallel session its own test server; the server no longer holds the
   caller's stderr, so piped deploys return.
@@ -74,6 +87,12 @@ Everything else is checked by build and clippy only.
   restart then.
 - Machines accept and give items through other mods' pipes by the loader's chest rule, as IC2's plain
   inventories did.
+- Tags widen IC2's vanilla lists to other mods' content: any `c:chests` takes miner, induction furnace and
+  Trade-O-Mat output, any `c:glass_blocks` lets the sun reach a solar panel, any `minecraft:water` turns a water
+  mill. Lasers and hot reactors burn every wood material block (IC2 listed logs, leaves, planks and wool).
+- The wrench gives defused explosives back with damage 0; IC2 copied the block metadata into the item damage.
+- Worlds saved before the named states (2026-11-11) show machines, cables and rubber wood in their default state
+  until they change; nothing else is lost.
 
 ## Code checks
 
@@ -103,6 +122,8 @@ the water mill dropping a generator, cables joining the electrolyzer.
 
 ## Bugs to check at the end
 
+- Named states need a look: rubber wood resin holes on the right face, cable paint colors, machine fronts and
+  active sprites after a reload, door halves and hinge side, dynamite leaning on walls.
 - Client look of cables, machines, screens, armor layers, door, entities; multiplayer key and jetpack sync.
 
 ## Todo, in order

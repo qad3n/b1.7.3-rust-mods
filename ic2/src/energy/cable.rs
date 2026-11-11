@@ -1,5 +1,5 @@
 use super::{Conductor, EnergyTile, connects, net};
-use crate::core::{blockTexture, dir, ids, own, sound, sprites, stacks};
+use crate::core::{blockTexture, dir, own, sound, stacks};
 use crate::items::COLORS;
 use b173_api::prelude::*;
 
@@ -60,18 +60,42 @@ static CABLES: [Cable; 11] = [
 
 const HARDNESS: f32 = 0.4;
 const SIXTEENTHS: f32 = 16.0;
+// TileEntityCable.color as a block state, the painter's colors with black standing for unpainted
+const COLOR: &str = "color";
+const UNPAINTED: &str = "none";
 
 fn cableAt(world: World, pos: BlockPos) -> Option<&'static Cable>
 {
     let block: i32 = world.block(pos);
-    CABLES.iter().find(|row| ids::block(&own(row.m_name)) == Some(block))
+    CABLES.iter().find(|row| blockIs(block, row.m_name))
 }
+
+// the color state values in painter order, so a painter's color index is its value's index
+fn colorName(color: usize) -> &'static str
+{
+    match color
+    {
+        0 => UNPAINTED,
+        color => COLORS[color.min(COLORS.len() - 1)],
+    }
+}
+
+fn painted(state: &StateData) -> Option<&str> { state.get(COLOR).filter(|color| *color != UNPAINTED) }
 
 // TileEntityCable.canInteractWithCable: unpainted cables join anything, painted ones only their own color
 fn sameColor(world: World, a: BlockPos, b: BlockPos) -> bool
 {
-    let (first, second): (i32, i32) = (world.meta(a), world.meta(b));
-    first == 0 || second == 0 || first == second
+    let (Some(first), Some(second)) = (world.stateAt(a), world.stateAt(b))
+    else
+    {
+        return true;
+    };
+
+    match (painted(&first), painted(&second))
+    {
+        (Some(first), Some(second)) => first == second,
+        _ => true,
+    }
 }
 
 impl EnergyTile for Cable
@@ -96,20 +120,21 @@ impl EnergyTile for Cable
 }
 
 // TileEntityCable.changeColor through the painter, true when the color took
-pub(crate) fn paint(world: World, pos: BlockPos, color: i32) -> bool
+pub(crate) fn paint(world: World, pos: BlockPos, color: usize) -> bool
 {
-    let Some(cable) = cableAt(world, pos)
+    let (Some(cable), Some(state)) = (cableAt(world, pos), world.stateAt(pos))
     else
     {
         return false;
     };
 
-    if !cable.m_paintable || world.meta(pos) == color
+    let name: &str = colorName(color);
+    if !cable.m_paintable || state.get(COLOR) == Some(name)
     {
         return false;
     }
 
-    let _ = world.setMeta(pos, color);
+    let _ = world.setBlockState(pos, (*state).clone().with(COLOR, name));
     net::changed(world);
     true
 }
@@ -117,13 +142,13 @@ pub(crate) fn paint(world: World, pos: BlockPos, color: i32) -> bool
 // swaps a cable for another of its line keeping the paint, as the insulation cutter sets cableType
 fn swap(world: World, pos: BlockPos, name: &str) -> bool
 {
-    let Some(block) = ids::block(&own(name))
+    let (Some(state), Ok(block)) = (world.stateAt(pos), Identifier::parse(&own(name)))
     else
     {
         return false;
     };
 
-    let swapped: bool = world.swapBlock(pos, block, world.meta(pos)).unwrap_or(false);
+    let swapped: bool = world.setBlockState(pos, StateData { block, ..(*state).clone() }).unwrap_or(false);
     net::changed(world);
     swapped
 }
@@ -170,17 +195,11 @@ pub(crate) fn canInsulate(world: World, pos: BlockPos) -> bool
 
 pub(crate) fn isCable(world: World, pos: BlockPos) -> bool { cableAt(world, pos).is_some() }
 
-struct CableBlock
-{
-    m_name: &'static str,
-}
+struct CableBlock;
 
 #[block_behavior]
 impl BlockBehavior for CableBlock
 {
-    // BlockCable.getBlockTexture, a column of the cable sheet per paint color
-    fn texture(&self, _face: i32, meta: i32) -> i32 { sprites::terrain(&sprite(self.m_name, meta)) }
-
     fn connections(&self, ctx: &mut BlockCtx) -> u8
     {
         let world: World = ctx.world();
@@ -217,13 +236,21 @@ impl BlockBehavior for CableBlock
     }
 }
 
-fn sprite(name: &str, color: i32) -> String
+// BlockCable.getBlockTexture, a column of the cable sheet per paint color
+fn colorStates(name: &str) -> BlockStatesSpec
 {
-    match color
-    {
-        0 => blockTexture(name),
-        color => blockTexture(&format!("{name}_{}", COLORS[color.clamp(0, COLORS.len() as i32 - 1) as usize])),
-    }
+    let colors: Vec<&str> = (0..COLORS.len()).map(colorName).collect();
+    let variants: Vec<StateVariantSpec> = colors
+        .iter()
+        .skip(1)
+        .map(|color| StateVariantSpec
+        {
+            when: [(COLOR.to_owned(), (*color).to_owned())].into(),
+            texture: Some(blockTexture(&format!("{name}_{color}"))),
+            textures: None,
+        })
+        .collect();
+    BlockStatesSpec { properties: vec![PropertySpec::new(COLOR, &colors)], variants, ..BlockStatesSpec::default() }
 }
 
 // RenderBlockCable: the core box and an arm toward each joined face
@@ -257,11 +284,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &CABLES
     {
-        for color in 0..COLORS.len() as i32
-        {
-            sprites::terrain(&sprite(row.m_name, color));
-        }
-
         ctx.blocks().register(
             row.m_name,
             BlockSpecBuilder::template("minecraft:block")
@@ -280,8 +302,9 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                     chance: 1.0,
                 }])
                 .tag("ic2:cables")
-                .behavior(CableBlock { m_name: row.m_name }),
+                .behavior(CableBlock),
         )?;
+        ctx.blocks().states(row.m_name, colorStates(row.m_name))?;
         super::add(own(row.m_name), row);
     }
 

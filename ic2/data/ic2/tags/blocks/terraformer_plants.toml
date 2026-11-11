@@ -1,0 +1,2 @@
+# ItemTFBPCultivation.loadPlants
+values = ["minecraft:tallgrass", "#minecraft:small_flowers", "#minecraft:saplings", "#minecraft:crops", "minecraft:red_mushroom", "minecraft:brown_mushroom", "minecraft:pumpkin"]

@@ -1,0 +1,2 @@
+# placed sticks, which the wrench gives back as the dynamite item
+values = ["ic2:dynamite_block", "ic2:remote_dynamite_block"]

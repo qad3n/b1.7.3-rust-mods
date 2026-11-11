@@ -1,0 +1,2 @@
+# ItemTFBPFlatification.loadRemoveables
+values = ["minecraft:snow_layer", "#minecraft:ice", "#minecraft:dirt", "#minecraft:base_stone_overworld", "#c:gravels", "#minecraft:sand", "#minecraft:leaves", "#minecraft:logs", "#ic2:terraformer_plants"]
