@@ -324,7 +324,12 @@ Not converted, and why:
   `config.rs`.
 - Generators place resolved named states (`world/palette.rs`, `GenWorld::set` takes a `Placed`); vanilla blocks
   keep their metadata through the `meta` property.
-- Not yet: treasure chests and boss drops wait for weighted loot pools (api 1.40, not pushed). Hollow hills, ruins,
+- Loot (api 1.40): every TFTreasure table is a chest loot table `twilightforest:<table>` of weighted pools
+  (`treasure.rs`: four common draws whose useless side tier takes a quarter of the picks, two uncommon, one rare whose
+  ultra rare side does the same), rolled with `rollLoot` seeded by the chest position; the hydra's chops and the snow
+  queen's bow, ice and snowballs are entity pools beside their spec drops. The lich keeps its drops in code: its clones
+  are the same entity and a pool has no condition to skip them.
+- Not yet: hollow hills, ruins,
   trees and the rest are placed by the dimension's own generator, which the loader routes; `ctx.worldgen()` features
   are vanilla dimension populate steps and do not apply. No biome tags yet, the port's biome lists name its own
   biomes. The source has no game rules; display names come through each spec's `name`.
