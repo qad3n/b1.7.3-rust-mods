@@ -5,8 +5,6 @@ use b173_api::prelude::*;
 pub(crate) const SOIL: &str = "minecraft:flower_soil";
 // every block that keeps leaves alive, as BlockLog.canSustainLeaves and the blocks that override it
 pub(crate) const LOGS: &str = "minecraft:logs";
-// leaves a broken log tells to decay
-pub(crate) const DECAYING_LEAVES: &str = "minecraft:leaves";
 pub(crate) const LEAVES: &str = "twilightforest:leaves";
 // rock material blocks that troll roots hang from
 pub(crate) const STONY: &str = "twilightforest:stony";

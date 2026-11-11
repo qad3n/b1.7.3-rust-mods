@@ -4,7 +4,6 @@ use crate::names::{self, block, item};
 use crate::tags;
 use crate::world::trees::{self, Tree};
 use b173_api::prelude::*;
-use std::rc::Rc;
 
 mod fire
 {
@@ -469,14 +468,6 @@ struct MagicCore
 #[block_behavior]
 impl BlockBehavior for MagicCore
 {
-    fn onRemoved(&self, ctx: &mut BlockCtx)
-    {
-        if ctx.isAuthority()
-        {
-            shedLeaves(ctx.world(), ctx.pos());
-        }
-    }
-
     fn onAdded(&self, ctx: &mut BlockCtx)
     {
         if ctx.isAuthority()
@@ -523,37 +514,9 @@ impl BlockBehavior for MagicCore
     }
 }
 
-// BlockLog.onBlockRemoval, leaves near a broken log start to decay
-pub(crate) fn shedLeaves(world: World, pos: BlockPos)
-{
-    let reach: i32 = 4;
-
-    for x in -reach..=reach
-    {
-        for y in -reach..=reach
-        {
-            for z in -reach..=reach
-            {
-                let at: BlockPos = pos.offset(x, y, z);
-                if !world.tagged(at, tags::DECAYING_LEAVES)
-                {
-                    continue;
-                }
-
-                if let Err(error) = checkDecay(world, at)
-                {
-                    warn(&format!("leaf decay at {at:?}: {}", error.0));
-                }
-            }
-        }
-    }
-}
-
 // the forest's leaves name BlockLeaves' metadata bits, check decay then persistent then the kind in the low bits,
 // so the engine's decay ticks read the same metadata the states store
 const LEAF_KINDS: [&str; 4] = ["0", "1", "2", "3"];
-// BlockLeaves' check decay bit, which leaves of other mods and vanilla ones carry in their plain metadata
-const CHECK_DECAY: i32 = 8;
 
 pub(crate) fn leafStates(ctx: &mut RegisterCtx, name: &str) -> Result<()>
 {
@@ -572,45 +535,6 @@ pub(crate) fn leafStates(ctx: &mut RegisterCtx, name: &str) -> Result<()>
     )
 }
 
-// BlockLeaves.beginLeavesDecay, marks a leaf to check whether a log still holds it
-fn checkDecay(world: World, at: BlockPos) -> Result<bool>
-{
-    let state: Rc<StateData> = world.stateAt(at).ok_or("no leaf state")?;
-    if state.get("check_decay").is_some()
-    {
-        if state.flag("check_decay")
-        {
-            return Ok(false);
-        }
-
-        return world.setProperty(at, "check_decay", true);
-    }
-
-    // leaves without named states keep BlockLeaves' bits in their metadata
-    let meta: i32 = state.get(names::META).and_then(|meta| meta.parse().ok()).unwrap_or(0);
-    if meta & CHECK_DECAY != 0
-    {
-        return Ok(false);
-    }
-
-    world.setBlockState(at, StateData::clone(&state).with(names::META, meta | CHECK_DECAY))
-}
-
-// BlockLog, a plain log that lets its leaves go when broken
-pub(crate) struct Log;
-
-#[block_behavior]
-impl BlockBehavior for Log
-{
-    fn onRemoved(&self, ctx: &mut BlockCtx)
-    {
-        if ctx.isAuthority()
-        {
-            shedLeaves(ctx.world(), ctx.pos());
-        }
-    }
-}
-
 fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &LOGS
@@ -618,8 +542,7 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
         let spec: BlockSpecBuilder = base("minecraft:block", row.m_label, Kind::Wood, LOG_HARDNESS)
             .faces(faces(&Look::Column { top: row.m_top, side: row.m_side }))
             .flammable(fire::LOG.0, fire::LOG.1)
-            .sustainsLeaves()
-            .behavior(Log);
+            .sustainsLeaves();
         super::put(ctx, row.m_log, spec)?;
         ctx.tags().add(RegistryKind::Item, tags::LOGS, &[row.m_log])?;
         ctx.blocks().states(
