@@ -549,7 +549,7 @@ impl DeviceBlock
                 }
                 else
                 {
-                    let _ = world.setBlock(pos, 0, 0);
+                    let _ = world.clear(pos);
                 }
                 world.playSound(center(pos), "random.pop", 0.3, 0.5);
                 chainAround(world, pos);
@@ -907,7 +907,7 @@ impl BlockBehavior for JetBlock
         let world: World = ctx.world();
         if let Some(lava) = findLava(world, ctx.pos().offset(0, -1, 0))
         {
-            let _ = world.setBlock(lava, 0, 0);
+            let _ = world.clear(lava);
             let _ = names::handle(jetName(Jet::Popping)).place(world, ctx.pos(), false);
         }
     }

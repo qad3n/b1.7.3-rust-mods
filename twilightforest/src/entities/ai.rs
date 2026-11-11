@@ -416,7 +416,7 @@ fn summon(entity: Entity, info: &EntityInfo)
 
                 let _ = world.breakEffect(pos, infested, 0);
 
-                if let Err(error) = world.setBlock(pos, 0, 0)
+                if let Err(error) = world.clear(pos)
                 {
                     warn(&format!("termite ally: {}", error.0));
                     continue;

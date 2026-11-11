@@ -486,7 +486,7 @@ impl BlockBehavior for MagicCore
 
     fn onActivated(&self, ctx: &mut BlockCtx, _player: Player) -> bool
     {
-        let Some(state) = names::stateIn(ctx)
+        let Some(state) = ctx.stateAt()
         else
         {
             return true;
@@ -508,7 +508,7 @@ impl BlockBehavior for MagicCore
 
     fn onUpdateTick(&self, ctx: &mut BlockCtx)
     {
-        if names::flag(names::stateIn(ctx), "stopped")
+        if names::flag(ctx.stateAt(), "stopped")
         {
             return;
         }
@@ -584,7 +584,7 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
         ctx.tags().add(RegistryKind::Item, tags::LOGS, &[row.m_log])?;
         ctx.blocks().states(
             row.m_log,
-            BlockStatesSpec { properties: vec![super::property("axis", &LOG_AXES)], ..BlockStatesSpec::default() },
+            BlockStatesSpec { properties: vec![PropertySpec::new("axis", &LOG_AXES)], ..BlockStatesSpec::default() },
         )?;
     }
 
@@ -603,7 +603,7 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
             row.m_name,
             BlockStatesSpec
             {
-                properties: vec![super::property("stopped", &["false", "true"])],
+                properties: vec![PropertySpec::new("stopped", &["false", "true"])],
                 variants: vec![StateVariantSpec
                 {
                     when: super::when("stopped", "true"),

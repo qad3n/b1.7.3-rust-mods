@@ -906,7 +906,7 @@ fn destroyAround(world: World, center: [f64; 3], half: f64, height: f64)
                 let unbreakable: bool = blockTagged(block, "c:obsidians") || blockIs(block, "minecraft:bedrock");
                 if block != 0 && !unbreakable
                 {
-                    let _ = world.setBlock(pos, 0, 0);
+                    let _ = world.clear(pos);
                     let _ = world.breakEffect(pos, block, meta);
                 }
             }

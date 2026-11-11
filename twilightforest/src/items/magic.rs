@@ -109,7 +109,7 @@ fn crumble(world: World, pos: BlockPos) -> i32
     {
         let meta: i32 = world.meta(pos);
 
-        if let Err(error) = world.setBlock(pos, 0, 0)
+        if let Err(error) = world.clear(pos)
         {
             warn(&format!("crumble at {pos:?}: {}", error.0));
             return cost;
@@ -337,7 +337,7 @@ fn burn(world: World, pos: BlockPos) -> bool
         return false;
     }
 
-    let state: Option<Rc<StateData>> = names::stateAt(world, pos);
+    let state: Option<Rc<StateData>> = world.stateAt(pos);
     let axis: &str = state.as_ref().and_then(|state| state.get("axis")).unwrap_or("y");
     if let Err(error) = world.setBlockState(pos, names::state(block::BURNT_THORNS).with("axis", axis))
     {

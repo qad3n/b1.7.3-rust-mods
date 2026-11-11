@@ -60,7 +60,7 @@ impl TileBehavior for SpawnerTile
     // TileEntityTFBossSpawner.updateEntity
     fn onTick(&self, ctx: &mut BlockCtx)
     {
-        let kind: Option<usize> = crate::names::pick(crate::names::stateIn(ctx), "boss", &KINDS);
+        let kind: Option<usize> = crate::names::pick(ctx.stateAt(), "boss", &KINDS);
         let Some(boss) = kind.and_then(|kind| BOSSES.get(kind))
         else
         {
@@ -85,7 +85,7 @@ impl TileBehavior for SpawnerTile
         {
             knights::spawnGroup(world, pos);
 
-            let _ = world.setBlock(pos, 0, 0);
+            let _ = world.clear(pos);
 
             return;
         }
@@ -96,7 +96,7 @@ impl TileBehavior for SpawnerTile
             let _ = spawned.setData(&Home { m_home: Some([pos.x, pos.y, pos.z]) });
         }
 
-        let _ = world.setBlock(pos, 0, 0);
+        let _ = world.clear(pos);
     }
 }
 
@@ -253,7 +253,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     )?;
     ctx.blocks().states(
         SPAWNER,
-        BlockStatesSpec { properties: vec![crate::blocks::property("boss", &KINDS)], ..BlockStatesSpec::default() },
+        BlockStatesSpec { properties: vec![PropertySpec::new("boss", &KINDS)], ..BlockStatesSpec::default() },
     )?;
     Ok(())
 }

@@ -1,4 +1,4 @@
-use super::{Cube, Kind, Look, base, cube, faces, property, texture, tough, when};
+use super::{Cube, Kind, Look, base, cube, faces, texture, tough, when};
 use crate::colors;
 use crate::names::{self, block, item};
 use b173_api::math::{Face, add, floor, offset, scale};
@@ -328,7 +328,7 @@ fn registerAurora(ctx: &mut RegisterCtx) -> Result<()>
         block::AURORA_BRICK,
         BlockStatesSpec
         {
-            properties: vec![property("phase", &values)],
+            properties: vec![PropertySpec::new("phase", &values)],
             variants: auroraVariants(),
             ..BlockStatesSpec::default()
         },
@@ -410,7 +410,7 @@ impl BlockBehavior for Shield
         let aim: [f64; 3] = crate::math::look(info.yaw, info.pitch);
         let to: [f64; 3] = add(info.pos, scale(aim, shield::REACH));
         let face: Option<i32> = ctx.world().rayTrace(info.pos, to, false).map(|hit| hit.face);
-        let facing: Option<i32> = names::pick(names::stateIn(ctx), "facing", &SIDES).map(|index| index as i32);
+        let facing: Option<i32> = names::pick(ctx.stateAt(), "facing", &SIDES).map(|index| index as i32);
         if face != facing
         {
             return Some(0.0);
@@ -443,7 +443,7 @@ fn registerShield(ctx: &mut RegisterCtx) -> Result<()>
         block::SHIELD,
         BlockStatesSpec
         {
-            properties: vec![property("facing", &SIDES)],
+            properties: vec![PropertySpec::new("facing", &SIDES)],
             variants: vec![StateVariantSpec
             {
                 when: when("facing", "none"),

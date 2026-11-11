@@ -147,7 +147,7 @@ fn light(entity: Entity, info: &EntityInfo, redcap: &mut Redcap) -> bool
         return true;
     }
 
-    if let Err(error) = world.setBlock(tnt, 0, 0)
+    if let Err(error) = world.clear(tnt)
     {
         warn(&format!("redcap tnt: {}", error.0));
         return true;

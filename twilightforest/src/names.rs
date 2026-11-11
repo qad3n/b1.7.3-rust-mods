@@ -219,14 +219,6 @@ pub(crate) fn state(name: &str) -> StateData
     StateData::of(Identifier::parseIn(name, &modId()).expect("block names in code are valid identifiers"))
 }
 
-// the named state a block and its metadata hold, cached per content epoch
-pub(crate) fn stateAt(world: World, pos: BlockPos) -> Option<Rc<StateData>>
-{
-    stateOf(world.block(pos), world.meta(pos))
-}
-
-pub(crate) fn stateIn(ctx: &BlockCtx) -> Option<Rc<StateData>> { stateOf(ctx.block(), i32::from(ctx.meta())) }
-
 // a true or false property, false when the block has no such state
 pub(crate) fn flag(state: Option<Rc<StateData>>, property: &str) -> bool
 {
@@ -247,18 +239,11 @@ pub(crate) fn pick(state: Option<Rc<StateData>>, property: &str, values: &[&str]
     values.iter().position(|known| *known == value)
 }
 
-// rewrites one property of the block at a spot and keeps the others
-pub(crate) fn setProperty(world: World, pos: BlockPos, property: &str, value: impl ToString) -> Result<bool>
+// a still source of a fluid, beta keeps the fluid level in metadata and a source holds zero
+pub(crate) fn source(world: World, pos: BlockPos, fluid: &str) -> bool
 {
-    let state: Rc<StateData> = stateAt(world, pos).ok_or("no block state to change")?;
-    world.setBlockState(pos, StateData::clone(&state).with(property, value))
+    world.tagged(pos, fluid) && world.stateAt(pos).is_some_and(|state| state.get(META) == Some("0"))
 }
 
 // a block's default state with its stored id and metadata resolved once per content epoch
 pub(crate) fn handle(name: &str) -> StateHandle { StateHandle::new(state(name)) }
-
-// a still source of a fluid, beta keeps the fluid level in metadata and a source holds zero
-pub(crate) fn source(world: World, pos: BlockPos, fluid: &str) -> bool
-{
-    world.tagged(pos, fluid) && stateAt(world, pos).is_some_and(|state| state.get(META) == Some("0"))
-}

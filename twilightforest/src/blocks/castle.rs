@@ -1,4 +1,4 @@
-use super::{Kind, PIXELS, base, property, texture, when};
+use super::{Kind, PIXELS, base, texture, when};
 use crate::names::{self, block};
 use b173_api::prelude::*;
 use std::rc::Rc;
@@ -53,7 +53,7 @@ impl BlockBehavior for Runes
         }
 
         let sprite: i32 = b173_api::world::terrainSlot(&runeTexture(runeAt(pos)))?;
-        let state: Option<Rc<StateData>> = names::stateIn(ctx);
+        let state: Option<Rc<StateData>> = ctx.stateAt();
         let color: u32 = runeColor(names::number(state.clone(), "color"), names::flag(state, "inverted"));
         Some(FaceOverlay { sprite, color, glow: true, lift: RUNE_LIFT })
     }
@@ -86,7 +86,7 @@ fn fizz(world: World, pos: BlockPos, base: f32)
 
 fn activateDoor(world: World, pos: BlockPos)
 {
-    if let Err(error) = names::setProperty(world, pos, "active", true)
+    if let Err(error) = world.setProperty(pos, "active", true)
     {
         warn(&format!("castle door at {pos:?}: {}", error.0));
     }
@@ -103,7 +103,7 @@ impl BlockBehavior for CastleDoor
 {
     fn onActivated(&self, ctx: &mut BlockCtx, _player: Player) -> bool
     {
-        if names::flag(names::stateIn(ctx), "active") || self.m_vanished
+        if names::flag(ctx.stateAt(), "active") || self.m_vanished
         {
             return false;
         }
@@ -132,7 +132,7 @@ impl BlockBehavior for CastleDoor
 
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
-        let state: Option<Rc<StateData>> = names::stateIn(ctx);
+        let state: Option<Rc<StateData>> = ctx.stateAt();
         let color: i32 = names::number(state.clone(), "color");
         let active: bool = names::flag(state, "active");
 
@@ -165,7 +165,7 @@ impl BlockBehavior for CastleDoor
         {
             let at: BlockPos = pos.offset(dx, dy, dz);
             let ready: bool = world.is(at, block::CASTLE_DOOR)
-                && !names::flag(names::stateAt(world, at), "active")
+                && !names::flag(world.stateAt(at), "active")
                 && !crate::progress::doorLocked(world, at);
             if ready
             {
@@ -174,10 +174,7 @@ impl BlockBehavior for CastleDoor
         }
     }
 
-    fn colorMultiplier(&self, ctx: &mut BlockCtx) -> u32
-    {
-        runeColor(names::number(names::stateIn(ctx), "color"), false)
-    }
+    fn colorMultiplier(&self, ctx: &mut BlockCtx) -> u32 { runeColor(names::number(ctx.stateAt(), "color"), false) }
 }
 
 fn colorValues(count: u8) -> Vec<String> { (0..count).map(|value| value.to_string()).collect() }
@@ -206,9 +203,9 @@ fn registerRunes(ctx: &mut RegisterCtx) -> Result<()>
         BlockStatesSpec
         {
             properties: vec![
-                property("inverted", &["false", "true"]),
-                property("spare", &["0", "1"]),
-                property("color", &values),
+                PropertySpec::new("inverted", &["false", "true"]),
+                PropertySpec::new("spare", &["0", "1"]),
+                PropertySpec::new("color", &values),
             ],
             ..BlockStatesSpec::default()
         },
@@ -252,7 +249,10 @@ fn registerRunes(ctx: &mut RegisterCtx) -> Result<()>
             name,
             BlockStatesSpec
             {
-                properties: vec![property("active", &["false", "true"]), property("color", &shadeValues)],
+                properties: vec![
+                    PropertySpec::new("active", &["false", "true"]),
+                    PropertySpec::new("color", &shadeValues),
+                ],
                 variants: vec![StateVariantSpec
                 {
                     when: when("active", "true"),
@@ -336,6 +336,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .behavior(super::wood::Log),
     )?;
 
-    let axis: PropertySpec = super::property("axis", &super::wood::LOG_AXES);
+    let axis: PropertySpec = PropertySpec::new("axis", &super::wood::LOG_AXES);
     ctx.blocks().states(block::CINDER_LOG, BlockStatesSpec { properties: vec![axis], ..BlockStatesSpec::default() })
 }

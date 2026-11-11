@@ -179,12 +179,6 @@ pub(crate) fn registerCubes(ctx: &mut RegisterCtx, rows: &[Cube]) -> Result<()>
     Ok(())
 }
 
-// a property listed in metadata order, so meta reads and writes keep their meaning
-pub(crate) fn property(name: &str, values: &[&str]) -> PropertySpec
-{
-    PropertySpec { name: name.to_owned(), values: values.iter().map(|value| (*value).to_owned()).collect() }
-}
-
 pub(crate) fn when(name: &str, value: &str) -> std::collections::BTreeMap<String, String>
 {
     std::collections::BTreeMap::from([(name.to_owned(), value.to_owned())])

@@ -97,7 +97,7 @@ fn breakBlock(world: World, pos: BlockPos)
     }
 
     let _ = world.dropBlockItems(pos, block, meta);
-    let _ = world.setBlock(pos, 0, 0);
+    let _ = world.clear(pos);
     let _ = world.breakEffect(pos, block, meta);
 }
 

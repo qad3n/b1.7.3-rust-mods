@@ -1053,7 +1053,7 @@ impl ReactorTile
             }
 
             let _ = world.explode(crate::math::center(pos), reactor::POWER);
-            let _ = world.setBlock(pos, 0, 0);
+            let _ = world.clear(pos);
         }
     }
 }

@@ -120,7 +120,7 @@ fn smash(world: World, pos: BlockPos)
 {
     let (block, meta): (i32, i32) = (world.block(pos), world.meta(pos));
     let _ = world.dropBlockItems(pos, block, meta);
-    let _ = world.setBlock(pos, 0, 0);
+    let _ = world.clear(pos);
     let _ = world.breakEffect(pos, block, meta);
 }
 
@@ -327,7 +327,7 @@ impl EntityBehavior for Cube
 
             if annihilable(world, pos)
             {
-                let _ = world.setBlock(pos, 0, 0);
+                let _ = world.clear(pos);
 
                 world.playSound(
                     crate::math::center(pos),

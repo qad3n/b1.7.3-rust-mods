@@ -56,7 +56,7 @@ impl BlockBehavior for Giant
         let world: World = ctx.world();
         for at in cells(ctx.pos()).filter(|at| *at != ctx.pos() && world.block(*at) == ctx.block())
         {
-            let _ = world.setBlock(at, 0, 0);
+            let _ = world.clear(at);
         }
     }
 

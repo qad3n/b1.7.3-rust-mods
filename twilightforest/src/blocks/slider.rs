@@ -1,4 +1,4 @@
-use super::{Kind, Look, base, faces, property, texture, when};
+use super::{Kind, Look, base, faces, texture, when};
 use crate::names::{self, block};
 use b173_api::math::{Face, blockOf, distance};
 use b173_api::prelude::*;
@@ -86,7 +86,7 @@ fn awake(world: World, pos: BlockPos, state: Option<Rc<StateData>>) -> bool
     [1, -1].into_iter().any(|sign|
     {
         let mut at: BlockPos = pos.offset(dx * sign, dy * sign, dz * sign);
-        while names::stateAt(world, at) == state
+        while world.stateAt(at) == state
         {
             if playerNear(world, at)
             {
@@ -134,7 +134,7 @@ impl BlockBehavior for Slider
     {
         if ctx.isAuthority()
         {
-            schedule(ctx.world(), ctx.pos(), delay(names::stateIn(ctx)));
+            schedule(ctx.world(), ctx.pos(), delay(ctx.stateAt()));
         }
     }
 
@@ -147,7 +147,7 @@ impl BlockBehavior for Slider
             Some(Face::West | Face::East) => 1,
             _ => 0,
         };
-        if let Err(error) = names::setProperty(ctx.world(), ctx.pos(), "axis", AXES[axis])
+        if let Err(error) = ctx.world().setProperty(ctx.pos(), "axis", AXES[axis])
         {
             warn(&format!("slider at {:?}: {}", ctx.pos(), error.0));
         }
@@ -161,7 +161,7 @@ impl BlockBehavior for Slider
         }
 
         let (world, pos): (World, BlockPos) = (ctx.world(), ctx.pos());
-        let state: Option<Rc<StateData>> = names::stateIn(ctx);
+        let state: Option<Rc<StateData>> = ctx.stateAt();
         if awake(world, pos, state.clone())
         {
             launch(world, pos, axis(state.clone()));
@@ -298,7 +298,7 @@ impl EntityBehavior for SlideBlock
                 return;
             }
 
-            let _ = world.setBlock(here, 0, 0);
+            let _ = world.clear(here);
         }
 
         let mut motion: [f64; 3] = info.motion;
@@ -417,7 +417,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         block::SLIDER,
         BlockStatesSpec
         {
-            properties: vec![property("axis", &AXES), property("delay", &DELAYS)],
+            properties: vec![PropertySpec::new("axis", &AXES), PropertySpec::new("delay", &DELAYS)],
             variants,
             ..BlockStatesSpec::default()
         },

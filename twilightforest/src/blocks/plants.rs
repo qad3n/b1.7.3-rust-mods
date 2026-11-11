@@ -1,4 +1,4 @@
-use super::{Kind, base, drop, property, texture, vanillaTexture, when};
+use super::{Kind, base, drop, texture, vanillaTexture, when};
 use crate::names::{self, block, item};
 use crate::tags;
 use crate::world::biomes;
@@ -320,7 +320,7 @@ impl BlockBehavior for SmallPlant
         {
             let world: World = ctx.world();
             let _ = world.dropBlockItems(ctx.pos(), ctx.block(), i32::from(ctx.meta()));
-            let _ = world.setBlock(ctx.pos(), 0, 0);
+            let _ = world.clear(ctx.pos());
         }
     }
 
@@ -523,7 +523,7 @@ impl BlockBehavior for Thorns
         {
             let world: World = ctx.world();
             let _ = world.breakEffect(ctx.pos(), ctx.block(), i32::from(ctx.meta()));
-            let _ = world.setBlock(ctx.pos(), 0, 0);
+            let _ = world.clear(ctx.pos());
         }
     }
 
@@ -531,7 +531,7 @@ impl BlockBehavior for Thorns
     {
         if ctx.isAuthority() && !self.m_burnt
         {
-            burst(ctx.world(), ctx.pos(), names::pick(names::stateIn(ctx), "axis", &AXES).unwrap_or(0));
+            burst(ctx.world(), ctx.pos(), names::pick(ctx.stateAt(), "axis", &AXES).unwrap_or(0));
         }
     }
 }
@@ -598,7 +598,7 @@ fn registerThorns(ctx: &mut RegisterCtx) -> Result<()>
     {
         ctx.blocks().states(
             name,
-            BlockStatesSpec { properties: vec![property("axis", &AXES)], ..BlockStatesSpec::default() },
+            BlockStatesSpec { properties: vec![PropertySpec::new("axis", &AXES)], ..BlockStatesSpec::default() },
         )?;
     }
 
@@ -754,7 +754,7 @@ fn clearPad(world: World, pos: BlockPos)
             let at: BlockPos = base.offset(dx, 0, dz);
             if at != pos && world.is(at, block::HUGE_LILY_PAD)
             {
-                let _ = world.setBlock(at, 0, 0);
+                let _ = world.clear(at);
             }
         }
     }
@@ -772,7 +772,7 @@ impl BlockBehavior for HugeLilyPad
         {
             clearPad(ctx.world(), ctx.pos());
 
-            let _ = ctx.world().setBlock(ctx.pos(), 0, 0);
+            let _ = ctx.world().clear(ctx.pos());
         }
     }
 
@@ -866,7 +866,7 @@ fn registerWater(ctx: &mut RegisterCtx) -> Result<()>
         block::HUGE_LILY_PAD,
         BlockStatesSpec
         {
-            properties: vec![property("piece", &values), property("orient", &values)],
+            properties: vec![PropertySpec::new("piece", &values), PropertySpec::new("orient", &values)],
             variants: padVariants(),
             ..BlockStatesSpec::default()
         },
@@ -994,7 +994,7 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
         block::HUGE_GLOOM,
         BlockStatesSpec
         {
-            properties: vec![property("part", &["cap", "stem"])],
+            properties: vec![PropertySpec::new("part", &["cap", "stem"])],
             variants: vec![StateVariantSpec
             {
                 when: when("part", "stem"),
@@ -1051,7 +1051,7 @@ impl BlockBehavior for HugeMushroom
 {
     fn colorMultiplier(&self, ctx: &mut BlockCtx) -> u32
     {
-        let cap: bool = names::stateIn(ctx).is_some_and(|state| state.get("part") == Some("cap"));
+        let cap: bool = ctx.stateAt().is_some_and(|state| state.get("part") == Some("cap"));
         if cap { self.m_cap } else { WHITE }
     }
 }
@@ -1079,7 +1079,7 @@ fn registerMushrooms(ctx: &mut RegisterCtx, stem: &FaceTextures) -> Result<()>
             name,
             BlockStatesSpec
             {
-                properties: vec![property("part", &["cap", "stem"])],
+                properties: vec![PropertySpec::new("part", &["cap", "stem"])],
                 variants: vec![StateVariantSpec
                 {
                     when: when("part", "stem"),

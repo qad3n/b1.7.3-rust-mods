@@ -78,7 +78,7 @@ fn crown(world: World, pos: BlockPos)
         progress::grant(*player, Gate::Trophy);
     }
 
-    if !names::flag(names::stateAt(world, pos), "latent")
+    if !names::flag(world.stateAt(pos), "latent")
     {
         return;
     }
@@ -110,14 +110,14 @@ fn open(world: World, pos: BlockPos)
                 let latent: bool = state.is_some_and(|state| state.get("facing") == Some(crate::blocks::SHIELD_LATENT));
                 if blockIs(shield, block::SHIELD) && latent
                 {
-                    let _ = world.setBlock(at, 0, 0);
+                    let _ = world.clear(at);
                     let _ = world.breakEffect(at, shield, meta);
                 }
             }
         }
     }
 
-    let _ = names::setProperty(world, pos, "latent", false);
+    let _ = world.setProperty(pos, "latent", false);
 
     world.playSound(crate::math::center(pos), "mob.zombie.infect", 4.0, 0.1);
 }
@@ -138,22 +138,19 @@ impl BlockBehavior for Pedestal
 
         let quarter: i32 = floor(f64::from(info.yaw) * 4.0 / 360.0 + 0.5) & 3;
         let turn: usize = [0, 1, 3, 2][quarter as usize];
-        if let Err(error) = names::setProperty(ctx.world(), ctx.pos(), "turn", pedestal::TURN_VALUES[turn])
+        if let Err(error) = ctx.world().setProperty(ctx.pos(), "turn", pedestal::TURN_VALUES[turn])
         {
             warn(&format!("trophy pedestal at {:?}: {}", ctx.pos(), error.0));
         }
     }
 
     // BlockTFTrophyPedestal.getPlayerRelativeBlockHardness, any meta but the plain first one cannot be broken
-    fn strength(&self, ctx: &mut BlockCtx, _player: Player) -> Option<f32>
-    {
-        guarded(names::stateIn(ctx)).then_some(0.0)
-    }
+    fn strength(&self, ctx: &mut BlockCtx, _player: Player) -> Option<f32> { guarded(ctx.stateAt()).then_some(0.0) }
 
     fn onNeighborChanged(&self, ctx: &mut BlockCtx, _neighbor: i32)
     {
         let (world, pos): (World, BlockPos) = (ctx.world(), ctx.pos());
-        if ctx.isAuthority() && guarded(names::stateIn(ctx)) && trophyOnTop(world, pos)
+        if ctx.isAuthority() && guarded(ctx.stateAt()) && trophyOnTop(world, pos)
         {
             let _ = world.scheduleTick(pos, ctx.block(), 1);
         }
@@ -265,9 +262,9 @@ fn registerPedestal(ctx: &mut RegisterCtx) -> Result<()>
         BlockStatesSpec
         {
             properties: vec![
-                crate::blocks::property("latent", &["false", "true"]),
-                crate::blocks::property("spare", &["false", "true"]),
-                crate::blocks::property("turn", &pedestal::TURN_VALUES),
+                PropertySpec::new("latent", &["false", "true"]),
+                PropertySpec::new("spare", &["false", "true"]),
+                PropertySpec::new("turn", &pedestal::TURN_VALUES),
             ],
             ..BlockStatesSpec::default()
         },
@@ -429,7 +426,7 @@ impl TileBehavior for HeadTile
     fn pose(&self, ctx: &mut BlockCtx, partial: f32, ticks: i32) -> Pose
     {
         let state: Head = ctx.tileData();
-        let facing: Option<usize> = names::pick(names::stateIn(ctx), "facing", &head::FACINGS);
+        let facing: Option<usize> = names::pick(ctx.stateAt(), "facing", &head::FACINGS);
         let floor: bool = facing == Some(head::FLOOR as usize);
 
         let turn: f32 = match facing.map(|facing| head::FACINGS[facing])
@@ -543,11 +540,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     )?;
     ctx.blocks().states(
         BLOCK,
-        BlockStatesSpec
-        {
-            properties: vec![crate::blocks::property("facing", &head::FACINGS)],
-            ..BlockStatesSpec::default()
-        },
+        BlockStatesSpec { properties: vec![PropertySpec::new("facing", &head::FACINGS)], ..BlockStatesSpec::default() },
     )?;
 
     for (kind, trophy) in TROPHIES.iter().enumerate()

@@ -228,7 +228,7 @@ fn smashIce(world: World, info: &EntityInfo)
                 let ice: i32 = world.block(pos);
                 if blockTagged(ice, "minecraft:ice")
                 {
-                    let _ = world.setBlock(pos, 0, 0);
+                    let _ = world.clear(pos);
                     let _ = world.breakEffect(pos, ice, 0);
                 }
             }

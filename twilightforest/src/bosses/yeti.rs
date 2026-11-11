@@ -128,7 +128,7 @@ fn destroyBox(world: World, low: [f64; 3], high: [f64; 3])
                     continue;
                 }
 
-                let _ = world.setBlock(pos, 0, 0);
+                let _ = world.clear(pos);
                 let _ = world.breakEffect(pos, block, meta);
             }
         }
@@ -766,7 +766,7 @@ impl EntityBehavior for FallingIce
                 let pos: BlockPos = below.offset(x, 0, z);
                 if breakable(world.block(pos))
                 {
-                    let _ = world.setBlock(pos, 0, 0);
+                    let _ = world.clear(pos);
                 }
             }
         }
