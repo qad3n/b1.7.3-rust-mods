@@ -151,6 +151,7 @@ impl Layout
         let grid: Rect = [panelRight - gridWidth, gridTop, gridWidth, rows * layout::CELL];
         let gridRight: i32 = grid[0] + grid[2];
         let craftableLeft: i32 = grid[0] + searchWidth + layout::SPACING;
+        let arrow: i32 = layout::ARROW.min(gridWidth / 2);
         Layout
         {
             m_screen: [-left, -top, width, height],
@@ -158,8 +159,8 @@ impl Layout
             m_grid: grid,
             m_columns: columns,
             m_rows: rows,
-            m_previous: [grid[0], barTop, layout::ARROW, layout::BAR],
-            m_next: [gridRight - layout::ARROW, barTop, layout::ARROW, layout::BAR],
+            m_previous: [grid[0], barTop, arrow, layout::BAR],
+            m_next: [gridRight - arrow, barTop, arrow, layout::BAR],
             m_search: [grid[0], rowTop, searchWidth, layout::FIELD],
             m_craftable: [craftableLeft, rowTop, layout::TOGGLE, layout::TOGGLE],
             m_cheat: [gridRight - layout::TOGGLE, rowTop, layout::TOGGLE, layout::TOGGLE],
@@ -762,12 +763,14 @@ impl Painter<'_>
         };
         self.m_draw.rect(x, y, w, h, border);
         self.m_draw.rect(x + edge, y + edge, w - edge * 2, h - edge * 2, color::FIELD_FACE);
-        let shown: &str = clip(&state.m_query, w - layout::TEXT_INSET * 2, true);
+        let room: i32 = w - layout::TEXT_INSET * 2;
+        let shown: &str = clip(&state.m_query, room, true);
         let textX: i32 = x + layout::TEXT_INSET;
         let textY: i32 = y + (h - layout::FONT_HEIGHT) / 2;
         if shown.is_empty() && !state.m_focused
         {
-            self.m_draw.text(textX, textY, &translate(text::SEARCH), color::HINT);
+            let hint: String = translate(text::SEARCH);
+            self.m_draw.text(textX, textY, clip(&hint, room, false), color::HINT);
             return;
         }
         let blink: bool = state.m_focused && (state.m_ticks / timing::BLINK).is_multiple_of(2);
@@ -784,7 +787,17 @@ impl Painter<'_>
         }
         self.button(layout.m_previous, &translate(text::LEFT));
         self.button(layout.m_next, &translate(text::RIGHT));
-        let label: String = format!("{}/{}", state.m_page + 1, state.pages());
+        let current: usize = state.m_page + 1;
+        let room: i32 = layout.m_next[0] - layout.m_previous[0] - layout.m_previous[2] - layout::SPACING * 2;
+        // a narrow bar drops the page count first and the label entirely when even the page number overflows
+        let Some(label) = [format!("{current}/{}", state.pages()), current.to_string()]
+            .into_iter()
+            .find(|label| textWidth(label) <= room)
+        else
+        {
+            return;
+        };
+
         let middle: i32 = (layout.m_previous[0] + layout.m_next[0] + layout.m_next[2]) / 2;
         let textTop: i32 = (layout::BAR - layout::FONT_HEIGHT) / 2;
         self.m_draw.centered(middle, layout.m_previous[1] + textTop, &label, color::WHITE);
