@@ -17,6 +17,10 @@ mod sentry
     pub const SIGHT: f64 = 8.0;
     pub const SEARCH_TICKS: i32 = 8;
     pub const LOST_SEARCHES: i32 = 4;
+    // a sentry keeps a target it can see within this distance
+    pub const KEEP: f64 = 16.0;
+    pub const HOP_PITCH: f32 = 0.8;
+    pub const HOP_PITCH_SPREAD: f32 = 0.2;
     pub const JUMP_MIN: i32 = 10;
     pub const JUMP_SPREAD: i32 = 20;
     pub const LEAP: f64 = 3.0;
@@ -46,6 +50,57 @@ struct Search
 thread_local!
 {
     static SEARCHES: RefCell<HashMap<i32, Search>> = RefCell::new(HashMap::new());
+}
+
+// EntityLivingBase.canEntityBeSeen from the sentry's middle to the target's eyes
+fn visible(world: World, info: &EntityInfo, target: &EntityInfo) -> bool
+{
+    let from: [f64; 3] = [info.pos[0], info.pos[1] + 0.5, info.pos[2]];
+    let to: [f64; 3] = [target.pos[0], target.pos[1] + 1.0, target.pos[2]];
+    world.rayTrace(from, to, false).is_none()
+}
+
+fn lose(search: &mut Search)
+{
+    search.m_lost += 1;
+    if search.m_lost >= sentry::LOST_SEARCHES
+    {
+        search.m_lost = 0;
+        search.m_target = None;
+    }
+}
+
+// one search: a sleeping sentry wakes on a seen player, an awake one keeps its target while it sees it close enough
+fn look(world: World, info: &EntityInfo, search: &mut Search, awake: bool, player: Option<&EntityInfo>)
+{
+    let current: Option<EntityInfo> =
+        search.m_target.and_then(|id| Entity { world, id }.info()).filter(|target| target.alive);
+
+    match (awake, current, player)
+    {
+        (_, None, Some(found)) =>
+        {
+            search.m_lost = 0;
+            search.m_target = Some(found.id);
+        }
+
+        (true, None, None) => lose(search),
+
+        (true, Some(target), _) =>
+        {
+            if visible(world, info, &target) && distance(target.pos, info.pos) < sentry::KEEP
+            {
+                search.m_lost = 0;
+            }
+            else
+            {
+                lose(search);
+            }
+        }
+
+        (false, _, _) =>
+        {}
+    }
 }
 
 fn setAwake(entity: Entity, awake: bool)
@@ -99,43 +154,22 @@ impl EntityBehavior for Sentry
         let watch: Watch = entity.synced();
         let onGround: bool = entity.flag(EntityField::OnGround);
 
-        let player: Option<EntityInfo> = closestPlayer(world, info, sentry::SIGHT).filter(|player|
-        {
-            world
-                .rayTrace(
-                    [info.pos[0], info.pos[1] + 0.5, info.pos[2]],
-                    [player.pos[0], player.pos[1] + 1.0, player.pos[2]],
-                    false,
-                )
-                .is_none()
-        });
+        let player: Option<EntityInfo> =
+            closestPlayer(world, info, sentry::SIGHT).filter(|player| visible(world, info, player));
 
-        search.m_ticks += 1;
-        if search.m_ticks >= sentry::SEARCH_TICKS
+        // EntitySentry.updateEntityActionState searches every ninth tick, and once awake it never sleeps again
+        if search.m_ticks < sentry::SEARCH_TICKS
+        {
+            search.m_ticks += 1;
+        }
+        else
         {
             search.m_ticks = 0;
+            look(world, info, &mut search, watch.m_awake, player.as_ref());
 
-            match (&player, watch.m_awake)
+            if player.is_some()
             {
-                (Some(found), _) =>
-                {
-                    search.m_lost = 0;
-                    search.m_target = Some(found.id);
-                    setAwake(entity, true);
-                }
-
-                (None, true) =>
-                {
-                    search.m_lost += 1;
-                    if search.m_lost >= sentry::LOST_SEARCHES
-                    {
-                        search.m_target = None;
-                        setAwake(entity, false);
-                    }
-                }
-
-                (None, false) =>
-                {}
+                setAwake(entity, true);
             }
         }
 
@@ -169,7 +203,8 @@ impl EntityBehavior for Sentry
 
                 entity.setField(EntityField::MoveForward, 1.0);
                 entity.setField(EntityField::MoveStrafe, 0.5 - fraction(world));
-                world.playSound(info.pos, SLIME, 1.0, 0.8);
+                let spread: f32 = (fraction(world) - fraction(world)) as f32 * sentry::HOP_PITCH_SPREAD;
+                world.playSound(info.pos, SLIME, 1.0, (spread + 1.0) * sentry::HOP_PITCH);
             }
             else if onGround
             {
