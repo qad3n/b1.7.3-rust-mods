@@ -17,7 +17,7 @@ pub(crate) static MACHINE: Machine = Machine
     m_screen: false,
     m_wrench: 1.0,
     m_drop: "advanced_machine",
-    m_passes: &[],
+    m_passes: None,
     m_slots: 1,
 };
 

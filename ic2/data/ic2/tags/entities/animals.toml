@@ -1,0 +1,2 @@
+# the animals TileEntityTeleporter charges the animal rate for
+values = ["minecraft:pig", "minecraft:cow", "minecraft:chicken", "minecraft:sheep", "minecraft:wolf"]

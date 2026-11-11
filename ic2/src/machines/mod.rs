@@ -151,7 +151,8 @@ pub(crate) struct Machine
     // TileEntityBlock.wrenchRate, the chance the wrench gives back the block rather than its drop
     pub(crate) m_wrench: f32,
     pub(crate) m_drop: &'static str,
-    pub(crate) m_passes: &'static [&'static str],
+    // an item tag whose held items the block lets through to their own use instead of opening its screen
+    pub(crate) m_passes: Option<&'static str>,
     pub(crate) m_slots: i32,
 }
 
@@ -220,7 +221,7 @@ impl BlockBehavior for MachineBlock
         }
 
         let passes: bool =
-            player.held().is_some_and(|held| self.m_machine.m_passes.iter().any(|name| held.item.is(name)));
+            self.m_machine.m_passes.is_some_and(|tag| player.held().is_some_and(|held| held.item.tagged(tag)));
         if passes
         {
             return false;

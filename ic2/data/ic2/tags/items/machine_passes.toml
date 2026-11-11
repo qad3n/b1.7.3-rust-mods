@@ -1,0 +1,2 @@
+# BlockMachine lets a held lever be placed on it instead of opening its screen
+values = ["minecraft:lever"]

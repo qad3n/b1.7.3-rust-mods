@@ -31,7 +31,7 @@ const fn machine(name: &'static str, look: Look, wrench: f32, drop: &'static str
         m_screen: screen,
         m_wrench: wrench,
         m_drop: drop,
-        m_passes: &["minecraft:lever"],
+        m_passes: Some("ic2:machine_passes"),
         m_slots: slots,
     }
 }
@@ -46,7 +46,7 @@ pub(crate) static MACHINES: [Machine; 6] = [
         0,
     ),
     machine(
-        "electrolyzer",
+        electrolyzer::NAME,
         lit(
             ["machine_bottom", "machine_top", "extractor_side", "extractor_side"],
             ["machine_bottom", "machine_top", "miner_side", "miner_side"],
@@ -68,7 +68,7 @@ pub(crate) static MACHINES: [Machine; 6] = [
         induction::SLOTS,
     ),
     machine(
-        "mass_fabricator",
+        matter::NAME,
         lit(
             ["machine_bottom", "advanced_machine", "extractor_side", "recycler_top"],
             ["machine_bottom", "advanced_machine", "extractor_side_active", "recycler_top"],
@@ -98,6 +98,7 @@ mod electrolyzer
     pub const RATE: i32 = 10;
     pub const SLOTS: i32 = 2;
     // a cell takes 15000 EU to split and gives 13500 back
+    pub const NAME: &str = "electrolyzer";
     pub const SPLIT: i32 = 15000;
     pub const JOIN: i32 = 13500;
     pub const DRAIN_ABOVE: f64 = 0.7;
@@ -111,6 +112,16 @@ fn bank(world: World, pos: BlockPos) -> Option<Bank>
     [dir::DOWN, dir::UP, dir::WEST, dir::EAST, dir::NORTH, dir::SOUTH]
         .iter()
         .find_map(|face| bankAt(world, dir::step(pos, *face)))
+}
+
+// the electrolyzer job a cell matches with its output and the energy the picked side carries
+fn cellJob(cell: ItemStack, energy: impl Fn(&JobMatch) -> Option<&JobEnergySpec>) -> Option<(ItemStack, i64)>
+{
+    let job: JobMatch = matchJob(electrolyzer::NAME, &[Some(cell)], &[])?;
+    let amount: i64 = energy(&job)?.amount;
+    let output: JobOutput = job.outputs.into_iter().next()?;
+    let made: ItemStack = output.stack.map(|stack| ItemStack { count: output.count, ..ItemStack::fromRaw(stack) })?;
+    Some((made, amount))
 }
 
 // TileEntityElectrolyzer.updateEntity: water cells soak up an MFE's surplus and give it back when it runs low
@@ -135,34 +146,28 @@ fn electrolyze(world: World, pos: BlockPos, state: &mut State)
     let fill: f64 = f64::from(bankEnergy(world, &bank)) / f64::from(bank.m_capacity);
     let mut working: bool = false;
 
-    let canDrain: bool = input.as_ref().is_some_and(|cell| cell.item.is("ic2:water_cell"))
-        && output
-            .as_ref()
-            .is_none_or(|cell| cell.item.is("ic2:electrolyzed_water_cell") && cell.count < stacks::maxStack(cell));
-    if fill >= electrolyzer::DRAIN_ABOVE && canDrain
+    // splitting takes the job the water cell in the input slot matches, its energy in a total cost
+    let split: Option<(ItemStack, i64)> = input.clone().and_then(|cell| cellJob(cell, |job| job.energy_in.as_ref()));
+    if fill >= electrolyzer::DRAIN_ABOVE
+        && let Some((made, cost)) = split.filter(|(made, _)| stacks::fits(&output, made))
     {
         setBankEnergy(world, &bank, bankEnergy(world, &bank) - electrolyzer::RATE);
         state.m_energy += electrolyzer::RATE;
-        if state.m_energy >= electrolyzer::SPLIT
+        if i64::from(state.m_energy) >= cost
         {
-            state.m_energy -= electrolyzer::SPLIT;
+            state.m_energy -= cost as i32;
             stacks::set(world, pos, electrolyzer::IN, input.clone().and_then(|cell| stacks::less(cell, 1)));
-            stacks::set(
-                world,
-                pos,
-                electrolyzer::OUT,
-                Some(stacks::merged(output.clone(), &ItemStack::of("ic2:electrolyzed_water_cell", 1))),
-            );
+            stacks::set(world, pos, electrolyzer::OUT, Some(stacks::merged(output.clone(), &made)));
         }
 
         working = true;
     }
 
+    // joining takes the job the electrolyzed cell in the output slot matches, its energy given back in total
     let input: Option<ItemStack> = world.tileSlot(pos, electrolyzer::IN);
     let output: Option<ItemStack> = world.tileSlot(pos, electrolyzer::OUT);
-    let canPower: bool =
-        input.as_ref().is_none_or(|cell| cell.item.is("ic2:water_cell") && cell.count < stacks::maxStack(cell))
-            && output.as_ref().is_some_and(|cell| cell.item.is("ic2:electrolyzed_water_cell"));
+    let join: Option<(ItemStack, i64)> = output.clone().and_then(|cell| cellJob(cell, |job| job.energy_out.as_ref()));
+    let canPower: bool = join.as_ref().is_some_and(|(made, _)| stacks::fits(&input, made));
     if fill <= electrolyzer::POWER_BELOW && (canPower || state.m_energy > 0)
     {
         if state.m_energy > 0
@@ -171,11 +176,11 @@ fn electrolyze(world: World, pos: BlockPos, state: &mut State)
             state.m_energy -= out;
             setBankEnergy(world, &bank, bankEnergy(world, &bank) + out);
         }
-        else if let Some(cell) = output
+        else if let (Some(cell), Some((made, gain))) = (output, join)
         {
-            state.m_energy += electrolyzer::JOIN;
+            state.m_energy += gain as i32;
             stacks::set(world, pos, electrolyzer::OUT, stacks::less(cell, 1));
-            stacks::set(world, pos, electrolyzer::IN, Some(stacks::merged(input, &ItemStack::of("ic2:water_cell", 1))));
+            stacks::set(world, pos, electrolyzer::IN, Some(stacks::merged(input, &made)));
         }
 
         working = true;
@@ -323,6 +328,7 @@ mod matter
 {
     pub const CAPACITY: i32 = 1100000;
     pub const INPUT: i32 = 512;
+    pub const NAME: &str = "mass_fabricator";
     pub const COST: i32 = 1000000;
     pub const SCRAP_BELOW: i32 = 1000;
     pub const SCRAP: i32 = 5000;
@@ -343,11 +349,16 @@ fn fabricate(world: World, pos: BlockPos, state: &mut State)
         world.playSound(dir::center(pos), &sound("machineMatterLoop"), 1.0, 1.0);
     }
 
+    // the amplifier value of a stack is the fabricator's fuel entry, so other mods can feed it
     if state.m_heat < matter::SCRAP_BELOW
-        && let Some(scrap) = world.tileSlot(pos, matter::AMPLIFIER).filter(|stack| stack.item.is("ic2:scrap"))
+        && let Some(scrap) = world.tileSlot(pos, matter::AMPLIFIER)
     {
-        stacks::set(world, pos, matter::AMPLIFIER, stacks::less(scrap, 1));
-        state.m_heat += matter::SCRAP;
+        let amplifier: i32 = machineFuel(matter::NAME, &scrap, false);
+        if amplifier > 0
+        {
+            stacks::set(world, pos, matter::AMPLIFIER, stacks::less(scrap, 1));
+            state.m_heat += amplifier;
+        }
     }
 
     if state.m_energy >= matter::COST
@@ -489,7 +500,7 @@ struct Special
 
 static SPECIALS: [Special; 5] = [
     Special { m_name: "magnetizer", m_kind: Kind::Magnetizer, m_capacity: magnet::CAPACITY, m_input: magnet::INPUT },
-    Special { m_name: "electrolyzer", m_kind: Kind::Electrolyzer, m_capacity: 0, m_input: 0 },
+    Special { m_name: electrolyzer::NAME, m_kind: Kind::Electrolyzer, m_capacity: 0, m_input: 0 },
     Special
     {
         m_name: "induction_furnace",
@@ -497,7 +508,7 @@ static SPECIALS: [Special; 5] = [
         m_capacity: induction::MAX_HEAT,
         m_input: induction::INPUT,
     },
-    Special { m_name: "mass_fabricator", m_kind: Kind::Matter, m_capacity: matter::CAPACITY, m_input: matter::INPUT },
+    Special { m_name: matter::NAME, m_kind: Kind::Matter, m_capacity: matter::CAPACITY, m_input: matter::INPUT },
     Special { m_name: "tesla_coil", m_kind: Kind::Tesla, m_capacity: tesla::CAPACITY, m_input: tesla::INPUT },
 ];
 
@@ -784,22 +795,26 @@ fn registerPages(ctx: &mut RegisterCtx, special: &Special) -> Result<()>
     {
         Kind::Electrolyzer =>
         {
+            // the electrolyzer works one cell at a time as its bank allows, so its jobs carry no fixed duration
             ctx.machines()
-                .recipe(name)
-                .input(ItemStack::of("ic2:water_cell", 1))
-                .output(ItemStack::of("ic2:electrolyzed_water_cell", 1))
+                .job(name, 0)
+                .input("ic2:water_cell", 1)
+                .output("ic2:electrolyzed_water_cell", 1)
+                .energyIn(crate::energy::KIND, i64::from(electrolyzer::SPLIT), false)
                 .note(&format!("Stores {} EU from an MFE or MFSU above 70%", electrolyzer::SPLIT))
                 .build()?;
             ctx.machines()
-                .recipe(name)
-                .input(ItemStack::of("ic2:electrolyzed_water_cell", 1))
-                .output(ItemStack::of("ic2:water_cell", 1))
+                .job(name, 0)
+                .input("ic2:electrolyzed_water_cell", 1)
+                .output("ic2:water_cell", 1)
+                .energyOut(crate::energy::KIND, i64::from(electrolyzer::JOIN), false)
                 .note(&format!("Gives {} EU back below 30%", electrolyzer::JOIN))
                 .build()
         }
 
         Kind::Matter =>
         {
+            ctx.machines().fuel(name, "ic2:scrap", matter::SCRAP)?;
             ctx.machines()
                 .recipe(name)
                 .output(ItemStack::of("ic2:uu_matter", 1))

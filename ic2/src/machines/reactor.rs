@@ -23,7 +23,7 @@ pub(crate) static MACHINE: Machine = Machine
     m_screen: false,
     m_wrench: 0.8,
     m_drop: "generator",
-    m_passes: &["ic2:reactor_chamber"],
+    m_passes: None,
     m_slots: grid::SLOTS,
 };
 

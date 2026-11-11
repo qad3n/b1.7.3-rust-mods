@@ -349,53 +349,22 @@ const SCRAP_DROPS: [&str; 33] = [
 
 const SCRAP_BOX: &str = "scrap_box";
 
-// the scrap box's drops in the machine registry, one recipe a drop with its share of the 33 picks, so opening a box
-// reads them back and other mods can add their own
-fn registerScrapPages(ctx: &mut RegisterCtx) -> Result<()>
+// the scrap box's drops as a weighted loot table, one pick a box and duplicate rows as extra weight, so opening a box
+// rolls it and other mods add their own drops
+fn registerScrap(ctx: &mut RegisterCtx) -> Result<()>
 {
-    const NAME: &str = SCRAP_BOX;
+    const PICK: i32 = 1;
 
-    ctx.machines().register(NAME, None, &[NAME])?;
-
-    let mut seen: Vec<&str> = Vec::new();
-    for drop in SCRAP_DROPS
-    {
-        if seen.contains(&drop)
-        {
-            continue;
-        }
-
-        seen.push(drop);
-        let picks: usize = SCRAP_DROPS.iter().filter(|other| **other == drop).count();
-        let chance: f32 = picks as f32 / SCRAP_DROPS.len() as f32;
-        ctx.machines()
-            .recipe(NAME)
-            .input(ItemStack::of(own(NAME).as_str(), 1))
-            .chance(ItemStack::of(drop, 1), chance)
-            .build()?;
-    }
-
-    Ok(())
+    let pool: PoolBuilder =
+        SCRAP_DROPS.iter().try_fold(PoolBuilder::new(PICK, PICK), |pool, drop| pool.entry(drop, 1, 1, 1))?;
+    ctx.loot().pool(LootTarget::Chest, SCRAP_BOX, pool.m_spec)
 }
 
-// ItemScrapbox.randomizeDropID over the registered drops, each as likely as its chance
+// ItemScrapbox.randomizeDropID, one roll of the scrap box table
 fn scrapDrop(world: World) -> Option<ItemStack>
 {
-    let recipes: std::rc::Rc<Vec<std::rc::Rc<MachineRecipeView>>> = machineRecipes(SCRAP_BOX);
-    let drops = || recipes.iter().filter_map(|recipe| recipe.outputs.first());
-    let total: f32 = drops().map(|slot| slot.chance).sum();
-    let mut roll: f32 = crate::core::random::float(world) as f32 * total;
-
-    for slot in drops()
-    {
-        roll -= slot.chance;
-        if roll < 0.0
-        {
-            return slot.stacks.first().cloned().map(ItemStack::fromRaw);
-        }
-    }
-
-    None
+    let table: Identifier = Identifier::parse(&own(SCRAP_BOX)).ok()?;
+    rollLoot(&table, i64::from(world.random(i32::MAX))).into_iter().next()
 }
 
 struct ScrapBox;
@@ -504,7 +473,7 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
         "scrap_box",
         ItemSpecBuilder::new().texture(&itemTexture("scrap_box")).maxStack(SCRAP_STACK).behavior(ScrapBox),
     )?;
-    registerScrapPages(ctx)?;
+    registerScrap(ctx)?;
 
     for (color, name) in COLORS.iter().enumerate()
     {
@@ -612,8 +581,3 @@ pub(crate) const FOODS: [(&str, i32); 10] = [
     ("minecraft:cookie", 1),
     ("ic2:filled_tin_can", 2),
 ];
-
-pub(crate) fn foodHeal(stack: &ItemStack) -> Option<i32>
-{
-    FOODS.iter().find(|(name, _)| stack.item.is(name)).map(|(_, heal)| *heal)
-}

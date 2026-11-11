@@ -20,7 +20,7 @@ pub(crate) static MACHINES: [Machine; 2] = [
         m_screen: false,
         m_wrench: 1.0,
         m_drop: "personal_safe",
-        m_passes: &[],
+        m_passes: None,
         m_slots: safe::SLOTS,
     },
     Machine
@@ -36,7 +36,7 @@ pub(crate) static MACHINES: [Machine; 2] = [
         m_screen: false,
         m_wrench: 1.0,
         m_drop: "trade_o_mat",
-        m_passes: &[],
+        m_passes: None,
         m_slots: trade::SLOTS,
     },
 ];

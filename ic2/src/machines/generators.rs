@@ -31,7 +31,7 @@ const fn generator(name: &'static str, look: Look, wrench: f32, drop: &'static s
         m_screen: true,
         m_wrench: wrench,
         m_drop: drop,
-        m_passes: &[],
+        m_passes: None,
         m_slots: slots,
     }
 }
@@ -664,6 +664,14 @@ fn registerPages(ctx: &mut RegisterCtx, source: &Source) -> Result<()>
     let name: &str = source.m_name;
     let rate: i32 = source.m_production;
     ctx.machines().register(name, None, &[name])?;
+
+    if source.m_kind == Kind::Fuel
+    {
+        for (item, ticks) in super::processing::OWN_FUELS
+        {
+            ctx.machines().fuel(name, item, ticks)?;
+        }
+    }
 
     let fuelPage = |ctx: &mut RegisterCtx, item: &str, ticks: i32| -> Result<()>
     {

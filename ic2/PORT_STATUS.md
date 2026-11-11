@@ -3,7 +3,7 @@
 Source: IndustrialCraft 2 v1.00 for b1.7.3 (ModLoader, Forge), `b1.7.3_files/IndustrialCraft2 v1.00.zip`. Its classes were
 remapped from obfuscated beta names to MCP names with tiny-remapper and `b1.7.3_decomp/mappings/b1.7.3-client.tiny`,
 then decompiled with Vineflower into `reference/src` (never committed).
-Target: b1.7.3_rewrite loader API 1.39, one `ic2-1.00.bmod` for client and server.
+Target: b1.7.3_rewrite loader API 1.40, one `ic2-1.00.bmod` for client and server.
 Assets: `python3 -I tools/extract_assets.py "<IndustrialCraft2 v1.00.zip>"` cuts the block, cable and item sheets into
 sprites, copies the guis and armor layers and writes the lang file. The zip has no sounds.
 Build: `./build.sh`. Test: `../../tools/modport/test.sh deploy ports/ic2`.
@@ -40,21 +40,25 @@ What each subsystem hands the loader, so other mods see and extend it without IC
 | Blocks, items, tile entities, entities, screens | every block with its named states, items, tiles, the explosive and laser entities, every gui | `blocks.rs`, `items.rs`, `machines/`, `explosives.rs` |
 | Tags | `c:ores/*`, `c:ingots/*`, `c:dusts/*`, `c:plates/*`, `c:circuits/*`, `c:rubbers`, `c:storage_blocks/*`, `minecraft:logs/leaves/saplings`, IC2's own block, item and entity lists | `data/`, item rows in `items.rs` |
 | Crafting | all shaped and shapeless recipes; ingots, dusts, plates, circuits, rubber, redstone, glowstone, diamond, sticks and glass go in as tags | `recipes.rs` |
-| Smelting and fuels | dust smelting, `mod_IC2.AddFuel` fuels; the iron furnace and generator burn what the fuel registry gives (lava 2000 and the fuel can stay iron furnace only) | `recipes.rs`, `machines/processing.rs` |
-| Machine recipes | macerator, extractor and compressor jobs with tag inputs (`c:ores/*`, `c:ingots/*`, `minecraft:coals`, `minecraft:wool`, `minecraft:sand`, `c:sandstone_blocks`, `c:raw_materials/uranium`); their ticks look jobs up with `machineRecipe`, so another mod's macerator recipe runs in IC2's macerator. The scrap box's drops are its recipes and opening one draws from them. Generator, canner, recycler, electrolyzer, magnetizer, mass fabricator and reactor pages describe the rest | `machines/`, `items.rs` |
+| Smelting and fuels | dust smelting and `mod_IC2.AddFuel` fuels; the iron furnace and generator read `machineFuel` with their own entries (lava 2000, fuel can 720000) over the furnace times | `recipes.rs`, `machines/processing.rs`, `machines/generators.rs` |
+| Machine jobs | macerator, extractor and compressor jobs (tag inputs such as `c:ores/*`, `c:ingots/*`, `minecraft:coals`, `minecraft:wool`, `c:raw_materials/uranium`, EU per tick, duration), canner jobs per food (food plus N tin cans to N filled cans), electrolyzer split (EU in) and join (EU out); every tick asks `matchJob`, so another mod's jobs run in IC2's machines | `machines/processing.rs`, `machines/special.rs` |
+| Machine fuels | canner fuel quality (coalfuel and biofuel cells), mass fabricator amplifier (scrap 5000), read with `machineFuel` | `machines/processing.rs`, `machines/special.rs` |
+| Loot | the scrap box is a weighted chest pool `ic2:scrap_box`, one pick a box, rolled with `rollLoot` | `items.rs` |
+| Pages | generator, recycler, magnetizer, tesla, mass fabricator UU and fuel can pages describe what is not a job | `machines/` |
 | Energy | `ic2:eu` with worth 4, demand and receive on every sink, foreign sinks fed beside cables and generators | `energy/` |
 | Item moves | induction furnace and miner store output through `insertItem` into `c:chests` and personal safes | `machines/special.rs`, `machines/mining.rs` |
 | Lang | `assets/ic2/lang/en_US.lang` | `assets/` |
 
 Not in a registry yet, and why:
 - Ore and rubber tree generation stay IC2's own chunk populate: `ctx.worldgen()` ores draw a flat height range and
-  replace one block, while IC2's copper height is a sum of two draws, and there is no tree feature. Both need a new
-  worldgen spec (a new ABI struct), so they wait for a loader feature.
-- The canner's food and fuel quality tables, the recycler's any-item rule, the electrolyzer's cell swap and the
-  reactor's component rules are logic, not input to output jobs; they only describe themselves in the machine registry.
-- The pump takes buckets from a chest and the Trade-O-Mat pays into chest slots by slot, which `extractItem` cannot
-  pick by item; the IC2 energy net walks IC2's own conductors and only meets other mods through the energy capability.
-- Cells are not fluid containers: the fluid registry has no container entries.
+  replace one block, while IC2's copper height is a sum of two draws, and there is no tree feature.
+- The recycler's any item rule, redstone and glowstone adding a share of the canner's fuel quality, the reactor's
+  component rules and UU-Matter's million EU are rules, not jobs; they describe themselves as pages.
+- The machines' progress and EU draw still run on IC2's per machine rates, which the jobs carry for viewers.
+- The pump fills buckets and cells named per fluid and takes buckets from a chest by slot, and the Trade-O-Mat pays
+  into chest slots: the SDK can neither read a fluid's container items nor extract one chosen item.
+- The IC2 energy net walks IC2's own conductors and meets other mods only through the energy capability.
+- The scrap box drops and the terraformer's plant palette are IC2 data lists, registered (scrap) or placed as is.
 
 ## Loader additions (API 1.33, generic)
 
@@ -62,6 +66,7 @@ Not in a registry yet, and why:
   `crates/modloader/src/blast.rs` and `b173_api/src/world/blast.rs`: mods run their own explosions the way
   `Explosion` does. Used for `ExplosionIC2`, `PointExplosion` and the mining laser.
 - `minecraft:door` block template (`BlockDoor`), used by the reinforced door.
+- API 1.40 (Aether's): machine jobs and `matchJob`, per machine fuels and `machineFuel`, weighted loot pools.
 - SDK only, no API bump: `machineRecipe` / `machineRecipes` (registered machine recipes by machine, cached per
   epoch and content generation), and the loader now seeds item tags `c:ores/*`, `c:storage_blocks/*`, `c:gravels` and
   `minecraft:ice` like their block tags.

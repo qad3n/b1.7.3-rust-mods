@@ -479,14 +479,8 @@ mod pole
     pub const FAR: f32 = 10.0;
 }
 
-const METAL_SHOES: [&str; 6] = [
-    "minecraft:iron_boots",
-    "minecraft:golden_boots",
-    "minecraft:chainmail_boots",
-    "ic2:bronze_boots",
-    "ic2:nano_boots",
-    "ic2:quantum_boots",
-];
+// boots of metal, which a charged iron fence pulls up
+const METAL_SHOES: &str = "ic2:metal_boots";
 
 // the boots armor slot of the player's inventory
 const BOOTS_SLOT: i32 = 36;
@@ -545,8 +539,7 @@ impl BlockBehavior for IronFence
         }
 
         let player: Player = Player { id: info.id };
-        let metal: bool =
-            player.slot(BOOTS_SLOT).is_some_and(|boots| METAL_SHOES.iter().any(|name| boots.item.is(name)));
+        let metal: bool = player.slot(BOOTS_SLOT).is_some_and(|boots| boots.item.tagged(METAL_SHOES));
         let charge: i32 = ctx.stateAt().map_or(0, |state| charge(&state));
         let sneaking: bool = entity.flag(EntityField::Sneaking);
         let [x, mut y, z] = info.motion;

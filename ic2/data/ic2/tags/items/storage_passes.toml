@@ -1,0 +1,2 @@
+# BlockElectric lets a held lever or cable be placed on it instead of opening its screen
+values = ["#ic2:machine_passes", "ic2:copper_cable", "ic2:uninsulated_copper_cable", "ic2:gold_cable", "ic2:insulated_gold_cable", "ic2:double_insulated_gold_cable", "ic2:hv_cable", "ic2:insulated_hv_cable", "ic2:double_insulated_hv_cable", "ic2:quadruple_insulated_hv_cable", "ic2:glass_fibre_cable", "ic2:ultra_low_current_cable"]

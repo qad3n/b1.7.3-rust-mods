@@ -19,7 +19,7 @@ pub(crate) static MACHINE: Machine = Machine
     m_screen: false,
     m_wrench: 1.0,
     m_drop: "teleporter",
-    m_passes: &[],
+    m_passes: None,
     m_slots: 0,
 };
 
@@ -117,11 +117,8 @@ fn weight(info: &EntityInfo) -> i32
         return weight;
     }
 
-    let animal: bool = info.kind.as_ref().is_some_and(|kind|
-    {
-        ["minecraft:pig", "minecraft:cow", "minecraft:chicken", "minecraft:sheep", "minecraft:wolf"]
-            .contains(&kind.to_string().as_str())
-    });
+    let animal: bool =
+        info.kind.as_ref().is_some_and(|kind| tagMembers(RegistryKind::Entity, "ic2:animals").contains(kind));
     if animal { port::ANIMAL } else { port::OTHER }
 }
 

@@ -38,7 +38,7 @@ const fn machine(name: &'static str, look: Look, wrench: f32, drop: &'static str
         m_screen: true,
         m_wrench: wrench,
         m_drop: drop,
-        m_passes: &[],
+        m_passes: None,
         m_slots: slots,
     }
 }
@@ -264,10 +264,12 @@ pub(crate) fn smelted(input: &ItemStack) -> Option<ItemStack>
 }
 
 // the machine registry's first output for the input, so recipes other mods add for a machine run in it too
+// the loader's job for the input, so jobs other mods add for a machine run in it too
 fn registered(machine: &str, input: &ItemStack) -> Option<ItemStack>
 {
-    let recipe: std::rc::Rc<MachineRecipeView> = machineRecipe(machine, std::slice::from_ref(input))?;
-    recipe.outputs.first()?.stacks.first().cloned().map(ItemStack::fromRaw)
+    let job: JobMatch = matchJob(machine, &[Some(input.clone())], &[])?;
+    let output: JobOutput = job.outputs.into_iter().next()?;
+    output.stack.map(|stack| ItemStack { count: output.count, ..ItemStack::fromRaw(stack) })
 }
 
 // TileEntityElectricMachine.getResultFor per machine
@@ -458,27 +460,14 @@ fn electricTick(process: &Process, world: World, pos: BlockPos, work: &mut Work)
     setActive(world, pos, operating);
 }
 
-// TileEntityIronFurnace.getFuelValueFor: lava burns a tenth as long and the fuel can only here, every other fuel as the
-// fuel registry has it, where wood material, sticks, coal and saplings already burn as IC2 counted them
-fn ironFuel(stack: &ItemStack) -> i32
-{
-    const LAVA: i32 = 2000;
-    const FUEL_CAN: i32 = 720000;
+// TileEntityIronFurnace.getFuelValueFor: lava burns a tenth as long and the fuel can only in IC2's burners, as fuel
+// entries of the iron furnace and the generator; every other fuel burns as long as in a furnace
+pub(crate) const OWN_FUELS: [(&str, i32); 2] = [("minecraft:lava_bucket", 2000), ("ic2:fuel_can", 720000)];
 
-    if stack.item.is("minecraft:lava_bucket")
-    {
-        return LAVA;
-    }
+fn ironFuel(stack: &ItemStack) -> i32 { machineFuel("iron_furnace", stack, true) }
 
-    if stack.item.is("ic2:fuel_can")
-    {
-        return FUEL_CAN;
-    }
-
-    fuelTicks(stack)
-}
-
-pub(crate) fn burnValue(stack: &ItemStack) -> i32 { ironFuel(stack) }
+// TileEntityGenerator.gainFuel reads the iron furnace's values through its own fuel entries
+pub(crate) fn burnValue(stack: &ItemStack) -> i32 { machineFuel("generator", stack, true) }
 
 // the iron furnace fuels as recipe viewers list them, an input starting with # is a tag
 pub(crate) const FUELS: [(&str, i32); 7] = [
@@ -631,6 +620,7 @@ mod canning
 
     mod rules
     {
+        pub const NAME: &str = "canning_machine";
         // TileEntityCanner: food takes 50 ticks a can, fuel is pumped in every 100 ticks for 600
         pub const FOOD_TICKS: i32 = 50;
         pub const FUEL_STEP: i32 = 100;
@@ -660,23 +650,33 @@ mod canning
     }
 
     // TileEntityCanner.getFoodValue: half the food's healing, rounded up, as cans
-    fn food(stack: &ItemStack) -> i32
+    fn cans(heal: i32) -> i32
     {
         const HALVES: f64 = 2.0;
 
-        crate::items::foodHeal(stack).map_or(0, |heal| (f64::from(heal) / HALVES).ceil() as i32)
+        (f64::from(heal) / HALVES).ceil() as i32
     }
 
+    // the canning job for a food and the cans beside it: how many cans it fills and how long it takes
+    fn food(world: World, pos: BlockPos, input: &ItemStack) -> Option<(i32, i32)>
+    {
+        let can: Option<ItemStack> = world.tileSlot(pos, slot::CAN);
+        let job: JobMatch = matchJob(rules::NAME, &[Some(input.clone()), can], &[])?;
+        Some((job.outputs.first()?.count, job.duration))
+    }
+
+    // a fuel cell's quality is the canner's fuel entry, redstone and glowstone add a share of what is already in
     fn fuel(stack: &ItemStack, quality: i32) -> i32
     {
-        match stack.item.name().map(|id| id.to_string()).as_deref()
+        let entry: i32 = machineFuel(rules::NAME, stack, false);
+        let share: f64 = match stack.item.name().map(|id| id.to_string()).as_deref()
         {
-            Some("ic2:coalfuel_cell") => rules::COAL_FUEL,
-            Some("ic2:biofuel_cell") => rules::BIO_FUEL,
-            Some("minecraft:redstone") if quality > 0 => (f64::from(quality) * rules::REDSTONE_SHARE) as i32,
-            Some("minecraft:glowstone_dust") if quality > 0 => (f64::from(quality) * rules::GLOWSTONE_SHARE) as i32,
-            _ => 0,
-        }
+            _ if entry > 0 => return entry,
+            Some("minecraft:redstone") => rules::REDSTONE_SHARE,
+            Some("minecraft:glowstone_dust") => rules::GLOWSTONE_SHARE,
+            _ => return 0,
+        };
+        (f64::from(quality) * share) as i32
     }
 
     pub(super) fn possible(world: World, pos: BlockPos, input: &ItemStack, _process: &Process) -> bool
@@ -689,13 +689,14 @@ mod canning
             Mode::Fuel => fuel(input, work.m_fuel) != 0 && world.tileSlot(pos, slot::OUTPUT).is_none(),
             Mode::Food =>
             {
-                let cans: i32 = food(input);
+                let Some((cans, _)) = food(world, pos, input)
+                else
+                {
+                    return false;
+                };
                 let out: Option<ItemStack> = world.tileSlot(pos, slot::OUTPUT);
-                let held: i32 = world.tileSlot(pos, slot::CAN).map_or(0, |can| can.count);
-                let room: bool = out
-                    .as_ref()
-                    .is_none_or(|out| out.item.is("ic2:filled_tin_can") && out.count + cans <= stacks::maxStack(out));
-                cans != 0 && cans <= held && room
+                out.as_ref()
+                    .is_none_or(|out| out.item.is("ic2:filled_tin_can") && out.count + cans <= stacks::maxStack(out))
             }
         }
     }
@@ -709,7 +710,10 @@ mod canning
         {
             Mode::Food =>
             {
-                let length: i32 = world.tileSlot(pos, slot::INPUT).map_or(0, |input| food(&input)) * rules::FOOD_TICKS;
+                let length: i32 = world
+                    .tileSlot(pos, slot::INPUT)
+                    .and_then(|input| food(world, pos, &input))
+                    .map_or(0, |(_, ticks)| ticks);
                 if work.m_progress >= length
                 {
                     work.m_progress = 0;
@@ -752,16 +756,24 @@ mod canning
 
         ctx.machines().register(name, None, &[name])?;
 
+        // a job per food, its cans and ticks from TileEntityCanner, which the tick matches
         for (food, heal) in crate::items::FOODS
         {
-            let cans: i32 = (f64::from(heal) / 2.0).ceil() as i32;
+            let cans: i32 = cans(heal);
+            let ticks: i32 = cans * rules::FOOD_TICKS;
             ctx.machines()
-                .recipe(name)
-                .input(ItemStack::of(food, 1))
-                .input(ItemStack::of("ic2:tin_can", cans))
-                .output(ItemStack::of("ic2:filled_tin_can", cans))
-                .note(&format!("{consume} EU/t, {} ticks", cans * rules::FOOD_TICKS))
+                .job(name, ticks)
+                .input(food, 1)
+                .input("ic2:tin_can", cans)
+                .output("ic2:filled_tin_can", cans)
+                .energyIn(crate::energy::KIND, i64::from(consume), true)
+                .note(&format!("{consume} EU/t, {ticks} ticks"))
                 .build()?;
+        }
+
+        for (cell, value) in FUELS
+        {
+            ctx.machines().fuel(name, cell, value)?;
         }
 
         for (cell, value) in FUELS
@@ -794,7 +806,11 @@ mod canning
             Mode::Food =>
             {
                 work.m_fuel = 0;
-                let cans: i32 = food(&input);
+                let Some((cans, _)) = food(world, pos, &input)
+                else
+                {
+                    return;
+                };
                 let emptied: Option<ItemStack> = match stacks::less(input.clone(), 1)
                 {
                     None if input.item.is("minecraft:mushroom_stew") => Some(ItemStack::of("minecraft:bowl", 1)),
@@ -987,15 +1003,27 @@ pub(crate) fn input(recipe: MachineRecipeBuilder, input: &str) -> MachineRecipeB
     }
 }
 
-// a table machine's jobs in the machine registry, which its tick reads back and recipe viewers show
+// a job's input written as an item, or as a tag when it starts with #
+pub(crate) fn jobInput(job: JobBuilder, input: &str, count: i32) -> JobBuilder
+{
+    match input.strip_prefix('#')
+    {
+        Some(tag) => job.inputTag(tag, count),
+        None => job.input(input, count),
+    }
+}
+
+// a table machine's jobs in the machine registry, which its tick matches and recipe viewers show
 fn registerJobs(ctx: &mut RegisterCtx, process: &Process, jobs: &[Job], rates: &str) -> Result<()>
 {
+    let Rates { m_consume: consume, m_length: length, .. } = process.m_rates;
     ctx.machines().register(process.m_name, None, &[process.m_name])?;
 
     for job in jobs
     {
-        input(ctx.machines().recipe(process.m_name), job.m_input)
-            .output(ItemStack::of(job.m_output, job.m_count))
+        jobInput(ctx.machines().job(process.m_name, length), job.m_input, 1)
+            .output(job.m_output, job.m_count)
+            .energyIn(crate::energy::KIND, i64::from(consume), true)
             .note(rates)
             .build()?;
     }
@@ -1013,7 +1041,17 @@ fn registerPages(ctx: &mut RegisterCtx, process: &Process) -> Result<()>
 
     match process.m_kind
     {
-        Kind::IronFurnace | Kind::Furnace => ctx.machines().workstation("minecraft:smelting", process.m_name),
+        Kind::IronFurnace =>
+        {
+            ctx.machines().register(process.m_name, None, &[process.m_name])?;
+            for (item, ticks) in OWN_FUELS
+            {
+                ctx.machines().fuel(process.m_name, item, ticks)?;
+            }
+
+            ctx.machines().workstation("minecraft:smelting", process.m_name)
+        }
+        Kind::Furnace => ctx.machines().workstation("minecraft:smelting", process.m_name),
         Kind::Macerator => registerJobs(ctx, process, &MACERATOR, &rates),
         Kind::Extractor => registerJobs(ctx, process, &EXTRACTOR, &rates),
         Kind::Compressor => registerJobs(ctx, process, &COMPRESSOR, &rates),

@@ -20,7 +20,7 @@ const fn machine(name: &'static str, look: Look, slots: i32) -> Machine
         m_screen: true,
         m_wrench: 1.0,
         m_drop: "machine",
-        m_passes: &[],
+        m_passes: None,
         m_slots: slots,
     }
 }
@@ -75,9 +75,17 @@ pub(crate) fn drillHarvests(block: i32, diamond: bool) -> bool
 // a still source block, as the miner and pump only take metadata 0 liquid
 fn source(world: World, pos: BlockPos) -> bool { world.fluidAt(pos).is_some_and(|fluid| fluid.source) }
 
+const WATER: &str = "minecraft:water";
+const LAVA: &str = "minecraft:lava";
+
 fn fluid(block: i32) -> Option<&'static str>
 {
-    ["minecraft:water", "minecraft:lava"].into_iter().find(|tag| blockTagged(block, tag))
+    if blockTagged(block, WATER)
+    {
+        return Some(WATER);
+    }
+
+    blockTagged(block, LAVA).then_some(LAVA)
 }
 
 // TileEntityMiner.distributeDrop: into a chest or personal safe next to the machine, else onto the ground

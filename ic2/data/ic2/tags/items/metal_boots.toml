@@ -1,0 +1,2 @@
+# boots a charged iron fence lifts, BlockPoleFence's metal boot list
+values = ["minecraft:iron_boots", "minecraft:golden_boots", "minecraft:chainmail_boots", "ic2:bronze_boots", "ic2:nano_boots", "ic2:quantum_boots"]

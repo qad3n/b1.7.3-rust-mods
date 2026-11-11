@@ -15,20 +15,6 @@ mod slot
 // BlockElectric.setHardness
 const HARDNESS: f32 = 1.5;
 const STORAGE_SLOTS: i32 = 2;
-const PASSES: &[&str] = &[
-    "minecraft:lever",
-    "ic2:copper_cable",
-    "ic2:uninsulated_copper_cable",
-    "ic2:gold_cable",
-    "ic2:insulated_gold_cable",
-    "ic2:double_insulated_gold_cable",
-    "ic2:hv_cable",
-    "ic2:insulated_hv_cable",
-    "ic2:double_insulated_hv_cable",
-    "ic2:quadruple_insulated_hv_cable",
-    "ic2:glass_fibre_cable",
-    "ic2:ultra_low_current_cable",
-];
 
 const fn look(bottom: &'static str, top: &'static str, side: &'static str, front: &'static str) -> Look
 {
@@ -45,7 +31,7 @@ const fn block(name: &'static str, look: Look, drop: &'static str, screen: bool,
         m_screen: screen,
         m_wrench: 1.0,
         m_drop: drop,
-        m_passes: PASSES,
+        m_passes: Some("ic2:storage_passes"),
         m_slots: slots,
     }
 }
