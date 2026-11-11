@@ -542,6 +542,10 @@ mod furnace
     pub const HARDNESS: f32 = 7.0;
     pub const MAX_STACK: i32 = 64;
     pub const LIGHT: f32 = 1.0;
+    // beta's wooden slab is the stone slab's third kind
+    pub const WOODEN_SLAB: i32 = 2;
+    pub const SLAB_FUEL: i32 = 150;
+    pub const TOOL_FUEL: i32 = 200;
 }
 
 #[derive(Serialize, Deserialize, Default, Clone, Copy, PartialEq)]
@@ -552,38 +556,24 @@ struct Burn
     m_cook: i32,
 }
 
-// TileEntityTFCinderFurnace.getItemBurnTime with beta's fuels
+// TileEntityTFCinderFurnace.getItemBurnTime is 1.7's furnace fuel, beta's furnace answers everything but the wooden
+// slab and wooden tools it added
 fn burnTime(stack: &ItemStack) -> i32
 {
     let name: String = stack.item.name().map(|name| name.to_string()).unwrap_or_default();
-    let wooden: [&str; 10] = [
-        "minecraft:planks",
-        "minecraft:log",
-        "minecraft:fence",
-        "minecraft:oak_stairs",
-        "minecraft:chest",
-        "minecraft:crafting_table",
-        "minecraft:bookshelf",
-        "minecraft:noteblock",
-        "minecraft:jukebox",
-        "minecraft:trapdoor",
+    let tools: [&str; 5] = [
+        "minecraft:wooden_pickaxe",
+        "minecraft:wooden_axe",
+        "minecraft:wooden_shovel",
+        "minecraft:wooden_sword",
+        "minecraft:wooden_hoe",
     ];
-
-    let twilightWood: bool =
-        name.starts_with("twilightforest:") && ["_log", "_planks", "wood"].iter().any(|part| name.contains(part));
 
     match name.as_str()
     {
-        "minecraft:stick" | "minecraft:sapling" => 100,
-        "minecraft:coal" => 1600,
-        "minecraft:lava_bucket" => 20000,
-        "minecraft:wooden_pickaxe"
-        | "minecraft:wooden_axe"
-        | "minecraft:wooden_shovel"
-        | "minecraft:wooden_sword"
-        | "minecraft:wooden_hoe" => 200,
-        _ if wooden.contains(&name.as_str()) || twilightWood => 300,
-        _ => 0,
+        "minecraft:stone_slab" if stack.damage == furnace::WOODEN_SLAB => furnace::SLAB_FUEL,
+        _ if tools.contains(&name.as_str()) => furnace::TOOL_FUEL,
+        _ => fuelTicks(stack),
     }
 }
 
@@ -761,7 +751,7 @@ fn furnaceTick(ctx: &mut BlockCtx)
                 }
                 else
                 {
-                    fuel.item.is("minecraft:lava_bucket").then(|| ItemStack::of("minecraft:bucket", 1))
+                    containerItem(&fuel)
                 };
                 let _ = world.setTileSlot(pos, furnace::FUEL, left);
             }
