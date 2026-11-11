@@ -1,4 +1,4 @@
-use super::{dropAt, killer, showBar};
+use super::{killer, showBar};
 use crate::entities::ai::{eyes, face};
 use crate::math::look;
 use crate::models::{Program, bipedPose, tf_snow_queen};
@@ -575,26 +575,6 @@ impl EntityBehavior for SnowQueen
             return;
         }
 
-        let bow: &str = if world.random(2) == 0
-        {
-            item::TRIPLE_BOW
-        }
-        else
-        {
-            item::SEEKER_BOW
-        };
-        dropAt(world, info.pos, bow, 1);
-
-        for _ in 0..queen::ICE_DROPS_MIN + world.random(queen::ICE_DROPS_SPREAD)
-        {
-            dropAt(world, info.pos, "minecraft:ice", 7);
-        }
-
-        for _ in 0..queen::SNOW_DROPS_MIN + world.random(queen::SNOW_DROPS_SPREAD)
-        {
-            dropAt(world, info.pos, "minecraft:snowball", 16);
-        }
-
         super::conquer(world, info.pos);
     }
 
@@ -664,6 +644,27 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         },
         Some(Rc::new(SnowQueen)),
     )?;
+
+    // one of the two bows, stacks of ice and snowballs, as loot pools of the queen
+    let pools: [PoolBuilder; 3] = [
+        PoolBuilder::new(1, 1).entry(item::TRIPLE_BOW, 1, 1, 1)?.entry(item::SEEKER_BOW, 1, 1, 1)?,
+        PoolBuilder::new(queen::ICE_DROPS_MIN, queen::ICE_DROPS_MIN + queen::ICE_DROPS_SPREAD - 1).entry(
+            "minecraft:ice",
+            1,
+            7,
+            7,
+        )?,
+        PoolBuilder::new(queen::SNOW_DROPS_MIN, queen::SNOW_DROPS_MIN + queen::SNOW_DROPS_SPREAD - 1).entry(
+            "minecraft:snowball",
+            1,
+            16,
+            16,
+        )?,
+    ];
+    for pool in pools
+    {
+        ctx.loot().pool(LootTarget::Entity, NAME, pool.m_spec)?;
+    }
     ctx.entities().register(
         SHIELD,
         EntitySpec

@@ -1,4 +1,4 @@
-use super::{dropAt, killer, showBar};
+use super::{killer, showBar};
 use crate::math::look;
 use crate::models::{Program, tf_hydra, tf_hydra_head, tf_hydra_mortar, tf_hydra_neck};
 use crate::names::item;
@@ -221,6 +221,8 @@ const SWAY: [(f32, f32); HEADS] =
 
 mod hydra
 {
+    // EntityTFHydra.dropFewItems, five to seven stacks of chops
+    pub const CHOP_STACKS: [i32; 2] = [5, 7];
     pub const HEALTH: i32 = 360;
     pub const BLOOD_DROPS: [i32; 2] = [7, 10];
     pub const HEALING_AFTER: i32 = 1000;
@@ -1368,11 +1370,6 @@ impl EntityBehavior for Hydra
 
         if world.isAuthority()
         {
-            for _ in 0..world.random(3) + 5
-            {
-                dropAt(world, info.pos, item::HYDRA_CHOP, 5);
-            }
-
             super::conquer(world, info.pos);
         }
 
@@ -1695,6 +1692,11 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         },
         Some(Rc::new(Hydra)),
     )?;
+
+    // five to seven stacks of five hydra chops, a loot pool of the hydra
+    let chops: PoolBuilder =
+        PoolBuilder::new(hydra::CHOP_STACKS[0], hydra::CHOP_STACKS[1]).entry(item::HYDRA_CHOP, 1, 5, 5)?;
+    ctx.loot().pool(LootTarget::Entity, NAME, chops.m_spec)?;
     for (name, label, size, model, head) in [
         (HEAD, "Hydra Head", 4.0, tf_hydra_head::model as fn() -> EntityModelSpec, true),
         (NECK, "Hydra Neck", 2.0, tf_hydra_neck::model as fn() -> EntityModelSpec, false),
