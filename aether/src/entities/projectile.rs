@@ -2,6 +2,7 @@ use crate::damage::kind;
 use crate::models::Program;
 use b173_api::math::{length, sub};
 use b173_api::prelude::*;
+use b173_api::terrain::Random;
 
 // a shot the Aether fires: how it flies, what it does on a hit and how it looks
 pub(crate) struct Shot
@@ -238,6 +239,54 @@ struct Projectile
     m_shot: &'static Shot,
 }
 
+mod flame
+{
+    // EntityPhoenixArrow.onUpdate trails two flames a tick in flight and one every fifth tick once stuck
+    pub const FLYING: i32 = 2;
+    pub const STUCK_EVERY: f64 = 5.0;
+    pub const STILL: f64 = 1.0e-3;
+    pub const SPREAD: f64 = 5.0;
+    pub const SPREAD_Z: f64 = 3.0;
+}
+
+thread_local!
+{
+    static GAUSSIAN: Random = Random::withSeed(0);
+}
+
+// burning shots trail flames on the client, as the source's particles are drawn only there
+fn trail(shot: &Shot, entity: Entity, info: &EntityInfo)
+{
+    if shot.m_burn <= 0.0
+    {
+        return;
+    }
+
+    let still: bool = length(info.motion) < flame::STILL;
+    let count: i32 = if still
+    {
+        i32::from(entity.field(EntityField::TicksExisted) % flame::STUCK_EVERY == 0.0)
+    }
+    else
+    {
+        flame::FLYING
+    };
+
+    for _ in 0..count
+    {
+        let jitter: [f64; 3] = GAUSSIAN.with(|random|
+        {
+            [
+                random.nextGaussian() / flame::SPREAD,
+                random.nextGaussian() / flame::SPREAD,
+                random.nextGaussian() / flame::SPREAD_Z,
+            ]
+        });
+        let at: [f64; 3] = [info.pos[0] + jitter[0], info.pos[1] + jitter[1], info.pos[2] + jitter[2]];
+        entity.world.particle("flame", at, [0.0; 3]);
+    }
+}
+
 // the shot is done: lightning or a blast where it landed, then gone
 fn land(shot: &Shot, entity: Entity, at: [f64; 3])
 {
@@ -308,6 +357,7 @@ impl EntityBehavior for Projectile
     {
         if !entity.world.isAuthority()
         {
+            trail(self.m_shot, entity, info);
             return;
         }
 
