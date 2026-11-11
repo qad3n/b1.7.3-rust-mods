@@ -1,7 +1,7 @@
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 // EntityPlayer.health starts at twenty half hearts, life shards add two each
 pub const BASE_HEALTH: i32 = 20;
@@ -9,9 +9,15 @@ pub const SHARD_HEALTH: i32 = 2;
 
 mod inebriation
 {
-    // EffectInebriation as darts, needles and poison buckets give it
+    // PotionInebriation as darts, needles and poison buckets give it, with its hud colour and inventory icon
+    pub const NAME: &str = "inebriation";
+    pub const EFFECT: &str = "aether:inebriation";
+    pub const ICON: &str = "aether:gui/inventory/inebriation";
+    pub const COLOR: u32 = 0x51297B;
     pub const TICKS: i32 = 500;
+    // PotionInebriation.performEffect takes one health every fifty ticks
     pub const DAMAGE_EVERY: i32 = 50;
+    pub const DAMAGE: i32 = -1;
     // PotionInebriation.distractEntity: a gaussian push and turn, each smoothed into the last
     pub const PUSH: f64 = 0.1;
     pub const TURN: f64 = std::f64::consts::FRAC_PI_4;
@@ -21,39 +27,47 @@ mod inebriation
     pub const SPITS: i32 = 2;
     // red dye, item 351 metadata 1, whose icon bits the poisoned spit
     pub const SPIT: &str = "iconcrack_351_1";
-    pub const CHANNEL: &str = "aether_poison";
 }
 
 thread_local! {
-    // poisoned entity by dimension and id, with the ticks left
-    static POISONED: RefCell<HashMap<(i32, i32), i32>> = RefCell::new(HashMap::new());
-    // the local player's poison on a multiplayer client, told by the server
-    static LOCAL_POISON: Cell<i32> = const { Cell::new(0) };
+    // entities the Aether poisoned by dimension and id, followed until the loader's effect runs out
+    static POISONED: RefCell<HashSet<(i32, i32)>> = RefCell::new(HashSet::new());
     // PotionInebriation keeps one push and one turn for every poisoned entity
     static DRIFT: Cell<(f64, f64)> = const { Cell::new((0.0, 0.0)) };
     static GAUSSIAN: Random = Random::withSeed(0);
 }
 
-fn tellClient(entity: Entity, ticks: i32)
-{
-    let isPlayer: bool = entity.info().is_some_and(|info| info.player.is_some());
-    if isPlayer && entity.world.isAuthority()
-    {
-        let _ = send(inebriation::CHANNEL, Target::Player(entity.id), &ticks);
-    }
-}
+fn poisoned(entity: Entity) -> bool { entity.effectLevel(inebriation::EFFECT).is_some() }
 
 pub fn poison(entity: Entity)
 {
-    POISONED.with(|poisoned| poisoned.borrow_mut().insert((entity.world.dimension, entity.id), inebriation::TICKS));
-    tellClient(entity, inebriation::TICKS);
+    if !entity.world.isAuthority()
+    {
+        return;
+    }
+
+    if let Err(error) = entity.addEffect(inebriation::EFFECT, 0, inebriation::TICKS)
+    {
+        warn(&format!("inebriation: {error}"));
+        return;
+    }
+
+    POISONED.with(|poisoned| poisoned.borrow_mut().insert((entity.world.dimension, entity.id)));
 }
 
 // the remedy bucket and the white apple cure it
 pub fn cure(entity: Entity)
 {
+    if !entity.world.isAuthority()
+    {
+        return;
+    }
+
+    if let Err(error) = entity.removeEffect(inebriation::EFFECT)
+    {
+        warn(&format!("inebriation cure: {error}"));
+    }
     POISONED.with(|poisoned| poisoned.borrow_mut().remove(&(entity.world.dimension, entity.id)));
-    tellClient(entity, 0);
 }
 
 // PotionInebriation.distractEntity: the push sways the walk, the turn shakes the view
@@ -94,53 +108,32 @@ fn localPoison()
         return;
     };
     let entity: Entity = Entity { world: World { dimension: info.world }, id: player.id };
-    let ticks: i32 = if entity.world.isAuthority()
-    {
-        POISONED.with(|poisoned| poisoned.borrow().get(&(info.world, player.id)).copied()).unwrap_or(0)
-    }
-    else
-    {
-        let left: i32 = LOCAL_POISON.get();
-        LOCAL_POISON.set((left - 1).max(0));
-        left
-    };
-    if ticks > 0
+    if poisoned(entity)
     {
         distract(entity, &info);
     }
 }
 
-// PotionInebriation.performEffect for every poisoned entity once a tick on the side that owns the world
+// PotionInebriation.performEffect for every entity the Aether poisoned, the loader's effect deals the damage
 fn tick()
 {
-    let current: Vec<((i32, i32), i32)> =
-        POISONED.with(|poisoned| poisoned.borrow().iter().map(|(key, ticks)| (*key, *ticks)).collect());
-    for ((dimension, id), ticks) in current
+    let current: Vec<(i32, i32)> = POISONED.with(|poisoned| poisoned.borrow().iter().copied().collect());
+    for (dimension, id) in current
     {
         let entity: Entity = Entity { world: World { dimension }, id };
-        let alive: bool = entity.info().is_some_and(|info| info.alive && info.health.unwrap_or(0) > 0);
-        if !alive || ticks <= 0
+        let living: Option<EntityInfo> = entity.info().filter(|info| info.alive && info.health.unwrap_or(0) > 0);
+        let Some(info) = living.filter(|_| poisoned(entity))
+        else
         {
-            cure(entity);
+            POISONED.with(|poisoned| poisoned.borrow_mut().remove(&(dimension, id)));
             continue;
-        }
-        if !entity.world.isAuthority()
+        };
+
+        if info.player.is_none()
         {
-            continue;
+            distract(entity, &info);
         }
-        if ticks % inebriation::DAMAGE_EVERY == 0
-        {
-            entity.damage(1, None);
-        }
-        if let Some(info) = entity.info()
-        {
-            if info.player.is_none()
-            {
-                distract(entity, &info);
-            }
-            spit(entity, &info);
-        }
-        POISONED.with(|poisoned| poisoned.borrow_mut().insert((dimension, id), ticks - 1));
+        spit(entity, &info);
     }
 }
 
@@ -297,6 +290,14 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             localPoison();
         }
     })?;
-    ctx.channels().register::<i32>(inebriation::CHANNEL, Direction::ToClient, |ticks, _| LOCAL_POISON.set(ticks))?;
+    let effect: EffectSpec = EffectSpec {
+        color: inebriation::COLOR,
+        beneficial: false,
+        icon: Some(inebriation::ICON.to_owned()),
+        modifiers: Vec::new(),
+        interval: inebriation::DAMAGE_EVERY,
+        amount: inebriation::DAMAGE,
+    };
+    ctx.effects().register(inebriation::NAME, effect)?;
     Ok(())
 }
