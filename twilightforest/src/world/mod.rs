@@ -1,28 +1,28 @@
-pub mod biomes;
+pub(crate) mod biomes;
 mod caves;
 mod decorate;
-pub mod features;
+pub(crate) mod features;
 mod flora;
-pub mod generate;
+pub(crate) mod generate;
 mod hollow;
 mod layers;
-pub mod noise;
+pub(crate) mod noise;
 mod rainbow;
 mod ruins;
-pub mod scatter;
-pub mod structures;
-pub mod terrain;
-pub mod trees;
-pub mod vanilla;
+pub(crate) mod scatter;
+pub(crate) mod structures;
+pub(crate) mod terrain;
+pub(crate) mod trees;
+pub(crate) mod vanilla;
 mod winter;
 
 use b173_api::prelude::*;
 
-pub const DIMENSION: &str = "twilight_forest";
-pub const DIMENSION_ID: &str = "twilightforest:twilight_forest";
+pub(crate) const DIMENSION: &str = "twilight_forest";
+pub(crate) const DIMENSION_ID: &str = "twilightforest:twilight_forest";
 // TFWorld.CHUNKHEIGHT, structures such as the final castle build up to it while players keep beta's build limit
-pub const WORLD_HEIGHT: i32 = 256;
-pub const BUILD_LIMIT: i32 = 128;
+pub(crate) const WORLD_HEIGHT: i32 = 256;
+pub(crate) const BUILD_LIMIT: i32 = 128;
 
 mod sky
 {
@@ -40,7 +40,7 @@ fn biomeColumns(chunk: &ChunkInfo) -> ChunkBiomes
     ChunkBiomes { biomes: biomes::chunk(chunk.seed, chunk.x, chunk.z).to_vec() }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &biomes::BIOMES
     {
@@ -58,6 +58,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             },
         )?;
     }
+
     let twilight: Dimension = ctx.dimensions().register(
         DIMENSION,
         DimensionSpec
@@ -76,6 +77,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             music: None,
         },
     )?;
+
     let names: Vec<&str> = biomes::BIOMES.iter().map(|row| row.m_name).collect();
     twilight
         .height(WORLD_HEIGHT, BUILD_LIMIT)?
@@ -83,12 +85,15 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         .terrain(terrain::generate)?
         .generator(decorate::populate)?
         .spawns(crate::entities::spawns::possible)?;
+
     if let Some(seed) = crate::config::seed()
     {
         twilight.seed(seed)?;
     }
+
     features::registerCommand(ctx)?;
     structures::register(ctx)?;
+
     // each side pins its own sky, again whenever the dimension's numeric id changes with a new server
     ctx.events().on::<TickPost>(Priority::Normal, |_|
     {
@@ -96,12 +101,14 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         if PINNED.get() != current
         {
             PINNED.set(current);
+
             if let Some(numeric) = current
             {
                 World { dimension: numeric }.setSkyTime(Some(sky::TIME));
             }
         }
     })?;
+
     Ok(())
 }
 
@@ -110,9 +117,9 @@ thread_local!
     static PINNED: std::cell::Cell<Option<i32>> = const { std::cell::Cell::new(None) };
 }
 
-pub fn dimension() -> Option<i32>
+pub(crate) fn dimension() -> Option<i32>
 {
     Identifier::parse(DIMENSION_ID).ok().and_then(|id| b173_api::resolve(RegistryKind::Dimension, &id).ok())
 }
 
-pub fn isTwilight(world: World) -> bool { dimension() == Some(world.dimension) }
+pub(crate) fn isTwilight(world: World) -> bool { dimension() == Some(world.dimension) }

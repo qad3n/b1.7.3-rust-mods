@@ -71,6 +71,7 @@ fn syncProgress()
     {
         return;
     }
+
     for player in world.players()
     {
         let gates: u64 = progress::earned(player);
@@ -78,17 +79,19 @@ fn syncProgress()
         {
             continue;
         }
+
         if let Err(error) = send(PROGRESS_CHANNEL, Target::Player(player.id), &Earned { m_gates: gates })
         {
             warn(&format!("progress sync: {}", error.0));
             continue;
         }
+
         SENT.with(|sent| sent.borrow_mut().insert(player.id, gates));
     }
 }
 
 // TFGenericPacketHandler.makeAreaProtectionPacket, the refused player learns the guarded box
-pub fn showBox(player: Player, bounds: StructureBox)
+pub(crate) fn showBox(player: Player, bounds: StructureBox)
 {
     let message: Guarded = Guarded { m_min: bounds.m_min, m_max: bounds.m_max };
     if let Err(error) = send(BOX_CHANNEL, Target::Player(player.id), &message)
@@ -121,10 +124,12 @@ fn effect(world: World, biome: Biome, random: &Random, at: [i32; 2], span: [i32;
     let precise: f32 = ticks + partial;
     let whole: i32 = ticks as i32;
     let alpha: f32 = fade * tuning::FADE_SPAN + tuning::FADE_BASE;
+
     let column = |texture: &'static str, color: [f32; 4], scroll: [f32; 3], span: [i32; 2]|
     {
         Some(Column { m_texture: texture, m_color: color, m_scroll: scroll, m_span: span })
     };
+
     match biome
     {
         Biome::Swamp =>
@@ -134,6 +139,7 @@ fn effect(world: World, biome: Biome, random: &Random, at: [i32; 2], span: [i32;
             let tint: [f32; 3] = [0, 1, 2].map(|_| random.nextFloat() * 0.3);
             column(texture::MOSQUITOES, [tint[0], tint[1], tint[2], 1.0], [0.0, u, v], span)
         }
+
         Biome::FireSwamp =>
         {
             let count: f32 = -((whole & 1023) as f32 + partial) / 1024.0;
@@ -142,18 +148,21 @@ fn effect(world: World, biome: Biome, random: &Random, at: [i32; 2], span: [i32;
             let bright: f32 = random.nextFloat() * 0.2 + 0.8;
             column(texture::ASHES, [bright, bright, bright, alpha], [count, u, v], span)
         }
+
         Biome::DarkForest | Biome::DarkForestCenter =>
         {
             if random.nextIntBounded(2) != 0
             {
                 return None;
             }
+
             let top: i32 = span[1].min(world.height(at[0], at[1]));
             let count: f32 = -((whole & 511) as f32 + partial) / 512.0;
             let v: f32 = random.nextFloat() + precise * 0.01 * gaussian(random);
             let shade: f32 = random.nextFloat();
             column(texture::DARK_STREAM, [1.0, 1.0, 1.0, alpha * shade], [count, 0.0, v], [span[0].min(top), top])
         }
+
         Biome::Highlands | Biome::Thornlands | Biome::FinalPlateau =>
         {
             let [x, z] = at;
@@ -164,6 +173,7 @@ fn effect(world: World, biome: Biome, random: &Random, at: [i32; 2], span: [i32;
             let (u, v): (f32, f32) = (random.nextFloat(), random.nextFloat());
             column(texture::BIG_RAIN, [1.0, 1.0, 1.0, alpha], [count, u, v], span)
         }
+
         _ =>
         {
             let count: f32 = ((whole & 511) as f32 + partial) / 512.0;
@@ -194,12 +204,14 @@ fn quad(ops: &mut Vec<ModelOp>, at: [i32; 2], sides: [f32; 2], camera: [f64; 3],
 {
     let [count, u, v] = column.m_scroll;
     let [low, high] = column.m_span;
+
     let corner = |side: f32, y: i32, edge: f32|
     {
         let x: f32 = (f64::from(at[0]) + 0.5 - camera[0]) as f32 + side * sides[0];
         let z: f32 = (f64::from(at[1]) + 0.5 - camera[2]) as f32 + side * sides[1];
         [x, (f64::from(y) - camera[1]) as f32, z, edge + u, y as f32 / 4.0 + count + v]
     };
+
     ops.push(ModelOp::Color(column.m_color));
     ops.push(ModelOp::Quads(vec![
         corner(-1.0, low, 0.0),
@@ -234,8 +246,10 @@ fn lockedBiomes(world: World, info: &EntityInfo, camera: [f64; 3], frame: [f32; 
     {
         return;
     }
+
     let span: [i32; 2] = spanAround(info.pos[1].floor() as i32);
     let mut columns: Vec<([i32; 2], [f32; 2], Column)> = Vec::new();
+
     for z in player[1] - tuning::RANGE..=player[1] + tuning::RANGE
     {
         for x in player[0] - tuning::RANGE..=player[0] + tuning::RANGE
@@ -246,17 +260,22 @@ fn lockedBiomes(world: World, info: &EntityInfo, camera: [f64; 3], frame: [f32; 
             {
                 continue;
             };
+
             let random: Random = columnRandom(x, z);
             let shown: Option<Column> =
                 effect(world, biome, &random, [x, z], span, [frame[0], frame[1], fade([x, z], info.pos)]);
+
             if let Some(column) = shown.filter(|column| column.m_span[0] != column.m_span[1])
             {
                 columns.push(([x, z], sides, column));
             }
         }
     }
+
     columns.sort_by_key(|(_, _, column)| column.m_texture);
+
     let mut bound: Option<&str> = None;
+
     for (at, sides, column) in &columns
     {
         if bound != Some(column.m_texture)
@@ -264,6 +283,7 @@ fn lockedBiomes(world: World, info: &EntityInfo, camera: [f64; 3], frame: [f32; 
             ops.push(ModelOp::Texture(column.m_texture.to_owned()));
             bound = Some(column.m_texture);
         }
+
         quad(ops, *at, *sides, camera, column);
     }
 }
@@ -280,9 +300,12 @@ fn lockedStructure(guarded: Guarded, info: &EntityInfo, camera: [f64; 3], frame:
     {
         return;
     }
+
     ops.push(ModelOp::Texture(texture::SPARKLES.to_owned()));
+
     let precise: f32 = frame[0] + frame[1];
     let count: f32 = ((frame[0] as i32 & 511) as f32 + frame[1]) / 512.0;
+
     for z in (player[1] - tuning::RANGE).max(guarded.m_min[2])..=(player[1] + tuning::RANGE).min(guarded.m_max[2])
     {
         for x in (player[0] - tuning::RANGE).max(guarded.m_min[0])..=(player[0] + tuning::RANGE).min(guarded.m_max[0])
@@ -292,10 +315,12 @@ fn lockedStructure(guarded: Guarded, info: &EntityInfo, camera: [f64; 3], frame:
             {
                 continue;
             };
+
             let random: Random = columnRandom(x, z);
             let u: f32 = random.nextFloat() + precise * 0.01 * gaussian(&random);
             let v: f32 = random.nextFloat() + precise * 0.01 * gaussian(&random);
             let alpha: f32 = (fade([x, z], info.pos) * tuning::FADE_SPAN + tuning::FADE_BASE) * random.nextFloat();
+
             let column: Column = Column
             {
                 m_texture: texture::SPARKLES,
@@ -320,6 +345,7 @@ fn protectionBox(guarded: Guarded, age: f32, camera: [f64; 3], ops: &mut Vec<Mod
         [0, 1, 2].map(|axis| (f64::from(guarded.m_max[axis] + 1) - camera[axis]) as f32 + tuning::BOX_INFLATE);
     let [x0, y0, z0] = low;
     let [x1, y1, z1] = high;
+
     let face = |corners: [[f32; 3]; 4], width: f32, height: f32|
     {
         let uv: [[f32; 2]; 4] = [[0.0, 0.0], [width, 0.0], [width, height], [0.0, height]];
@@ -328,8 +354,10 @@ fn protectionBox(guarded: Guarded, age: f32, camera: [f64; 3], ops: &mut Vec<Mod
         {
             *vertex = [x, y, z, u + scroll, v + scroll];
         }
+
         vertices
     };
+
     let (w, h, d): (f32, f32, f32) = (x1 - x0, y1 - y0, z1 - z0);
     let faces: [[[f32; 5]; 4]; 6] = [
         face([[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]], w, h),
@@ -347,6 +375,7 @@ fn protectionBox(guarded: Guarded, age: f32, camera: [f64; 3], ops: &mut Vec<Mod
 fn render(partial: f32, camera: [f64; 3]) -> Vec<ModelOp>
 {
     let mut ops: Vec<ModelOp> = Vec::new();
+
     let Some(info) = localPlayer().and_then(Player::info)
     else
     {
@@ -357,9 +386,12 @@ fn render(partial: f32, camera: [f64; 3]) -> Vec<ModelOp>
     {
         return ops;
     }
+
     let ticks: f32 = world.time() as f32;
+
     ops.extend([ModelOp::Normal([0.0, 1.0, 0.0]), ModelOp::Lighting(false), ModelOp::Blend(true)]);
     lockedBiomes(world, &info, camera, [ticks, partial], &mut ops);
+
     if let Some((guarded, since)) = BOX.get()
     {
         let age: f32 = (world.time() - since) as f32 + partial;
@@ -373,18 +405,21 @@ fn render(partial: f32, camera: [f64; 3]) -> Vec<ModelOp>
             BOX.set(None);
         }
     }
+
     ops.extend([ModelOp::Color([1.0; 4]), ModelOp::Blend(false), ModelOp::Lighting(true)]);
     ops
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.channels().register::<Earned>(PROGRESS_CHANNEL, Direction::ToClient, |earned, _| GATES.set(earned.m_gates))?;
+
     ctx.channels().register::<Guarded>(BOX_CHANNEL, Direction::ToClient, |guarded, _|
     {
         let now: i64 = localPlayer().and_then(Player::info).map_or(0, |info| World { dimension: info.world }.time());
         BOX.set(Some((guarded, now)));
     })?;
+
     ctx.screens().worldRender(render)?;
     ctx.events().on::<TickPost>(Priority::Normal, |_| syncProgress())?;
     Ok(())

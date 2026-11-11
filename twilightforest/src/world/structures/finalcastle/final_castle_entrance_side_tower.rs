@@ -1,7 +1,7 @@
 // draft from ComponentTFFinalCastleEntranceSideTower.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(
+pub(crate) fn new(
     random: &Random,
     i: i32,
     x: i32,
@@ -18,7 +18,7 @@ pub fn new(
 }
 
 // ComponentTFFinalCastleEntranceSideTower constructor
-pub fn init(
+pub(crate) fn init(
     this: &Piece,
     random: &Random,
     i: i32,
@@ -35,12 +35,14 @@ pub fn init(
 }
 
 // ComponentTFFinalCastleEntranceSideTower.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
+
     let foundation: Rc<Piece> = final_castle_foundation13::new(random, 4, this);
     list.push(Rc::clone(&foundation));
     foundation.build(this, list, random);
+
     let roof: Rc<Piece> = final_castle_roof13_peaked::new(random, 4, this);
     list.push(Rc::clone(&roof));
     roof.build(this, list, random);

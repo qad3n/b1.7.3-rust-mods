@@ -169,6 +169,7 @@ impl ItemBehavior for HealingStone
         {
             crate::effects::give(Entity { world, id: player.id }, crate::effects::Effect::Regeneration, HEALING_TICKS);
         }
+
         Use::Pass
     }
 }
@@ -185,10 +186,12 @@ impl ItemBehavior for AmbrosiumShard
         {
             return Use::Pass;
         }
+
         if world.isAuthority()
         {
             let _ = world.setBlock(pos, blockId(block::ENCHANTED_AETHER_GRASS), 0);
         }
+
         let remaining: i32 = stack.count - 1;
         Use::Done((remaining > 0).then_some(ItemStack { count: remaining, ..stack }))
     }
@@ -201,7 +204,9 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
         for (index, (slot, piece)) in SLOTS.iter().enumerate()
         {
             let name: String = format!("{}_{piece}", set.m_name);
-            let armor: ArmorSpec = ArmorSpec {
+
+            let armor: ArmorSpec = ArmorSpec
+            {
                 slot: *slot,
                 protection: PROTECTION[index],
                 durability: (DURABILITY[index] * 3) << set.m_level,
@@ -212,7 +217,9 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
                 .register(&name, ItemSpecBuilder::new().texture(&texture(&format!("armor/{name}"))).armor(armor))?;
         }
     }
-    let sentry: ArmorSpec = ArmorSpec {
+
+    let sentry: ArmorSpec = ArmorSpec
+    {
         slot: ArmorSlot::Feet,
         protection: PROTECTION[3],
         durability: (DURABILITY[3] * 3) << DIAMOND_ARMOR,
@@ -225,7 +232,7 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
 }
 
 // the durability of one piece of an Aether armor set, index 0 boots up to 3 helmet
-pub fn armorUses(set: &str, index: usize) -> Option<i32>
+pub(crate) fn armorUses(set: &str, index: usize) -> Option<i32>
 {
     let row: &ArmorSet = ARMOR.iter().find(|row| row.m_name == set)?;
     let piece: usize = SLOTS.len() - 1 - index;
@@ -233,7 +240,7 @@ pub fn armorUses(set: &str, index: usize) -> Option<i32>
 }
 
 // the uses of an Aether tool or sword by name
-pub fn toolUses(name: &str) -> Option<i32>
+pub(crate) fn toolUses(name: &str) -> Option<i32>
 {
     let (material, _) = name.split_once('_')?;
     TOOL_SETS.iter().chain(SWORDS.iter()).find(|(set, _)| *set == material).map(|(_, tier)| tier.m_uses)
@@ -253,6 +260,7 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
                 baseDamage(class, tier),
                 tier.m_uses,
             );
+
             match material
             {
                 "holystone" => spec = spec.behavior(crate::tools::holystone()),
@@ -260,9 +268,11 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
                 _ =>
                 {}
             }
+
             ctx.items().register(&name, spec)?;
         }
     }
+
     for (material, tier) in SWORDS
     {
         let name: String = format!("{material}_sword");
@@ -277,10 +287,11 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
             ),
         )?;
     }
+
     Ok(())
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for (name, path) in MATERIALS
     {
@@ -295,6 +306,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
         ctx.items().register(name, spec)?;
     }
+
     for (name, path, heal) in FOODS
     {
         let spec: ItemSpecBuilder = ItemSpecBuilder::new().texture(&texture(path)).food(heal);
@@ -306,10 +318,12 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
         ctx.items().register(name, spec)?;
     }
+
     ctx.items().register(
         item::VICTORY_MEDAL,
         ItemSpecBuilder::new().texture(&texture(item::VICTORY_MEDAL)).maxStack(VICTORY_MEDAL_STACK),
     )?;
+
     for (name, icon, stack) in SINGLES
     {
         let uses: Option<i32> = match name
@@ -318,11 +332,14 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             "nature_staff" => Some(NATURE_STAFF_USES),
             _ => None,
         };
+
         let mut spec: ItemSpecBuilder = ItemSpecBuilder::new().texture(&texture(icon)).maxStack(stack);
+
         if let Some(uses) = uses
         {
             spec = spec.maxDamage(uses);
         }
+
         if let Some(shooter) = crate::weapons::shooter(name)
         {
             spec = spec.behavior(shooter);
@@ -349,6 +366,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         }
         ctx.items().register(name, spec)?;
     }
+
     for (name, artist, song) in DISCS
     {
         ctx.items().register(
@@ -358,6 +376,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .record(&format!("aether.record.{name}"), &format!("{artist} - {song}")),
         )?;
     }
+
     crate::weapons::reservePulls();
     ctx.items().register(
         "phoenix_bow",
@@ -367,6 +386,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             .maxDamage(PHOENIX_BOW_USES)
             .behavior(crate::weapons::PhoenixBow),
     )?;
+
     for (name, icon, tier, uses) in WEAPONS
     {
         let durability: i32 = uses.unwrap_or(tier.m_uses);
@@ -377,6 +397,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             baseDamage(ToolClass::Sword, tier),
             durability,
         );
+
         if let Some(blade) = crate::weapons::blade(name)
         {
             spec = spec.behavior(blade);
@@ -387,6 +408,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         }
         ctx.items().register(name, spec)?;
     }
+
     registerTools(ctx)?;
     registerArmor(ctx)
 }

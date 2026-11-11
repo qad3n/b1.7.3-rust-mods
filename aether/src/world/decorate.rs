@@ -1,5 +1,6 @@
 use super::gen_world::GenWorld;
 use super::trees::{self, Tree};
+use crate::ids::Palette;
 use b173_api::terrain::{Random, math};
 use b173_api::{ChunkInfo, World};
 
@@ -72,6 +73,7 @@ impl Decorator<'_>
     fn clouds(&self, block: i32, amount: i32, chance: i32, base: i32)
     {
         let height: i32 = self.nextInt(cloud::BASE_SPREAD) + base;
+
         if self.shouldSpawn(chance)
         {
             let x: i32 = self.m_x + self.nextInt(CHUNK);
@@ -108,19 +110,22 @@ impl Decorator<'_>
     // AetherBiomeDecorator.decorate, holiday trees and tall grass are off by default in the Java config
     fn decorate(&self)
     {
-        let palette = &self.m_world.m_palette;
+        let palette: &Palette = &self.m_world.m_palette;
         self.clouds(palette.m_goldenCloud, cloud::GOLDEN_AMOUNT, cloud::GOLDEN_CHANCE, cloud::GOLDEN_BASE);
         self.clouds(palette.m_blueCloud, cloud::BLUE_AMOUNT, cloud::BLUE_CHANCE, cloud::BLUE_BASE);
         self.clouds(palette.m_coldCloud, cloud::COLD_AMOUNT, cloud::COLD_CHANCE, cloud::COLD_BASE);
+
         if self.shouldSpawn(feature::CRYSTAL_ISLAND_CHANCE)
         {
             let y: i32 = self.nextInt(feature::ISLAND_SPREAD) + feature::ISLAND_BASE;
             crystalIsland(self.m_world, self.m_random, self.m_x + feature::OFFSET, y, self.m_z + feature::OFFSET);
         }
+
         if self.shouldSpawn(ore::DIRT_CHANCE)
         {
             self.ore(palette.m_dirt, ore::DIRT);
         }
+
         self.plants(palette.m_whiteFlower);
         self.plants(palette.m_purpleFlower);
         self.ore(palette.m_icestone, ore::ICESTONE);
@@ -128,11 +133,13 @@ impl Decorator<'_>
         self.ore(palette.m_zaniteOre, ore::ZANITE);
         self.ore(palette.m_gravititeOre, ore::GRAVITITE);
         self.plants(palette.m_berryBush);
+
         for _ in 0..feature::TREES
         {
             let x: i32 = self.m_x + self.nextInt(CHUNK) + feature::OFFSET;
             let z: i32 = self.m_z + self.nextInt(CHUNK) + feature::OFFSET;
             let y: i32 = self.m_world.height(x, z);
+
             let tree: Tree = if self.shouldSpawn(feature::OAK_CHANCE)
             {
                 Tree::GoldenOak
@@ -143,6 +150,7 @@ impl Decorator<'_>
             };
             tree.generate(self.m_world, self.m_random, x, y, z);
         }
+
         for _ in 0..feature::DUNGEON_OAKS
         {
             let x: i32 = self.m_x + self.nextInt(CHUNK);
@@ -150,6 +158,7 @@ impl Decorator<'_>
             let y: i32 = self.m_world.height(x, z);
             trees::dungeonOakTree(self.m_world, self.m_random, x, y, z);
         }
+
         if self.shouldSpawn(feature::LAKE_CHANCE)
         {
             let x: i32 = self.m_x + self.nextInt(CHUNK) + feature::OFFSET;
@@ -164,10 +173,13 @@ impl Decorator<'_>
 fn cloudPuffs(world: &GenWorld, random: &Random, block: i32, amount: i32, x: i32, y: i32, z: i32)
 {
     let (mut xIn, mut yIn, mut zIn): (i32, i32, i32) = (x, y + random.nextIntBounded(cloud::RISE), z);
+
     for _ in 0..amount
     {
         let offsetY: bool = random.nextBoolean();
+
         xIn += random.nextIntBounded(2);
+
         yIn += if offsetY
         {
             random.nextIntBounded(3) - 1
@@ -177,6 +189,7 @@ fn cloudPuffs(world: &GenWorld, random: &Random, block: i32, amount: i32, x: i32
             0
         };
         zIn += random.nextIntBounded(2);
+
         let mut x1: i32 = xIn;
         while x1 < xIn + random.nextIntBounded(2) + cloud::WIDTH
         {
@@ -192,10 +205,13 @@ fn cloudPuffs(world: &GenWorld, random: &Random, block: i32, amount: i32, x: i32
                     {
                         world.set(x1, y1, z1, block);
                     }
+
                     z1 += 1;
                 }
+
                 y1 += 1;
             }
+
             x1 += 1;
         }
     }
@@ -213,6 +229,7 @@ fn minable(world: &GenWorld, random: &Random, block: i32, size: i32, x: i32, y: 
     let y0: f64 = (y + random.nextIntBounded(3) + ore::RISE) as f64;
     let y1: f64 = (y + random.nextIntBounded(3) + ore::RISE) as f64;
     let holystone: i32 = world.m_palette.m_holystone;
+
     for l in 0..=size
     {
         let centerX: f64 = x0 + (x1 - x0) * l as f64 / size as f64;
@@ -228,6 +245,7 @@ fn minable(world: &GenWorld, random: &Random, block: i32, size: i32, x: i32, y: 
         let toX: i32 = math::floor(centerX + width / 2.0);
         let toY: i32 = math::floor(centerY + height / 2.0);
         let toZ: i32 = math::floor(centerZ + width / 2.0);
+
         for bx in fromX..=toX
         {
             let dx: f64 = (bx as f64 + 0.5 - centerX) / (width / 2.0);
@@ -235,6 +253,7 @@ fn minable(world: &GenWorld, random: &Random, block: i32, size: i32, x: i32, y: 
             {
                 continue;
             }
+
             for by in fromY..=toY
             {
                 let dy: f64 = (by as f64 + 0.5 - centerY) / (height / 2.0);
@@ -242,6 +261,7 @@ fn minable(world: &GenWorld, random: &Random, block: i32, size: i32, x: i32, y: 
                 {
                     continue;
                 }
+
                 for bz in fromZ..=toZ
                 {
                     let dz: f64 = (bz as f64 + 0.5 - centerZ) / (width / 2.0);
@@ -265,6 +285,7 @@ fn plantPatch(world: &GenWorld, random: &Random, block: i32, x: i32, y: i32, z: 
         let plantY: i32 = y + random.nextIntBounded(feature::PLANT_RISE) - random.nextIntBounded(feature::PLANT_RISE);
         let plantZ: i32 =
             z + random.nextIntBounded(feature::PLANT_SPREAD) - random.nextIntBounded(feature::PLANT_SPREAD);
+
         if world.isAir(plantX, plantY, plantZ) && world.m_palette.isSoil(world.block(plantX, plantY - 1, plantZ))
         {
             world.set(plantX, plantY, plantZ, block);
@@ -280,8 +301,11 @@ fn crystalIsland(world: &GenWorld, random: &Random, j: i32, k: i32, l: i32) -> b
     {
         return false;
     }
-    let palette = &world.m_palette;
-    let crystal = || {
+
+    let palette: &Palette = &world.m_palette;
+
+    let crystal = ||
+    {
         if random.nextIntBounded(3) == 0
         {
             palette.m_crystalFruitLeaves
@@ -291,17 +315,22 @@ fn crystalIsland(world: &GenWorld, random: &Random, j: i32, k: i32, l: i32) -> b
             palette.m_crystalLeaves
         }
     };
-    let cross = |y: i32, radius: i32, block: &dyn Fn() -> i32| {
+
+    let cross = |y: i32, radius: i32, block: &dyn Fn() -> i32|
+    {
         for z in -radius..=radius
         {
             world.set(j, y, l + z, block());
         }
+
         for x in -radius..=radius
         {
             world.set(j + x, y, l, block());
         }
     };
-    let ring = |y: i32, block: &dyn Fn() -> i32| {
+
+    let ring = |y: i32, block: &dyn Fn() -> i32|
+    {
         for x in -1..2
         {
             for z in (-1..=1).rev()
@@ -312,17 +341,22 @@ fn crystalIsland(world: &GenWorld, random: &Random, j: i32, k: i32, l: i32) -> b
                 }
             }
         }
+
         world.set(j + 1, y, l + 1, block());
         world.set(j - 1, y, l - 1, block());
     };
+
     let holystone = || palette.m_holystone;
     let grass = || palette.m_grass;
     let log = || palette.m_skyrootLog;
+
     world.set(j, k, l + 1, palette.m_holystone);
+
     for x in -1..2
     {
         world.set(x + j, k, l, palette.m_holystone);
     }
+
     cross(k + 1, 2, &holystone);
     ring(k + 1, &holystone);
     cross(k + 2, 2, &grass);
@@ -330,22 +364,27 @@ fn crystalIsland(world: &GenWorld, random: &Random, j: i32, k: i32, l: i32) -> b
     world.set(j, k + 10, l, crystal());
     crossSkippingCenter(world, j, k + 5, l, 1, &log);
     cross(k + 5, 2, &crystal);
+
     for x in [-1, 1]
     {
         world.set(j + x, k + 5, l - 2, crystal());
     }
+
     for x in [-1, 1]
     {
         world.set(j + x, k + 5, l + 2, crystal());
     }
+
     for z in [-1, 1]
     {
         world.set(j - 2, k + 5, l + z, crystal());
     }
+
     for z in [-1, 1]
     {
         world.set(j + 2, k + 5, l + z, crystal());
     }
+
     ring(k + 5, &crystal);
     cross(k + 6, 2, &crystal);
     ring(k + 6, &crystal);
@@ -355,10 +394,12 @@ fn crystalIsland(world: &GenWorld, random: &Random, j: i32, k: i32, l: i32) -> b
     cross(k + 8, 2, &crystal);
     ring(k + 8, &crystal);
     crossSkippingCenter(world, j, k + 9, l, 1, &crystal);
+
     for y in k + 3..=k + 9
     {
         world.set(j, y, l, palette.m_skyrootLog);
     }
+
     true
 }
 
@@ -368,6 +409,7 @@ fn crossSkippingCenter(world: &GenWorld, j: i32, y: i32, l: i32, radius: i32, bl
     {
         world.set(j, y, l + z, block());
     }
+
     for x in (-radius..=radius).filter(|x| *x != 0)
     {
         world.set(j + x, y, l, block());
@@ -375,7 +417,7 @@ fn crossSkippingCenter(world: &GenWorld, j: i32, y: i32, l: i32, radius: i32, bl
 }
 
 // ChunkProviderAether.populate
-pub fn populate(chunkInfo: ChunkInfo)
+pub(crate) fn populate(chunkInfo: ChunkInfo)
 {
     let world: GenWorld = GenWorld::new(World { dimension: chunkInfo.world });
     let x: i32 = chunkInfo.x * CHUNK;

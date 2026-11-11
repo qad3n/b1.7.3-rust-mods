@@ -2,24 +2,24 @@
 use crate::world::structures::prelude::*;
 
 // ComponentTFDarkTowerRoof constructor
-pub fn init(this: &Piece, i: i32, wing: &Piece)
+pub(crate) fn init(this: &Piece, i: i32, wing: &Piece)
 {
-    tower_roof::init(this, i, &wing);
+    tower_roof::init(this, i, wing);
     this.setMode(wing.mode());
     this.m_size.set(wing.m_size.get());
     this.m_height.set(12);
-    tower_roof::makeCapBB(this, &wing);
+    tower_roof::makeCapBB(this, wing);
     this.m_spawnListIndex.set(1);
 }
 
 // ComponentTFDarkTowerRoof.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFDarkTowerRoof.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for x in 0..=(this.m_size.get() - 1)
     {
@@ -31,6 +31,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             }
         }
     }
+
     this.placeBlock(world, this.m_deco.get().m_accentID, this.m_deco.get().m_accentMeta, 0, 1, 0, sbb);
     this.placeBlock(
         world,
@@ -59,5 +60,68 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
         this.m_size.get() - 1,
         sbb,
     );
-    return true;
+    true
+}
+
+// a center pole capped with an accent and four accent arms at its foot
+pub(crate) fn mast(this: &Piece, world: &GenWorld, sbb: StructureBox)
+{
+    for y in 1..10
+    {
+        this.placeBlock(
+            world,
+            this.m_deco.get().m_blockID,
+            this.m_deco.get().m_blockMeta,
+            this.m_size.get() / 2,
+            y,
+            this.m_size.get() / 2,
+            sbb,
+        );
+    }
+
+    this.placeBlock(
+        world,
+        this.m_deco.get().m_accentID,
+        this.m_deco.get().m_accentMeta,
+        this.m_size.get() / 2,
+        10,
+        this.m_size.get() / 2,
+        sbb,
+    );
+    this.placeBlock(
+        world,
+        this.m_deco.get().m_accentID,
+        this.m_deco.get().m_accentMeta,
+        (this.m_size.get() / 2) - 1,
+        1,
+        this.m_size.get() / 2,
+        sbb,
+    );
+    this.placeBlock(
+        world,
+        this.m_deco.get().m_accentID,
+        this.m_deco.get().m_accentMeta,
+        (this.m_size.get() / 2) + 1,
+        1,
+        this.m_size.get() / 2,
+        sbb,
+    );
+    this.placeBlock(
+        world,
+        this.m_deco.get().m_accentID,
+        this.m_deco.get().m_accentMeta,
+        this.m_size.get() / 2,
+        1,
+        (this.m_size.get() / 2) - 1,
+        sbb,
+    );
+    this.placeBlock(
+        world,
+        this.m_deco.get().m_accentID,
+        this.m_deco.get().m_accentMeta,
+        this.m_size.get() / 2,
+        1,
+        (this.m_size.get() / 2) + 1,
+        sbb,
+    );
 }

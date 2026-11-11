@@ -96,6 +96,7 @@ fn recipeFor(input: &ItemStack) -> Option<(i32, Vec<Option<StackData>>, i32)>
 {
     let id: i32 = input.item.id().ok()?;
     let wears: bool = maxDamage(&input.item) > 0;
+
     recipeList().into_iter().find_map(|recipe| match recipe.shape
     {
         RecipeShape::Shaped { width, inputs }
@@ -105,6 +106,7 @@ fn recipeFor(input: &ItemStack) -> Option<(i32, Vec<Option<StackData>>, i32)>
         {
             Some((width, inputs, recipe.output.count))
         }
+
         _ => None,
     })
 }
@@ -113,11 +115,13 @@ fn recipeFor(input: &ItemStack) -> Option<(i32, Vec<Option<StackData>>, i32)>
 fn uncraftGrid(input: &ItemStack) -> (Vec<Option<StackData>>, i32)
 {
     let mut grid: Vec<Option<StackData>> = vec![None; table::CELLS as usize];
+
     let Some((width, inputs, uses)) = recipeFor(input)
     else
     {
         return (grid, 0);
     };
+
     let height: i32 = inputs.len() as i32 / width.max(1);
     for y in 0..height
     {
@@ -131,25 +135,30 @@ fn uncraftGrid(input: &ItemStack) -> (Vec<Option<StackData>>, i32)
             });
         }
     }
+
     let damageable = |part: &Option<StackData>| part.as_ref().is_some_and(|part| part.id != ids::itemId(STICK));
     let most: i32 = maxDamage(&input.item);
     if most > 0 && input.damage > 0
     {
         let parts: i32 = grid.iter().filter(|part| damageable(part)).count().max(4) as i32;
         let mut broken: i32 = (parts as f32 * input.damage as f32 / most as f32).ceil() as i32;
+
         for part in grid.iter_mut().filter(|part| damageable(part))
         {
             if broken <= 0
             {
                 break;
             }
+
             if let Some(part) = part
             {
                 part.count = 0;
             }
+
             broken -= 1;
         }
     }
+
     for part in grid.iter_mut().flatten()
     {
         if problematic(part)
@@ -157,6 +166,7 @@ fn uncraftGrid(input: &ItemStack) -> (Vec<Option<StackData>>, i32)
             part.count = 0;
         }
     }
+
     (grid, uses)
 }
 
@@ -180,6 +190,7 @@ fn shrink(world: World, pos: BlockPos, slot: i32, by: i32)
     {
         return;
     };
+
     setSlot(world, pos, slot, (stack.count > by).then(|| ItemStack { count: stack.count - by, ..stack }));
 }
 
@@ -193,13 +204,16 @@ fn useAssembly(world: World, pos: BlockPos)
         {
             continue;
         };
+
         let empty: Option<ItemStack> =
             raw(&Some(stack.clone())).filter(problematic).map(|_| ItemStack::of("minecraft:bucket", 1));
+
         if stack.count <= 1 && empty.is_some()
         {
             setSlot(world, pos, slot, empty);
             continue;
         }
+
         shrink(world, pos, slot, 1);
     }
 }
@@ -218,6 +232,7 @@ fn result(world: World, pos: BlockPos, state: &Uncraft) -> (Option<ItemStack>, b
     {
         return (None, false);
     }
+
     let combined: Vec<Option<ItemStack>> = assembly
         .iter()
         .zip(&state.m_grid)
@@ -239,6 +254,7 @@ fn tableTick(ctx: &mut BlockCtx)
     {
         return;
     }
+
     let (world, pos): (World, BlockPos) = (ctx.world(), ctx.pos());
     let mut state: Uncraft = ctx.tileData();
     let taken: bool = state.m_result.is_some() && raw(&world.tileSlot(pos, table::RESULT)) != state.m_result;
@@ -248,9 +264,11 @@ fn tableTick(ctx: &mut BlockCtx)
         {
             setSlot(world, pos, table::INPUT, None);
         }
+
         useAssembly(world, pos);
         state.m_result = None;
     }
+
     let input: Option<StackData> = raw(&world.tileSlot(pos, table::INPUT));
     if input != state.m_input || state.m_grid.len() != table::CELLS as usize
     {
@@ -259,14 +277,17 @@ fn tableTick(ctx: &mut BlockCtx)
             .map_or((vec![None; table::CELLS as usize], 0), |stack| uncraftGrid(&stack));
         state = Uncraft { m_input: input, m_grid: grid, m_uses: uses, ..state };
     }
+
     let (made, combined): (Option<ItemStack>, bool) = result(world, pos, &state);
     let placed: Option<StackData> = raw(&made);
     if placed != state.m_result
     {
         setSlot(world, pos, table::RESULT, made);
     }
+
     state.m_result = placed;
     state.m_combined = combined;
+
     let before: Uncraft = ctx.tileData();
     if state != before
     {
@@ -289,6 +310,7 @@ fn pick(message: Pick, player: Player)
     {
         return;
     };
+
     let world: World = World { dimension: info.world };
     let pos: BlockPos = message.m_pos;
     let reach: f64 = 8.0;
@@ -306,6 +328,7 @@ fn pick(message: Pick, player: Player)
     }
     let state: Uncraft = world.tileData(pos);
     let input: Option<StackData> = raw(&world.tileSlot(pos, table::INPUT));
+
     let Some(clicked) = state.m_grid.get(message.m_cell as usize).cloned().flatten().filter(|part| part.count > 0)
     else
     {
@@ -315,6 +338,7 @@ fn pick(message: Pick, player: Player)
     {
         return;
     }
+
     for (cell, part) in state.m_grid.iter().enumerate()
     {
         if cell as i32 != message.m_cell
@@ -323,7 +347,9 @@ fn pick(message: Pick, player: Player)
             setSlot(world, pos, table::ASSEMBLY + cell as i32, Some(ItemStack::fromRaw(part)));
         }
     }
+
     shrink(world, pos, table::INPUT, state.m_uses);
+
     if let Err(error) = player.setCursor(Some(ItemStack::fromRaw(clicked)))
     {
         warn(&format!("uncraft cursor: {}", error.0));
@@ -350,17 +376,20 @@ fn leave(message: Leave, player: Player)
     {
         return;
     }
+
     for slot in (table::ASSEMBLY..table::SLOTS).chain([table::INPUT])
     {
         if let Some(stack) = world.tileSlot(pos, slot)
         {
             setSlot(world, pos, slot, None);
+
             if player.give(stack.clone()).is_err()
             {
                 let _ = world.spawnItem(info.pos, stack);
             }
         }
     }
+
     setSlot(world, pos, table::RESULT, None);
 }
 
@@ -388,6 +417,7 @@ impl BlockBehavior for OpensScreen
         {
             let _ = player.openScreen(self.m_screen, Some(ctx.pos()), Vec::new());
         }
+
         true
     }
 }
@@ -431,18 +461,22 @@ impl Screen for TableScreen
     fn draw(&mut self, draw: &mut Draw, _mouse: [i32; 2], _partial: f32)
     {
         labels(draw);
+
         let Some(state) = localTile::<Uncraft>(self.m_pos)
         else
         {
             return;
         };
         let pos: BlockPos = self.m_pos.unwrap_or_default();
+
         let Some(local) = localPlayer().and_then(Player::info)
         else
         {
             return;
         };
+
         let world: World = World { dimension: local.world };
+
         for (cell, part) in state.m_grid.iter().enumerate()
         {
             let Some(part) = part
@@ -454,23 +488,20 @@ impl Screen for TableScreen
             {
                 continue;
             }
+
             let x: i32 = gui::ASSEMBLY[0] + cell as i32 % 3 * gui::CELL;
             let y: i32 = gui::ASSEMBLY[1] + cell as i32 / 3 * gui::CELL;
             draw.item(x, y, &ItemStack { count: 1, ..ItemStack::fromRaw(part.clone()) });
-            draw.rect(
-                x,
-                y,
-                gui::ITEM,
-                gui::ITEM,
-                if part.count == 0
-                {
-                    gui::BROKEN
-                }
-                else
-                {
-                    gui::GHOST
-                },
-            );
+
+            let color: u32 = if part.count == 0
+            {
+                gui::BROKEN
+            }
+            else
+            {
+                gui::GHOST
+            };
+            draw.rect(x, y, gui::ITEM, gui::ITEM, color);
         }
     }
 
@@ -481,6 +512,7 @@ impl Screen for TableScreen
         {
             return;
         };
+
         if button == 0
         {
             let _ = send(table::CHANNEL, Target::Server, &Pick { m_pos: pos, m_cell: cell });
@@ -536,8 +568,10 @@ fn burnTime(stack: &ItemStack) -> i32
         "minecraft:jukebox",
         "minecraft:trapdoor",
     ];
+
     let twilightWood: bool =
         name.starts_with("twilightforest:") && ["_log", "_planks", "wood"].iter().any(|part| name.contains(part));
+
     match name.as_str()
     {
         "minecraft:stick" | "minecraft:sapling" => 100,
@@ -562,6 +596,7 @@ fn logLike(block: i32) -> bool
     {
         return false;
     }
+
     nameOf(RegistryKind::Block, block).is_some_and(|name| inLogs(&name))
 }
 
@@ -588,6 +623,7 @@ fn multiplier(world: World, logs: i32, factor: i32) -> i32
     {
         return 1;
     }
+
     logs / factor + i32::from(world.random(factor) < logs % factor)
 }
 
@@ -595,6 +631,7 @@ fn canSmelt(world: World, pos: BlockPos) -> Option<ItemStack>
 {
     let input: ItemStack = world.tileSlot(pos, furnace::INPUT)?;
     let output: ItemStack = recipes::smelt(&input)?;
+
     let Some(held) = world.tileSlot(pos, furnace::OUTPUT)
     else
     {
@@ -604,7 +641,9 @@ fn canSmelt(world: World, pos: BlockPos) -> Option<ItemStack>
     {
         return None;
     }
+
     let most: i32 = (f64::from(cinders(world, pos)) / f64::from(furnace::SMELT_FACTOR)).ceil() as i32;
+
     let adds: i32 = if multiplies(&input)
     {
         output.count * most.max(1)
@@ -623,6 +662,7 @@ fn smeltOne(world: World, pos: BlockPos, output: ItemStack)
     {
         return;
     };
+
     let times: i32 = if multiplies(&input)
     {
         multiplier(world, cinders(world, pos), furnace::SMELT_FACTOR)
@@ -632,6 +672,7 @@ fn smeltOne(world: World, pos: BlockPos, output: ItemStack)
         1
     };
     let made: ItemStack = ItemStack { count: output.count * times, ..output };
+
     let total: ItemStack = match world.tileSlot(pos, furnace::OUTPUT)
     {
         Some(held) => ItemStack { count: held.count + made.count, ..held },
@@ -655,6 +696,7 @@ fn cinderize(world: World, pos: BlockPos)
     {
         return;
     }
+
     // TileEntityTFCinderFurnace.getCinderMetaFor in log orientation bits, a quarter of which is the axis state
     let bits: i32 = if dz == 0 && dx != 0
     {
@@ -674,7 +716,9 @@ fn cinderize(world: World, pos: BlockPos)
     };
     let axis: i32 = bits / 4;
     let _ = world.setBlock(at, ids::blockId(block::CINDER_LOG), axis);
+
     world.playSound(ids::center(at), "fire.fire", 1.0, 1.0);
+
     for _ in 0..2
     {
         world.particle("flame", ids::center(at), [0.0; 3]);
@@ -688,14 +732,17 @@ fn furnaceTick(ctx: &mut BlockCtx)
     {
         return;
     }
+
     let (world, pos): (World, BlockPos) = (ctx.world(), ctx.pos());
     let before: Burn = ctx.tileData();
     let mut state: Burn = before;
     let wasLit: bool = state.m_burn > 0;
+
     if state.m_burn > 0
     {
         state.m_burn -= 1;
     }
+
     let fueled: bool = world.tileSlot(pos, furnace::FUEL).is_some() && world.tileSlot(pos, furnace::INPUT).is_some();
     if state.m_burn != 0 || fueled
     {
@@ -705,6 +752,7 @@ fn furnaceTick(ctx: &mut BlockCtx)
         {
             state.m_burn = burnTime(&fuel);
             state.m_fuelTime = state.m_burn;
+
             if state.m_burn > 0
             {
                 let left: Option<ItemStack> = if fuel.count > 1
@@ -718,6 +766,7 @@ fn furnaceTick(ctx: &mut BlockCtx)
                 let _ = world.setTileSlot(pos, furnace::FUEL, left);
             }
         }
+
         match canSmelt(world, pos).filter(|_| state.m_burn > 0)
         {
             Some(output) =>
@@ -729,9 +778,11 @@ fn furnaceTick(ctx: &mut BlockCtx)
                     smeltOne(world, pos, output);
                 }
             }
+
             None => state.m_cook = 0,
         }
     }
+
     let lit: bool = state.m_burn > 0;
     if wasLit != lit
     {
@@ -741,10 +792,12 @@ fn furnaceTick(ctx: &mut BlockCtx)
             warn(&format!("cinder furnace at {pos:?}: {}", error.0));
         }
     }
+
     if lit && state.m_burn % furnace::CINDER_EVERY == 0
     {
         cinderize(world, pos);
     }
+
     if state != before
     {
         let _ = ctx.setTileData(&state);
@@ -774,6 +827,7 @@ impl BlockBehavior for FurnaceBlock
         {
             let _ = player.openScreen(FURNACE_NAME, Some(ctx.pos()), Vec::new());
         }
+
         true
     }
 
@@ -784,11 +838,13 @@ impl BlockBehavior for FurnaceBlock
         {
             return;
         }
+
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let (out, across): (f64, f64) = (0.52, f64::from(ids::fraction(world)) * 0.6 - 0.3);
         let height: f64 = f64::from(pos.y) + f64::from(ids::fraction(world)) * 6.0 / 16.0;
         let [cx, cz] = [f64::from(pos.x) + 0.5, f64::from(pos.z) + 0.5];
+
         let at: [f64; 3] = match world.random(4) + 2
         {
             4 => [cx - out, height, cz + across],
@@ -814,6 +870,7 @@ impl Screen for FurnaceScreen
     fn draw(&mut self, draw: &mut Draw, _mouse: [i32; 2], _partial: f32)
     {
         labels(draw);
+
         let Some(state) = localTile::<Burn>(self.m_pos)
         else
         {
@@ -825,6 +882,7 @@ impl Screen for FurnaceScreen
         }
 
         let [x, y, u, v] = gui::FLAME;
+
         let full: i32 = if state.m_fuelTime > 0
         {
             state.m_fuelTime
@@ -865,11 +923,13 @@ fn registerTable(ctx: &mut RegisterCtx) -> Result<()>
             .tileEntity(TABLE_NAME)
             .behavior(OpensScreen { m_screen: TABLE_NAME }),
     )?;
+
     let mut screen: ScreenBuilder = ScreenBuilder::new(TABLE_TITLE, gui::WIDTH, gui::HEIGHT)
         .background(TABLE_SHEET)
         .playerInventory(gui::INVENTORY[0], gui::INVENTORY[1])
         .slot(table::INPUT, gui::TABLE_INPUT[0], gui::TABLE_INPUT[1])
         .outputSlot(table::RESULT, gui::TABLE_RESULT[0], gui::TABLE_RESULT[1]);
+
     for cell in 0..table::CELLS
     {
         screen = screen.slot(
@@ -878,6 +938,7 @@ fn registerTable(ctx: &mut RegisterCtx) -> Result<()>
             gui::ASSEMBLY[1] + cell / 3 * gui::CELL,
         );
     }
+
     ctx.screens().register(TABLE_NAME, screen, TableScreen { m_pos: None, m_origin: [0; 2] })?;
     ctx.channels().register::<Pick>(table::CHANNEL, Direction::ToServer, pick)?;
     ctx.channels().register::<Leave>(LEAVE_CHANNEL, Direction::ToServer, leave)?;
@@ -888,7 +949,9 @@ fn registerFurnace(ctx: &mut RegisterCtx) -> Result<()>
 {
     let spec: TileEntitySpec = TileEntitySpec { inventory: furnace::SLOTS, ticks: true, sync: true, behavior: None };
     ctx.tileEntities().register(FURNACE_NAME, spec, Some(std::rc::Rc::new(FurnaceTile)))?;
+
     let (top, off, on): (i32, i32, i32) = (62, 44, 61);
+
     let look = |front: i32| FaceTextures
     {
         top: Some(vanillaTexture(top)),
@@ -896,6 +959,7 @@ fn registerFurnace(ctx: &mut RegisterCtx) -> Result<()>
         side: Some(vanillaTexture(front)),
         front: None,
     };
+
     let spec = |front: i32, lit: bool| -> Result<BlockSpecBuilder>
     {
         Ok(BlockSpecBuilder::template("minecraft:block")
@@ -922,7 +986,7 @@ fn registerFurnace(ctx: &mut RegisterCtx) -> Result<()>
     )
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerTable(ctx)?;
     registerFurnace(ctx)

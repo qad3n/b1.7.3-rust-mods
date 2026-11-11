@@ -1,4 +1,5 @@
 use crate::world::structures::prelude::*;
+use std::cell::RefMut;
 
 // TFStrongholdPieceWeight, how often a lower stronghold piece is picked and how many it may make
 #[derive(Clone, Copy)]
@@ -50,18 +51,18 @@ thread_local!
 
 // TFStrongholdPieces, the lower pieces the stronghold entrance still has to hand out
 #[derive(Default)]
-pub struct StrongholdPieces
+pub(crate) struct StrongholdPieces
 {
     m_list: RefCell<Vec<Weight>>,
 }
 
 impl StrongholdPieces
 {
-    pub fn prepareStructurePieces(&self) { *self.m_list.borrow_mut() = WEIGHTS.to_vec(); }
+    pub(crate) fn prepareStructurePieces(&self) { *self.m_list.borrow_mut() = WEIGHTS.to_vec(); }
 
-    pub fn markBossRoomUsed(&self) { self.m_list.borrow_mut().pop(); }
+    pub(crate) fn markBossRoomUsed(&self) { self.m_list.borrow_mut().pop(); }
 
-    pub fn getNextComponent(
+    pub(crate) fn getNextComponent(
         &self,
         list: &Pieces,
         random: &Random,
@@ -74,12 +75,14 @@ impl StrongholdPieces
     {
         let limited: bool =
             self.m_list.borrow().iter().any(|piece| piece.m_limit > 0 && piece.m_spawned < piece.m_limit);
+
         if !limited
         {
             return None;
         }
 
         let total: i32 = self.m_list.borrow().iter().map(|piece| piece.m_weight).sum();
+
         for _ in 0..TRIES
         {
             let mut counter: i32 = random.nextIntBounded(total);
@@ -100,12 +103,14 @@ impl StrongholdPieces
                 let component: Rc<Piece> = make(piece.m_kind, index, facing, x, y, z);
                 if intersecting(list, component.bounds()).is_none()
                 {
-                    let mut chosen = self.m_list.borrow_mut();
+                    let mut chosen: RefMut<Vec<Weight>> = self.m_list.borrow_mut();
                     chosen[slot].m_spawned += 1;
+
                     if !chosen[slot].more()
                     {
                         chosen.remove(slot);
                     }
+
                     LAST.with(|last| last.set(Some(piece.m_kind)));
                     return Some(component);
                 }

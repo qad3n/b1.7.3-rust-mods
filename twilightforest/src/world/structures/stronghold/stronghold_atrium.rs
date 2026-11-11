@@ -1,7 +1,7 @@
 // draft from ComponentTFStrongholdAtrium.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::StrongholdAtrium);
     init(&this, i, facing, x, y, z);
@@ -9,13 +9,13 @@ pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFStrongholdAtrium constructor
-pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 {
     stronghold_component::init(this, i, facing, x, y, z);
 }
 
 // ComponentTFStrongholdAtrium.generateBoundingBox
-pub fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub(crate) fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
     if y > 17
     {
@@ -29,7 +29,7 @@ pub fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) ->
     {
         this.m_enterBottom.set((z & 1) == 0);
     }
-    return Some(
+    Some(
         if this.m_enterBottom.get()
         {
             boxFor(x, y, z, -4, -1, 0, 18, 14, 18, facing)
@@ -38,29 +38,30 @@ pub fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) ->
         {
             boxFor(x, y, z, -13, -8, 0, 18, 14, 18, facing)
         },
-    );
+    )
 }
 
 // ComponentTFStrongholdAtrium.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
-    stronghold_component::build(this, &parent, list, random);
+    stronghold_component::build(this, parent, list, random);
+
     if this.m_enterBottom.get()
     {
         stronghold_component::addDoor(this, 4, 1, 0);
-        stronghold_component::addNewComponent(this, &parent, list, random, 2, 13, 8, -1);
+        stronghold_component::addNewComponent(this, parent, list, random, 2, 13, 8, -1);
     }
     else
     {
         stronghold_component::addDoor(this, 13, 8, 0);
-        stronghold_component::addNewComponent(this, &parent, list, random, 2, 4, 1, -1);
+        stronghold_component::addNewComponent(this, parent, list, random, 2, 4, 1, -1);
     }
-    stronghold_component::addNewComponent(this, &parent, list, random, 0, 13, 1, 18);
-    stronghold_component::addNewComponent(this, &parent, list, random, 0, 4, 8, 18);
+    stronghold_component::addNewComponent(this, parent, list, random, 0, 13, 1, 18);
+    stronghold_component::addNewComponent(this, parent, list, random, 0, 4, 8, 18);
 }
 
 // ComponentTFStrongholdAtrium.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     stronghold_component::placeStrongholdWalls(
         this,
@@ -98,11 +99,11 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     stronghold_component::placeCornerStatue(this, world, 15, 1, 2, 2, sbb);
     stronghold_component::placeCornerStatue(this, world, 15, 8, 15, 3, sbb);
     stronghold_component::placeDoors(this, world, random, sbb);
-    return true;
+    true
 }
 
 // ComponentTFStrongholdAtrium.spawnATree
-pub fn spawnATree(this: &Piece, world: &GenWorld, treeNum: i32, x: i32, y: i32, z: i32, sbb: StructureBox)
+pub(crate) fn spawnATree(this: &Piece, world: &GenWorld, treeNum: i32, x: i32, y: i32, z: i32, sbb: StructureBox)
 {
     let dx: i32 = this.xAt(x, z);
     let dy: i32 = this.yAt(y);
@@ -110,30 +111,15 @@ pub fn spawnATree(this: &Piece, world: &GenWorld, treeNum: i32, x: i32, y: i32, 
     if sbb.contains(dx, dy, dz)
     {
         let minHeight: i32 = 8;
-        let var10000: Gen;
-        match treeNum
+
+        let var10000: Gen = match treeNum
         {
-            1 =>
-            {
-                var10000 = Gen::Trees { minimum: minHeight, meta: 3 };
-            }
-            2 =>
-            {
-                var10000 = Gen::Trees { minimum: minHeight, meta: 2 };
-            }
-            3 =>
-            {
-                var10000 = Gen::TwilightOak;
-            }
-            4 =>
-            {
-                var10000 = Gen::Rainboak;
-            }
-            _ =>
-            {
-                var10000 = Gen::Trees { minimum: minHeight, meta: 0 };
-            }
-        }
+            1 => Gen::Trees { minimum: minHeight, meta: 3 },
+            2 => Gen::Trees { minimum: minHeight, meta: 2 },
+            3 => Gen::TwilightOak,
+            4 => Gen::Rainboak,
+            _ => Gen::Trees { minimum: minHeight, meta: 0 },
+        };
         let treeGen: Gen = var10000;
         let mut i: i32 = 0;
         while (i < 100) && (!treeGen.generate(world, world.rand(), dx, dy, dz))
@@ -144,7 +130,7 @@ pub fn spawnATree(this: &Piece, world: &GenWorld, treeNum: i32, x: i32, y: i32, 
 }
 
 // ComponentTFStrongholdAtrium.placeBalconyPillar
-pub fn placeBalconyPillar(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32)
+pub(crate) fn placeBalconyPillar(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32)
 {
     this.fillTurned(
         world,

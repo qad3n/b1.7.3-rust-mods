@@ -57,6 +57,7 @@ impl Hollow<'_>
     {
         let dest: [i32; 3] = translate(src, length, angle, tilt);
         self.m_builder.drawLine(src, dest, self.m_woods.m_branch);
+
         if leafy
         {
             let radius: i32 = self.m_random.nextIntBounded(2) + 1;
@@ -68,12 +69,15 @@ impl Hollow<'_>
     {
         let dest: [i32; 3] = translate(src, length, angle, tilt);
         self.m_builder.drawLine(src, dest, self.m_woods.m_branch);
+
         if leafy
         {
             self.m_builder.leafBlob(dest[0], dest[1], dest[2], 2, self.m_woods.m_leaf);
         }
+
         let shoots: i32 = self.m_random.nextIntBounded(2) + 1;
         let step: f64 = 0.8 / f64::from(shoots);
+
         for index in 0..=shoots
         {
             let turn: f64 = step * f64::from(index) - 0.4;
@@ -88,6 +92,7 @@ impl Hollow<'_>
     {
         let dest: [i32; 3] = translate(src, length, angle, tilt);
         self.m_builder.drawLine(src, dest, self.m_woods.m_branch);
+
         let braces: i32 = self.m_random.nextIntBounded(3);
         for index in 0..=braces
         {
@@ -102,10 +107,12 @@ impl Hollow<'_>
                 self.m_woods.m_branch,
             );
         }
+
         if leafy
         {
             self.m_builder.leafBlob(dest[0], dest[1] + 1, dest[2], 3, self.m_woods.m_leaf);
         }
+
         let mediums: i32 = self.m_random.nextIntBounded((length / 6.0) as i32) + self.m_random.nextIntBounded(2) + 1;
         for index in 0..=mediums
         {
@@ -114,6 +121,7 @@ impl Hollow<'_>
             let start: [i32; 3] = translate(src, length * out, angle, tilt);
             self.medBranch(start, length * 0.6, angle + turn, tilt, leafy);
         }
+
         let smalls: i32 = self.m_random.nextIntBounded(2) + 1;
         for index in 0..=smalls
         {
@@ -122,6 +130,7 @@ impl Hollow<'_>
             let start: [i32; 3] = translate(src, length * out, angle, tilt);
             self.smallBranch(start, (length * 0.3).max(2.0), angle + turn, tilt, leafy);
         }
+
         if self.m_random.nextIntBounded(hollow::LEAF_DUNGEON_ODDS) == 0
         {
             self.leafDungeon([dest[0], dest[1] + 1, dest[2]]);
@@ -135,11 +144,13 @@ impl Hollow<'_>
         self.m_builder.leafBlob(x, y, z, 4, self.m_woods.m_leaf);
         self.m_builder.blob(x, y, z, 3, self.m_woods.m_branch);
         self.m_builder.blob(x, y, z, 2, (0, 0));
+
         let world: World = self.m_builder.m_world.m_world;
         if let Err(error) = world.setSpawner(BlockPos::new(x, y + 1, z), crate::entities::SWARM_SPIDER)
         {
             b173_api::warn(&format!("leaf dungeon spawner at {x} {y} {z}: {}", error.0));
         }
+
         let side: [[i32; 2]; 4] = [[0, 1], [-1, 0], [0, -1], [1, 0]];
         let [dx, dz] = side[self.m_random.nextIntBounded(4) as usize];
         crate::treasure::place(
@@ -159,6 +170,7 @@ impl Hollow<'_>
         let src: [i32; 3] = translate([x, y + height, z], f64::from(self.m_diameter), angle, 0.5);
         let dest: [i32; 3] = translate(src, length, angle, tilt);
         let mut above: bool = true;
+
         for [rx, ry, rz] in line(src, dest)
         {
             let placed: Placed = if above && self.m_builder.airAround(rx, ry, rz)
@@ -186,6 +198,7 @@ impl Hollow<'_>
         let count: i32 = self.m_random.nextIntBounded(ring.m_max - ring.m_min) + ring.m_min;
         let rotation: f64 = 1.0 / f64::from(count + 1);
         let offset: f64 = self.m_random.nextDouble();
+
         for index in 0..=count
         {
             let height: i32 = if ring.m_heightVar > 0
@@ -199,16 +212,19 @@ impl Hollow<'_>
             let angle: f64 = f64::from(index) * rotation + offset;
             let start: [i32; 3] = self.branchFrom(height)(angle);
             let length: f64 = f64::from(ring.m_length);
+
             match ring.m_size
             {
                 1 => self.medBranch(start, length, angle, ring.m_tilt, ring.m_leafy),
                 2 => self.largeBranch(start, length, angle, ring.m_tilt, ring.m_leafy),
+
                 3 =>
                 {
                     // the source's switch falls through from roots into small branches
                     self.root(height, length, angle, ring.m_tilt);
                     self.smallBranch(start, length, angle, ring.m_tilt, ring.m_leafy);
                 }
+
                 _ => self.smallBranch(start, length, angle, ring.m_tilt, ring.m_leafy),
             }
         }
@@ -225,6 +241,7 @@ impl Hollow<'_>
         let [x, y, z] = self.m_origin;
         let diameter: i32 = self.m_diameter;
         let hollowRadius: i32 = diameter / 2;
+
         for dx in -diameter..=diameter
         {
             for dz in -diameter..=diameter
@@ -234,6 +251,7 @@ impl Hollow<'_>
                 {
                     continue;
                 }
+
                 for dy in -4..0
                 {
                     let (bx, by, bz): (i32, i32, i32) = (dx + x, dy + y, dz + z);
@@ -264,20 +282,24 @@ impl Hollow<'_>
         let [x, y, z] = self.m_origin;
         let diameter: i32 = self.m_diameter;
         let hollowRadius: i32 = diameter / 2;
+
         self.base();
         // beta has no vines, a ladder on the same inner wall climbs the same way
         let ladderOnEastWall: Placed = (self.m_builder.m_world.id("minecraft:ladder"), 4);
+
         for dx in -diameter..=diameter
         {
             for dz in -diameter..=diameter
             {
                 let reach: i32 = Self::reach(dx, dz);
+
                 for dy in 0..=height
                 {
                     if reach <= diameter && reach > hollowRadius
                     {
                         self.m_builder.set(dx + x, dy + y, dz + z, self.m_woods.m_trunk);
                     }
+
                     if reach == hollowRadius && dx == hollowRadius
                     {
                         self.m_builder.set(dx + x, dy + y, dz + z, ladderOnEastWall);
@@ -293,7 +315,9 @@ impl Hollow<'_>
         let [x, y, z] = self.m_origin;
         let diameter: i32 = self.m_diameter;
         let hollowRadius: i32 = diameter / 2;
+
         self.base();
+
         for dx in -diameter..=diameter
         {
             for dz in -diameter..=diameter
@@ -304,6 +328,7 @@ impl Hollow<'_>
                 {
                     continue;
                 }
+
                 for dy in 0..=height
                 {
                     self.m_builder.set(dx + x, dy + y, dz + z, self.m_woods.m_trunk);
@@ -337,6 +362,7 @@ impl Hollow<'_>
         {
             fallback
         };
+
         if self.m_builder.isAir(at[0], at[1], at[2])
         {
             self.m_builder.set(at[0], at[1], at[2], (self.m_builder.m_world.id(name), meta));
@@ -362,6 +388,7 @@ impl Hollow<'_>
             ring(height, 0, radius, 0.15, 2, 4, sizes[2], true),
             ring(height, 0, radius / 2, 0.05, spread, spread + 2, sizes[3], true),
         ];
+
         for ring in &rings
         {
             self.ring(ring);
@@ -372,6 +399,7 @@ impl Hollow<'_>
 fn clearCrown(builder: &Builder, origin: [i32; 3], height: i32, radius: i32) -> bool
 {
     let leaves: i32 = builder.m_world.id("minecraft:leaves");
+
     for dx in -radius..=radius
     {
         for dz in -radius..=radius
@@ -386,10 +414,11 @@ fn clearCrown(builder: &Builder, origin: [i32; 3], height: i32, radius: i32) -> 
             }
         }
     }
+
     true
 }
 
-pub fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let mut height: i32 = random.nextIntBounded(hollow::HEIGHT_SPREAD) + hollow::HEIGHT_BASE;
     let diameter: i32 = random.nextIntBounded(hollow::DIAMETER_SPREAD) + 1;
@@ -403,6 +432,7 @@ pub fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
     {
         return false;
     }
+
     let hollow: Hollow = Hollow
     {
         m_builder: builder,
@@ -415,6 +445,7 @@ pub fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
     hollow.critters(block::FIREFLY, height, 0);
     hollow.critters(block::CICADA, height, 1);
     hollow.crown(height, diameter * 4 + 4, diameter + 2, [2, 1, 2, 1]);
+
     let branches: i32 = random.nextIntBounded(3) + 3;
     for _ in 0..=branches
     {
@@ -423,13 +454,14 @@ pub fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
         let start: [i32; 3] = hollow.branchFrom(at)(angle);
         hollow.smallBranch(start, 4.0, angle, 0.35, true);
     }
+
     hollow.ring(&ring(3, 2, 6, 0.75, 3, 5, 3, false));
     hollow.ring(&ring(1, 2, 8, 0.9, 3, 5, 3, false));
     true
 }
 
 // TFGenTreeOfTime, a small hollow tree of timewood with the clock set into its trunk
-pub fn time(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn time(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let height: i32 = 8;
     let diameter: i32 = 1;
@@ -437,6 +469,7 @@ pub fn time(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
     {
         return false;
     }
+
     let hollow: Hollow = Hollow
     {
         m_builder: builder,
@@ -446,6 +479,7 @@ pub fn time(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
         m_woods: Woods::magic(0),
     };
     hollow.trunk(height);
+
     let radius: i32 = 4;
     let rings: [Ring; 4] = [
         ring(height - radius, 0, radius, 0.35, 1, 3, 1, true),
@@ -453,10 +487,12 @@ pub fn time(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
         ring(height, 0, radius, 0.15, 2, 4, 0, true),
         ring(height, 0, radius / 2, 0.05, 1, 3, 0, true),
     ];
+
     for ring in &rings
     {
         hollow.ring(ring);
     }
+
     hollow.ring(&ring(1, 0, 12, 0.75, 3, 5, 3, false));
     hollow.ring(&ring(1, 2, 18, 0.9, 3, 5, 3, false));
     builder.set(x - 1, y + 2, z, core(0));
@@ -464,13 +500,14 @@ pub fn time(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
 }
 
 // TFGenHollowStump, the stub of a hollow tree on its roots
-pub fn stump(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn stump(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let radius: i32 = random.nextIntBounded(2) + 2;
     if !super::scatter::suitable(builder.m_world, x - radius, y, z - radius, [2 * radius, 6, 2 * radius])
     {
         return false;
     }
+
     let stump: Hollow = Hollow
     {
         m_builder: builder,

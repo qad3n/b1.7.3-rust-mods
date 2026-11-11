@@ -1,7 +1,7 @@
-pub mod hedge_maze;
-pub mod hollow_hill;
-pub mod hydra_lair;
-pub mod maze;
-pub mod naga_courtyard;
-pub mod quest_grove;
-pub mod yeti_cave;
+pub(crate) mod hedge_maze;
+pub(crate) mod hollow_hill;
+pub(crate) mod hydra_lair;
+pub(crate) mod maze;
+pub(crate) mod naga_courtyard;
+pub(crate) mod quest_grove;
+pub(crate) mod yeti_cave;

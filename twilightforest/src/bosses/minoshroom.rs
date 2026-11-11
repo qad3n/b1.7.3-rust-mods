@@ -7,7 +7,7 @@ use b173_api::prelude::*;
 use std::rc::Rc;
 
 // EntityTFMinoshroom, the minotaur boss of the labyrinth's lowest room
-pub const NAME: &str = "minoshroom";
+pub(crate) const NAME: &str = "minoshroom";
 const LABEL: &str = "Minoshroom";
 
 mod stats
@@ -31,7 +31,9 @@ impl EntityBehavior for Minoshroom
     fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
         ai::forget(entity);
+
         let world: World = entity.world;
+
         let Some(info) = entity.info()
         else
         {
@@ -41,6 +43,7 @@ impl EntityBehavior for Minoshroom
         dropAt(world, info.pos, item::MEEF_STROGANOFF, world.random(stats::STROGANOFF_SPREAD) + stats::STROGANOFF_MIN);
         dropAt(world, info.pos, item::MINOTAUR_AXE, 1);
         super::conquer(world, info.pos);
+
         if let Some(player) = killer(world, source)
         {
             progress::grant(player, Gate::Hunter);
@@ -76,7 +79,7 @@ fn armed(event: &mut Event)
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,

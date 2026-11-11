@@ -6,7 +6,7 @@ use crate::models::
 };
 use b173_api::prelude::*;
 use b173_api::terrain::math;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::f32::consts::{PI, TAU};
 
@@ -76,7 +76,7 @@ thread_local!
     static LOOSE: RefCell<HashMap<(i32, i32), i32>> = RefCell::new(HashMap::new());
 }
 
-pub fn forget(entity: Entity)
+pub(crate) fn forget(entity: Entity)
 {
     let key: (i32, i32) = (entity.world.dimension, entity.id);
     SHIELD_HITS.with(|hits| hits.borrow_mut().remove(&key));
@@ -98,11 +98,14 @@ fn gear(entity: Entity) -> Gear
     {
         return gear;
     }
+
     let fresh: Gear = Gear { m_ready: true, m_armor: true, m_shield: true, m_spear: 0 };
+
     if entity.world.isAuthority()
     {
         setGear(entity, fresh);
     }
+
     fresh
 }
 
@@ -130,14 +133,17 @@ fn armored(amount: i32, armor: i32) -> i32 { amount * (tuning::ARMOR_SCALE - arm
 fn dent(upper: Entity, info: &EntityInfo)
 {
     let key: (i32, i32) = (upper.world.dimension, upper.id);
+
     let hits: i32 = SHIELD_HITS.with(|hits|
     {
-        let mut hits = hits.borrow_mut();
+        let mut hits: RefMut<HashMap<(i32, i32), i32>> = hits.borrow_mut();
         let count: &mut i32 = hits.entry(key).or_insert(0);
         *count += 1;
         *count
     });
+
     breakSound(upper, info);
+
     if hits >= tuning::SHIELD_HITS
     {
         setGear(upper, Gear { m_shield: false, ..gear(upper) });
@@ -173,9 +179,10 @@ fn attackerOf(entity: Entity, source: Option<i32>) -> Option<EntityInfo>
 }
 
 // EntityTFGoblinKnightUpper.attackEntityFrom
-pub fn upperHurt(entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
+pub(crate) fn upperHurt(entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
 {
     let info: EntityInfo = entity.info()?;
+
     // a rider stuck in its mount's block does not suffocate
     if entity.riding().is_some() && crate::combat::hurtBy(crate::combat::kind::IN_WALL)
     {
@@ -195,16 +202,19 @@ pub fn upperHurt(entity: Entity, source: Option<i32>, amount: i32) -> Option<i32
         shieldHit(entity, &info, &attacker, amount);
         return None;
     }
+
     if current.m_shield && entity.world.random(2) == 0
     {
         dent(entity, &info);
         current = gear(entity);
     }
+
     if current.m_armor && front(difference)
     {
         breakArmor(entity, &info, current);
         current.m_armor = false;
     }
+
     Some(
         if current.m_armor
         {
@@ -218,9 +228,10 @@ pub fn upperHurt(entity: Entity, source: Option<i32>, amount: i32) -> Option<i32
 }
 
 // EntityTFGoblinKnightLower.attackEntityFrom, the rider's shield covers the mount's back too
-pub fn lowerHurt(entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
+pub(crate) fn lowerHurt(entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
 {
     let info: EntityInfo = entity.info()?;
+
     let Some(attacker) = attackerOf(entity, source)
     else
     {
@@ -236,18 +247,21 @@ pub fn lowerHurt(entity: Entity, source: Option<i32>, amount: i32) -> Option<i32
         })
         .filter(|rider| gear(*rider).m_shield)
         .and_then(|rider| Some((rider, rider.info()?)));
+
     if let Some((upper, upperInfo)) = shielded
         && behind(difference)
     {
         shieldHit(upper, &upperInfo, &attacker, amount);
         return None;
     }
+
     let current: Gear = gear(entity);
     if current.m_armor && front(difference)
     {
         breakArmor(entity, &info, current);
         return Some(amount);
     }
+
     Some(
         if current.m_armor
         {
@@ -266,6 +280,7 @@ fn shareTarget(entity: Entity, other: Option<i32>)
     {
         return;
     }
+
     let goal: Option<i32> = other.and_then(|id| target(Entity { world: entity.world, id })).map(|goal| goal.id);
     if let Some(goal) = goal
     {
@@ -288,12 +303,15 @@ fn landSpear(entity: Entity, info: &EntityInfo)
         info.pos[1] - tuning::SPEAR_BELOW,
         info.pos[2] + f64::from(yaw.cos()) * tuning::SPEAR_AHEAD,
     ];
+
     for _ in 0..tuning::SPEAR_SMOKE
     {
         let drift = || f64::from(ids::fraction(world) - ids::fraction(world)) * tuning::SMOKE_DRIFT;
         world.particle("largesmoke", point, [drift(), 0.0, drift()]);
     }
+
     let mount: Option<i32> = entity.riding();
+
     for other in world.entitiesNear(point, tuning::SPEAR_RADIUS)
     {
         if other.id != entity.id && Some(other.id) != mount && other.health.is_some()
@@ -308,11 +326,13 @@ fn landSpear(entity: Entity, info: &EntityInfo)
     }
 }
 
-pub fn upperTick(entity: Entity, info: &EntityInfo)
+pub(crate) fn upperTick(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
     let mut current: Gear = gear(entity);
+
     shareTarget(entity, entity.riding());
+
     let now: i64 = world.time();
     match spearTime(current, now)
     {
@@ -325,6 +345,7 @@ pub fn upperTick(entity: Entity, info: &EntityInfo)
             setGear(entity, current);
             entity.setField(EntityField::AttackStrength, tuning::ATTACK);
         }
+
         None =>
         {
             let close: bool = target(entity).is_some_and(|goal| distance(goal.pos, info.pos) < tuning::SPEAR_REACH);
@@ -336,10 +357,12 @@ pub fn upperTick(entity: Entity, info: &EntityInfo)
             }
         }
     }
+
     let key: (i32, i32) = (world.dimension, entity.id);
+
     let loose: i32 = LOOSE.with(|loose|
     {
-        let mut loose = loose.borrow_mut();
+        let mut loose: RefMut<HashMap<(i32, i32), i32>> = loose.borrow_mut();
         let ticks: &mut i32 = loose.entry(key).or_insert(0);
         *ticks = if entity.riding().is_some()
         {
@@ -373,6 +396,7 @@ fn remount(entity: Entity, info: &EntityInfo)
     {
         return;
     };
+
     if let Err(error) = (Entity { world, id: upper.id }).mount(Some(entity.id))
     {
         warn(&format!("goblin knight remount: {}", error.0));
@@ -380,12 +404,13 @@ fn remount(entity: Entity, info: &EntityInfo)
 }
 
 // EntityTFGoblinKnightLower.onSpawnWithEgg seats a fresh rider, EntityAITFRiderSpearAttack holds still for its blow
-pub fn lowerTick(entity: Entity, info: &EntityInfo)
+pub(crate) fn lowerTick(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
     let fresh: bool = !entity.synced::<Gear>().m_ready;
     // the first look also arms a fresh knight
     gear(entity);
+
     if fresh
     {
         match world.spawnEntity(UPPER, info.pos)
@@ -397,6 +422,7 @@ pub fn lowerTick(entity: Entity, info: &EntityInfo)
                     warn(&format!("goblin knight rider: {}", error.0));
                 }
             }
+
             Err(error) => warn(&format!("goblin knight rider: {}", error.0)),
         }
     }
@@ -405,6 +431,7 @@ pub fn lowerTick(entity: Entity, info: &EntityInfo)
         remount(entity, info);
     }
     shareTarget(entity, entity.rider());
+
     let holding: bool = entity.rider().is_some_and(|id|
     {
         let rider: Entity = Entity { world, id };
@@ -416,7 +443,7 @@ pub fn lowerTick(entity: Entity, info: &EntityInfo)
     }
 }
 
-pub fn upperModel() -> EntityModelSpec
+pub(crate) fn upperModel() -> EntityModelSpec
 {
     let mut model: EntityModelSpec = tf_goblin_knight_upper::model();
     // the loader always draws a child with its parent, the shield comes off the arm so it can be left out
@@ -439,12 +466,13 @@ fn spearSwing(elapsed: f32) -> f32
 }
 
 // ModelTFGoblinKnightUpper.setRotationAngles and render
-pub fn upperPose(input: &PoseInput) -> Pose
+pub(crate) fn upperPose(input: &PoseInput) -> Pose
 {
     let gear: Gear = b173_api::fromBytes(&input.synced).unwrap_or_default();
     let pivots: &[[f32; 3]] = &tf_goblin_knight_upper::PIVOTS;
     let head: [f32; 3] = [input.head_pitch / DEGREES_PER_RADIAN, input.head_yaw / DEGREES_PER_RADIAN, 0.0];
     let swing: f32 = input.walk * WALK_RATE;
+
     let constraint: f32 = if gear.m_shield
     {
         pose::SHIELD_SWING
@@ -458,19 +486,24 @@ pub fn upperPose(input: &PoseInput) -> Pose
 
     let mut right: f32 = math::cos(swing + PI) * pose::ARM_SWING * input.walk_speed - pose::RIDING_ARMS;
     let mut left: f32 = math::cos(swing) * pose::ARM_SWING * constraint - pose::RIDING_ARMS;
+
     right = right * 0.5 - pose::HOLDING - pose::SPEAR_HOLD;
+
     let world: World = World { dimension: input.entity.world };
     if let Some(elapsed) = spearTime(gear, world.time())
     {
         right -= spearSwing(elapsed as f32 + input.partial) / DEGREES_PER_RADIAN;
     }
+
     right += sway;
     left -= sway;
+
     let rightArm: [f32; 3] = [right, 0.0, roll];
     let leftArm: [f32; 3] = [left, 0.0, roll];
     let legs: [f32; 3] = [0.0; 3];
 
     let mut body: Program = Program::new();
+
     for (part, rotation) in [
         (biped::HEAD, head),
         (biped::HEADWEAR, head),
@@ -483,6 +516,7 @@ pub fn upperPose(input: &PoseInput) -> Pose
     {
         body.part(part, rotation, pivots[part as usize]);
     }
+
     if gear.m_shield
     {
         let [x, y, z]: [f32; 3] = pivots[biped::LEFT_ARM as usize];
@@ -497,15 +531,17 @@ pub fn upperPose(input: &PoseInput) -> Pose
         );
         body.pop();
     }
+
     if gear.m_armor
     {
         body.rest(tf_goblin_knight_upper::BREASTPLATE);
     }
+
     Pose { pre: Vec::new(), model: body.take() }
 }
 
 // ModelTFGoblinKnightLower, a plain biped with its tunic while it keeps its armor
-pub fn lowerPose(input: &PoseInput) -> Pose
+pub(crate) fn lowerPose(input: &PoseInput) -> Pose
 {
     let gear: Gear = b173_api::fromBytes(&input.synced).unwrap_or_default();
     let mut body: Program = Program::new();
@@ -515,9 +551,11 @@ pub fn lowerPose(input: &PoseInput) -> Pose
         &tf_goblin_knight_lower::ROTATIONS[..biped::PARTS as usize],
         input,
     );
+
     if gear.m_armor
     {
         body.rest(tf_goblin_knight_lower::TUNIC);
     }
+
     Pose { pre: Vec::new(), model: body.take() }
 }

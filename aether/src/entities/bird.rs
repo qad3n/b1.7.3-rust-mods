@@ -1,7 +1,7 @@
 use crate::models::{DEGREES_PER_RADIAN, HALF_PI, Program, WALK_RATE, moa as layout, quadruped};
 use b173_api::PoseInput;
 use b173_api::terrain::math;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 // MoaModel and CockatriceModel share their eleven parts and their animation
@@ -24,21 +24,25 @@ struct Wing
     m_lastTick: i32,
 }
 
-thread_local! {
+thread_local!
+{
     static WINGS: RefCell<HashMap<i32, Wing>> = RefCell::new(HashMap::new());
 }
 
 // EntityMoa.updateWingRotation and MoaRenderer.getWingRotation, stepped on the client per rendered tick
-pub fn wingSwing(input: &PoseInput) -> f32
+pub(crate) fn wingSwing(input: &PoseInput) -> f32
 {
-    WINGS.with(|wings| {
-        let mut wings = wings.borrow_mut();
+    WINGS.with(|wings|
+    {
+        let mut wings: RefMut<HashMap<i32, Wing>> = wings.borrow_mut();
         let tick: i32 = input.age as i32;
         let state: &mut Wing =
             wings.entry(input.entity.id).or_insert(Wing { m_rotation: 0.0, m_open: 0.0, m_lastTick: tick });
+
         while state.m_lastTick < tick
         {
             state.m_rotation += wing::FLAP;
+
             state.m_open = if input.on_ground
             {
                 0.0
@@ -49,12 +53,13 @@ pub fn wingSwing(input: &PoseInput) -> f32
             };
             state.m_lastTick += 1;
         }
+
         (math::sin(state.m_rotation) + 1.0) * state.m_open
     })
 }
 
 // MoaModel.setRotationAngles and render for the eleven parts starting at base
-pub fn pose(
+pub(crate) fn pose(
     program: &mut Program,
     base: u16,
     pivots: &[[f32; 3]],
@@ -65,6 +70,7 @@ pub fn pose(
 )
 {
     let mut pivots: Vec<[f32; 3]> = pivots.to_vec();
+
     if sitting
     {
         let lowered: [(u16, [f32; 3]); 9] = [
@@ -78,11 +84,13 @@ pub fn pose(
             (layout::FEATHER2, [0.0, 25.5, 1.0]),
             (layout::FEATHER3, [0.0, 25.5, 1.0]),
         ];
+
         for (part, pivot) in lowered
         {
             pivots[part as usize] = pivot;
         }
     }
+
     let head: [f32; 3] = if sitting
     {
         [0.0; 3]
@@ -91,6 +99,7 @@ pub fn pose(
     {
         [input.head_pitch / DEGREES_PER_RADIAN, input.head_yaw / DEGREES_PER_RADIAN, 0.0]
     };
+
     let jaw: [f32; 3] = if sitting
     {
         [wing::SITTING_JAW, 0.0, 0.0]
@@ -103,6 +112,7 @@ pub fn pose(
     let walk: f32 = math::cos(input.walk * WALK_RATE) * quadruped::LEG_SWING * input.walk_speed;
     let walkBack: f32 =
         math::cos(input.walk * WALK_RATE + std::f32::consts::PI) * quadruped::LEG_SWING * input.walk_speed;
+
     let (legs, legs2): (f32, f32) = if flying
     {
         (wing::LEGS_TUCKED, wing::LEGS_TUCKED)
@@ -111,6 +121,7 @@ pub fn pose(
     {
         (walk, walkBack)
     };
+
     let wingY: f32 = if sitting
     {
         22.0
@@ -127,16 +138,19 @@ pub fn pose(
     let wingX: f32 = if flying { 0.0 } else { HALF_PI };
     let wingRoll: f32 = if flying { swing } else { 0.0 };
     let at = |part: u16| pivots[part as usize];
+
     if !sitting || !input.on_ground
     {
         program.part(base + layout::LEGS, [legs, 0.0, 0.0], at(layout::LEGS));
         program.part(base + layout::LEGS2, [legs2, 0.0, 0.0], at(layout::LEGS2));
     }
+
     program.part(base + layout::HEAD, head, at(layout::HEAD));
     program.part(base + layout::JAW, jaw, at(layout::JAW));
     program.part(base + layout::BODY, [HALF_PI, 0.0, 0.0], at(layout::BODY));
     program.part(base + layout::WINGS, [wingX, 0.0, wingRoll], [at(layout::WINGS)[0], wingY, wingZ]);
     program.part(base + layout::WINGS2, [wingX, 0.0, -wingRoll], [at(layout::WINGS2)[0], wingY, wingZ]);
+
     for part in [layout::NECK, layout::FEATHER1, layout::FEATHER2, layout::FEATHER3]
     {
         program.part(base + part, rotations[part as usize], at(part));

@@ -4,16 +4,16 @@ use crate::particles;
 use b173_api::prelude::*;
 use std::rc::Rc;
 
-pub const SMOKER_TILE: &str = "smoker";
-pub const POPPING_TILE: &str = "popping_jet";
-pub const FLAME_TILE: &str = "flame_jet";
+pub(crate) const SMOKER_TILE: &str = "smoker";
+pub(crate) const POPPING_TILE: &str = "popping_jet";
+pub(crate) const FLAME_TILE: &str = "flame_jet";
 const BUILDER_TILE: &str = "tower_builder";
 const REVERTER_TILE: &str = "reverter";
 const TRAP_TILE: &str = "ghast_trap_inactive";
 const TRAP_ACTIVE_TILE: &str = "ghast_trap_active";
 const REACTOR_TILE: &str = "reactor_active";
 
-pub fn tileFor(device: Device) -> Option<&'static str>
+pub(crate) fn tileFor(device: Device) -> Option<&'static str>
 {
     match device
     {
@@ -36,7 +36,9 @@ fn bump(ctx: &mut BlockCtx) -> i32
 {
     let mut counter: Counter = ctx.tileData();
     counter.m_ticks += 1;
+
     let _ = ctx.setTileData(&counter);
+
     counter.m_ticks
 }
 
@@ -68,6 +70,7 @@ impl TileBehavior for Smoker
         {
             return;
         }
+
         let ticks: i32 = bump(ctx);
         if ticks % smoke::EVERY == 0
         {
@@ -109,6 +112,7 @@ fn flames(world: World, pos: BlockPos)
 {
     let base: [f64; 3] = [f64::from(pos.x) + 0.5, f64::from(pos.y) + 1.0, f64::from(pos.z) + 0.5];
     world.particle("largesmoke", base, [0.0; 3]);
+
     let lean: f64 = jet::FLAME_LEAN;
     let spots: [([f64; 2], [f64; 2]); 5] = [
         ([0.0, 0.0], [0.0, 0.0]),
@@ -117,6 +121,7 @@ fn flames(world: World, pos: BlockPos)
         ([1.0, 0.0], [-lean, 0.0]),
         ([0.0, 1.0], [0.0, -lean]),
     ];
+
     for (offset, motion) in spots
     {
         particles::spawn(
@@ -137,10 +142,12 @@ fn scorch(world: World, pos: BlockPos)
             && (found.pos[2] - center[2]).abs() <= jet::REACH
             && found.pos[1] >= f64::from(pos.y)
             && found.pos[1] <= f64::from(pos.y) + jet::HEIGHT;
+
         if !inside
         {
             continue;
         }
+
         let entity: Entity = Entity { world, id: found.id };
         if entity.field(EntityField::FireTicks) >= 0.0
             || crate::combat::hit(entity, jet::DAMAGE, None, crate::combat::kind::IN_FIRE)
@@ -158,6 +165,7 @@ impl TileBehavior for JetTile
         let ticks: i32 = bump(ctx);
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
+
         let length: i32 = if self.m_flame
         {
             jet::FLAME_TICKS
@@ -166,15 +174,19 @@ impl TileBehavior for JetTile
         {
             jet::POP_TICKS
         };
+
         if ticks > length || (!self.m_flame && ticks >= length)
         {
             let _ = ctx.setTileData(&Counter::default());
+
             if ctx.isAuthority()
             {
                 finishJet(world, pos);
             }
+
             return;
         }
+
         if !self.m_flame
         {
             if ticks % jet::POP_EVERY == 0
@@ -191,12 +203,15 @@ impl TileBehavior for JetTile
                     0.9 + ids::fraction(world) * 0.15,
                 );
             }
+
             return;
         }
+
         if ticks % 2 == 0 && !ctx.isAuthority()
         {
             flames(world, pos);
         }
+
         if ticks % 4 == 0
         {
             world.playSound(
@@ -215,6 +230,7 @@ impl TileBehavior for JetTile
                 ids::fraction(world) * 0.7 + 0.3,
             );
         }
+
         if ctx.isAuthority() && ticks % jet::HURT_EVERY == 0
         {
             scorch(world, pos);
@@ -274,6 +290,7 @@ fn facing(info: &EntityInfo) -> usize
         _ =>
         {}
     }
+
     match ((info.yaw * quarter + 0.5).floor() as i32) & 3
     {
         0 => 3,
@@ -286,16 +303,18 @@ fn facing(info: &EntityInfo) -> usize
 // beta Facing offsets for faces down up north south west east
 const FACING: [[i32; 3]; 6] = NEIGHBORS;
 
-pub fn startBuilding(world: World, pos: BlockPos)
+pub(crate) fn startBuilding(world: World, pos: BlockPos)
 {
     let mut state: Builder = world.tileData(pos);
     if state.m_making
     {
         return;
     }
+
     state.m_making = true;
     state.m_made = 0;
     state.m_last = Some([pos.x, pos.y, pos.z]);
+
     let _ = world.setTileData(pos, &state);
 }
 
@@ -304,13 +323,18 @@ impl BuilderTile
     fn step(world: World, pos: BlockPos, state: &mut Builder)
     {
         let center: [f64; 3] = ids::center(pos);
+
         if state.m_player.is_none()
         {
             state.m_player = nearestPlayer(world, center, builder::RANGE).map(|info| info.id);
         }
+
         let looking: Option<EntityInfo> = state.m_player.and_then(|id| world.entity(id));
+
         state.m_ticks += 1;
+
         let mut blocked: bool = false;
+
         if let (Some(info), Some(last)) = (looking.as_ref(), state.m_last)
             && state.m_ticks % builder::EVERY == 0
         {
@@ -319,6 +343,7 @@ impl BuilderTile
             if state.m_made <= builder::MAX_BLOCKS && world.isAir(next)
             {
                 let _ = world.setBlock(next, deviceId(Device::Built), 0);
+
                 world.playSound(ids::center(next), "random.click", 1.0, 1.0);
                 state.m_last = Some([next.x, next.y, next.z]);
                 state.m_made += 1;
@@ -328,6 +353,7 @@ impl BuilderTile
                 blocked = true;
             }
         }
+
         if blocked
         {
             state.m_making = false;
@@ -346,18 +372,24 @@ impl TileBehavior for BuilderTile
         {
             return;
         }
+
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let mut state: Builder = ctx.tileData();
         if state.m_making
         {
             Self::step(world, pos, &mut state);
+
             let _ = ctx.setTileData(&state);
+
             return;
         }
+
         state.m_player = None;
         state.m_stopped += 1;
+
         let _ = ctx.setTileData(&state);
+
         if state.m_stopped == builder::TIMEOUT
         {
             let timeout: i32 = deviceId(Device::BuilderTimeout);
@@ -400,9 +432,10 @@ fn around(pos: BlockPos) -> impl Iterator<Item = BlockPos>
     })
 }
 
-pub fn deviceBlock(world: World, block: i32) -> bool
+pub(crate) fn deviceBlock(world: World, block: i32) -> bool
 {
     let _ = world;
+
     [
         Device::Reappearing,
         Device::ReappearingActive,
@@ -460,8 +493,10 @@ fn revert(world: World, pos: BlockPos, there: i32, wanted: (i32, i32)) -> bool
     {
         return true;
     }
+
     let antibuilt: i32 = deviceId(Device::Antibuilt);
     let replace: i32 = if wanted.0 == 0 { 0 } else { antibuilt };
+
     if there == 0
     {
         let _ = world.breakEffect(pos, replace, 0);
@@ -472,6 +507,7 @@ fn revert(world: World, pos: BlockPos, there: i32, wanted: (i32, i32)) -> bool
         let _ = world.dropBlockItems(pos, there, world.meta(pos));
     }
     let _ = world.setBlock(pos, replace, 0);
+
     true
 }
 
@@ -480,6 +516,7 @@ impl ReverterTile
     fn scan(world: World, pos: BlockPos, state: &mut Reverter) -> bool
     {
         let mut reverted: bool = false;
+
         for (index, at) in around(pos).enumerate()
         {
             let there: i32 = world.block(at);
@@ -488,6 +525,7 @@ impl ReverterTile
             {
                 continue;
             }
+
             if revert(world, at, there, wanted)
             {
                 reverted = true;
@@ -497,6 +535,7 @@ impl ReverterTile
                 state.m_blocks[index] = (there, world.meta(at));
             }
         }
+
         reverted
     }
 
@@ -507,6 +546,7 @@ impl ReverterTile
         let high: [f64; 3] =
             [f64::from(pos.x) + radius + 1.0, f64::from(pos.y) + radius + 1.0, f64::from(pos.z) + radius + 1.0];
         let edge: i32 = world.random(reverter::OUTLINES);
+
         let corner = |bits: i32|
         {
             [
@@ -532,15 +572,19 @@ impl TileBehavior for ReverterTile
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let mut state: Reverter = ctx.tileData();
+
         if nearestPlayer(world, ids::center(pos), reverter::RANGE).is_none()
         {
             if !state.m_blocks.is_empty() || state.m_ticks != 0
             {
                 let _ = ctx.setTileData(&Reverter::default());
             }
+
             return;
         }
+
         state.m_ticks += 1;
+
         if !ctx.isAuthority()
         {
             particles::spawn(
@@ -549,6 +593,7 @@ impl TileBehavior for ReverterTile
                 [f64::from(pos.x) + 0.5, f64::from(pos.y) + 0.5, f64::from(pos.z) + 0.5],
                 [0.0; 3],
             );
+
             if world.random(reverter::OUTLINE_ODDS) == 0
             {
                 for _ in 0..3
@@ -556,13 +601,16 @@ impl TileBehavior for ReverterTile
                     Self::outline(world, pos);
                 }
             }
+
             return;
         }
+
         if state.m_blocks.is_empty()
         {
             state.m_blocks = around(pos).map(|at| (world.block(at), world.meta(at))).collect();
             state.m_slow = true;
         }
+
         if !state.m_slow || state.m_ticks % reverter::SLOW_EVERY == 0
         {
             if Self::scan(world, pos, &mut state)
@@ -576,6 +624,7 @@ impl TileBehavior for ReverterTile
                 state.m_slow = state.m_quiet > reverter::SETTLE;
             }
         }
+
         let _ = ctx.setTileData(&state);
     }
 }
@@ -603,7 +652,10 @@ struct Charge
     m_charges: i32,
 }
 
-pub fn trapCharged(world: World, pos: BlockPos) -> bool { world.tileData::<Charge>(pos).m_charges >= trap::CHARGES }
+pub(crate) fn trapCharged(world: World, pos: BlockPos) -> bool
+{
+    world.tileData::<Charge>(pos).m_charges >= trap::CHARGES
+}
 
 fn within(at: [f64; 3], center: [f64; 3], reach: [f64; 3]) -> bool
 {
@@ -621,19 +673,23 @@ impl TileBehavior for TrapTile
         {
             return;
         }
+
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let mut charge: Charge = ctx.tileData();
         charge.m_ticks += 1;
+
         let level: i32 = charge.m_charges.min(trap::CHARGES);
         let ticks: i32 = charge.m_ticks;
         let _ = ctx.setTileData(&charge);
         let top: [f64; 3] = [f64::from(pos.x) + 0.5, f64::from(pos.y) + 1.5, f64::from(pos.z) + 0.5];
+
         if level >= 1 && ticks % 10 == 0
         {
             particles::sparkle(world, pos, "reddust");
             world.playSound(top, "note.harp", 1.0, 1.0);
         }
+
         if level >= 2
         {
             let at: [f64; 3] = [
@@ -642,16 +698,19 @@ impl TileBehavior for TrapTile
                 f64::from(pos.z) + 0.5,
             ];
             world.particle("smoke", at, [0.0; 3]);
+
             if ticks % 10 == 0
             {
                 world.playSound(top, "note.harp", 1.2, 0.8);
             }
         }
+
         if level >= trap::CHARGES
         {
             let at: [f64; 3] = [f64::from(pos.x) + 0.5, f64::from(pos.y) + 1.05, f64::from(pos.z) + 0.5];
             world.particle("largesmoke", at, [0.0, 0.05, 0.0]);
             particles::sparkle(world, pos, "reddust");
+
             if ticks % 5 == 0
             {
                 world.playSound(top, "note.harp", 1.5, 2.0);
@@ -674,10 +733,12 @@ fn pullGhasts(world: World, pos: BlockPos)
             || kind == "minecraft:ghast"
             || kind == crate::entities::MINI_GHAST
             || kind == crate::entities::TOWER_GHAST;
+
         if !ghast || !within(found.pos, center, trap::PULL_REACH)
         {
             continue;
         }
+
         let entity: Entity = Entity { world, id: found.id };
         let hover: f64 = if boss { 2.5 } else { 1.5 };
         let motion: [f64; 3] = [
@@ -685,7 +746,9 @@ fn pullGhasts(world: World, pos: BlockPos)
             (found.pos[1] - f64::from(pos.y) - hover) * trap::PULL,
             (found.pos[2] - f64::from(pos.z) - 0.5) * trap::PULL,
         ];
+
         let _ = entity.setMotion(motion);
+
         if world.random(trap::HURT_ODDS) == 0
         {
             entity.damage(
@@ -700,6 +763,7 @@ fn pullGhasts(world: World, pos: BlockPos)
                 None,
             );
         }
+
         crate::entities::ghastTrapped(entity, boss);
     }
 }
@@ -707,6 +771,7 @@ fn pullGhasts(world: World, pos: BlockPos)
 fn trapEffects(world: World, pos: BlockPos, ticks: i32)
 {
     let top: [f64; 3] = [f64::from(pos.x) + 0.5, f64::from(pos.y) + 1.5, f64::from(pos.z) + 0.5];
+
     if ticks > trap::SPIRAL && ticks % 4 == 0
     {
         swirl(world, pos, ticks);
@@ -717,6 +782,7 @@ fn trapEffects(world: World, pos: BlockPos, ticks: i32)
         let (dx, dz): (f64, f64) = (phase.cos() * 2.5, phase.sin() * 2.5);
         let rise: f64 = 20.0;
         let base: [f64; 3] = [f64::from(pos.x) + 0.5, f64::from(pos.y) + 1.0, f64::from(pos.z) + 0.5];
+
         for motion in [
             [dx, rise, dz],
             [-dx, rise, -dz],
@@ -729,6 +795,7 @@ fn trapEffects(world: World, pos: BlockPos, ticks: i32)
             particles::spawn(world, "ghasttrap", base, motion);
         }
     }
+
     let sound: &str = if ticks < trap::WARMUP
     {
         "twilightforest.mob.urghast.trapwarmup"
@@ -752,12 +819,15 @@ impl TileBehavior for TrapActiveTile
         let ticks: i32 = bump(ctx);
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
+
         if !ctx.isAuthority()
         {
             trapEffects(world, pos, ticks);
             return;
         }
+
         pullGhasts(world, pos);
+
         if ticks >= trap::RUN_TICKS
         {
             let _ = world.setBlock(pos, deviceId(Device::GhastTrap), 0);
@@ -802,6 +872,7 @@ fn cage(world: World, pos: BlockPos)
 {
     let gold: i32 = deviceId(Device::FalseGold);
     let diamond: i32 = deviceId(Device::FalseDiamond);
+
     for dx in -1..=1
     {
         for dy in -1..=1
@@ -812,6 +883,7 @@ fn cage(world: World, pos: BlockPos)
                 {
                     continue;
                 }
+
                 let edges: i32 = [dx, dy, dz].iter().filter(|value| **value != 0).count() as i32;
                 // corners and face centres are false diamond, edges false gold
                 let block: i32 = if edges == 2 { gold } else { diamond };
@@ -827,9 +899,11 @@ fn blob(world: World, center: BlockPos, radius: i32, block: i32, fuzz: i32, neth
     for dx in 0..=radius
     {
         let fuzzX: i32 = (fuzz + dx) % reactor::FUZZ;
+
         for dy in 0..=radius
         {
             let fuzzY: i32 = (fuzz + dy) % reactor::FUZZ;
+
             for dz in 0..=radius
             {
                 let longest: i32 = dx.max(dy).max(dz);
@@ -850,6 +924,7 @@ fn blob(world: World, center: BlockPos, radius: i32, block: i32, fuzz: i32, neth
                 {
                     continue;
                 }
+
                 let sx: i32 = if fuzzX & 2 == 0 { dx } else { -dx };
                 let sy: i32 = if fuzzX & 4 == 0 { dy } else { -dy };
                 let sz: i32 = if fuzzX & 1 == 0 { dz } else { -dz };
@@ -866,19 +941,24 @@ fn transform(world: World, pos: BlockPos, block: i32, fuzz: i32, nether: bool)
     {
         return;
     }
+
     if fuzz == 0 && there != 0
     {
         let _ = world.breakEffect(pos, there, world.meta(pos));
     }
+
     if nether && there != 0
     {
         let _ = world.setBlock(pos, ids::blockId("minecraft:netherrack"), 0);
+
         if world.isAir(pos.offset(0, 1, 0)) && fuzz % 3 == 0
         {
             let _ = world.setBlock(pos.offset(0, 1, 0), ids::blockId("minecraft:fire"), 0);
         }
+
         return;
     }
+
     let _ = world.setBlock(pos, block, 0);
 }
 
@@ -890,6 +970,7 @@ fn spawnGhast(world: World, around: BlockPos)
         f64::from(around.y) - 1.5 + f64::from(ids::fraction(world)) * spread,
         f64::from(around.z) - 1.5 + f64::from(ids::fraction(world)) * spread,
     ];
+
     let _ = world.spawnEntity(crate::entities::MINI_GHAST, at);
 }
 
@@ -902,6 +983,7 @@ impl ReactorTile
         {
             blob(world, at, (phase - reactor::OFFSET) / reactor::GROWTH, 0, phase - reactor::OFFSET, false);
         }
+
         if (0..=reactor::NETHER_END).contains(&phase)
         {
             blob(world, at, phase / reactor::GROWTH, 0, phase, true);
@@ -913,24 +995,29 @@ impl ReactorTile
         let ticks: i32 = state.m_ticks;
         let [sx, sy, sz] = state.m_secondary.unwrap_or_default();
         let [tx, ty, tz] = state.m_tertiary;
+
         if ticks % reactor::EVERY == 0
         {
             if ticks == reactor::EVERY
             {
                 cage(world, pos);
             }
+
             let primary: i32 = ticks - reactor::PRIMARY_START;
             if primary >= reactor::OFFSET && primary <= reactor::PRIMARY_END
             {
                 blob(world, pos, (primary - reactor::OFFSET) / reactor::GROWTH, 0, primary - reactor::OFFSET, false);
             }
+
             if primary <= reactor::SHELL_END
             {
                 blob(world, pos, primary / reactor::GROWTH, deviceId(Device::Debris), ticks, false);
             }
+
             Self::bubble(world, pos.offset(sx, sy, sz), reactor::SECONDARY_START, ticks);
             Self::bubble(world, pos.offset(tx, ty, tz), reactor::TERTIARY_START, ticks);
         }
+
         if ticks >= reactor::BLOW
         {
             for _ in 0..reactor::GHASTS
@@ -938,6 +1025,7 @@ impl ReactorTile
                 spawnGhast(world, pos.offset(sx, sy, sz));
                 spawnGhast(world, pos.offset(tx, ty, tz));
             }
+
             let _ = world.explode(ids::center(pos), reactor::POWER);
             let _ = world.setBlock(pos, 0, 0);
         }
@@ -952,6 +1040,7 @@ impl TileBehavior for ReactorTile
         let world: World = ctx.world();
         let mut state: Reactor = ctx.tileData();
         state.m_ticks += 1;
+
         if state.m_secondary.is_none()
         {
             let secondary: [i32; 3] = [signedSpread(world), signedSpread(world), signedSpread(world)];
@@ -960,10 +1049,13 @@ impl TileBehavior for ReactorTile
             {
                 tertiary = tertiary.map(|value| -value);
             }
+
             state.m_secondary = Some(secondary);
             state.m_tertiary = tertiary;
         }
+
         let _ = ctx.setTileData(&state);
+
         if ctx.isAuthority()
         {
             Self::run(world, ctx.pos(), &state);
@@ -976,7 +1068,7 @@ impl TileBehavior for ReactorTile
     }
 }
 
-pub fn registerTiles(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn registerTiles(ctx: &mut RegisterCtx) -> Result<()>
 {
     let tiles: [(&str, bool, Rc<dyn TileBehavior>); 8] = [
         (SMOKER_TILE, false, Rc::new(Smoker)),
@@ -988,6 +1080,7 @@ pub fn registerTiles(ctx: &mut RegisterCtx) -> Result<()>
         (TRAP_ACTIVE_TILE, false, Rc::new(TrapActiveTile)),
         (REACTOR_TILE, false, Rc::new(ReactorTile)),
     ];
+
     for (name, sync, behavior) in tiles
     {
         ctx.tileEntities().register(
@@ -996,5 +1089,6 @@ pub fn registerTiles(ctx: &mut RegisterCtx) -> Result<()>
             Some(behavior),
         )?;
     }
+
     Ok(())
 }

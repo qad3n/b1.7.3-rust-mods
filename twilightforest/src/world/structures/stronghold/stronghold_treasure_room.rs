@@ -1,7 +1,7 @@
 // draft from ComponentTFStrongholdTreasureRoom.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::StrongholdTreasureRoom);
     init(&this, i, facing, x, y, z);
@@ -9,26 +9,26 @@ pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFStrongholdTreasureRoom constructor
-pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 {
     stronghold_component::init(this, i, facing, x, y, z);
 }
 
 // ComponentTFStrongholdTreasureRoom.generateBoundingBox
-pub fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub(crate) fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
-    return Some(vanillaBox(x, y, z, -4, -1, 0, 9, 7, 18, facing));
+    Some(vanillaBox(x, y, z, -4, -1, 0, 9, 7, 18, facing))
 }
 
 // ComponentTFStrongholdTreasureRoom.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
-    stronghold_component::build(this, &parent, list, random);
+    stronghold_component::build(this, parent, list, random);
     stronghold_component::addDoor(this, 4, 1, 0);
 }
 
 // ComponentTFStrongholdTreasureRoom.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     stronghold_component::placeStrongholdWalls(
         this,
@@ -55,11 +55,19 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.placeTreasure(world, random, 2, 4, 13, Table::StrongholdRoom, sbb);
     this.placeTreasure(world, random, 6, 4, 13, Table::StrongholdRoom, sbb);
     stronghold_component::placeDoors(this, world, random, sbb);
-    return true;
+    true
 }
 
 // ComponentTFStrongholdTreasureRoom.placeDoorwayAt
-pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, _random: &Random, x: i32, y: i32, z: i32, sbb: StructureBox)
+pub(crate) fn placeDoorwayAt(
+    this: &Piece,
+    world: &GenWorld,
+    _random: &Random,
+    x: i32,
+    y: i32,
+    z: i32,
+    sbb: StructureBox,
+)
 {
     if (x != 0) && (x != stronghold_component::getXSize(this))
     {

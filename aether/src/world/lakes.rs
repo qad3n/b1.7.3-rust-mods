@@ -1,6 +1,6 @@
 use super::gen_world::GenWorld;
-use b173_api::World;
 use b173_api::terrain::Random;
+use b173_api::{BlockInfo, World};
 
 const WATER: &str = "minecraft:water";
 
@@ -38,6 +38,7 @@ fn blobs(random: &Random) -> Vec<bool>
         let centerX: f64 = random.nextDouble() * (16.0 - sizeX - 2.0) + 1.0 + sizeX / 2.0;
         let centerY: f64 = random.nextDouble() * (8.0 - sizeY - 4.0) + 2.0 + sizeY / 2.0;
         let centerZ: f64 = random.nextDouble() * (16.0 - sizeZ - 2.0) + 1.0 + sizeZ / 2.0;
+
         for x in 1..lake::WIDTH - 1
         {
             for z in 1..lake::WIDTH - 1
@@ -55,12 +56,13 @@ fn blobs(random: &Random) -> Vec<bool>
             }
         }
     }
+
     shape
 }
 
 // WorldGenLakes.generate with water, which the Aether decorator uses unchanged; its grass and lava passes
 // only touch vanilla dirt and lava lakes, so they never fire here
-pub fn waterLake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn waterLake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let x: i32 = x - lake::WIDTH / 2;
     let z: i32 = z - lake::WIDTH / 2;
@@ -69,9 +71,12 @@ pub fn waterLake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> b
     {
         y -= 1;
     }
+
     y -= lake::WATER_LAYERS;
+
     let shape: Vec<bool> = blobs(random);
     let water: i32 = crate::ids::blockId(WATER);
+
     for dx in 0..lake::WIDTH
     {
         for dz in 0..lake::WIDTH
@@ -83,7 +88,7 @@ pub fn waterLake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> b
                     continue;
                 }
                 let block: i32 = world.block(x + dx, y + dy, z + dz);
-                let info = World::blockInfo(block);
+                let info: BlockInfo = World::blockInfo(block);
                 if dy >= lake::WATER_LAYERS && info.liquid
                 {
                     return false;
@@ -95,6 +100,7 @@ pub fn waterLake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> b
             }
         }
     }
+
     for dx in 0..lake::WIDTH
     {
         for dz in 0..lake::WIDTH
@@ -108,5 +114,6 @@ pub fn waterLake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> b
             }
         }
     }
+
     true
 }

@@ -1,20 +1,20 @@
 mod names;
-pub mod slider;
-pub mod sun_spirit;
-pub mod valkyrie_queen;
+pub(crate) mod slider;
+pub(crate) mod sun_spirit;
+pub(crate) mod valkyrie_queen;
 
 use crate::entities::fraction;
 use crate::ids::blockId;
 use b173_api::prelude::*;
 use b173_api::screen::Draw;
 
-pub const SLIDER: &str = "slider";
-pub const VALKYRIE_QUEEN: &str = "valkyrie_queen";
-pub const SUN_SPIRIT: &str = "sun_spirit";
+pub(crate) const SLIDER: &str = "slider";
+pub(crate) const VALKYRIE_QUEEN: &str = "valkyrie_queen";
+pub(crate) const SUN_SPIRIT: &str = "sun_spirit";
 
 // where a boss was placed by its dungeon: the corner its arena counts from, the way it faces and the door it shut
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
-pub struct Home
+pub(crate) struct Home
 {
     pub m_dungeon: [i32; 3],
     pub m_direction: i32,
@@ -23,7 +23,7 @@ pub struct Home
 
 // what the boss bar shows: AetherNameGen name, health and the player it is fighting
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
-pub struct BossBar
+pub(crate) struct BossBar
 {
     pub m_name: String,
     pub m_health: i32,
@@ -45,7 +45,7 @@ mod bar
 }
 
 // the dungeons place their boss once the chunk holding it populates, setDungeon in each Java boss
-pub fn spawn(world: World, kind: &str, pos: [f64; 3], dungeon: [i32; 3], direction: i32)
+pub(crate) fn spawn(world: World, kind: &str, pos: [f64; 3], dungeon: [i32; 3], direction: i32)
 {
     match world.spawnEntity(&format!("aether:{kind}"), pos)
     {
@@ -53,6 +53,7 @@ pub fn spawn(world: World, kind: &str, pos: [f64; 3], dungeon: [i32; 3], directi
         {
             let _ = boss.setData(&Home { m_dungeon: dungeon, m_direction: direction, m_door: None });
         }
+
         Err(error) => log(&format!("no {kind} for the dungeon at {dungeon:?}: {}", error.0)),
     }
 }
@@ -60,19 +61,21 @@ pub fn spawn(world: World, kind: &str, pos: [f64; 3], dungeon: [i32; 3], directi
 fn pick<'a>(world: World, words: &[&'a str]) -> &'a str { words[world.random(words.len() as i32) as usize] }
 
 // AetherNameGen.gen
-pub fn bossName(world: World, title: &str) -> String
+pub(crate) fn bossName(world: World, title: &str) -> String
 {
     let mut name: String = pick(world, &names::FIRST).to_owned();
+
     for _ in 0..bar::MIDDLES + world.random(2)
     {
         name.push_str(pick(world, &names::MIDDLE));
     }
+
     name.push_str(pick(world, &names::LAST));
     format!("{name}, {}", translate(&format!("aether.title.{title}")))
 }
 
 // AetherNameGen.valkGen
-pub fn valkyrieName(world: World) -> String
+pub(crate) fn valkyrieName(world: World) -> String
 {
     [&names::VALKYRIE_PREFIX[..], &names::VALKYRIE_MIDDLE[..], &names::VALKYRIE_SUFFIX[..]]
         .iter()
@@ -81,10 +84,10 @@ pub fn valkyrieName(world: World) -> String
 }
 
 // a boss's chat line to one player, at most one every three seconds
-pub fn say(player: Player, key: &str) { player.chat(&translate(&format!("aether.{key}"))); }
+pub(crate) fn say(player: Player, key: &str) { player.chat(&translate(&format!("aether.{key}"))); }
 
 // BlockDungeonBase.getUnlockedBlock spread through every touching locked block of the dungeon's own kind
-pub fn unlock(world: World, from: [i32; 3], locked: &[&str])
+pub(crate) fn unlock(world: World, from: [i32; 3], locked: &[&str])
 {
     let swaps: Vec<(i32, i32)> =
         locked.iter().map(|name| (blockId(name), blockId(crate::world::dungeons::unlocked(name)))).collect();
@@ -97,13 +100,15 @@ pub fn unlock(world: World, from: [i32; 3], locked: &[&str])
         {
             continue;
         };
+
         let _ = world.setBlock(pos, *plain, 0);
+
         pending.extend([[x + 1, y, z], [x - 1, y, z], [x, y + 1, z], [x, y - 1, z], [x, y, z + 1], [x, y, z - 1]]);
     }
 }
 
 // a fresh 0.9 to 1.1 pitch the bosses play their sounds at, 1 / (nextFloat * 0.2 + 0.9)
-pub fn pitch(world: World) -> f32 { 1.0 / (fraction(world) as f32 * 0.2 + 0.9) }
+pub(crate) fn pitch(world: World) -> f32 { 1.0 / (fraction(world) as f32 * 0.2 + 0.9) }
 
 fn barOf(kind: &str, boss: Entity) -> Option<BossBar>
 {
@@ -124,9 +129,11 @@ fn drawBar(draw: &mut Draw, width: i32)
     {
         return;
     };
+
     let world: World = World { dimension: local.world };
-    let found: Option<BossBar> = world.entitiesNear(local.pos, bar::SEARCH).into_iter().find_map(|other| {
-        let kind = other.kind.filter(|kind| kind.namespace() == "aether")?;
+    let found: Option<BossBar> = world.entitiesNear(local.pos, bar::SEARCH).into_iter().find_map(|other|
+    {
+        let kind: Identifier = other.kind.filter(|kind| kind.namespace() == "aether")?;
         let shown: BossBar = barOf(kind.path(), Entity { world, id: other.id })?;
         (shown.m_focus == Some(local.id) && shown.m_health > 0).then_some(shown)
     });
@@ -135,14 +142,17 @@ fn drawBar(draw: &mut Draw, width: i32)
     {
         return;
     };
+
     let left: i32 = width / 2 - bar::WIDTH / 2;
+
     draw.centered(width / 2, bar::TITLE_Y, &shown.m_name, bar::WHITE);
     draw.texture(bar::SHEET, left, bar::TOP, 0, bar::HEIGHT, bar::WIDTH, bar::HEIGHT);
+
     let filled: i32 = shown.m_health * bar::WIDTH / shown.m_maxHealth.max(1);
     draw.texture(bar::SHEET, left, bar::TOP, 0, 0, filled, bar::HEIGHT);
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     slider::register(ctx)?;
     valkyrie_queen::register(ctx)?;

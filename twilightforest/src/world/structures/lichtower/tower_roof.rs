@@ -2,14 +2,14 @@
 use crate::world::structures::prelude::*;
 
 // ComponentTFTowerRoof constructor
-pub fn init(this: &Piece, i: i32, _wing: &Piece)
+pub(crate) fn init(this: &Piece, i: i32, _wing: &Piece)
 {
     this.m_depth.set(i);
     this.m_spawnListIndex.set(-1);
 }
 
 // ComponentTFTowerRoof.makeAttachedOverhangBB
-pub fn makeAttachedOverhangBB(this: &Piece, wing: &Piece)
+pub(crate) fn makeAttachedOverhangBB(this: &Piece, wing: &Piece)
 {
     match this.mode()
     {
@@ -24,6 +24,7 @@ pub fn makeAttachedOverhangBB(this: &Piece, wing: &Piece)
                 ],
             ));
         }
+
         1 =>
         {
             this.m_box.set(StructureBox::new(
@@ -35,6 +36,7 @@ pub fn makeAttachedOverhangBB(this: &Piece, wing: &Piece)
                 ],
             ));
         }
+
         2 =>
         {
             this.m_box.set(StructureBox::new(
@@ -46,6 +48,7 @@ pub fn makeAttachedOverhangBB(this: &Piece, wing: &Piece)
                 ],
             ));
         }
+
         3 =>
         {
             this.m_box.set(StructureBox::new(
@@ -57,13 +60,14 @@ pub fn makeAttachedOverhangBB(this: &Piece, wing: &Piece)
                 ],
             ));
         }
+
         _ =>
         {}
     }
 }
 
 // ComponentTFTowerRoof.makeCapBB
-pub fn makeCapBB(this: &Piece, wing: &Piece)
+pub(crate) fn makeCapBB(this: &Piece, wing: &Piece)
 {
     this.m_box.set(StructureBox::new(
         [wing.bounds().m_min[0], wing.bounds().m_max[1], wing.bounds().m_min[2]],
@@ -72,7 +76,7 @@ pub fn makeCapBB(this: &Piece, wing: &Piece)
 }
 
 // ComponentTFTowerRoof.makeOverhangBB
-pub fn makeOverhangBB(this: &Piece, wing: &Piece)
+pub(crate) fn makeOverhangBB(this: &Piece, wing: &Piece)
 {
     this.m_box.set(StructureBox::new(
         [wing.bounds().m_min[0] - 1, wing.bounds().m_max[1], wing.bounds().m_min[2] - 1],
@@ -81,10 +85,10 @@ pub fn makeOverhangBB(this: &Piece, wing: &Piece)
 }
 
 // ComponentTFTowerRoof.func_74875_a
-pub fn add(_this: &Piece, _world: &GenWorld, _random: &Random, _sbb: StructureBox) -> bool { return false; }
+pub(crate) fn add(_this: &Piece, _world: &GenWorld, _random: &Random, _sbb: StructureBox) -> bool { false }
 
 // ComponentTFTowerRoof.fits
-pub fn fits(this: &Piece, parent: &Piece, list: &mut Pieces, _random: &Random) -> bool
+pub(crate) fn fits(this: &Piece, parent: &Piece, list: &mut Pieces, _random: &Random) -> bool
 {
-    return same(&intersecting(list, this.m_box.get()), &parent);
+    same(&intersecting(list, this.m_box.get()), &parent)
 }

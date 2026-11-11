@@ -1,7 +1,7 @@
 // draft from ComponentTFFinalCastleRoof13Conical.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(random: &Random, i: i32, sideTower: &Piece) -> Rc<Piece>
+pub(crate) fn new(random: &Random, i: i32, sideTower: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::FinalCastleRoof13Conical);
     init(&this, random, i, sideTower);
@@ -9,11 +9,13 @@ pub fn new(random: &Random, i: i32, sideTower: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFFinalCastleRoof13Conical constructor
-pub fn init(this: &Piece, random: &Random, i: i32, sideTower: &Piece)
+pub(crate) fn init(this: &Piece, random: &Random, i: i32, sideTower: &Piece)
 {
     this.m_depth.set(i);
     this.m_slope.set((2 + random.nextIntBounded(3)) + random.nextIntBounded(3));
+
     let height: i32 = this.m_slope.get() * 4;
+
     this.setMode(sideTower.mode());
     this.m_box.set(StructureBox::new(
         [sideTower.bounds().m_min[0] - 2, sideTower.bounds().m_max[1] - 1, sideTower.bounds().m_min[2] - 2],
@@ -22,13 +24,13 @@ pub fn init(this: &Piece, random: &Random, i: i32, sideTower: &Piece)
 }
 
 // ComponentTFFinalCastleRoof13Conical.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFFinalCastleRoof13Conical.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for rotation in 0..4
     {
@@ -61,6 +63,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             this.m_deco.get().m_blockMeta,
             rotation,
         );
+
         for i in (3..13).step_by(2)
         {
             this.fillTurned(
@@ -77,9 +80,11 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
                 rotation,
             );
         }
+
         for i in 2..9
         {
             let base: i32 = 2 - this.m_slope.get();
+
             if i < 7
             {
                 this.fillTurned(
@@ -126,6 +131,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
                 rotation,
             );
         }
+
         this.fillTurned(
             world,
             sbb,
@@ -140,5 +146,6 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             rotation,
         );
     }
-    return true;
+
+    true
 }

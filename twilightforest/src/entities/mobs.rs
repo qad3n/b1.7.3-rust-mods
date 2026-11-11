@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 // how the generated model moves, ModelBiped and ModelQuadruped setRotationAngles or standing still
 #[derive(Clone, Copy)]
-pub enum Look
+pub(crate) enum Look
 {
     Rest,
     Biped,
@@ -27,7 +27,7 @@ pub enum Look
 
 // where a creature spawns on its own in TFBiomeBase's lists, monsters spawn from the lists in spawns.rs
 #[derive(Clone, Copy, PartialEq)]
-pub enum Spawning
+pub(crate) enum Spawning
 {
     Never,
     // every twilight biome but the highlands center, by weight and SpawnListEntry group size
@@ -39,7 +39,7 @@ pub enum Spawning
     Monster,
 }
 
-pub struct Mob
+pub(crate) struct Mob
 {
     pub m_name: &'static str,
     pub m_label: &'static str,
@@ -224,7 +224,7 @@ const fn chitinous(mob: Mob) -> Mob { voiced(mob, None, "mob.spider", "mob.spide
 const GLACIER: &[Biome] = &[Biome::Glacier];
 const SNOWBALL: &str = "minecraft:snowball";
 
-pub const MOBS: [Mob; 44] = [
+pub(crate) static MOBS: [Mob; 44] = [
     // passive animals, TFBiomeBase creature list
     voiced(
         drops(
@@ -1174,7 +1174,7 @@ pub const MOBS: [Mob; 44] = [
 ];
 
 // ghasts keep the ghast template's flight and fireballs
-pub const GHASTS: [Mob; 2] = [
+pub(crate) const GHASTS: [Mob; 2] = [
     voiced(
         mob(
             "mini_ghast",
@@ -1213,7 +1213,7 @@ pub const GHASTS: [Mob; 2] = [
     ),
 ];
 
-pub fn row(name: &str) -> Option<&'static Mob>
+pub(crate) fn row(name: &str) -> Option<&'static Mob>
 {
     MOBS.iter().chain(GHASTS.iter()).find(|row| row.m_name == name || format!("twilightforest:{}", row.m_name) == name)
 }
@@ -1249,6 +1249,7 @@ impl EntityBehavior for Posed
                 warn(&format!("mob variant: {}", error.0));
             }
         }
+
         ai::tick(self.m_mob.m_ai, entity, info);
     }
 
@@ -1261,10 +1262,12 @@ impl EntityBehavior for Posed
                 super::flock::died(entity, &info);
                 crate::hints::dropNotes(entity, &info);
             }
+
             (Ai::Troll, Some(info)) => ai::ripen(entity, &info),
             _ =>
             {}
         }
+
         ai::forget(entity);
     }
 
@@ -1277,8 +1280,10 @@ impl EntityBehavior for Posed
                 super::redcap::hurt(entity);
                 Some(amount)
             }
+
             Ai::KnightUpper => super::goblin_knight::upperHurt(entity, source, amount),
             Ai::KnightLower => super::goblin_knight::lowerHurt(entity, source, amount),
+
             Ai::Termite =>
             {
                 ai::termiteHurt(entity, source);
@@ -1300,27 +1305,33 @@ impl EntityBehavior for Posed
             _ =>
             {}
         }
+
         let mut body: Program = Program::new();
+
         if !mob.m_variants.is_empty()
         {
             let variant: Variant = b173_api::fromBytes(&input.synced).unwrap_or_default();
             let look: &str = mob.m_variants.get(usize::from(variant.m_index)).copied().unwrap_or(mob.m_variants[0]);
             body.texture(&format!("twilightforest:model/{look}"));
         }
+
         match mob.m_look
         {
             Look::Rest => return Pose::default(),
             Look::Spider => return models::spiderPose(input),
             Look::Wolf => return models::wolfPose(input),
             Look::Ghast => return models::ghastPose(input),
+
             Look::Posed(pose) =>
             {
                 let posed: Pose = pose(input);
                 body.extend(posed.model);
                 return Pose { pre: posed.pre, model: body.take() };
             }
+
             Look::Biped => bipedPose(&mut body, mob.m_pivots, mob.m_rotations, input),
             Look::Zombie => models::zombiePose(&mut body, mob.m_pivots, mob.m_rotations, input),
+
             Look::Quadruped | Look::Upright =>
             {
                 let pitch: f32 = if matches!(mob.m_look, Look::Upright)
@@ -1332,27 +1343,35 @@ impl EntityBehavior for Posed
                     models::HALF_PI
                 };
                 quadrupedPose(&mut body, 0, mob.m_pivots, input, pitch);
+
                 for part in models::quadruped::PARTS..mob.m_pivots.len() as u16
                 {
                     body.part(part, mob.m_rotations[part as usize], mob.m_pivots[part as usize]);
                 }
             }
         }
+
         fitParts(&mut body, mob, input);
+
         if mob.m_ai == Ai::Goblin
         {
             super::goblin::draw(&mut body, input);
         }
+
         models::armor::draw(&mut body, mob.m_pivots.len() as u16, mob.m_armor, input);
+
         if let Some(item) = mob.m_held
         {
             body.held(models::biped::RIGHT_ARM, item);
         }
+
         let mut pre: Program = Program::new();
+
         if mob.m_scale != 1.0
         {
             pre.scale(mob.m_scale, mob.m_scale, mob.m_scale);
         }
+
         Pose { pre: pre.take(), model: body.take() }
     }
 }
@@ -1363,6 +1382,7 @@ fn fitParts(body: &mut Program, mob: &Mob, input: &PoseInput)
     let head: [f32; 3] =
         [input.head_pitch / models::DEGREES_PER_RADIAN, input.head_yaw / models::DEGREES_PER_RADIAN, 0.0];
     body.m_ops.retain(|op| !matches!(op, ModelOp::Part { part, .. } if mob.m_hidden.contains(part)));
+
     for op in &mut body.m_ops
     {
         if let ModelOp::Part { part, rotation, .. } = op
@@ -1380,6 +1400,7 @@ fn wornModel(mob: &Mob) -> EntityModelSpec
     {
         return (mob.m_model)();
     }
+
     models::combine(vec![(mob.m_model)(), models::armor::model()])
 }
 
@@ -1389,6 +1410,7 @@ fn registerMob(ctx: &mut RegisterCtx, mob: &'static Mob) -> Result<()>
         mob.m_spawn,
         Spawning::Forest(..) | Spawning::Everywhere(..) | Spawning::Only(..) | Spawning::Ambient(..)
     );
+
     let scale: f32 = if animal
     {
         speed::ANIMAL
@@ -1444,6 +1466,7 @@ fn armed(event: &mut Event)
     {
         return;
     };
+
     let world: World = World { dimension: entity.world };
     let unarmed: bool = matches!(mob.m_ai, Ai::Goblin | Ai::Grabber);
     if (mob.m_attack > 0 || unarmed) && world.isAuthority()
@@ -1452,12 +1475,13 @@ fn armed(event: &mut Event)
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for mob in MOBS.iter().chain(GHASTS.iter())
     {
         registerMob(ctx, mob)?;
     }
+
     ctx.events().on::<EntityJoinWorld>(Priority::Normal, armed)?;
     Ok(())
 }

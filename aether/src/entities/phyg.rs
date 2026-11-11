@@ -19,10 +19,12 @@ impl EntityBehavior for Phyg
     fn onTick(&self, entity: Entity, _info: &EntityInfo)
     {
         entity.setField(EntityField::FallDistance, 0.0);
+
         if !entity.world.isAuthority()
         {
             return;
         }
+
         // EntityPhyg.onUpdate, a player riding earns it
         if let Some(rider) =
             entity.rider().and_then(|id| entity.world.entity(id)).filter(|rider| rider.player.is_some())
@@ -60,32 +62,38 @@ impl EntityBehavior for Phyg
         quadrupedPose(&mut body, 0, &pig::PIVOTS, input, None);
         body.texture(WINGS);
         wingPose(&mut body, WING_BASE, &phyg_wing::ROTATIONS, input);
+
         if saddle.m_saddled
         {
             body.texture(SADDLE_TEXTURE);
             quadrupedPose(&mut body, SADDLE_BASE, &pig_saddle::PIVOTS, input, None);
         }
+
         Pose { pre: Vec::new(), model: body.take() }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:pig").ok(),
             texture: Some(TEXTURE.to_owned()),
             size: Some([0.9, 1.3]),
             health: Some(10),
             spawn: creature(12),
             drops: Some(vec![drop("minecraft:feather", [1, 3]), drop("minecraft:porkchop", [1, 3])]),
-            sounds: Some(EntitySounds {
+            sounds: Some(EntitySounds
+            {
                 living: Some("mob.pig".to_owned()),
                 hurt: Some("mob.pig".to_owned()),
                 death: Some("mob.pigdeath".to_owned()),
             }),
-            model: Some(EntityModelSpec {
+
+            model: Some(EntityModelSpec
+            {
                 shadow: 0.7,
                 ..combine(vec![pig::model(), phyg_wing::model(), pig_saddle::model()])
             }),

@@ -1,7 +1,7 @@
 use crate::ids::block;
 
 // a 1.7 block the structure code names, resolved to a beta or port block and its metadata
-pub type Resolved = (&'static str, i32);
+pub(crate) type Resolved = (&'static str, i32);
 
 // 1.7 blocks beta has under the same name and metadata
 const SAME: &[&str] = &[
@@ -83,7 +83,7 @@ const SAME: &[&str] = &[
 ];
 
 // 1.7 and TF names the structures place, with beta stand ins where beta lacks the block
-pub fn resolve(name: &'static str, meta: i32) -> Resolved
+pub(crate) fn resolve(name: &'static str, meta: i32) -> Resolved
 {
     if let Some(tf) = name.strip_prefix("tf:")
     {
@@ -93,6 +93,7 @@ pub fn resolve(name: &'static str, meta: i32) -> Resolved
     {
         return (name, meta);
     }
+
     match name
     {
         "log" | "log2" => ("log", if name == "log" { (meta & 3) % 3 } else { 0 }),
@@ -197,10 +198,12 @@ fn twilight(field: &str, meta: i32) -> Resolved
             0,
         ),
         "towerDevice" => device(meta),
+
         "log" =>
         {
             ([block::OAK_LOG, block::CANOPY_LOG, block::MANGROVE_LOG, block::DARKWOOD_LOG][(meta & 3) as usize], 0)
         }
+
         "leaves" => (
             [block::OAK_LEAVES, block::CANOPY_LEAVES, block::MANGROVE_LEAVES, block::RAINBOW_LEAVES]
                 [(meta & 3) as usize],
@@ -229,10 +232,12 @@ fn twilight(field: &str, meta: i32) -> Resolved
                 [(meta & 3) as usize],
             0,
         ),
+
         "deadrock" =>
         {
             ([block::DEADROCK, block::CRACKED_DEADROCK, block::SOLID_DEADROCK][(meta.clamp(0, 2)) as usize], 0)
         }
+
         "forceField" => (
             ["purple_force_field", "pink_force_field", "orange_force_field", "green_force_field", "blue_force_field"]
                 [(meta.clamp(0, 4)) as usize],
@@ -332,7 +337,7 @@ fn plant(meta: i32) -> Resolved
 }
 
 // TFCreatures.getSpawnerNameFor and the vanilla names structures give their spawners
-pub fn mob(name: &str) -> &'static str
+pub(crate) fn mob(name: &str) -> &'static str
 {
     match name
     {

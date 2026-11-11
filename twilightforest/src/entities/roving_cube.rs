@@ -51,6 +51,7 @@ fn search(world: World, pos: [f64; 3]) -> Option<[i32; 3]>
             }
         }
     }
+
     None
 }
 
@@ -84,11 +85,14 @@ impl EntityBehavior for Cube
         }
 
         let mut state: Symbol = entity.data();
+
         if world.random(tuning::SEARCH_CHANCE) == 0
         {
             state.m_pos = search(world, info.pos).or(state.m_pos);
+
             let _ = entity.setData(&state);
         }
+
         let Some([x, y, z]) = state.m_pos
         else
         {
@@ -102,6 +106,7 @@ impl EntityBehavior for Cube
         {
             return;
         }
+
         let step: f64 = tuning::SPEED.min(gap);
         let _ = entity.setMotion([dx / gap * step, info.motion[1], dz / gap * step]);
     }
@@ -116,16 +121,18 @@ impl EntityBehavior for Cube
             .lighting(false)
             .blend(true)
             .translate(0.0, tuning::LIFT, 0.0);
+
         for part in 0..tf_cube_of_annihilation::PIVOTS.len() as u16
         {
             program.rest(part);
         }
+
         program.lighting(true).blend(false);
         Pose { pre: Vec::new(), model: program.take() }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,

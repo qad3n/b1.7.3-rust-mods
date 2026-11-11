@@ -6,7 +6,7 @@ const HALF: f64 = 0.5;
 const DRIFT: f64 = 0.5;
 
 // BlockAetherLeaves.randomDisplayTick: the source's leaf motes drift around golden oak, crystal and holiday leaves
-pub struct LeafSparkle
+pub(crate) struct LeafSparkle
 {
     pub m_particle: &'static str,
     pub m_count: i32,
@@ -15,10 +15,12 @@ pub struct LeafSparkle
     pub m_odds: i32,
 }
 
-pub const GOLDEN_OAK: LeafSparkle =
+pub(crate) const GOLDEN_OAK: LeafSparkle =
     LeafSparkle { m_particle: particles::GOLDEN_OAK, m_count: 2, m_spread: 10.0, m_odds: 1 };
-pub const CRYSTAL: LeafSparkle = LeafSparkle { m_particle: particles::CRYSTAL, m_count: 6, m_spread: 6.0, m_odds: 5 };
-pub const HOLIDAY: LeafSparkle = LeafSparkle { m_particle: particles::HOLIDAY, m_count: 6, m_spread: 8.0, m_odds: 5 };
+pub(crate) const CRYSTAL: LeafSparkle =
+    LeafSparkle { m_particle: particles::CRYSTAL, m_count: 6, m_spread: 6.0, m_odds: 5 };
+pub(crate) const HOLIDAY: LeafSparkle =
+    LeafSparkle { m_particle: particles::HOLIDAY, m_count: 6, m_spread: 8.0, m_odds: 5 };
 
 fn around(world: World, pos: BlockPos, spread: f64) -> [f64; 3]
 {
@@ -37,6 +39,7 @@ impl BlockBehavior for LeafSparkle
         {
             return;
         }
+
         for _ in 0..self.m_count
         {
             let at: [f64; 3] = around(world, ctx.pos(), self.m_spread);
@@ -71,18 +74,21 @@ fn portalColor(world: World) -> String
 }
 
 // BlockAetherPortal.randomDisplayTick: the portal hums now and then and throws blue motes from its faces
-pub fn portalTick(ctx: &BlockCtx, portalBlock: i32)
+pub(crate) fn portalTick(ctx: &BlockCtx, portalBlock: i32)
 {
     let world: World = ctx.world();
     let pos: BlockPos = ctx.pos();
     let center: [f64; 3] = [pos.x, pos.y, pos.z].map(|axis| f64::from(axis) + HALF);
+
     if world.random(portal::SOUND_ODDS) == 0
     {
         let pitch: f32 = (fraction(world) * portal::PITCH_SPREAD) as f32 + portal::PITCH;
         world.playSound(center, "portal.portal", portal::VOLUME, pitch);
     }
+
     let alongX: bool =
         world.block(pos.offset(-1, 0, 0)) == portalBlock || world.block(pos.offset(1, 0, 0)) == portalBlock;
+
     for _ in 0..portal::MOTES
     {
         let mut at: [f64; 3] = [pos.x, pos.y, pos.z].map(|axis| f64::from(axis) + fraction(world));

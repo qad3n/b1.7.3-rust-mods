@@ -2,7 +2,7 @@ use super::{creature, drop, onAetherGrass, sounds};
 use crate::models::{DEGREES_PER_RADIAN, HALF_PI, Program, aerbunny as model};
 use b173_api::prelude::*;
 use b173_api::terrain::math;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 const NAME: &str = "aerbunny";
@@ -23,19 +23,22 @@ mod hop
 }
 
 // the client works the puff out from the hops it sees, EntityAerbunny.puffiness counts down from 11 after a jump
-thread_local! {
+thread_local!
+{
     static HOPS: RefCell<HashMap<i32, (bool, f32)>> = RefCell::new(HashMap::new());
 }
 
 fn puffiness(input: &PoseInput) -> f32
 {
-    HOPS.with(|hops| {
-        let mut hops = hops.borrow_mut();
+    HOPS.with(|hops|
+    {
+        let mut hops: RefMut<HashMap<i32, (bool, f32)>> = hops.borrow_mut();
         let state: &mut (bool, f32) = hops.entry(input.entity.id).or_insert((input.on_ground, f32::MIN));
         if state.0 && !input.on_ground && input.entity.motion[1] > 0.0
         {
             state.1 = input.age;
         }
+
         state.0 = input.on_ground;
         (hop::PUFF_TICKS - (input.age - state.1)).clamp(0.0, hop::PUFF_TICKS) / 10.0
     })
@@ -50,6 +53,7 @@ impl EntityBehavior for Aerbunny
     fn onLivingUpdate(&self, entity: Entity, info: &EntityInfo)
     {
         let [motionX, motionY, motionZ] = info.motion;
+
         if entity.flag(EntityField::OnGround) && info.health.is_some_and(|health| health > 0)
         {
             let _ = entity.setMotion([motionX, hop::JUMP, motionZ]);
@@ -62,13 +66,16 @@ impl EntityBehavior for Aerbunny
         {
             let _ = entity.setMotion([motionX, hop::MAX_FALL, motionZ]);
         }
+
         let Some(carrier) = entity.riding()
         else
         {
             return;
         };
+
         let player: Entity = Entity { world: entity.world, id: carrier };
         player.setField(EntityField::FallDistance, 0.0);
+
         if let Some(carried) = player.info()
             && !player.flag(EntityField::OnGround)
         {
@@ -93,12 +100,15 @@ impl EntityBehavior for Aerbunny
         {
             return false;
         }
+
         if let Some(info) = entity.info()
         {
             entity.world.playSound(info.pos, "aether.aemob.aerbunny.lift", 1.0, 1.0);
         }
+
         let carried: bool = entity.riding() == Some(player.id);
         let _ = entity.mount(if carried { None } else { Some(player.id) });
+
         true
     }
 
@@ -123,6 +133,7 @@ impl EntityBehavior for Aerbunny
     fn pose(&self, input: &PoseInput) -> Pose
     {
         let mut pre: Program = Program::new();
+
         if !input.riding
         {
             pre.translate(0.0, 0.2, 0.0);
@@ -131,21 +142,25 @@ impl EntityBehavior for Aerbunny
         {
             pre.translate(0.0, 1.7, 0.0);
         }
+
         if !input.on_ground
         {
             let lean: f32 = (input.entity.motion[1] as f32 * 30.0).clamp(-15.0, 15.0);
             pre.rotate(lean, -1.0, 0.0, 0.0);
         }
+
         let head: [f32; 3] = [-(input.head_pitch / DEGREES_PER_RADIAN), input.head_yaw / DEGREES_PER_RADIAN, 0.0];
         let swing: f32 = math::cos(input.walk * 0.6662) * input.walk_speed;
         let swingBack: f32 = math::cos(input.walk * 0.6662 + std::f32::consts::PI) * 1.2 * input.walk_speed;
         let pivot = |part: u16| model::PIVOTS[part as usize];
         let puff: f32 = 1.0 + puffiness(input) * hop::PUFF_SCALE;
         let mut body: Program = Program::new();
+
         for part in [model::A, model::G, model::G2, model::H, model::H2]
         {
             body.part(part, head, pivot(part));
         }
+
         body.part(model::B, [HALF_PI, 0.0, 0.0], pivot(model::B));
         body.part(model::B2, [HALF_PI, 0.0, 0.0], pivot(model::B2));
         body.push().translate(0.0, 1.0, 0.0).scale(puff, puff, puff);
@@ -159,11 +174,12 @@ impl EntityBehavior for Aerbunny
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:pig").ok(),
             texture: Some(TEXTURE.to_owned()),
             size: Some([0.4, 0.4]),

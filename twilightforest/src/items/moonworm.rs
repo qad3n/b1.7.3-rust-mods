@@ -20,7 +20,7 @@ mod queen
 const FACE_META: [Option<i32>; 6] = [None, Some(5), Some(4), Some(3), Some(2), Some(1)];
 
 // BlockTFMoonworm placement on a face of the block at pos
-pub fn attach(world: World, pos: BlockPos, face: i32) -> bool
+pub(crate) fn attach(world: World, pos: BlockPos, face: i32) -> bool
 {
     let Some(meta) = FACE_META.get(face as usize).copied().flatten()
     else
@@ -34,11 +34,13 @@ pub fn attach(world: World, pos: BlockPos, face: i32) -> bool
     {
         return false;
     }
+
     let placed: bool = world.setBlock(at, ids::blockId(block::MOONWORM), meta).is_ok();
     if placed
     {
         world.playSound(ids::center(at), "mob.slime", 0.5, 0.8);
     }
+
     placed
 }
 
@@ -53,10 +55,12 @@ impl ItemBehavior for MoonwormQueen
         {
             return Use::Pass;
         }
+
         if world.isAuthority() && attach(world, pos, face)
         {
             super::magic::wearHeld(player, 1);
         }
+
         Use::Done(player.held())
     }
 
@@ -66,6 +70,7 @@ impl ItemBehavior for MoonwormQueen
         {
             return Use::Pass;
         }
+
         holdInUse(player, held::LONGEST)
     }
 
@@ -93,11 +98,12 @@ impl ItemBehavior for MoonwormQueen
                 world.playSound(info.pos, "mob.slime", 1.0, 1.0);
             }
         }
+
         Use::Done(player.held())
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let spec: ItemSpecBuilder = ItemSpecBuilder::new()
         .name("Moonworm Queen")

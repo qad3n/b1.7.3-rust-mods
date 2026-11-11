@@ -1,7 +1,7 @@
 // draft from ComponentTFStrongholdBalconyRoom.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::StrongholdBalconyRoom);
     init(&this, i, facing, x, y, z);
@@ -9,13 +9,13 @@ pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFStrongholdBalconyRoom constructor
-pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 {
     stronghold_component::init(this, i, facing, x, y, z);
 }
 
 // ComponentTFStrongholdBalconyRoom.generateBoundingBox
-pub fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub(crate) fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
     if y > 17
     {
@@ -29,7 +29,7 @@ pub fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) ->
     {
         this.m_enterBottom.set((z & 1) == 0);
     }
-    return Some(
+    Some(
         if this.m_enterBottom.get()
         {
             boxFor(x, y, z, -4, -1, 0, 18, 14, 27, facing)
@@ -38,33 +38,34 @@ pub fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) ->
         {
             boxFor(x, y, z, -13, -8, 0, 18, 14, 27, facing)
         },
-    );
+    )
 }
 
 // ComponentTFStrongholdBalconyRoom.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
-    stronghold_component::build(this, &parent, list, random);
-    stronghold_component::addNewComponent(this, &parent, list, random, 0, 13, 1, 27);
-    stronghold_component::addNewComponent(this, &parent, list, random, 1, -1, 1, 13);
-    stronghold_component::addNewComponent(this, &parent, list, random, 3, 18, 1, 13);
-    stronghold_component::addNewComponent(this, &parent, list, random, 0, 4, 8, 27);
-    stronghold_component::addNewComponent(this, &parent, list, random, 1, -1, 8, 4);
-    stronghold_component::addNewComponent(this, &parent, list, random, 3, 18, 8, 22);
+    stronghold_component::build(this, parent, list, random);
+    stronghold_component::addNewComponent(this, parent, list, random, 0, 13, 1, 27);
+    stronghold_component::addNewComponent(this, parent, list, random, 1, -1, 1, 13);
+    stronghold_component::addNewComponent(this, parent, list, random, 3, 18, 1, 13);
+    stronghold_component::addNewComponent(this, parent, list, random, 0, 4, 8, 27);
+    stronghold_component::addNewComponent(this, parent, list, random, 1, -1, 8, 4);
+    stronghold_component::addNewComponent(this, parent, list, random, 3, 18, 8, 22);
+
     if this.m_enterBottom.get()
     {
         stronghold_component::addDoor(this, 4, 1, 0);
-        stronghold_component::addNewComponent(this, &parent, list, random, 2, 13, 8, -1);
+        stronghold_component::addNewComponent(this, parent, list, random, 2, 13, 8, -1);
     }
     else
     {
         stronghold_component::addDoor(this, 13, 8, 0);
-        stronghold_component::addNewComponent(this, &parent, list, random, 2, 4, 1, -1);
+        stronghold_component::addNewComponent(this, parent, list, random, 2, 4, 1, -1);
     }
 }
 
 // ComponentTFStrongholdBalconyRoom.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     stronghold_component::placeStrongholdWalls(
         this,
@@ -85,11 +86,11 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     stronghold_balcony_room::placeStairsAndPillars(this, world, sbb, 0);
     stronghold_balcony_room::placeStairsAndPillars(this, world, sbb, 2);
     stronghold_component::placeDoors(this, world, random, sbb);
-    return true;
+    true
 }
 
 // ComponentTFStrongholdBalconyRoom.placeStairsAndPillars
-pub fn placeStairsAndPillars(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32)
+pub(crate) fn placeStairsAndPillars(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32)
 {
     this.fillTurned(
         world,
@@ -150,6 +151,7 @@ pub fn placeStairsAndPillars(this: &Piece, world: &GenWorld, sbb: StructureBox, 
     this.placeTurned(world, this.m_deco.get().m_stairID, this.stairMeta(3 + rotation) + 4, 13, 12, 9, rotation, sbb);
     this.placeTurned(world, this.m_deco.get().m_stairID, this.stairMeta(1 + rotation) + 4, 13, 12, 7, rotation, sbb);
     this.placeTurned(world, this.m_deco.get().m_stairID, this.stairMeta(0 + rotation) + 4, 12, 12, 8, rotation, sbb);
+
     for y in 1..8
     {
         for z in 5..8

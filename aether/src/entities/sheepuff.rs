@@ -103,6 +103,7 @@ fn fleece(entity: Entity) -> Fleece
         state = Fleece { m_ready: true, m_color: randomColor(entity.world), ..state };
         let _ = entity.setSynced(&state);
     }
+
     state
 }
 
@@ -127,6 +128,7 @@ fn headPose(timer: f32, pitch: f32) -> (f32, f32)
     {
         -(timer - puff::EAT_TICKS) / graze::LOWER_END
     };
+
     let angle: f32 = if timer > graze::LOWER_END && timer <= graze::RAISE_START
     {
         std::f32::consts::PI / 5.0
@@ -153,12 +155,15 @@ impl EntityBehavior for Sheepuff
     {
         let mut state: Fleece = fleece(entity);
         let [motionX, motionY, motionZ] = info.motion;
+
         if state.m_puffed
         {
             entity.setField(EntityField::FallDistance, 0.0);
+
             if motionY > puff::NORMAL_JUMP - 0.01 && motionY < puff::NORMAL_JUMP + 0.01
             {
-                let spread = || {
+                let spread = ||
+                {
                     (entity.world.random(graze::JITTER_STEPS) as f64 / graze::JITTER_STEPS as f64 - 0.5)
                         * 2.0
                         * puff::JUMP_SPREAD
@@ -170,6 +175,7 @@ impl EntityBehavior for Sheepuff
                 let _ = entity.setMotion([motionX, puff::MAX_FALL, motionZ]);
             }
         }
+
         if !entity.world.isAuthority() || entity.world.random(puff::EAT_CHANCE) != 0
         {
             return;
@@ -181,7 +187,9 @@ impl EntityBehavior for Sheepuff
         {
             return;
         }
+
         let _ = entity.world.setBlock(feet, palette.m_dirt, 0);
+
         state.m_eatStart = ticks(entity);
         state.m_eaten += 1;
         if state.m_eaten >= puff::EATS_TO_PUFF && !state.m_sheared && !state.m_puffed
@@ -189,10 +197,12 @@ impl EntityBehavior for Sheepuff
             state.m_puffed = true;
             state.m_eaten = 0;
         }
+
         if state.m_eaten == 1 && state.m_sheared && !state.m_puffed
         {
             state = Fleece { m_sheared: false, m_color: WHITE, m_eaten: 0, ..state };
         }
+
         let _ = entity.setSynced(&state);
     }
 
@@ -205,27 +215,34 @@ impl EntityBehavior for Sheepuff
             return false;
         };
         let mut state: Fleece = fleece(entity);
+
         let Some(info) = entity.info()
         else
         {
             return false;
         };
+
         if held.item.is(SHEARS) && !state.m_sheared
         {
             if entity.world.isAuthority()
             {
                 state.m_sheared = true;
                 state.m_puffed = false;
+
                 let count: i32 = puff::MIN_SHEAR + entity.world.random(puff::SHEAR_SPREAD);
                 for _ in 0..count
                 {
                     let _ = entity.world.spawnItem(info.pos, ItemStack::of(WOOL, 1).withDamage(state.m_color as i32));
                 }
+
                 let _ = entity.setSynced(&state);
             }
+
             let _ = player.setHeld(Some(ItemStack { damage: held.damage + 1, ..held }));
+
             return true;
         }
+
         let dyeColor: u8 = COLORS - held.damage.clamp(0, COLORS as i32) as u8;
         if held.item.is(DYE) && !state.m_sheared && state.m_color != dyeColor
         {
@@ -233,12 +250,15 @@ impl EntityBehavior for Sheepuff
             if held.count >= cost
             {
                 state.m_color = dyeColor;
+
                 let _ = entity.setSynced(&state);
                 let left: i32 = held.count - cost;
                 let _ = player.setHeld((left > 0).then_some(ItemStack { count: left, ..held }));
             }
+
             return true;
         }
+
         false
     }
 
@@ -266,16 +286,20 @@ impl EntityBehavior for Sheepuff
         let timer: f32 = (puff::EAT_TICKS - (input.age - state.m_eatStart as f32)).max(0.0);
         let (drop, angle) = headPose(if state.m_eatStart > 0 { timer } else { 0.0 }, input.head_pitch);
         let mut body: Program = Program::new();
-        let lowered = |pivots: &[[f32; 3]]| {
+
+        let lowered = |pivots: &[[f32; 3]]|
+        {
             let mut pivots: Vec<[f32; 3]> = pivots.to_vec();
             pivots[quadruped::HEAD as usize][1] = graze::HEAD_REST_Y + drop * graze::HEAD_DROP;
             pivots
         };
         quadrupedPose(&mut body, 0, &lowered(&sheepuff_wool::PIVOTS), input, Some(angle));
+
         if !state.m_sheared
         {
             let [red, green, blue] = FLEECE[(state.m_color & COLORS) as usize];
             body.texture(FUR).color(red, green, blue, 1.0);
+
             let (base, pivots) = if state.m_puffed
             {
                 (2 * quadruped::PARTS, lowered(&sheepuffed::PIVOTS))
@@ -287,16 +311,18 @@ impl EntityBehavior for Sheepuff
             quadrupedPose(&mut body, base, &pivots, input, Some(angle));
             body.color(1.0, 1.0, 1.0, 1.0);
         }
+
         Pose { pre: Vec::new(), model: body.take() }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let say: String = format!("{SHEEP_SAY}.say");
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:sheep").ok(),
             texture: Some(TEXTURE.to_owned()),
             size: Some([0.9, 1.3]),
@@ -304,7 +330,8 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             spawn: creature(10),
             drops: Some(Vec::new()),
             sounds: Some(EntitySounds { living: Some(say.clone()), hurt: Some(say.clone()), death: Some(say) }),
-            model: Some(EntityModelSpec {
+            model: Some(EntityModelSpec
+            {
                 shadow: 0.7,
                 ..combine(vec![sheepuff_wool::model(), sheepuff::model(), sheepuffed::model()])
             }),

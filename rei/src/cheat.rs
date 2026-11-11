@@ -34,11 +34,11 @@ thread_local!
     static ENABLED: Cell<bool> = const { Cell::new(false) };
 }
 
-pub fn enabled() -> bool { ENABLED.with(Cell::get) }
+pub(crate) fn enabled() -> bool { ENABLED.with(Cell::get) }
 
-pub fn button() -> &'static str { MODES[usize::from(enabled())].0 }
+pub(crate) fn button() -> &'static str { MODES[usize::from(enabled())].0 }
 
-pub fn mode() -> &'static str { MODES[usize::from(enabled())].1 }
+pub(crate) fn mode() -> &'static str { MODES[usize::from(enabled())].1 }
 
 fn post<T: Serialize>(channel: &str, target: Target, message: &T)
 {
@@ -48,14 +48,14 @@ fn post<T: Serialize>(channel: &str, target: Target, message: &T)
     }
 }
 
-pub fn toggle() { post(channel::TOGGLE, Target::Server, &!enabled()); }
+pub(crate) fn toggle() { post(channel::TOGGLE, Target::Server, &!enabled()); }
 
-pub fn grab(key: Key, count: i32)
+pub(crate) fn grab(key: Key, count: i32)
 {
     post(channel::GRAB, Target::Server, &Grab { m_id: key.m_id, m_damage: key.m_damage, m_count: count });
 }
 
-pub fn trash() { post(channel::TRASH, Target::Server, &()); }
+pub(crate) fn trash() { post(channel::TRASH, Target::Server, &()); }
 
 // a player who lost op since cheating was granted is told and switched back off
 fn permitted(player: Player) -> bool
@@ -64,6 +64,7 @@ fn permitted(player: Player) -> bool
     {
         return true;
     }
+
     player.chat(&translate(text::NO_PERMISSION));
     post(channel::STATE, Target::Player(player.id), &false);
     false
@@ -125,7 +126,7 @@ fn toServer<T: DeserializeOwned + 'static>(
     ctx.channels().register::<T>(name, Direction::ToServer, handler)
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.channels().register::<bool>(channel::STATE, Direction::ToClient, |granted, _| ENABLED.set(granted))?;
     toServer::<bool>(ctx, channel::TOGGLE, onToggle)?;

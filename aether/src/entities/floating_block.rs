@@ -39,7 +39,7 @@ fn cell(pos: [f64; 3]) -> BlockPos
 }
 
 // BlockFloating: gravitite ore rises whenever nothing holds it down, enchanted gravitite only while powered
-pub struct Floating
+pub(crate) struct Floating
 {
     pub m_leveled: bool,
 }
@@ -58,9 +58,9 @@ impl Floating
 #[block_behavior]
 impl BlockBehavior for Floating
 {
-    fn onAdded(&self, ctx: &mut BlockCtx) { Floating::schedule(ctx); }
+    fn onAdded(&self, ctx: &mut BlockCtx) { Self::schedule(ctx); }
 
-    fn onNeighborChanged(&self, ctx: &mut BlockCtx, _neighbor: i32) { Floating::schedule(ctx); }
+    fn onNeighborChanged(&self, ctx: &mut BlockCtx, _neighbor: i32) { Self::schedule(ctx); }
 
     fn onUpdateTick(&self, ctx: &mut BlockCtx)
     {
@@ -73,12 +73,13 @@ impl BlockBehavior for Floating
         {
             return;
         }
+
         lift(world, pos);
     }
 }
 
 // the block at a spot becomes a floating block entity rising from there
-pub fn lift(world: World, pos: BlockPos)
+pub(crate) fn lift(world: World, pos: BlockPos)
 {
     let carried: Carried = Carried { m_block: world.block(pos), m_meta: world.meta(pos) };
     let _ = world.setBlock(pos, 0, 0);
@@ -86,6 +87,7 @@ pub fn lift(world: World, pos: BlockPos)
     if let Ok(entity) = world.spawnEntity(&format!("aether:{NAME}"), center)
     {
         entity.setField(EntityField::Block, carried.m_block as f64);
+
         let _ = entity.setSynced(&carried);
         let _ = entity.setMotion([0.0, float::LIFT, 0.0]);
     }
@@ -94,6 +96,7 @@ pub fn lift(world: World, pos: BlockPos)
 fn dropAndVanish(entity: Entity, info: &EntityInfo, carried: Carried)
 {
     let _ = entity.world.spawnItem(info.pos, ItemStack::of(ItemRef::Numeric(carried.m_block), 1));
+
     entity.kill();
 }
 
@@ -107,56 +110,68 @@ impl EntityBehavior for FloatingBlock
     {
         let world: World = entity.world;
         let carried: Carried = entity.synced();
+
         if !world.isAuthority()
         {
             entity.setField(EntityField::Block, carried.m_block as f64);
             return;
         }
+
         if carried.m_block == 0
         {
             entity.kill();
             return;
         }
+
         let rise: f64 = info.motion[1];
         let _ = entity.setMotion([
             info.motion[0] * float::DRAG,
             rise * float::DRAG + float::LIFT,
             info.motion[2] * float::DRAG,
         ]);
+
         let bottom: f64 = info.pos[1] - float::SIDE;
+
         for rider in world.entitiesNear(info.pos, float::REACH)
         {
             let standing: bool = (rider.pos[0] - info.pos[0]).abs() < float::REACH - float::SIDE
                 && (rider.pos[2] - info.pos[2]).abs() < float::REACH - float::SIDE
                 && rider.pos[1] >= bottom;
+
             if rider.id == entity.id || !standing || rider.kind.as_ref().is_some_and(|kind| kind.path() == NAME)
             {
                 continue;
             }
+
             let lifted: Entity = Entity { world, id: rider.id };
             lifted.setField(EntityField::FallDistance, 0.0);
             lifted.setField(EntityField::OnGround, 1.0);
+
             let _ = lifted.setMotion([rider.motion[0], rise.max(0.0), rider.motion[2]]);
         }
+
         if entity.field(EntityField::TicksExisted) > float::LIFETIME || info.pos[1] > float::WORLD_TOP
         {
             dropAndVanish(entity, info, carried);
             return;
         }
+
         let here: BlockPos = cell(info.pos);
         if !canContinue(world, here.offset(0, 1, 0))
         {
             let _ = world.setBlock(here, carried.m_block, carried.m_meta);
+
             entity.kill();
         }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:moving_block").ok(),
             tracking_range: Some(float::TRACKING),
             update_frequency: Some(float::UPDATES),

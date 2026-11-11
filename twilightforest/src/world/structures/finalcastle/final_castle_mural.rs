@@ -1,7 +1,8 @@
 // draft from ComponentTFFinalCastleMural.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, width: i32, height: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, width: i32, height: i32, direction: i32)
+-> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::FinalCastleMural);
     init(&this, random, i, x, y, z, width, height, direction);
@@ -9,7 +10,17 @@ pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, width: i32, height: 
 }
 
 // ComponentTFFinalCastleMural constructor
-pub fn init(this: &Piece, _random: &Random, i: i32, x: i32, y: i32, z: i32, width: i32, height: i32, direction: i32)
+pub(crate) fn init(
+    this: &Piece,
+    _random: &Random,
+    i: i32,
+    x: i32,
+    y: i32,
+    z: i32,
+    width: i32,
+    height: i32,
+    direction: i32,
+)
 {
     this.m_depth.set(i);
     this.setMode(direction);
@@ -17,7 +28,7 @@ pub fn init(this: &Piece, _random: &Random, i: i32, x: i32, y: i32, z: i32, widt
 }
 
 // ComponentTFFinalCastleMural.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.m_height.set(this.m_box.get().ySize());
     this.m_width.set(
@@ -30,15 +41,18 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             this.m_box.get().zSize()
         },
     );
+
     let decoRNG: Random = Random::withSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
             ^ ((this.m_box.get().m_min[2] * 756839) as i64),
     );
+
     if this.m_mural.borrow().is_empty()
     {
         let mut mural: Vec<Vec<i32>> = vec![vec![0; (this.m_height.get()) as usize]; (this.m_width.get()) as usize];
         let startX: i32 = (this.m_width.get() / 2) - 1;
         let startY: i32 = 2;
+
         for x in -1..2
         {
             for y in -1..2
@@ -46,6 +60,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
                 mural[(startX + x) as usize][(startY + y) as usize] = 1;
             }
         }
+
         final_castle_mural::makeHorizontalTree(
             this,
             &decoRNG,
@@ -76,6 +91,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
         final_castle_mural::makeStripes(this, &decoRNG, &mut mural);
         *this.m_mural.borrow_mut() = mural;
     }
+
     for x in 0..this.m_width.get()
     {
         for y in 0..this.m_height.get()
@@ -86,11 +102,12 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             }
         }
     }
-    return true;
+
+    true
 }
 
 // ComponentTFFinalCastleMural.makeHorizontalTree
-pub fn makeHorizontalTree(
+pub(crate) fn makeHorizontalTree(
     this: &Piece,
     decoRNG: &Random,
     mural: &mut [Vec<i32>],
@@ -106,7 +123,7 @@ pub fn makeHorizontalTree(
 }
 
 // ComponentTFFinalCastleMural.makeVerticalTree
-pub fn makeVerticalTree(
+pub(crate) fn makeVerticalTree(
     this: &Piece,
     decoRNG: &Random,
     mural: &mut [Vec<i32>],
@@ -122,7 +139,7 @@ pub fn makeVerticalTree(
 }
 
 // ComponentTFFinalCastleMural.makeHorizontalBranch
-pub fn makeHorizontalBranch(
+pub(crate) fn makeHorizontalBranch(
     this: &Piece,
     mural: &mut [Vec<i32>],
     random: &Random,
@@ -136,6 +153,7 @@ pub fn makeHorizontalBranch(
     let downLine: i32 = ((length / 2) + 1) + random.nextIntBounded((length / 2).max(2));
     let branchLength: i32 = random.nextIntBounded(this.m_width.get() / 8) + (this.m_width.get() / 8);
     let mut clear: bool = true;
+
     for i in 0..=branchLength
     {
         let cx: i32 = sx
@@ -155,6 +173,7 @@ pub fn makeHorizontalBranch(
             break;
         }
     }
+
     if clear
     {
         let bx: i32 = sx + (if plusX { downLine } else { -downLine });
@@ -162,6 +181,7 @@ pub fn makeHorizontalBranch(
         final_castle_mural::fillVerticalLine(this, mural, bx, by, 1, plusY);
         by += if plusY { 2 } else { -2 };
         final_castle_mural::fillHorizontalLine(this, mural, bx, by, branchLength, plusX);
+
         if (((bx > 0) && (bx < this.m_width.get())) && (by > 0)) && (by < this.m_height.get())
         {
             if ((!final_castle_mural::makeHorizontalBranch(this, mural, random, bx, by, branchLength, plusX, true))
@@ -170,6 +190,7 @@ pub fn makeHorizontalBranch(
             {
                 final_castle_mural::makeHorizontalBranch(this, mural, random, bx, by, branchLength, plusX, true);
             }
+
             if ((!final_castle_mural::makeHorizontalBranch(this, mural, random, bx, by, branchLength, plusX, false))
                 && (!final_castle_mural::makeHorizontalBranch(this, mural, random, bx, by, branchLength, plusX, false)))
                 && (!final_castle_mural::makeHorizontalBranch(this, mural, random, bx, by, branchLength, plusX, false))
@@ -177,16 +198,17 @@ pub fn makeHorizontalBranch(
                 final_castle_mural::makeHorizontalBranch(this, mural, random, bx, by, branchLength, plusX, false);
             }
         }
-        return true;
+
+        true
     }
     else
     {
-        return false;
+        false
     }
 }
 
 // ComponentTFFinalCastleMural.makeVerticalBranch
-pub fn makeVerticalBranch(
+pub(crate) fn makeVerticalBranch(
     this: &Piece,
     mural: &mut [Vec<i32>],
     random: &Random,
@@ -200,6 +222,7 @@ pub fn makeVerticalBranch(
     let downLine: i32 = ((length / 2) + 1) + random.nextIntBounded((length / 2).max(2));
     let branchLength: i32 = random.nextIntBounded(this.m_height.get() / 8) + (this.m_height.get() / 8);
     let mut clear: bool = true;
+
     for i in 0..=branchLength
     {
         let cx: i32 = sx + (if plusX { 2 } else { -2 });
@@ -212,6 +235,7 @@ pub fn makeVerticalBranch(
             {
                 -((downLine - 1) + i)
             });
+
         if ((((cx < 0) || (cx >= this.m_width.get())) || (cy < 0)) || (cy >= this.m_height.get()))
             || (mural[(cx) as usize][(cy) as usize] > 0)
         {
@@ -219,6 +243,7 @@ pub fn makeVerticalBranch(
             break;
         }
     }
+
     if clear
     {
         let mut bx: i32 = sx;
@@ -226,6 +251,7 @@ pub fn makeVerticalBranch(
         final_castle_mural::fillHorizontalLine(this, mural, bx, by, 1, plusX);
         bx += if plusX { 2 } else { -2 };
         final_castle_mural::fillVerticalLine(this, mural, bx, by, branchLength, plusY);
+
         if (((bx > 0) && (bx < this.m_width.get())) && (by > 0)) && (by < this.m_height.get())
         {
             if ((!final_castle_mural::makeVerticalBranch(this, mural, random, bx, by, branchLength, plusY, true))
@@ -234,6 +260,7 @@ pub fn makeVerticalBranch(
             {
                 final_castle_mural::makeVerticalBranch(this, mural, random, bx, by, branchLength, plusY, true);
             }
+
             if ((!final_castle_mural::makeVerticalBranch(this, mural, random, bx, by, branchLength, plusY, false))
                 && (!final_castle_mural::makeVerticalBranch(this, mural, random, bx, by, branchLength, plusY, false)))
                 && (!final_castle_mural::makeVerticalBranch(this, mural, random, bx, by, branchLength, plusY, false))
@@ -241,19 +268,21 @@ pub fn makeVerticalBranch(
                 final_castle_mural::makeVerticalBranch(this, mural, random, bx, by, branchLength, plusY, false);
             }
         }
-        return true;
+
+        true
     }
     else
     {
-        return false;
+        false
     }
 }
 
 // ComponentTFFinalCastleMural.fillHorizontalLine
-pub fn fillHorizontalLine(this: &Piece, mural: &mut [Vec<i32>], sx: i32, sy: i32, length: i32, positive: bool)
+pub(crate) fn fillHorizontalLine(this: &Piece, mural: &mut [Vec<i32>], sx: i32, sy: i32, length: i32, positive: bool)
 {
     let mut x: i32 = sx;
     let y: i32 = sy;
+
     for _i in 0..=length
     {
         if (((x >= 0) && (x < this.m_width.get())) && (y >= 0)) && (y < this.m_height.get())
@@ -265,10 +294,11 @@ pub fn fillHorizontalLine(this: &Piece, mural: &mut [Vec<i32>], sx: i32, sy: i32
 }
 
 // ComponentTFFinalCastleMural.fillVerticalLine
-pub fn fillVerticalLine(this: &Piece, mural: &mut [Vec<i32>], sx: i32, sy: i32, length: i32, positive: bool)
+pub(crate) fn fillVerticalLine(this: &Piece, mural: &mut [Vec<i32>], sx: i32, sy: i32, length: i32, positive: bool)
 {
     let x: i32 = sx;
     let mut y: i32 = sy;
+
     for _i in 0..=length
     {
         if (((x >= 0) && (x < this.m_width.get())) && (y >= 0)) && (y < this.m_height.get())
@@ -280,7 +310,7 @@ pub fn fillVerticalLine(this: &Piece, mural: &mut [Vec<i32>], sx: i32, sy: i32, 
 }
 
 // ComponentTFFinalCastleMural.makeStripes
-pub fn makeStripes(this: &Piece, decoRNG: &Random, mural2: &mut [Vec<i32>])
+pub(crate) fn makeStripes(this: &Piece, decoRNG: &Random, mural2: &mut [Vec<i32>])
 {
     let mut y: i32 = this.m_height.get() - 2;
     while y > (this.m_height.get() / 3)
@@ -291,7 +321,7 @@ pub fn makeStripes(this: &Piece, decoRNG: &Random, mural2: &mut [Vec<i32>])
 }
 
 // ComponentTFFinalCastleMural.makeSingleStripe
-pub fn makeSingleStripe(this: &Piece, mural2: &mut [Vec<i32>], y: i32)
+pub(crate) fn makeSingleStripe(this: &Piece, mural2: &mut [Vec<i32>], y: i32)
 {
     {
         let mut x: i32 = 0;

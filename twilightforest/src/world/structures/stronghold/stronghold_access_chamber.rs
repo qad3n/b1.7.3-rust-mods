@@ -1,7 +1,7 @@
 // draft from ComponentTFStrongholdAccessChamber.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::StrongholdAccessChamber);
     init(&this, i, facing, x, y, z);
@@ -9,29 +9,29 @@ pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFStrongholdAccessChamber constructor
-pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 {
     stronghold_component::init(this, i, facing, x, y, z);
 }
 
 // ComponentTFStrongholdAccessChamber.generateBoundingBox
-pub fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub(crate) fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
-    return Some(vanillaBox(x, y, z, -4, 1, 0, 9, 5, 9, facing));
+    Some(vanillaBox(x, y, z, -4, 1, 0, 9, 5, 9, facing))
 }
 
 // ComponentTFStrongholdAccessChamber.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
-    stronghold_component::build(this, &parent, list, random);
-    stronghold_component::addNewUpperComponent(this, &parent, list, random, 0, 4, 1, 9);
-    stronghold_component::addNewUpperComponent(this, &parent, list, random, 1, -1, 1, 4);
-    stronghold_component::addNewUpperComponent(this, &parent, list, random, 2, 4, 1, -1);
-    stronghold_component::addNewUpperComponent(this, &parent, list, random, 3, 9, 1, 4);
+    stronghold_component::build(this, parent, list, random);
+    stronghold_component::addNewUpperComponent(this, parent, list, random, 0, 4, 1, 9);
+    stronghold_component::addNewUpperComponent(this, parent, list, random, 1, -1, 1, 4);
+    stronghold_component::addNewUpperComponent(this, parent, list, random, 2, 4, 1, -1);
+    stronghold_component::addNewUpperComponent(this, parent, list, random, 3, 9, 1, 4);
 }
 
 // ComponentTFStrongholdAccessChamber.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     this.fillSelected(world, sbb, 0, 0, 0, 8, 4, 8, true, random, this.m_deco.get().m_randomBlocks);
     stronghold_component::placeSmallDoorwayAt(this, world, random, 0, 4, 1, 8, sbb);
@@ -47,8 +47,8 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.placeBlock(world, this.m_deco.get().m_pillarID, this.m_deco.get().m_pillarMeta, 2, 0, 2, sbb);
     this.placeBlock(world, blk("tf:trophyPedestal"), 15, 2, 1, 2, sbb);
     this.fillMeta(world, sbb, 2, -1, 2, 6, -1, 6, blk("tf:shield"), 15, blk("air"), 0, false);
-    return true;
+    true
 }
 
 // ComponentTFStrongholdAccessChamber.isComponentProtected
-pub fn isComponentProtected(_this: &Piece) -> bool { return false; }
+pub(crate) fn isComponentProtected(_this: &Piece) -> bool { false }

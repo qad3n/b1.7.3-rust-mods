@@ -1,7 +1,7 @@
 // draft from ComponentTFStrongholdTrainingRoom.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::StrongholdTrainingRoom);
     init(&this, i, facing, x, y, z);
@@ -9,27 +9,27 @@ pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFStrongholdTrainingRoom constructor
-pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 {
     stronghold_component::init(this, i, facing, x, y, z);
 }
 
 // ComponentTFStrongholdTrainingRoom.generateBoundingBox
-pub fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub(crate) fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
-    return Some(boxFor(x, y, z, -13, -1, 0, 18, 7, 18, facing));
+    Some(boxFor(x, y, z, -13, -1, 0, 18, 7, 18, facing))
 }
 
 // ComponentTFStrongholdTrainingRoom.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
-    stronghold_component::build(this, &parent, list, random);
+    stronghold_component::build(this, parent, list, random);
     stronghold_component::addDoor(this, 13, 1, 0);
-    stronghold_component::addNewComponent(this, &parent, list, random, 0, 4, 1, 18);
+    stronghold_component::addNewComponent(this, parent, list, random, 0, 4, 1, 18);
 }
 
 // ComponentTFStrongholdTrainingRoom.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     stronghold_component::placeStrongholdWalls(
         this,
@@ -63,11 +63,11 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.placeBlock(world, this.m_deco.get().m_stairID, this.stairMeta(1), 5, 1, 10, sbb);
     this.placeBlock(world, blk("anvil"), 0, 6, 1, 11, sbb);
     stronghold_component::placeDoors(this, world, random, sbb);
-    return true;
+    true
 }
 
 // ComponentTFStrongholdTrainingRoom.placeTrainingDummy
-pub fn placeTrainingDummy(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32)
+pub(crate) fn placeTrainingDummy(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32)
 {
     this.fillTurned(world, sbb, 5, 0, 5, 7, 0, 7, blk("sand"), 0, rotation);
     this.placeTurned(world, this.m_deco.get().m_fenceID, this.m_deco.get().m_fenceMeta, 6, 1, 6, rotation, sbb);

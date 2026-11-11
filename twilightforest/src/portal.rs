@@ -9,19 +9,19 @@ const PORTALS_KEY: &str = "portals";
 
 pub(crate) mod travel
 {
-    pub const OVERWORLD: i32 = 0;
+    pub(crate) const OVERWORLD: i32 = 0;
     // a fresh arrival waits above the world for one tick while the portal is found or built under it
-    pub const HOLD_Y: f64 = 120.0;
+    pub(crate) const HOLD_Y: f64 = 120.0;
     // TFTeleporter.placeInExistingPortal looks this far for a portal
-    pub const SEARCH: i32 = 200;
+    pub(crate) const SEARCH: i32 = 200;
     // TFTeleporter.findPortalCoords looks this far for a good spot to build one
-    pub const BUILD_SEARCH: i32 = 16;
-    pub const LOWEST: i32 = 30;
-    pub const HIGHEST: i32 = 118;
-    pub const SCAN_TOP: i32 = 127;
+    pub(crate) const BUILD_SEARCH: i32 = 16;
+    pub(crate) const LOWEST: i32 = 30;
+    pub(crate) const HIGHEST: i32 = 118;
+    pub(crate) const SCAN_TOP: i32 = 127;
     // the overworld spot is weighed at twice the player's height, the twilight one at half
-    pub const OVERWORLD_FACTOR: f64 = 2.0;
-    pub const TWILIGHT_FACTOR: f64 = 0.5;
+    pub(crate) const OVERWORLD_FACTOR: f64 = 2.0;
+    pub(crate) const TWILIGHT_FACTOR: f64 = 0.5;
 }
 
 mod toss
@@ -97,18 +97,22 @@ fn tryCreate(world: World, x: i32, y: i32, z: i32) -> bool
     {
         return false;
     }
+
     let half: f64 = 0.5;
     if let Err(error) = world.lightning([f64::from(x) + half, f64::from(y), f64::from(z) + half])
     {
         warn(&format!("portal lightning: {}", error.0));
     }
+
     let px: i32 = if water(world, x - 1, y, z) { x - 1 } else { x };
     let pz: i32 = if water(world, px, y, z - 1) { z - 1 } else { z };
     let portal: i32 = ids::blockId(block::PORTAL);
+
     for [dx, dz] in POOL
     {
         place(world, BlockPos::new(px + dx, y, pz + dz), portal);
     }
+
     remember(world.dimension, [px, y, pz]);
     true
 }
@@ -120,6 +124,7 @@ fn place(world: World, pos: BlockPos, block: i32)
         warn(&format!("portal block not placed at {pos:?}: {}", error.0));
         return;
     }
+
     world.markBlockForRender(pos);
 }
 
@@ -148,11 +153,13 @@ fn isPortal(world: World, x: i32, y: i32, z: i32) -> bool
 fn existing(world: World, at: [f64; 3]) -> Option<[f64; 3]>
 {
     let log: PortalLog = worldData(PORTALS_KEY);
+
     let distance = |corner: &[i32; 3]|
     {
         let [dx, dy, dz] = [0, 1, 2].map(|axis| f64::from(corner[axis]) + 0.5 - at[axis]);
         dx * dx + dy * dy + dz * dz
     };
+
     let [x, z] = [at[0].floor() as i32, at[2].floor() as i32];
     let corner: [i32; 3] = log
         .m_entries
@@ -174,28 +181,34 @@ fn arrival(world: World, [x, y, z]: [i32; 3]) -> [f64; 3]
 {
     let half: f64 = 0.5;
     let mut spot: [f64; 3] = [f64::from(x) + half, f64::from(y) + half, f64::from(z) + half];
+
     if isPortal(world, x - 1, y, z)
     {
         spot[0] -= half;
     }
+
     if isPortal(world, x + 1, y, z)
     {
         spot[0] += half;
     }
+
     if isPortal(world, x, y, z - 1)
     {
         spot[2] -= half;
     }
+
     if isPortal(world, x, y, z + 1)
     {
         spot[2] += half;
     }
+
     let (mut dx, mut dz): (i32, i32) = (0, 0);
     while dx == 0 && dz == 0
     {
         dx = world.random(3) - world.random(3);
         dz = world.random(3) - world.random(3);
     }
+
     [spot[0] + f64::from(dx), spot[1] + 1.0, spot[2] + f64::from(dz)]
 }
 
@@ -203,11 +216,13 @@ fn arrival(world: World, [x, y, z]: [i32; 3]) -> [f64; 3]
 fn fits(world: World, x: i32, y: i32, z: i32, ideal: bool) -> bool
 {
     let grass: i32 = ids::blockId("minecraft:grass");
+
     for tz in z - 1..z + 3
     {
         for tx in x - 1..x + 3
         {
             let floor: i32 = world.block(BlockPos::new(tx, y - 1, tz));
+
             let footing: bool = if ideal
             {
                 floor == grass
@@ -216,10 +231,12 @@ fn fits(world: World, x: i32, y: i32, z: i32, ideal: bool) -> bool
             {
                 World::blockInfo(floor).solid
             };
+
             if !footing
             {
                 return false;
             }
+
             if (y..y + 3).any(|ty|
             {
                 !World::blockInfo(world.block(BlockPos::new(tx, ty, tz))).replaceable
@@ -230,6 +247,7 @@ fn fits(world: World, x: i32, y: i32, z: i32, ideal: bool) -> bool
             }
         }
     }
+
     true
 }
 
@@ -238,6 +256,7 @@ fn findSpot(world: World, at: [f64; 3], ideal: bool, factor: f64) -> Option<[i32
 {
     let (x, z): (i32, i32) = (at[0].floor() as i32, at[2].floor() as i32);
     let mut best: Option<([i32; 3], f64)> = None;
+
     for rx in x - travel::BUILD_SEARCH..=x + travel::BUILD_SEARCH
     {
         for rz in z - travel::BUILD_SEARCH..=z + travel::BUILD_SEARCH
@@ -251,6 +270,7 @@ fn findSpot(world: World, at: [f64; 3], ideal: bool, factor: f64) -> Option<[i32
                     {
                         ry -= 1;
                     }
+
                     if fits(world, rx, ry, rz, ideal)
                     {
                         let offset: [f64; 3] = [
@@ -258,6 +278,7 @@ fn findSpot(world: World, at: [f64; 3], ideal: bool, factor: f64) -> Option<[i32
                             f64::from(ry) + 0.5 - at[1] * factor,
                             f64::from(rz) + 0.5 - at[2],
                         ];
+
                         let weight: f64 = offset.iter().map(|axis| axis * axis).sum();
                         if best.is_none_or(|(_, least)| weight < least)
                         {
@@ -265,10 +286,12 @@ fn findSpot(world: World, at: [f64; 3], ideal: bool, factor: f64) -> Option<[i32
                         }
                     }
                 }
+
                 ry -= 1;
             }
         }
     }
+
     best.map(|(spot, _)| spot)
 }
 
@@ -278,15 +301,18 @@ fn build(world: World, [x, y, z]: [i32; 3])
     let py: i32 = y.clamp(travel::LOWEST, travel::HIGHEST) - 1;
     let (grass, dirt, portal): (i32, i32, i32) =
         (ids::blockId("minecraft:grass"), ids::blockId("minecraft:dirt"), ids::blockId(block::PORTAL));
+
     for [dx, dz] in RING
     {
         place(world, BlockPos::new(x + dx, py, z + dz), grass);
     }
+
     for [dx, dz] in POOL
     {
         place(world, BlockPos::new(x + dx, py - 1, z + dz), dirt);
         place(world, BlockPos::new(x + dx, py, z + dz), portal);
     }
+
     for dx in -1..=2
     {
         for dz in -1..=2
@@ -297,6 +323,7 @@ fn build(world: World, [x, y, z]: [i32; 3])
             }
         }
     }
+
     let plants: [&str; 5] = [
         "minecraft:brown_mushroom",
         "minecraft:red_mushroom",
@@ -304,6 +331,7 @@ fn build(world: World, [x, y, z]: [i32; 3])
         "minecraft:red_flower",
         "minecraft:yellow_flower",
     ];
+
     for [dx, dz] in RING
     {
         let plant: &str = plants[world.random(plants.len() as i32) as usize];
@@ -314,6 +342,7 @@ fn build(world: World, [x, y, z]: [i32; 3])
             warn(&format!("portal plant: {}", error.0));
         }
     }
+
     remember(world.dimension, [x, py, z]);
 }
 
@@ -334,6 +363,7 @@ fn makePortal(world: World, at: [f64; 3]) -> [f64; 3]
         at[2].floor() as i32,
     ]);
     build(world, spot);
+
     let py: i32 = spot[1].clamp(travel::LOWEST, travel::HIGHEST) - 1;
     arrival(world, [spot[0], py, spot[2]])
 }
@@ -370,6 +400,7 @@ fn enter(world: World, player: Player)
     {
         return;
     };
+
     let target: i32 = if world.dimension == twilight
     {
         travel::OVERWORLD
@@ -378,12 +409,15 @@ fn enter(world: World, player: Player)
     {
         twilight
     };
+
     if target == twilight
     {
         crate::progress::grant(player, crate::progress::Gate::Portal);
     }
+
     SENT.with(|sent| sent.borrow_mut().insert(player.id, true));
     ARRIVALS.with(|arrivals| arrivals.borrow_mut().insert(player.id, info.pos));
+
     let hold: [f64; 3] = [info.pos[0], travel::HOLD_Y, info.pos[2]];
     if let Err(error) = player.teleport(target, hold)
     {
@@ -399,12 +433,15 @@ fn arrive(player: Player, to: i32)
     {
         return;
     };
+
     let world: World = World { dimension: to };
     let spot: [f64; 3] = existing(world, from).unwrap_or_else(|| makePortal(world, from));
+
     if isTwilight(world)
     {
         crate::progress::grant(player, crate::progress::Gate::Arrival);
     }
+
     if let Err(error) = player.teleport(to, spot)
     {
         warn(&format!("portal arrival: {}", error.0));
@@ -415,6 +452,7 @@ fn rearm()
 {
     let waiting: Vec<i32> =
         SENT.with(|sent| sent.borrow().iter().filter(|(_, held)| **held).map(|(id, _)| *id).collect());
+
     for id in waiting
     {
         let outside: bool = Player { id }.info().is_some_and(|info| !inPortal(&info));
@@ -437,7 +475,9 @@ fn watchTosses()
     {
         return;
     }
+
     let overworld: i32 = travel::OVERWORLD;
+
     TOSSED.with(|tossed|
     {
         tossed.borrow_mut().retain(|(item, tosser)|
@@ -457,6 +497,7 @@ fn watchTosses()
             {
                 return true;
             }
+
             item.kill();
             crate::progress::grant(*tosser, crate::progress::Gate::Portal);
             false
@@ -476,6 +517,7 @@ impl BlockBehavior for Portal
         {
             return;
         }
+
         // the source only sends a player who rides nothing and carries no rider
         if entity.info().is_some_and(|info| info.player.is_some())
             && entity.riding().is_none()
@@ -492,8 +534,10 @@ impl BlockBehavior for Portal
         {
             return;
         }
+
         let world: World = ctx.world();
         let BlockPos { x, y, z } = ctx.pos();
+
         let axis = |minus: [i32; 2], plus: [i32; 2]|
         {
             if isPortal(world, x + minus[0], y, z + minus[1])
@@ -521,12 +565,15 @@ impl BlockBehavior for Portal
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let corner: [f64; 3] = [pos.x, pos.y, pos.z].map(f64::from);
+
         if world.random(look::SOUND_ODDS) == 0
         {
             let (volume, pitch): (f32, f32) = (1.0, ids::fraction(world) * 0.4 + 0.8);
             world.playSound(corner.map(|axis| axis + 0.5), "portal.portal", volume, pitch);
         }
+
         let alongX: bool = isPortal(world, pos.x - 1, pos.y, pos.z) || isPortal(world, pos.x + 1, pos.y, pos.z);
+
         for _ in 0..look::MOTES
         {
             let mut at: [f64; 3] = corner.map(|axis| axis + f64::from(ids::fraction(world)));
@@ -540,7 +587,7 @@ impl BlockBehavior for Portal
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let surface: Cuboid = Cuboid { from: [0.0; 3], to: [16.0, look::HEIGHT, 16.0], ..Cuboid::default() };
     ctx.blocks().register(
@@ -558,6 +605,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             .drops(Vec::new())
             .behavior(Portal),
     )?;
+
     ctx.events().on::<ItemToss>(Priority::Normal, |event|
     {
         let (Some(stack), Some(player), Some(world)) = (event.stack(), event.player(), event.world())
@@ -565,12 +613,14 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         {
             return;
         };
+
         let allowed: bool = crate::config::portals() && (!crate::config::adminPortals() || player.isOp());
         if world.isAuthority() && allowed && stack.item.is(&crate::config::portalItem())
         {
             TOSSER.with(|tosser| tosser.set(Some(player.id)));
         }
     })?;
+
     ctx.events().on::<EntityJoinWorld>(Priority::Normal, |event|
     {
         let EventData::Entity { entity } = event.data().clone()
@@ -588,14 +638,17 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         {
             return;
         };
+
         let tossed: Entity = Entity { world: World { dimension: entity.world }, id: entity.id };
         TOSSED.with(|watched| watched.borrow_mut().push((tossed, Player { id: tosser })));
     })?;
+
     ctx.events().on::<TickPost>(Priority::Normal, |_|
     {
         rearm();
         watchTosses();
     })?;
+
     ctx.events().on::<PlayerChangeDimension>(Priority::Normal, |event|
     {
         if let (EventData::Dimension { to, .. }, Some(player)) = (event.data().clone(), event.player())
@@ -603,5 +656,6 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             arrive(player, to);
         }
     })?;
+
     Ok(())
 }

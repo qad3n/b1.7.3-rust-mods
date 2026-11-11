@@ -173,6 +173,7 @@ fn creatureOffered(mob: &Mob, biome: Biome, ambient: bool) -> Option<(i32, [i32;
 {
     let cleared: bool = matches!(biome, Biome::Thornlands | Biome::Stream);
     let forest: bool = !cleared && biome != Biome::FinalPlateau;
+
     match mob.m_spawn
     {
         Spawning::Forest(weight, group) if forest => Some((weight, group)),
@@ -210,7 +211,7 @@ mod worldgen
 }
 
 // SpawnerAnimals.performWorldGenSpawning, herds of the biome's creatures placed as a chunk is populated
-pub fn worldgen(world: &GenWorld, random: &Random, biome: Biome, x: i32, z: i32)
+pub(crate) fn worldgen(world: &GenWorld, random: &Random, biome: Biome, x: i32, z: i32)
 {
     let rows: Vec<(&'static str, i32, [i32; 2])> = creatureRows(biome, false);
     let total: i32 = rows.iter().map(|row| row.1).sum();
@@ -222,6 +223,7 @@ pub fn worldgen(world: &GenWorld, random: &Random, biome: Biome, x: i32, z: i32)
     while random.nextFloat() < worldgen::CHANCE
     {
         let mut roll: i32 = world.m_world.random(total);
+
         let Some(&(name, _, [least, most])) = rows.iter().find(|row|
         {
             roll -= row.1;
@@ -244,6 +246,7 @@ fn herd(world: &GenWorld, random: &Random, name: &str, count: i32, corner: [i32;
     let wander = || random.nextIntBounded(worldgen::WANDER) - random.nextIntBounded(worldgen::WANDER);
     let start: [i32; 2] = [corner[0] + random.nextIntBounded(area), corner[1] + random.nextIntBounded(area)];
     let [mut x, mut z] = start;
+
     for _ in 0..count
     {
         let mut placed: bool = false;
@@ -251,12 +254,14 @@ fn herd(world: &GenWorld, random: &Random, name: &str, count: i32, corner: [i32;
         while !placed && tries < worldgen::TRIES
         {
             tries += 1;
+
             let y: i32 = world.topSolid(x, z);
             if standable(world, x, y, z)
             {
                 place(world, name, [f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5], random.nextFloat() * 360.0);
                 placed = true;
             }
+
             x += wander();
             z += wander();
             while x < corner[0] || x >= corner[0] + area || z < corner[1] || z >= corner[1] + area
@@ -290,6 +295,7 @@ fn place(world: &GenWorld, name: &str, at: [f64; 3], yaw: f32)
     {
         format!("twilightforest:{name}")
     };
+
     match world.m_world.spawnEntity(&kind, at)
     {
         Ok(entity) => entity.setField(EntityField::Yaw, f64::from(yaw)),
@@ -310,6 +316,7 @@ fn monsters(world: World, biome: Biome) -> Vec<SpawnEntry>
     {
         return Vec::new();
     }
+
     entries(surface.m_entries.iter().copied())
 }
 
@@ -329,6 +336,7 @@ fn biomeList(world: World, biome: Biome, kind: CreatureKind, y: i32) -> Vec<Spaw
             };
             entries(list.iter().copied())
         }
+
         CreatureKind::Monster => monsters(world, biome),
         CreatureKind::Creature => creatures(biome),
         CreatureKind::Water if biome == Biome::Lake => entries(LAKE_WATER.iter().copied()),
@@ -337,7 +345,7 @@ fn biomeList(world: World, biome: Biome, kind: CreatureKind, y: i32) -> Vec<Spaw
 }
 
 // the dimension's spawn list handler, every natural spawn attempt in the twilight forest asks it
-pub fn possible(query: &SpawnQuery) -> Option<Vec<SpawnEntry>>
+pub(crate) fn possible(query: &SpawnQuery) -> Option<Vec<SpawnEntry>>
 {
     let world: World = query.world;
     let BlockPos { x, y, z } = query.pos;

@@ -31,17 +31,17 @@ mod layout
 mod color
 {
     pub const WHITE: u32 = 0xFFFFFF;
-    pub const HOVER: u32 = 0x80FF_FFFF;
+    pub const HOVER: u32 = 0x80FFFFFF;
     // GuiButton label colors, give mode in the red REI uses for cheating
     pub const BUTTON_HOVER: u32 = 0xFFFFA0;
     pub const GIVE_MODE: u32 = 0xFF5555;
-    pub const CRAFTABLE_TINT: u32 = 0x4000_FF00;
-    pub const FIELD_EDGE: u32 = 0xFFA0_A0A0;
-    pub const FIELD_FOCUS: u32 = 0xFFFF_FFFF;
-    pub const FIELD_FACE: u32 = 0xFF00_0000;
+    pub const CRAFTABLE_TINT: u32 = 0x4000FF00;
+    pub const FIELD_EDGE: u32 = 0xFFA0A0A0;
+    pub const FIELD_FOCUS: u32 = 0xFFFFFFFF;
+    pub const FIELD_FACE: u32 = 0xFF000000;
     pub const TEXT: u32 = 0xE0E0E0;
     pub const HINT: u32 = 0x707070;
-    pub const TOOLTIP: u32 = 0xC000_0000;
+    pub const TOOLTIP: u32 = 0xC0000000;
     pub const TITLE: u32 = 0x404040;
     pub const RECIPE_ID: u32 = 0x707070;
 }
@@ -133,7 +133,7 @@ struct Layout
 
 impl Layout
 {
-    fn of(container: [i32; 2]) -> Layout
+    fn of(container: [i32; 2]) -> Self
     {
         let [width, height] = screenSize().unwrap_or(container);
         let left: i32 = (width - container[0]) / 2;
@@ -152,7 +152,8 @@ impl Layout
         let gridRight: i32 = grid[0] + grid[2];
         let craftableLeft: i32 = grid[0] + searchWidth + layout::SPACING;
         let arrow: i32 = layout::ARROW.min(gridWidth / 2);
-        Layout
+
+        Self
         {
             m_screen: [-left, -top, width, height],
             m_container: [0, 0, container[0], container[1]],
@@ -237,6 +238,7 @@ fn heldItems() -> Vec<(Key, i32)>
     {
         return Vec::new();
     };
+
     (0..INVENTORY_SLOTS)
         .filter_map(|slot| player.slot(slot))
         .filter_map(|stack| Key::ofStack(&stack).map(|key| (key, stack.count)))
@@ -277,6 +279,7 @@ fn clip(text: &str, room: i32, dropFront: bool) -> &str
     while textWidth(shown) > room
     {
         let mut chars: std::str::Chars = shown.chars();
+
         if dropFront
         {
             chars.next();
@@ -287,6 +290,7 @@ fn clip(text: &str, room: i32, dropFront: bool) -> &str
         }
         shown = chars.as_str();
     }
+
     shown
 }
 
@@ -302,6 +306,7 @@ impl State
             self.close();
             self.m_dirty = true;
         }
+
         catalog
     }
 
@@ -309,6 +314,7 @@ impl State
     {
         let matches: Vec<Key> =
             catalog.search(&self.m_query).into_iter().map(|index| catalog.m_entries[index].m_key).collect();
+
         self.m_visible = match self.m_craftable
         {
             true =>
@@ -324,8 +330,10 @@ impl State
                     })
                     .collect()
             }
+
             false => matches,
         };
+
         self.m_dirty = false;
     }
 
@@ -335,6 +343,7 @@ impl State
     fn open(&mut self, catalog: &Catalog, key: Key, usages: bool, drill: bool)
     {
         let key: Key = listedKey(catalog, key);
+
         let recipes: Vec<usize> = if usages
         {
             catalog.usagesOf(key)
@@ -343,15 +352,18 @@ impl State
         {
             catalog.recipesFor(key)
         };
+
         if recipes.is_empty()
         {
             return;
         }
+
         match self.m_view.take()
         {
             Some(current) if drill => self.m_history.push(current),
             _ => self.m_history.clear(),
         }
+
         self.m_view = Some(View { m_focus: key, m_recipes: recipes, m_index: 0 });
     }
 
@@ -418,6 +430,7 @@ impl State
             _ =>
             {}
         }
+
         true
     }
 
@@ -434,6 +447,7 @@ impl State
         {
             return self.typeKey(character, code);
         }
+
         match code
         {
             key::HIDE =>
@@ -441,22 +455,27 @@ impl State
                 self.m_hidden = !self.m_hidden;
                 true
             }
+
             _ if self.m_hidden => false,
+
             key::ESCAPE if self.m_view.is_some() =>
             {
                 self.close();
                 true
             }
+
             key::BACK if self.m_view.is_some() =>
             {
                 self.back();
                 true
             }
+
             key::LEFT | key::RIGHT =>
             {
                 self.turn(code == key::RIGHT);
                 true
             }
+
             key::RECIPE | key::USAGE => self.lookup(code == key::USAGE, hovered),
             _ => false,
         }
@@ -474,6 +493,7 @@ impl State
         {
             self.m_hovered.or(hovered)
         };
+
         let Some(target) = target
         else
         {
@@ -518,6 +538,7 @@ impl State
         {
             return false;
         };
+
         let container: Rect = self.m_layout.m_container;
         let [previous, next, back] = pageButtons(container);
         let focus: Key = view.m_focus;
@@ -544,10 +565,13 @@ impl State
         {
             return false;
         }
+
         let layout: Layout = self.m_layout;
         let onSearch: bool = inside(point, layout.m_search);
         self.m_focused = onSearch && button == LEFT_BUTTON;
+
         let catalog: Rc<Catalog> = self.catalog();
+
         if onSearch
         {
             if button == RIGHT_BUTTON
@@ -576,6 +600,7 @@ impl State
         {
             return self.clickView(&catalog, point, button);
         }
+
         true
     }
 
@@ -587,16 +612,19 @@ impl State
         }
 
         let forward: bool = delta < 0;
+
         if self.paging() && inside(point, self.m_layout.m_container)
         {
             self.turnRecipe(forward);
             return true;
         }
+
         if inside(point, self.m_layout.m_grid)
         {
             self.turnPage(forward);
             return true;
         }
+
         false
     }
 }
@@ -633,11 +661,13 @@ impl Painter<'_>
     {
         let shown: Key = self.m_catalog.variant(key, (self.m_ticks / timing::CYCLE) as usize);
         self.m_draw.item(x, y, &shown.stack(count));
+
         if inside(self.m_mouse, [x, y, layout::ICON, layout::ICON])
         {
             self.m_draw.rect(x, y, layout::ICON, layout::ICON, color::HOVER);
             self.m_hovered = Some(shown);
         }
+
         shown
     }
 
@@ -653,6 +683,7 @@ impl Painter<'_>
     fn slotItem(&mut self, x: i32, y: i32, key: Option<Key>)
     {
         self.slot(x, y, layout::ICON);
+
         if let Some(key) = key
         {
             self.item(x, y, key);
@@ -663,6 +694,7 @@ impl Painter<'_>
     {
         let output: Key = Key::of(&recipe.output);
         let count: i32 = recipe.output.count;
+
         match &recipe.shape
         {
             RecipeShape::Smelting { input } =>
@@ -672,11 +704,13 @@ impl Painter<'_>
                 self.texture(page::SMELT_ARROW, top + layout::CELL, page::ARROW_UV);
                 self.output(page::SMELT_OUTPUT, top + layout::CELL, output, count);
             }
+
             RecipeShape::Shaped { width, inputs } =>
             {
                 let keys: Vec<Option<Key>> = inputs.iter().map(|input| input.as_ref().map(Key::of)).collect();
                 self.grid(top, *width as usize, &keys, output, count);
             }
+
             RecipeShape::Shapeless { inputs } =>
             {
                 let keys: Vec<Option<Key>> = inputs.iter().map(|input| Some(Key::of(input))).collect();
@@ -703,6 +737,7 @@ impl Painter<'_>
                 self.slotItem(x, top + row as i32 * layout::CELL, input);
             }
         }
+
         self.texture(page::ARROW_LEFT, top + layout::CELL, page::ARROW_UV);
         self.output(page::OUTPUT_LEFT, top + layout::CELL, output, count);
     }
@@ -723,11 +758,13 @@ impl Painter<'_>
             (None, Some(key)) => vec![(self.m_catalog.name(key), color::WHITE)],
             (None, None) => return,
         };
+
         if let Some(origin) =
             self.m_hovered.filter(|_| self.m_hint.is_none()).and_then(|key| origin(self.m_catalog, key))
         {
             lines.push((origin.to_owned(), color::WHITE));
         }
+
         let width: i32 = lines.iter().map(|(line, _)| textWidth(line)).max().unwrap_or(0);
         let height: i32 = (lines.len() as i32 - 1) * layout::LINE + layout::FONT_HEIGHT;
         let pad: i32 = layout::TOOLTIP_PAD;
@@ -743,6 +780,7 @@ impl Painter<'_>
         };
         let y: i32 = (mouseY - layout::TOOLTIP_OFFSET).max(screen[1] + pad);
         self.m_draw.rect(x - pad, y - pad, width + pad * 2, height + pad * 2, color::TOOLTIP);
+
         for (index, (line, tint)) in lines.iter().enumerate()
         {
             self.m_draw.text(x, y + index as i32 * layout::LINE, line, *tint);
@@ -753,6 +791,7 @@ impl Painter<'_>
     {
         let [x, y, w, h] = rect;
         let edge: i32 = layout::FIELD_EDGE;
+
         let border: u32 = if state.m_focused
         {
             color::FIELD_FOCUS
@@ -763,16 +802,19 @@ impl Painter<'_>
         };
         self.m_draw.rect(x, y, w, h, border);
         self.m_draw.rect(x + edge, y + edge, w - edge * 2, h - edge * 2, color::FIELD_FACE);
+
         let room: i32 = w - layout::TEXT_INSET * 2;
         let shown: &str = clip(&state.m_query, room, true);
         let textX: i32 = x + layout::TEXT_INSET;
         let textY: i32 = y + (h - layout::FONT_HEIGHT) / 2;
+
         if shown.is_empty() && !state.m_focused
         {
             let hint: String = translate(text::SEARCH);
             self.m_draw.text(textX, textY, clip(&hint, room, false), color::HINT);
             return;
         }
+
         let blink: bool = state.m_focused && (state.m_ticks / timing::BLINK).is_multiple_of(2);
         self.m_draw.text(textX, textY, &format!("{shown}{}", if blink { "_" } else { "" }), color::TEXT);
     }
@@ -785,8 +827,10 @@ impl Painter<'_>
             let [x, y] = layout.cell(offset);
             self.icon(x, y, *key, 1);
         }
+
         self.button(layout.m_previous, &translate(text::LEFT));
         self.button(layout.m_next, &translate(text::RIGHT));
+
         let current: usize = state.m_page + 1;
         let room: i32 = layout.m_next[0] - layout.m_previous[0] - layout.m_previous[2] - layout::SPACING * 2;
         // a narrow bar drops the page count first and the label entirely when even the page number overflows
@@ -806,6 +850,7 @@ impl Painter<'_>
     fn toggles(&mut self, state: &State, layout: &Layout)
     {
         self.button(layout.m_cheat, "");
+
         let [x, y, w, _] = layout.m_cheat;
         let overCheat: bool = inside(self.m_mouse, layout.m_cheat);
         let tint: u32 = if overCheat
@@ -822,22 +867,28 @@ impl Painter<'_>
         };
         let textTop: i32 = (layout::BAR - layout::FONT_HEIGHT) / 2;
         self.m_draw.centered(x + w / 2, y + textTop, cheat::button(), tint);
+
         if overCheat
         {
             self.m_hint = Some(cheat::mode());
         }
+
         if inside(self.m_mouse, layout.m_craftable)
         {
             self.m_hint = Some(text::CRAFTABLE);
         }
+
         self.button(layout.m_craftable, "");
+
         let [x, y, w, h] = layout.m_craftable;
         // the button texture keeps a two pixel rim inside which the tint and icon sit
         let rim: i32 = layout::TOGGLE_ICON;
+
         if state.m_craftable
         {
             self.m_draw.rect(x + rim, y + rim, w - rim * 2, h - rim * 2, color::CRAFTABLE_TINT);
         }
+
         self.m_draw.item(x + rim, y + rim, &ItemStack::of(CRAFTABLE_ICON, 1));
     }
 
@@ -862,6 +913,7 @@ impl Painter<'_>
     {
         let [x, y, w, h] = container;
         self.m_draw.panel(x, y, w, h);
+
         let recipe: &RecipeView = &self.m_catalog.m_recipes[view.m_recipes[view.m_index]];
         let name: String = self.m_catalog.name(Key::of(&recipe.output));
         self.m_draw.plain((container[2] - textWidth(&name)) / 2, page::TITLE_TOP, &name, color::TITLE);
@@ -879,6 +931,7 @@ impl Painter<'_>
         let bodyTop: i32 = page::TITLE_TOP + layout::FONT_HEIGHT;
         let body: i32 = page::GRID as i32 * layout::CELL;
         self.recipe(recipe, (bodyTop + idTop - body) / 2);
+
         if let Some(id) = &recipe.id
         {
             self.recipeId(&id.to_string(), container, idTop);
@@ -889,6 +942,7 @@ impl Painter<'_>
             self.button(previous, &translate(text::LEFT));
             self.button(next, &translate(text::RIGHT));
         }
+
         self.button(back, &translate(text::BACK));
     }
 }
@@ -898,18 +952,23 @@ fn drawFrame(draw: &mut Draw, state: &mut State, size: [i32; 2], mouse: [i32; 2]
     state.m_hovered = None;
     state.m_mouse = mouse;
     state.m_slots.clear();
+
     if state.m_hidden
     {
         return;
     }
+
     let catalog: Rc<Catalog> = state.catalog();
     let layout: Layout = Layout::of(size);
     state.m_layout = layout;
+
     if state.m_dirty
     {
         state.refilter(&catalog);
     }
+
     state.m_page = state.m_page.min(state.pages() - 1);
+
     let mut painter: Painter = Painter
     {
         m_draw: draw,
@@ -922,14 +981,17 @@ fn drawFrame(draw: &mut Draw, state: &mut State, size: [i32; 2], mouse: [i32; 2]
     };
     painter.toggles(state, &layout);
     painter.search(state, layout.m_search);
+
     if layout.perPage() > 0
     {
         painter.list(state, &layout);
     }
+
     if let Some(view) = &state.m_view
     {
         painter.view(view, layout.m_container);
     }
+
     painter.tooltip(layout.m_screen);
     state.m_hovered = painter.m_hovered;
     state.m_slots = painter.m_slots;
@@ -982,17 +1044,20 @@ fn origin(catalog: &Catalog, key: Key) -> Option<&str>
     {
         return None;
     }
+
     catalog.origin(key.m_id)
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for target in TARGETS
     {
         ctx.screens().overlay(target, Viewer)?;
     }
+
     ctx.events().on::<ScreenOpen>(Priority::Normal, |_| STATE.with(|state| state.borrow_mut().leave()))?;
     ctx.events().on::<ClientTick>(Priority::Normal, |_| STATE.with(|state| state.borrow_mut().tick()))?;
+
     ctx.screens().tooltip(|stack, lines|
     {
         let catalog: Rc<Catalog> = catalog::get();

@@ -14,6 +14,7 @@ fn grassOrDirt(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 fn clearForTree(world: &GenWorld, x: i32, y: i32, z: i32, height: i32, widthAt: impl Fn(i32) -> i32) -> bool
 {
     let leaves: i32 = world.id("minecraft:leaves");
+
     for cy in y..=y + 1 + height
     {
         let width: i32 = widthAt(cy);
@@ -33,17 +34,19 @@ fn clearForTree(world: &GenWorld, x: i32, y: i32, z: i32, height: i32, widthAt: 
             }
         }
     }
+
     true
 }
 
 // WorldGenTrees and WorldGenForest, the round oak or birch
-pub fn tree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, minimum: i32, meta: i32) -> bool
+pub(crate) fn tree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, minimum: i32, meta: i32) -> bool
 {
     let height: i32 = random.nextIntBounded(3) + minimum;
     if y < 1 || y + height + 1 > TOP
     {
         return false;
     }
+
     let width = |cy: i32|
     {
         if cy == y
@@ -63,8 +66,11 @@ pub fn tree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, minimum: 
     {
         return false;
     }
+
     let (leaves, log): (i32, i32) = (world.id("minecraft:leaves"), world.id("minecraft:log"));
+
     world.set(x, y - 1, z, world.id("minecraft:dirt"));
+
     for cy in y - 3 + height..=y + height
     {
         let layer: i32 = cy - (y + height);
@@ -77,6 +83,7 @@ pub fn tree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, minimum: 
                 {
                     continue;
                 }
+
                 if !world.isOpaque(cx, cy, cz)
                 {
                     world.setMeta(cx, cy, cz, leaves, meta);
@@ -84,6 +91,7 @@ pub fn tree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, minimum: 
             }
         }
     }
+
     for dy in 0..height
     {
         let there: i32 = world.block(x, y + dy, z);
@@ -92,12 +100,19 @@ pub fn tree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, minimum: 
             world.setMeta(x, y + dy, z, log, meta);
         }
     }
+
     true
 }
 
-pub fn oak(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool { tree(world, random, x, y, z, 4, 0) }
+pub(crate) fn oak(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+{
+    tree(world, random, x, y, z, 4, 0)
+}
 
-pub fn birch(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool { tree(world, random, x, y, z, 5, 2) }
+pub(crate) fn birch(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+{
+    tree(world, random, x, y, z, 5, 2)
+}
 
 fn spruceFits(world: &GenWorld, x: i32, y: i32, z: i32, height: i32, trunk: i32, radius: i32) -> bool
 {
@@ -105,7 +120,7 @@ fn spruceFits(world: &GenWorld, x: i32, y: i32, z: i32, height: i32, trunk: i32,
 }
 
 // WorldGenTaiga1, the lean spruce
-pub fn taiga1(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn taiga1(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let height: i32 = random.nextIntBounded(5) + 7;
     let trunk: i32 = height - random.nextIntBounded(2) - 3;
@@ -118,9 +133,13 @@ pub fn taiga1(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
     {
         return false;
     }
+
     let (leaves, log): (i32, i32) = (world.id("minecraft:leaves"), world.id("minecraft:log"));
+
     world.set(x, y - 1, z, world.id("minecraft:dirt"));
+
     let mut radius: i32 = 0;
+
     for cy in (y + trunk..=y + height).rev()
     {
         for cx in x - radius..=x + radius
@@ -134,6 +153,7 @@ pub fn taiga1(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
                 }
             }
         }
+
         if radius >= 1 && cy == y + trunk + 1
         {
             radius -= 1;
@@ -143,6 +163,7 @@ pub fn taiga1(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
             radius += 1;
         }
     }
+
     for dy in 0..height - 1
     {
         let there: i32 = world.block(x, y + dy, z);
@@ -151,11 +172,12 @@ pub fn taiga1(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
             world.setMeta(x, y + dy, z, log, 1);
         }
     }
+
     true
 }
 
 // WorldGenTaiga2, the layered spruce
-pub fn taiga2(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn taiga2(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let height: i32 = random.nextIntBounded(4) + 6;
     let bare: i32 = 1 + random.nextIntBounded(2);
@@ -169,14 +191,19 @@ pub fn taiga2(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
     {
         return false;
     }
+
     let (leaves, log): (i32, i32) = (world.id("minecraft:leaves"), world.id("minecraft:log"));
+
     world.set(x, y - 1, z, world.id("minecraft:dirt"));
+
     let mut radius: i32 = random.nextIntBounded(2);
     let mut limit: i32 = 1;
     let mut restart: i32 = 0;
+
     for layer in 0..=leafy
     {
         let cy: i32 = y + height - layer;
+
         for cx in x - radius..=x + radius
         {
             for cz in z - radius..=z + radius
@@ -188,6 +215,7 @@ pub fn taiga2(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
                 }
             }
         }
+
         if radius >= limit
         {
             radius = restart;
@@ -199,6 +227,7 @@ pub fn taiga2(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
             radius += 1;
         }
     }
+
     let cut: i32 = random.nextIntBounded(3);
     for dy in 0..height - cut
     {
@@ -208,13 +237,15 @@ pub fn taiga2(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
             world.setMeta(x, y + dy, z, log, 1);
         }
     }
+
     true
 }
 
 // WorldGenShrub from 1.7, a log stump wrapped in a leafy mound
-pub fn shrub(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32) -> bool
+pub(crate) fn shrub(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32) -> bool
 {
     let leaves: i32 = world.id("minecraft:leaves");
+
     while y > 0
     {
         let there: i32 = world.block(x, y, z);
@@ -222,14 +253,18 @@ pub fn shrub(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32) -> b
         {
             break;
         }
+
         y -= 1;
     }
+
     if !grassOrDirt(world, x, y, z)
     {
         return true;
     }
+
     y += 1;
     world.set(x, y, z, world.id("minecraft:log"));
+
     for cy in y..=y + 2
     {
         let radius: i32 = 2 - (cy - y);
@@ -239,6 +274,7 @@ pub fn shrub(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32) -> b
             {
                 let corner: bool =
                     (cx - x).abs() == radius && (cz - z).abs() == radius && random.nextIntBounded(2) == 0;
+
                 if !corner && !world.isOpaque(cx, cy, cz)
                 {
                     world.set(cx, cy, cz, leaves);
@@ -246,12 +282,14 @@ pub fn shrub(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32) -> b
             }
         }
     }
+
     true
 }
 
 fn surfaceBelow(world: &GenWorld, x: i32, mut y: i32, z: i32) -> i32
 {
     let leaves: i32 = world.id("minecraft:leaves");
+
     loop
     {
         let there: i32 = world.block(x, y, z);
@@ -259,6 +297,7 @@ fn surfaceBelow(world: &GenWorld, x: i32, mut y: i32, z: i32) -> i32
         {
             return y;
         }
+
         y -= 1;
     }
 }
@@ -273,7 +312,7 @@ fn scatter(random: &Random, x: i32, y: i32, z: i32, reach: i32, rise: i32) -> (i
 }
 
 // WorldGenTallGrass, 128 tries at a plant around the first ground below
-pub fn tallGrass(
+pub(crate) fn tallGrass(
     world: &GenWorld,
     random: &Random,
     x: i32,
@@ -284,6 +323,7 @@ pub fn tallGrass(
 ) -> bool
 {
     let ground: i32 = surfaceBelow(world, x, y, z);
+
     for _ in 0..128
     {
         let (px, py, pz): (i32, i32, i32) = scatter(random, x, ground, z, 8, 4);
@@ -292,11 +332,12 @@ pub fn tallGrass(
             world.setMeta(px, py, pz, plant.0, plant.1);
         }
     }
+
     true
 }
 
 // WorldGenFlowers and WorldGenPumpkin, 64 tries around the spot
-pub fn flowers(
+pub(crate) fn flowers(
     world: &GenWorld,
     random: &Random,
     x: i32,
@@ -314,23 +355,25 @@ pub fn flowers(
             world.set(px, py, pz, plant);
         }
     }
+
     true
 }
 
-pub fn onSoil(world: &GenWorld, x: i32, y: i32, z: i32) -> bool { crate::ids::soil(world.block(x, y - 1, z)) }
+pub(crate) fn onSoil(world: &GenWorld, x: i32, y: i32, z: i32) -> bool { crate::ids::soil(world.block(x, y - 1, z)) }
 
-pub fn lit(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn lit(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 {
     let light: i32 = world.m_world.light(BlockPos::new(x, y, z));
     onSoil(world, x, y, z) && (light >= 8 || world.height(x, z) <= y)
 }
 
 // WorldGenDeadBush
-pub fn deadBush(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn deadBush(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let ground: i32 = surfaceBelow(world, x, y, z);
     let bush: i32 = world.id("minecraft:deadbush");
     let sand: i32 = world.id("minecraft:sand");
+
     for _ in 0..4
     {
         let (px, py, pz): (i32, i32, i32) = scatter(random, x, ground, z, 8, 4);
@@ -341,15 +384,17 @@ pub fn deadBush(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bo
             world.set(px, py, pz, bush);
         }
     }
+
     true
 }
 
 // WorldGenReed, sugar cane beside water
-pub fn reeds(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn reeds(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let water: [i32; 2] = [world.id("minecraft:water"), world.id("minecraft:flowing_water")];
     let reed: i32 = world.id("minecraft:reeds");
     let wet = |px: i32, py: i32, pz: i32| water.contains(&world.block(px, py, pz));
+
     for _ in 0..20
     {
         let px: i32 = x + random.nextIntBounded(4) - random.nextIntBounded(4);
@@ -359,6 +404,7 @@ pub fn reeds(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
         {
             continue;
         }
+
         let tall: i32 = 2 + random.nextIntBounded(random.nextIntBounded(3) + 1);
         for dy in 0..tall
         {
@@ -369,13 +415,15 @@ pub fn reeds(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
             }
         }
     }
+
     true
 }
 
 // WorldGenPumpkin
-pub fn pumpkins(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn pumpkins(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let (pumpkin, grass): (i32, i32) = (world.id("minecraft:pumpkin"), world.id("minecraft:grass"));
+
     for _ in 0..64
     {
         let (px, py, pz): (i32, i32, i32) = scatter(random, x, y, z, 8, 4);
@@ -384,11 +432,12 @@ pub fn pumpkins(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bo
             world.setMeta(px, py, pz, pumpkin, random.nextIntBounded(4));
         }
     }
+
     true
 }
 
 // WorldGenMinable, an ore vein of this many blocks through stone
-pub fn ore(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32, size: i32)
+pub(crate) fn ore(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32, size: i32)
 {
     let stone: i32 = world.id("minecraft:stone");
     let pi: f32 = std::f32::consts::PI;
@@ -400,6 +449,7 @@ pub fn ore(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32
     let toZ: f64 = f64::from((z + 8) as f32 - math::cos(angle) * spread);
     let fromY: f64 = f64::from(y + random.nextIntBounded(3) + 2);
     let toY: f64 = f64::from(y + random.nextIntBounded(3) + 2);
+
     for step in 0..=size
     {
         let along: f64 = f64::from(step) / f64::from(size);
@@ -411,6 +461,7 @@ pub fn ore(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32
         let (minX, maxX): (i32, i32) = (math::floor(cx - swell / 2.0), math::floor(cx + swell / 2.0));
         let (minY, maxY): (i32, i32) = (math::floor(cy - swell / 2.0), math::floor(cy + swell / 2.0));
         let (minZ, maxZ): (i32, i32) = (math::floor(cz - swell / 2.0), math::floor(cz + swell / 2.0));
+
         for bx in minX..=maxX
         {
             let dx: f64 = (f64::from(bx) + 0.5 - cx) / (swell / 2.0);
@@ -418,6 +469,7 @@ pub fn ore(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32
             {
                 continue;
             }
+
             for by in minY..=maxY
             {
                 let dy: f64 = (f64::from(by) + 0.5 - cy) / (swell / 2.0);
@@ -425,6 +477,7 @@ pub fn ore(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32
                 {
                     continue;
                 }
+
                 for bz in minZ..=maxZ
                 {
                     let dz: f64 = (f64::from(bz) + 0.5 - cz) / (swell / 2.0);
@@ -439,7 +492,15 @@ pub fn ore(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32
 }
 
 // WorldGenSand and WorldGenClay from 1.7, a disc of sand gravel or clay under shallow water
-pub fn disc(world: &GenWorld, random: &Random, at: [i32; 3], block: i32, radius: i32, depth: i32, replaces: &[i32])
+pub(crate) fn disc(
+    world: &GenWorld,
+    random: &Random,
+    at: [i32; 3],
+    block: i32,
+    radius: i32,
+    depth: i32,
+    replaces: &[i32],
+)
 {
     let [x, y, z] = at;
     let water: [i32; 2] = [world.id("minecraft:water"), world.id("minecraft:flowing_water")];
@@ -447,6 +508,7 @@ pub fn disc(world: &GenWorld, random: &Random, at: [i32; 3], block: i32, radius:
     {
         return;
     }
+
     let size: i32 = random.nextIntBounded(radius - 2) + 2;
     for bx in x - size..=x + size
     {
@@ -456,6 +518,7 @@ pub fn disc(world: &GenWorld, random: &Random, at: [i32; 3], block: i32, radius:
             {
                 continue;
             }
+
             for by in y - depth..=y + depth
             {
                 if replaces.contains(&world.block(bx, by, bz))
@@ -478,6 +541,7 @@ fn lakeEdge(shape: &[bool], x: i32, z: i32, y: i32) -> bool
     {
         return false;
     }
+
     let at = |dx: i32, dz: i32, dy: i32|
     {
         let (nx, nz, ny): (i32, i32, i32) = (x + dx, z + dz, y + dy);
@@ -490,7 +554,7 @@ fn lakeEdge(shape: &[bool], x: i32, z: i32, y: i32) -> bool
 }
 
 // WorldGenLakes, a pond of water or lava sunk four blocks into the ground
-pub fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: i32) -> bool
+pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: i32) -> bool
 {
     let (x, z): (i32, i32) = (x - 8, z - 8);
     let mut y: i32 = y;
@@ -498,7 +562,9 @@ pub fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: i
     {
         y -= 1;
     }
+
     y -= 4;
+
     let mut shape: Vec<bool> = vec![false; (LAKE_WIDTH * LAKE_WIDTH * LAKE_HEIGHT) as usize];
     let blobs: i32 = random.nextIntBounded(4) + 4;
     for _ in 0..blobs
@@ -510,6 +576,7 @@ pub fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: i
             random.nextDouble() * (8.0 - size[1] - 4.0) + 2.0 + size[1] / 2.0,
             random.nextDouble() * (16.0 - size[2] - 2.0) + 1.0 + size[2] / 2.0,
         ];
+
         for lx in 1..15
         {
             for lz in 1..15
@@ -527,6 +594,7 @@ pub fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: i
             }
         }
     }
+
     for lx in 0..LAKE_WIDTH
     {
         for lz in 0..LAKE_WIDTH
@@ -549,6 +617,7 @@ pub fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: i
             }
         }
     }
+
     for lx in 0..LAKE_WIDTH
     {
         for lz in 0..LAKE_WIDTH
@@ -562,7 +631,9 @@ pub fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: i
             }
         }
     }
+
     let (dirt, grass): (i32, i32) = (world.id("minecraft:dirt"), world.id("minecraft:grass"));
+
     for lx in 0..LAKE_WIDTH
     {
         for lz in 0..LAKE_WIDTH
@@ -577,9 +648,11 @@ pub fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: i
             }
         }
     }
+
     if liquid == world.id("minecraft:lava") || liquid == world.id("minecraft:flowing_lava")
     {
         let stone: i32 = world.id("minecraft:stone");
+
         for lx in 0..LAKE_WIDTH
         {
             for lz in 0..LAKE_WIDTH
@@ -597,6 +670,7 @@ pub fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: i
             }
         }
     }
+
     true
 }
 
@@ -604,6 +678,7 @@ pub fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, liquid: i
 fn dungeonLoot(random: &Random) -> Option<ItemStack>
 {
     let stack = |name: &str, count: i32| Some(ItemStack::of(name, count));
+
     match random.nextIntBounded(11)
     {
         0 => stack("minecraft:saddle", 1),
@@ -632,12 +707,13 @@ fn dungeonLoot(random: &Random) -> Option<ItemStack>
 }
 
 // WorldGenDungeons, a cobblestone room with a spawner and chests
-pub fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let roof: i32 = 3;
     let halfX: i32 = random.nextIntBounded(2) + 2;
     let halfZ: i32 = random.nextIntBounded(2) + 2;
     let mut openings: i32 = 0;
+
     for bx in x - halfX - 1..=x + halfX + 1
     {
         for by in y - 1..=y + roof + 1
@@ -649,8 +725,10 @@ pub fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> boo
                 {
                     return false;
                 }
+
                 let wall: bool =
                     bx == x - halfX - 1 || bx == x + halfX + 1 || bz == z - halfZ - 1 || bz == z + halfZ + 1;
+
                 if wall && by == y && world.isAir(bx, by, bz) && world.isAir(bx, by + 1, bz)
                 {
                     openings += 1;
@@ -658,11 +736,14 @@ pub fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> boo
             }
         }
     }
+
     if !(1..=5).contains(&openings)
     {
         return false;
     }
+
     let (cobble, mossy): (i32, i32) = (world.id("minecraft:cobblestone"), world.id("minecraft:mossy_cobblestone"));
+
     for bx in x - halfX - 1..=x + halfX + 1
     {
         for by in (y - 1..=y + roof).rev()
@@ -675,20 +756,24 @@ pub fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> boo
                     || bx == x + halfX + 1
                     || by == y + roof + 1
                     || bz == z + halfZ + 1;
+
                 if !shell
                 {
                     world.setNotify(bx, by, bz, 0, 0);
                     continue;
                 }
+
                 if by >= 0 && !world.isSolid(bx, by - 1, bz)
                 {
                     world.setNotify(bx, by, bz, 0, 0);
                     continue;
                 }
+
                 if !world.isSolid(bx, by, bz)
                 {
                     continue;
                 }
+
                 let stone: i32 = if by == y - 1 && random.nextIntBounded(4) != 0
                 {
                     mossy
@@ -701,6 +786,7 @@ pub fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> boo
             }
         }
     }
+
     'chests: for _ in 0..2
     {
         for _ in 0..3
@@ -713,12 +799,16 @@ pub fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> boo
             }
             let walls: usize =
                 [[-1, 0], [1, 0], [0, -1], [0, 1]].iter().filter(|[dx, dz]| world.isSolid(cx + dx, y, cz + dz)).count();
+
             if walls != 1
             {
                 continue;
             }
+
             world.setNotify(cx, y, cz, world.id("minecraft:chest"), 0);
+
             let slots: i32 = 27;
+
             for _ in 0..8
             {
                 if let Some(stack) = dungeonLoot(random)
@@ -727,9 +817,11 @@ pub fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> boo
                         world.m_world.setTileSlot(BlockPos::new(cx, y, cz), random.nextIntBounded(slots), Some(stack));
                 }
             }
+
             continue 'chests;
         }
     }
+
     let mob: &str = match random.nextIntBounded(4)
     {
         0 => "Skeleton",
@@ -740,11 +832,12 @@ pub fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> boo
     {
         b173_api::warn(&format!("dungeon spawner at {x} {y} {z}: {}", error.0));
     }
+
     true
 }
 
 // WorldGenLiquids, a spring in a stone wall
-pub fn spring(world: &GenWorld, x: i32, y: i32, z: i32, liquid: i32) -> bool
+pub(crate) fn spring(world: &GenWorld, x: i32, y: i32, z: i32, liquid: i32) -> bool
 {
     let stone: i32 = world.id("minecraft:stone");
     if world.block(x, y + 1, z) != stone || world.block(x, y - 1, z) != stone
@@ -756,6 +849,7 @@ pub fn spring(world: &GenWorld, x: i32, y: i32, z: i32, liquid: i32) -> bool
     {
         return false;
     }
+
     let sides: [[i32; 2]; 4] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
     let walls: usize = sides.iter().filter(|[dx, dz]| world.block(x + dx, y, z + dz) == stone).count();
     let open: usize = sides.iter().filter(|[dx, dz]| world.isAir(x + dx, y, z + dz)).count();
@@ -763,11 +857,12 @@ pub fn spring(world: &GenWorld, x: i32, y: i32, z: i32, liquid: i32) -> bool
     {
         world.setNotify(x, y, z, liquid, 0);
     }
+
     true
 }
 
 // WorldGenBigMushroom, the 1.7 huge mushroom drawn in the port's own huge mushroom blocks
-pub fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let red: bool = random.nextIntBounded(2) == 1;
     let height: i32 = random.nextIntBounded(3) + 4;
@@ -775,7 +870,9 @@ pub fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) ->
     {
         return false;
     }
+
     let leaves: i32 = world.id("minecraft:leaves");
+
     for by in y..=y + 1 + height
     {
         let reach: i32 = if by <= y + 3 { 0 } else { 3 };
@@ -791,11 +888,13 @@ pub fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) ->
             }
         }
     }
+
     let below: i32 = world.block(x, y - 1, z);
     if below != world.id("minecraft:dirt") && below != world.id("minecraft:grass")
     {
         return false;
     }
+
     let block: i32 = world.id(
         if red
         {
@@ -806,6 +905,7 @@ pub fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) ->
             crate::ids::block::HUGE_BROWN_MUSHROOM
         },
     );
+
     let top: i32 = y + height;
     let bottom: i32 = if red { top - 3 } else { top };
     for by in bottom..=top
@@ -822,6 +922,7 @@ pub fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) ->
                 {
                     continue;
                 }
+
                 // the inside of a red cap stays hollow
                 let inside: bool = by < top && !edgeX && !edgeZ;
                 if !inside && world.isReplaceable(bx, by, bz)
@@ -831,6 +932,7 @@ pub fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) ->
             }
         }
     }
+
     for dy in 0..height
     {
         if world.isReplaceable(x, y + dy, z)
@@ -838,11 +940,12 @@ pub fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) ->
             world.setMeta(x, y + dy, z, block, 1);
         }
     }
+
     true
 }
 
 // WorldGenBlockBlob, three overlapping balls rolling downhill from the ground
-pub fn boulder(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32, block: i32) -> bool
+pub(crate) fn boulder(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32, block: i32) -> bool
 {
     let ground: [i32; 3] = [world.id("minecraft:grass"), world.id("minecraft:dirt"), world.id("minecraft:stone")];
     let lowest: i32 = 3;
@@ -850,16 +953,20 @@ pub fn boulder(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32, bl
     {
         y -= 1;
     }
+
     if y <= lowest
     {
         return false;
     }
+
     let (mut x, mut z): (i32, i32) = (x, z);
+
     for _ in 0..3
     {
         let (rx, ry, rz): (i32, i32, i32) =
             (random.nextIntBounded(2), random.nextIntBounded(2), random.nextIntBounded(2));
         let reach: f32 = (rx + ry + rz) as f32 * 0.333 + 0.5;
+
         for bx in x - rx..=x + rx
         {
             for bz in z - rz..=z + rz
@@ -874,18 +981,21 @@ pub fn boulder(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32, bl
                 }
             }
         }
+
         x += random.nextIntBounded(2) - 1;
         z += random.nextIntBounded(2) - 1;
         y -= random.nextIntBounded(2);
     }
+
     true
 }
 
 // WorldGenVines, beta has no vines so only the random draws stay to keep later decorations in place
-pub fn vines(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn vines(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
     let top: i32 = 128;
     let (mut bx, mut bz): (i32, i32) = (x, z);
+
     for by in y..top
     {
         if !world.isAir(bx, by, bz)
@@ -897,7 +1007,7 @@ pub fn vines(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 }
 
 // WorldGenWaterlily, beta has no lily pads so only the random draws stay
-pub fn waterlily(random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn waterlily(random: &Random, x: i32, y: i32, z: i32)
 {
     for _ in 0..10
     {
@@ -906,7 +1016,7 @@ pub fn waterlily(random: &Random, x: i32, y: i32, z: i32)
 }
 
 // WorldGenDoublePlant, beta has no double plants so each kind places its closest single plant
-pub fn doublePlant(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, kind: i32) -> bool
+pub(crate) fn doublePlant(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, kind: i32) -> bool
 {
     let plant: (i32, i32) = match kind
     {
@@ -915,7 +1025,9 @@ pub fn doublePlant(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, ki
         3 => (world.id("minecraft:tallgrass"), 2),
         _ => (world.id("minecraft:red_flower"), 0),
     };
+
     let mut placed: bool = false;
+
     for _ in 0..64
     {
         let (px, py, pz): (i32, i32, i32) = scatter(random, x, y, z, 8, 4);
@@ -925,5 +1037,6 @@ pub fn doublePlant(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, ki
             placed = true;
         }
     }
+
     placed
 }

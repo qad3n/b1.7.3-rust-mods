@@ -33,7 +33,8 @@ struct Bond
     m_left: bool,
 }
 
-thread_local! {
+thread_local!
+{
     static RELOADS: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
 }
 
@@ -44,6 +45,7 @@ fn target(owner: &EntityInfo, cloud: &EntityInfo, left: bool) -> [f64; 3]
     {
         return [owner.pos[0], owner.pos[1] + cloud::LIFT, owner.pos[2]];
     }
+
     let side: f64 = (owner.yaw as f64 + if left { -90.0 } else { 90.0 }).to_radians();
     [
         owner.pos[0] - side.sin() * cloud::SHOULDER,
@@ -67,6 +69,7 @@ impl EntityBehavior for MiniCloud
         {
             return;
         }
+
         let bond: Bond = entity.synced();
         let owner: Option<EntityInfo> = Entity { world, id: bond.m_owner }.info().filter(|owner| owner.alive);
         let Some(owner) = owner.filter(|_| entity.field(EntityField::TicksExisted) < cloud::LIFESPAN)
@@ -76,16 +79,20 @@ impl EntityBehavior for MiniCloud
             entity.kill();
             return;
         };
+
         let mut reload: i32 = RELOADS.with(|reloads| reloads.borrow().get(&entity.id).copied()).unwrap_or(0);
         reload -= 1;
+
         let goal: [f64; 3] = target(&owner, info, bond.m_left);
         let offset: [f64; 3] = [goal[0] - info.pos[0], goal[1] - info.pos[1], goal[2] - info.pos[2]];
         let gap: f64 = offset.iter().map(|axis| axis * axis).sum::<f64>().sqrt();
         if gap < cloud::SETTLED
         {
             let _ = entity.setMotion(info.motion.map(|axis| axis * cloud::HOLD));
+
             entity.setField(EntityField::Yaw, owner.yaw as f64 + if bond.m_left { 1.0 } else { -1.0 });
             entity.setField(EntityField::Pitch, owner.pitch as f64);
+
             let swinging: bool = Entity { world, id: owner.id }.field(EntityField::SwingProgress) > 0.0;
             if reload <= 0 && swinging
             {
@@ -95,8 +102,10 @@ impl EntityBehavior for MiniCloud
                     info.pos[1] + 1.0,
                     info.pos[2] + side.cos() * cloud::MUZZLE,
                 ];
+
                 let aim: [f64; 3] = lookOf(&owner).map(|axis| axis * cloud::SHOT_SPEED);
                 crystal::spawnMoving(world, Kind::Cloud, muzzle, Some(aim), None, Some(owner.id));
+
                 let pitch: f32 = ((fraction(world) - fraction(world)) * cloud::WOBBLE + 1.0) as f32;
                 world.playSound(info.pos, "aether.aemob.zephyr.shoot", cloud::VOLUME, pitch);
                 reload = cloud::RELOAD;
@@ -124,10 +133,12 @@ impl EntityBehavior for MiniCloud
     fn pose(&self, _input: &PoseInput) -> Pose
     {
         let mut body: Program = Program::new();
+
         for part in model::HEAD_0..=model::HEAD_4
         {
             body.rest(part);
         }
+
         Pose { pre: Vec::new(), model: body.take() }
     }
 }
@@ -145,14 +156,17 @@ impl ItemBehavior for CloudStaff
         {
             return Use::Done(Some(stack));
         };
+
         let mine: Vec<EntityInfo> = world
             .entitiesNear(info.pos, cloud::FAR * 8.0)
             .into_iter()
-            .filter(|other| {
+            .filter(|other|
+            {
                 other.kind.as_ref().is_some_and(|kind| kind.path() == NAME)
                     && Entity { world, id: other.id }.synced::<Bond>().m_owner == player.id
             })
             .collect();
+
         if mine.is_empty()
         {
             for left in [true, false]
@@ -163,8 +177,10 @@ impl ItemBehavior for CloudStaff
                     let _ = cloud.setSynced(&Bond { m_owner: player.id, m_left: left });
                 }
             }
+
             return Use::Done(Some(ItemStack { damage: stack.damage + 1, ..stack }));
         }
+
         if (Entity { world, id: player.id }).flag(EntityField::Sneaking)
         {
             for cloud in mine
@@ -172,17 +188,19 @@ impl ItemBehavior for CloudStaff
                 Entity { world, id: cloud.id }.kill();
             }
         }
+
         Use::Done(Some(stack))
     }
 }
 
-pub fn staff() -> impl ItemBehavior { CloudStaff }
+pub(crate) fn staff() -> impl ItemBehavior { CloudStaff }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:ghast").ok(),
             texture: Some(TEXTURE.to_owned()),
             size: Some([0.5, 0.45]),

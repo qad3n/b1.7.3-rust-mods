@@ -15,6 +15,7 @@ enum Look
         top: &'static str,
         side: &'static str,
     },
+
     Grass
     {
         top: &'static str,
@@ -59,7 +60,8 @@ const QUICKSOIL_HARDNESS: f32 = 0.5;
 const AEROGEL_HARDNESS: f32 = 1.0;
 
 const CUBES: [Cube; 22] = [
-    Cube {
+    Cube
+    {
         m_name: block::HOLYSTONE,
         m_material: "rock",
         m_look: Look::All("holystone"),
@@ -70,7 +72,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "mossy_holystone",
         m_material: "rock",
         m_look: Look::All("mossy_holystone"),
@@ -81,7 +84,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "holystone_brick",
         m_material: "rock",
         m_look: Look::All("holystone_brick"),
@@ -92,7 +96,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: block::ICESTONE,
         m_material: "rock",
         m_look: Look::All("icestone"),
@@ -103,7 +108,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 1),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: block::GRAVITITE_ORE,
         m_material: "rock",
         m_look: Look::All("gravitite_ore"),
@@ -114,7 +120,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 2),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: block::ENCHANTED_GRAVITITE,
         m_material: "rock",
         m_look: Look::All("enchanted_gravitite"),
@@ -125,7 +132,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 2),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "zanite_block",
         m_material: "iron",
         m_look: Look::All("zanite_block"),
@@ -136,7 +144,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 1),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "skyroot_planks",
         m_material: "wood",
         m_look: Look::All("skyroot_planks"),
@@ -147,7 +156,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Axe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: block::AETHER_DIRT,
         m_material: "ground",
         m_look: Look::All("aether_dirt"),
@@ -158,10 +168,12 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Shovel, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: block::ENCHANTED_AETHER_GRASS,
         m_material: "grass",
-        m_look: Look::Grass {
+        m_look: Look::Grass
+        {
             top: "enchanted_aether_grass_top",
             side: "enchanted_aether_grass_side",
             bottom: "aether_dirt",
@@ -173,7 +185,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Shovel, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "carved_stone",
         m_material: "rock",
         m_look: Look::All("carved_stone"),
@@ -184,7 +197,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "sentry_stone",
         m_material: "rock",
         m_look: Look::All("sentry_stone"),
@@ -195,7 +209,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "angelic_stone",
         m_material: "rock",
         m_look: Look::All("angelic_stone"),
@@ -206,7 +221,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "light_angelic_stone",
         m_material: "rock",
         m_look: Look::All("light_angelic_stone"),
@@ -217,7 +233,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "hellfire_stone",
         m_material: "rock",
         m_look: Look::All("hellfire_stone"),
@@ -228,7 +245,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "light_hellfire_stone",
         m_material: "rock",
         m_look: Look::All("light_hellfire_stone"),
@@ -239,7 +257,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "pillar",
         m_material: "rock",
         m_look: Look::Column { top: "pillar_top", side: "pillar_side" },
@@ -250,7 +269,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: "pillar_top",
         m_material: "rock",
         m_look: Look::Column { top: "pillar_top", side: "pillar_carved" },
@@ -261,7 +281,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: block::AMBROSIUM_ORE,
         m_material: "rock",
         m_look: Look::All("ambrosium_ore"),
@@ -272,7 +293,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 0),
         m_drop: Some(item::AMBROSIUM_SHARD),
     },
-    Cube {
+    Cube
+    {
         m_name: block::ZANITE_ORE,
         m_material: "rock",
         m_look: Look::All("zanite_ore"),
@@ -283,7 +305,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Pickaxe, 1),
         m_drop: Some(item::ZANITE_GEMSTONE),
     },
-    Cube {
+    Cube
+    {
         m_name: block::SKYROOT_LOG,
         m_material: "wood",
         m_look: Look::Column { top: "skyroot_log_top", side: "skyroot_log_side" },
@@ -294,7 +317,8 @@ const CUBES: [Cube; 22] = [
         m_tool: (ToolClass::Axe, 0),
         m_drop: None,
     },
-    Cube {
+    Cube
+    {
         m_name: block::GOLDEN_OAK_LOG,
         m_material: "wood",
         m_look: Look::Column { top: "golden_oak_log_top", side: "golden_oak_log_side" },
@@ -307,7 +331,8 @@ const CUBES: [Cube; 22] = [
     },
 ];
 
-const AETHER_GRASS: Cube = Cube {
+const AETHER_GRASS: Cube = Cube
+{
     m_name: block::AETHER_GRASS,
     m_material: "grass",
     m_look: Look::Grass { top: "aether_grass_top", side: "aether_grass_side", bottom: "aether_dirt" },
@@ -325,17 +350,21 @@ fn faces(look: &Look) -> FaceTextures
 {
     match look
     {
-        Look::All(name) => FaceTextures {
+        Look::All(name) => FaceTextures
+        {
             top: Some(texture(name)),
             bottom: Some(texture(name)),
             side: Some(texture(name)),
             front: None,
         },
+
         Look::Column { top, side } =>
         {
             FaceTextures { top: Some(texture(top)), bottom: Some(texture(top)), side: Some(texture(side)), front: None }
         }
-        Look::Grass { top, side, bottom } => FaceTextures {
+
+        Look::Grass { top, side, bottom } => FaceTextures
+        {
             top: Some(texture(top)),
             bottom: Some(texture(bottom)),
             side: Some(texture(side)),
@@ -359,14 +388,17 @@ fn cube(row: &Cube) -> Result<BlockSpecBuilder>
         .light(row.m_light)
         .sound(row.m_sound)
         .tool(row.m_tool.0, row.m_tool.1);
+
     if let Some(resistance) = row.m_resistance
     {
         spec = spec.resistance(resistance);
     }
+
     if let Some(item) = row.m_drop
     {
         spec = spec.drops(vec![drop(item, vec![1], ALWAYS)?]);
     }
+
     Ok(spec)
 }
 
@@ -399,19 +431,24 @@ impl BlockBehavior for AetherGrass
         {
             return;
         }
+
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let dirt: i32 = crate::ids::blockId(block::AETHER_DIRT);
+
         if world.light(pos.offset(0, 1, 0)) < grass::DIES_BELOW_LIGHT
             && opacityAbove(world, pos) > grass::DIES_ABOVE_OPACITY
         {
             let _ = world.setBlock(pos, dirt, 0);
+
             return;
         }
+
         if world.light(pos.offset(0, 1, 0)) < grass::SPREADS_FROM_LIGHT
         {
             return;
         }
+
         for _ in 0..grass::SPREAD_TRIES
         {
             let target: BlockPos = pos.offset(
@@ -419,6 +456,7 @@ impl BlockBehavior for AetherGrass
                 world.random(grass::SPREAD_VERTICAL) - grass::SPREAD_DROP,
                 world.random(grass::SPREAD_HORIZONTAL) - 1,
             );
+
             if world.block(target) == dirt
                 && world.meta(target) == 0
                 && world.light(target.offset(0, 1, 0)) >= grass::DIES_BELOW_LIGHT
@@ -453,30 +491,38 @@ impl BlockBehavior for Aercloud
     fn onEntityCollided(&self, ctx: &mut BlockCtx, entity: Entity)
     {
         entity.setField(EntityField::FallDistance, 0.0);
+
         let Some(info) = entity.info()
         else
         {
             return;
         };
+
         if self.m_bounce && ctx.isAuthority() && info.player.is_some()
         {
             progress::grant(Player { id: entity.id }, Award::BlueCloud);
         }
+
         let [motionX, motionY, motionZ] = info.motion;
         let slowed: [f64; 3] = [motionX, motionY * aercloud::DRAG, motionZ];
+
         if !self.m_bounce || info.player.is_some() && entity.flag(EntityField::Sneaking)
         {
             if motionY < 0.0
             {
                 let _ = entity.setMotion(slowed);
             }
+
             return;
         }
+
         let _ = entity.setMotion([motionX, aercloud::LAUNCH, motionZ]);
+
         if isClient()
         {
             let world: World = ctx.world();
             let pos: BlockPos = ctx.pos();
+
             for _ in 0..aercloud::SPLASHES
             {
                 let jitter = || world.random(aercloud::JITTER_STEPS) as f64 / aercloud::JITTER_STEPS as f64;
@@ -520,6 +566,7 @@ impl BlockBehavior for BerryBush
         {
             return;
         }
+
         let world: World = ctx.world();
         let _ = world.setBlock(ctx.pos(), crate::ids::blockId("berry_bush_stem"), 0);
         let _ = world.dropBlockItems(ctx.pos(), ctx.block(), i32::from(ctx.meta()));
@@ -553,6 +600,7 @@ impl BlockBehavior for Sapling
         {
             return;
         }
+
         let sapling: i32 = ctx.block();
         let _ = world.setBlockQuiet(pos, 0, 0);
         let random: Random = Random::withSeed(world.random(i32::MAX) as i64);
@@ -594,7 +642,7 @@ fn aercloud(name: &str, bounce: bool) -> BlockSpecBuilder
 
 fn registerSpecial(ctx: &mut RegisterCtx) -> Result<()>
 {
-    let blocks = ctx.blocks();
+    let blocks: Blocks = ctx.blocks();
     // BlockAetherGrass.canSustainPlant takes the plains plants, flowers and saplings
     blocks.register(
         block::AETHER_GRASS,
@@ -684,7 +732,8 @@ fn registerSpecial(ctx: &mut RegisterCtx) -> Result<()>
     blocks.register(
         "skyroot_bookshelf",
         BlockSpecBuilder::template("minecraft:bookshelf")
-            .faces(FaceTextures {
+            .faces(FaceTextures
+            {
                 top: Some(texture("skyroot_planks")),
                 bottom: Some(texture("skyroot_planks")),
                 side: Some(texture("skyroot_bookshelf")),
@@ -708,7 +757,7 @@ fn registerSpecial(ctx: &mut RegisterCtx) -> Result<()>
     Ok(())
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &CUBES
     {
@@ -716,10 +765,12 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         spec = match row.m_name
         {
             block::SKYROOT_LOG | block::GOLDEN_OAK_LOG => spec.sustainsLeaves().behavior(harvest::Log),
+
             block::GRAVITITE_ORE | block::ENCHANTED_GRAVITITE =>
             {
                 spec.behavior(Floating { m_leveled: row.m_name == block::ENCHANTED_GRAVITITE })
             }
+
             block::HOLYSTONE => spec.behavior(harvest::DoubleDrop { m_tool: "pickaxe" }),
             block::AETHER_DIRT => spec.behavior(harvest::DoubleDrop { m_tool: "shovel" }),
             block::AMBROSIUM_ORE | block::ZANITE_ORE => spec.behavior(harvest::Ore),
@@ -727,6 +778,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
         ctx.blocks().register(row.m_name, spec)?;
     }
+
     registerSpecial(ctx)?;
     harvest::registerStates(
         ctx,

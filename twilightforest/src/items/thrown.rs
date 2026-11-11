@@ -5,7 +5,7 @@ use crate::ids::{self, block, item};
 use crate::math::look;
 use crate::models::{Program, tf_cube_of_annihilation, tf_spike_block};
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -65,7 +65,8 @@ fn setOut(player: i32, kind: &'static str, entity: Option<i32>)
 {
     OUT.with(|out|
     {
-        let mut out = out.borrow_mut();
+        let mut out: RefMut<HashMap<(i32, &'static str), i32>> = out.borrow_mut();
+
         match entity
         {
             Some(id) => out.insert((player, kind), id),
@@ -84,11 +85,14 @@ fn launch(world: World, player: Player, kind: &'static str, speed: f64) -> bool
 
     let alive: bool =
         outFor(player.id, kind).is_some_and(|id| Entity { world, id }.info().is_some_and(|info| info.alive));
+
     if alive
     {
         return false;
     }
+
     let aim: [f64; 3] = look(info.yaw, info.pitch);
+
     let Ok(thrown) = world.spawnEntity(&format!("twilightforest:{kind}"), info.pos)
     else
     {
@@ -99,6 +103,7 @@ fn launch(world: World, player: Player, kind: &'static str, speed: f64) -> bool
     let velocity: [f64; 3] = aim.map(|axis| axis * speed);
     let _ = thrown.setMotion(velocity);
     let _ = thrown.setData(&Flight { m_owner: player.id, m_velocity: velocity, ..Flight::default() });
+
     setOut(player.id, kind, Some(thrown.id));
     world.playSound(info.pos, "random.bow", 1.0, 1.0 / (ids::fraction(world) * 0.4 + 1.2));
     true
@@ -123,6 +128,7 @@ fn hitLiving(world: World, from: [f64; 3], to: [f64; 3], owner: i32, damage: i32
 {
     let hit: Option<EntityInfo> =
         world.entitiesAlong(from, to, chain::HIT_RADIUS, Some(owner)).into_iter().find(|hit| hit.health.is_some());
+
     hit.is_some_and(|hit|
     {
         crate::combat::hit(Entity { world, id: hit.id }, damage, Some(owner), crate::combat::kind::PLAYER)
@@ -159,24 +165,28 @@ impl EntityBehavior for ChainBall
         {
             state.m_returning = true;
         }
+
         if state.m_returning && away < chain::CATCH
         {
             setOut(state.m_owner, CHAIN_BALL, None);
             entity.kill();
             return;
         }
+
         let to: [f64; 3] = info.pos;
         let from: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - info.motion[axis]);
         if hitLiving(world, from, to, state.m_owner, chain::DAMAGE)
         {
             state.m_age += 60;
         }
+
         if let Some(hit) = world.rayTrace(from, to, false)
         {
             if !state.m_returning
             {
                 world.playSound(to, "random.anvil_land", 0.125, ids::fraction(world));
             }
+
             if state.m_smashed < chain::MAX_SMASH
             {
                 if World::blockInfo(world.block(hit.pos)).hardness > 0.3
@@ -190,14 +200,17 @@ impl EntityBehavior for ChainBall
                     state.m_velocity = state.m_velocity.map(|axis| axis * chain::BOUNCE);
                     state.m_velocity[axis] = -state.m_velocity[axis];
                 }
+
                 if breakable(world, hit.pos, chain::BREAKABLE)
                 {
                     smash(world, hit.pos);
                     state.m_smashed += 1;
                 }
             }
+
             state.m_returning = true;
         }
+
         let motion: [f64; 3] = if state.m_returning
         {
             let back: [f64; 3] = [owner.pos[0] - to[0], owner.pos[1] - 1.2 - to[1], owner.pos[2] - to[2]];
@@ -217,10 +230,12 @@ impl EntityBehavior for ChainBall
     fn pose(&self, _input: &PoseInput) -> Pose
     {
         let mut program: Program = Program::new();
+
         for part in 0..tf_spike_block::PIVOTS.len() as u16
         {
             program.rest(part);
         }
+
         Pose { pre: Vec::new(), model: program.take() }
     }
 }
@@ -272,7 +287,9 @@ impl EntityBehavior for Cube
             entity.kill();
             return;
         }
+
         let aim: [f64; 3] = look(owner.yaw, owner.pitch);
+
         let dest: [f64; 3] = if returning
         {
             owner.pos
@@ -297,7 +314,9 @@ impl EntityBehavior for Cube
         let to: [f64; 3] = info.pos;
         let from: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - info.motion[axis]);
         hitLiving(world, from, to, state.m_owner, cube::DAMAGE);
+
         let center: BlockPos = BlockPos::new(to[0].floor() as i32, to[1].floor() as i32, to[2].floor() as i32);
+
         for (dx, dy, dz) in (-1..=1).flat_map(|dx| (0..=1).flat_map(move |dy| (-1..=1).map(move |dz| (dx, dy, dz))))
         {
             let pos: BlockPos = center.offset(dx, dy, dz);
@@ -305,9 +324,11 @@ impl EntityBehavior for Cube
             {
                 continue;
             }
+
             if annihilable(world, pos)
             {
                 let _ = world.setBlock(pos, 0, 0);
+
                 world.playSound(ids::center(pos), "random.fizz", 0.125, ids::fraction(world) * 0.25 + 0.75);
                 world.particle("largesmoke", ids::center(pos), [0.0; 3]);
             }
@@ -316,16 +337,19 @@ impl EntityBehavior for Cube
                 state.m_blocked = true;
             }
         }
+
         let _ = entity.setData(&state);
     }
 
     fn pose(&self, _input: &PoseInput) -> Pose
     {
         let mut program: Program = Program::new();
+
         for part in 0..tf_cube_of_annihilation::PIVOTS.len() as u16
         {
             program.rest(part);
         }
+
         Pose { pre: Vec::new(), model: program.take() }
     }
 }
@@ -342,6 +366,7 @@ impl ItemBehavior for ChainBlock
         {
             super::magic::wearHeld(player, 1);
         }
+
         holdInUse(player, held::LONGEST)
     }
 
@@ -362,6 +387,7 @@ impl ItemBehavior for CubeOfAnnihilation
         {
             launch(world, player, CUBE, cube::MAX_SPEED);
         }
+
         holdInUse(player, held::LONGEST)
     }
 
@@ -370,7 +396,7 @@ impl ItemBehavior for CubeOfAnnihilation
     fn useAction(&self, _stack: ItemStack) -> UseAction { UseAction::Block }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     put(
         ctx,

@@ -107,11 +107,12 @@ struct Slide
     m_chatTime: i32,
 }
 
-thread_local! {
+thread_local!
+{
     static SLIDES: RefCell<HashMap<i32, Slide>> = RefCell::new(HashMap::new());
 }
 
-pub fn bar(boss: Entity) -> BossBar { boss.synced::<Sync>().m_bar }
+pub(crate) fn bar(boss: Entity) -> BossBar { boss.synced::<Sync>().m_bar }
 
 fn slide(entity: Entity) -> Slide { SLIDES.with(|slides| slides.borrow().get(&entity.id).copied()).unwrap_or_default() }
 
@@ -122,14 +123,17 @@ fn sync(entity: Entity) -> Sync
     let mut state: Sync = entity.synced();
     if state.m_bar.m_name.is_empty() && entity.world.isAuthority()
     {
-        state.m_bar = BossBar {
+        state.m_bar = BossBar
+        {
             m_name: bossName(entity.world, NAME),
             m_health: slide::HEALTH,
             m_maxHealth: slide::HEALTH,
             m_focus: None,
         };
+
         let _ = entity.setSynced(&state);
     }
+
     state
 }
 
@@ -142,6 +146,7 @@ fn stop(entity: Entity, state: &mut Sync, motion: &mut Slide)
     motion.m_moveTime = slide::PAUSE;
     motion.m_direction = Direction::Up;
     motion.m_velocity = 0.0;
+
     let _ = entity.setMotion([0.0; 3]);
 }
 
@@ -156,6 +161,7 @@ fn crushBlock(world: World, at: [f64; 3]) -> bool
     {
         return false;
     }
+
     let meta: i32 = world.meta(pos);
     let _ = world.breakEffect(pos, block, meta);
     let _ = world.setBlock(pos, 0, 0);
@@ -172,12 +178,15 @@ fn crushAhead(world: World, info: &EntityInfo, bottom: f64, direction: Direction
     {
         return false;
     }
+
     let mut crushed: bool = false;
+
     for i in 0..slide::CRUSH_GRID * slide::CRUSH_GRID
     {
         let a: f64 = (i / slide::CRUSH_GRID - 2) as f64 * slide::CRUSH_STEP;
         let b: f64 = (i % slide::CRUSH_GRID - 2) as f64 * slide::CRUSH_STEP;
         let ahead: f64 = slide::CRUSH_AHEAD;
+
         let at: [f64; 3] = match direction
         {
             Direction::Up => [x + a, y + ahead, z + b],
@@ -189,6 +198,7 @@ fn crushAhead(world: World, info: &EntityInfo, bottom: f64, direction: Direction
         };
         crushed |= crushBlock(world, at);
     }
+
     crushed
 }
 
@@ -202,6 +212,7 @@ fn reset(entity: Entity, state: &mut Sync, motion: &mut Slide)
     state.m_bar.m_focus = None;
     state.m_bar.m_health = slide::HEALTH;
     entity.setField(EntityField::Health, slide::HEALTH as f64);
+
     let home: Home = entity.data();
     let [x, y, z] = home.m_dungeon;
     let _ = entity.setPosition([(x + slide::HOME[0]) as f64, (y + slide::HOME[1]) as f64, (z + slide::HOME[2]) as f64]);
@@ -215,6 +226,7 @@ fn openDoor(entity: Entity)
     {
         return;
     };
+
     for x in start[0]..=end[0]
     {
         for y in start[1]..=end[1]
@@ -225,6 +237,7 @@ fn openDoor(entity: Entity)
             }
         }
     }
+
     let _ = entity.setData(&home);
 }
 
@@ -240,8 +253,11 @@ fn closeDoor(entity: Entity)
         ([x + 6, y + 1, z + 15], [x + 9, y + 4, z + 15], false),
         ([x + 6, y + 1, z], [x + 9, y + 4, z], false),
     ];
-    let open = |start: [i32; 3], end: [i32; 3]| {
-        (start[0]..=end[0]).all(|bx| {
+
+    let open = |start: [i32; 3], end: [i32; 3]|
+    {
+        (start[0]..=end[0]).all(|bx|
+        {
             (start[1]..=end[1]).all(|by| (start[2]..=end[2]).all(|bz| world.isAir(BlockPos::new(bx, by, bz))))
         })
     };
@@ -250,7 +266,9 @@ fn closeDoor(entity: Entity)
     {
         return;
     };
+
     let wall: i32 = blockId(LOCKED[0]);
+
     for height in y + 1..y + 8
     {
         for across in 5..11
@@ -266,7 +284,9 @@ fn closeDoor(entity: Entity)
             let _ = world.setBlock(pos, wall, 0);
         }
     }
+
     home.m_door = Some([start, end]);
+
     let _ = entity.setData(&home);
 }
 
@@ -279,6 +299,7 @@ fn act(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &mut Slide)
         .m_focus
         .and_then(|id| Entity { world, id }.info())
         .filter(|target| target.alive && target.health.unwrap_or(0) > 0);
+
     let Some(target) = target
     else
     {
@@ -287,6 +308,7 @@ fn act(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &mut Slide)
     };
     let targetEntity: Entity = Entity { world, id: target.id };
     let bottom: f64 = feet(entity);
+
     if state.m_moving
     {
         if entity.flag(EntityField::Collided)
@@ -298,9 +320,11 @@ fn act(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &mut Slide)
                 world.playSound(info.pos, "random.explode", sound::EXPLODE_VOLUME, explode);
                 world.playSound(info.pos, sound::COLLIDE, sound::VOLUME, pitch(world));
             }
+
             stop(entity, state, motion);
             return;
         }
+
         if motion.m_velocity < slide::TOP_SPEED
         {
             motion.m_velocity += if critical(state)
@@ -312,8 +336,10 @@ fn act(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &mut Slide)
                 slide::ACCELERATION
             };
         }
+
         let speed: f64 = motion.m_velocity as f64;
         let targetBottom: f64 = feet(targetEntity);
+
         let (velocity, past): ([f64; 3], bool) = match motion.m_direction
         {
             Direction::Up => ([0.0, speed, 0.0], bottom > targetBottom + slide::RISE_PAST),
@@ -324,9 +350,11 @@ fn act(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &mut Slide)
             Direction::North => ([0.0, 0.0, -speed], info.pos[2] < target.pos[2] - slide::SIDE_PAST),
         };
         let _ = entity.setMotion(velocity);
+
         if past
         {
             stop(entity, state, motion);
+
             motion.m_moveTime = if critical(state)
             {
                 slide::CRITICAL_PAUSE
@@ -336,18 +364,24 @@ fn act(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &mut Slide)
                 slide::OVERSHOOT_PAUSE
             };
         }
+
         return;
     }
+
     if motion.m_moveTime > 0
     {
         motion.m_moveTime -= 1;
+
         if critical(state) && world.random(2) == 0
         {
             motion.m_moveTime -= 1;
         }
+
         let _ = entity.setMotion([0.0; 3]);
+
         return;
     }
+
     let a: f64 = (info.pos[0] - target.pos[0]).abs();
     let b: f64 = (bottom - feet(targetEntity)).abs();
     let c: f64 = (info.pos[2] - target.pos[2]).abs();
@@ -358,6 +392,7 @@ fn act(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &mut Slide)
         (false, _, true) => Direction::North,
         (false, _, false) => Direction::South,
     };
+
     if (b > a && b > c) || (b > slide::DROP_PAST && world.random(slide::VERTICAL_ODDS) == 0)
     {
         motion.m_direction = if info.pos[1] > target.pos[1]
@@ -369,6 +404,7 @@ fn act(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &mut Slide)
             Direction::Up
         };
     }
+
     world.playSound(info.pos, sound::MOVE, sound::VOLUME, pitch(world));
     state.m_moving = true;
 }
@@ -377,6 +413,7 @@ fn act(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &mut Slide)
 fn crushEntities(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &mut Slide)
 {
     const REACH: f64 = 1.2;
+
     for other in entity
         .world
         .entitiesNear(info.pos, REACH)
@@ -388,9 +425,11 @@ fn crushEntities(entity: Entity, info: &EntityInfo, state: &mut Sync, motion: &m
         {
             continue;
         }
+
         // EntityLivingBase.addVelocity(motionY, 0.35, motionZ) as the source calls it
         let [x, y, z] = other.motion;
         let _ = hit.setMotion([x + y, y + slide::BOUNCE, z + z]);
+
         entity.world.playSound(info.pos, sound::COLLIDE, sound::VOLUME, pitch(entity.world));
         stop(entity, state, motion);
         return;
@@ -419,21 +458,25 @@ impl EntityBehavior for Slider
     {
         entity.setField(EntityField::Yaw, 0.0);
         entity.setField(EntityField::Pitch, 0.0);
+
         if !entity.world.isAuthority()
         {
             return;
         }
+
         let before: Sync = sync(entity);
         let mut state: Sync = before.clone();
         let mut motion: Slide = slide(entity);
         motion.m_chatTime -= 1;
         state.m_bar.m_health = entity.field(EntityField::Health) as i32;
+
         if state.m_awake
         {
             if state.m_moving
             {
                 crushEntities(entity, info, &mut state, &mut motion);
             }
+
             act(entity, info, &mut state, &mut motion);
         }
         else
@@ -441,6 +484,7 @@ impl EntityBehavior for Slider
             let _ = entity.setMotion([0.0; 3]);
         }
         setSlide(entity, motion);
+
         if state != before
         {
             let _ = entity.setSynced(&state);
@@ -456,6 +500,7 @@ impl EntityBehavior for Slider
             || crate::damage::magic()
             || crate::damage::explosion()
             || crate::damage::burning();
+
         if indirect
         {
             return None;
@@ -472,23 +517,28 @@ impl EntityBehavior for Slider
             chat(entity, attacker, "gui.slider.apple");
             return None;
         }
+
         let distance: f64 = (0..3).map(|axis| (player.pos[axis] - info.pos[axis]).powi(2)).sum::<f64>().sqrt();
         if distance > slide::REACH && !state.m_awake
         {
             chat(entity, attacker, "gui.slider.far");
             return None;
         }
+
         if !held.as_ref().is_some_and(isPickaxe)
         {
             chat(entity, attacker, "gui.slider.notpickaxe");
             return None;
         }
+
         if !world.isAuthority()
         {
             return Some(amount);
         }
+
         let health: i32 = entity.field(EntityField::Health) as i32 - amount;
         let mut motion: Slide = slide(entity);
+
         for _ in 0..if health <= 0 { 2 } else { 4 }
         {
             let spot: [f64; 3] = [
@@ -496,16 +546,19 @@ impl EntityBehavior for Slider
                 feet(entity) + slide::DOOR_RISE,
                 info.pos[2] + (fraction(world) - fraction(world)) * slide::DOOR_SCATTER,
             ];
+
             if health <= 0
             {
                 world.particle("explode", spot, [0.0; 3]);
             }
+
             let _ = world.breakEffect(
                 BlockPos::new(spot[0].floor() as i32, spot[1].floor() as i32, spot[2].floor() as i32),
                 blockId("minecraft:stone"),
                 0,
             );
         }
+
         if !state.m_awake
         {
             world.playSound(info.pos, sound::AWAKEN, sound::VOLUME, pitch(world));
@@ -513,10 +566,12 @@ impl EntityBehavior for Slider
             closeDoor(entity);
             state.m_awake = true;
         }
+
         if state.m_moving
         {
             motion.m_velocity *= slide::SLOWED;
         }
+
         let (a, c) = ((info.pos[0] - player.pos[0]).abs(), (info.pos[2] - player.pos[2]).abs());
         state.m_hurtAxis = if a > c
         {
@@ -550,7 +605,9 @@ impl EntityBehavior for Slider
         state.m_hurtAge = entity.field(EntityField::TicksExisted) as f32;
         state.m_bar.m_health = health.max(0);
         setSlide(entity, motion);
+
         let _ = entity.setSynced(&state);
+
         Some(amount)
     }
 
@@ -563,24 +620,32 @@ impl EntityBehavior for Slider
         {
             return;
         };
+
         let home: Home = entity.data();
+
         openDoor(entity);
         unlock(world, home.m_dungeon, &LOCKED);
         // the killer and everyone in the dungeon earn it
         let dungeonReach: f64 = 10.0;
         progress::grantInside(world, home.m_dungeon, [dungeonReach; 3], Award::Bronze);
+
         if let Some(killer) = source.and_then(|id| world.entity(id)).filter(|killer| killer.player.is_some())
         {
             progress::grant(Player { id: killer.id }, Award::Bronze);
         }
+
         let [x, y, z] = home.m_dungeon;
         let trapdoor: i32 = blockId("minecraft:trapdoor");
+
         const TRAPDOORS: [([i32; 2], i32); 4] = [([7, 7], 3), ([8, 7], 2), ([7, 8], 3), ([8, 8], 2)];
+
         for ([dx, dz], meta) in TRAPDOORS
         {
             let _ = world.setBlock(BlockPos::new(x + dx, y + 1, z + dz), trapdoor, meta);
         }
+
         world.playSound(info.pos, sound::DEATH, sound::VOLUME, pitch(world));
+
         let _ =
             world.spawnItem([info.pos[0], info.pos[1] + slide::KEY_LIFT, info.pos[2]], ItemStack::of("bronze_key", 1));
         SLIDES.with(|slides| slides.borrow_mut().remove(&entity.id));
@@ -599,14 +664,18 @@ impl EntityBehavior for Slider
             (false, true) => texture::ASLEEP_CRITICAL,
             (false, false) => texture::ASLEEP,
         };
+
         let tilt: f32 = state.m_hurtTilt * slide::HURT_FADE.powf((input.age - state.m_hurtAge).max(0.0));
         let mut body: Program = Program::new();
         body.push().scale(slide::SCALE, slide::SCALE, slide::SCALE);
+
         if tilt > 0.01
         {
             body.rotate(tilt * slide::HURT_DEGREES, state.m_hurtAxis[0], 0.0, state.m_hurtAxis[1]);
         }
+
         body.texture(skin).part(model::HEAD, [0.0; 3], slide::PIVOT);
+
         if state.m_awake
         {
             let glow: &str = if critical
@@ -624,16 +693,18 @@ impl EntityBehavior for Slider
                 .lighting(true)
                 .blend(false);
         }
+
         body.pop();
         Pose { pre: Vec::new(), model: body.take() }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:ghast").ok(),
             texture: Some(texture::ASLEEP.to_owned()),
             size: Some([2.0, 2.0]),

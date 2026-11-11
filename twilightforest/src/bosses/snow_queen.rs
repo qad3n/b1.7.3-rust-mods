@@ -11,7 +11,7 @@ use std::rc::Rc;
 
 // EntityTFSnowQueen, the aurora palace's boss: she hovers summoning ice crystals, drops on the player to smash the
 // ice around them, then hovers breathing an ice beam, and seven ice shields circle her
-pub const NAME: &str = "snow_queen";
+pub(crate) const NAME: &str = "snow_queen";
 const LABEL: &str = "Snow Queen";
 const SHIELD: &str = "snow_queen_shield";
 const CRYSTAL: &str = "twilightforest:ice_crystal";
@@ -111,14 +111,17 @@ impl Brain
         self.m_seek = 0;
         self.m_hover = 0;
         self.m_act = 0;
+
         match phase
         {
             Phase::Summon => self.m_summons = queen::SUMMONS,
+
             Phase::Drop =>
             {
                 self.m_drops = 0;
                 self.m_maxDrops = queen::DROPS_MIN + world.random(queen::DROPS_SPREAD);
             }
+
             Phase::Beam => self.m_beamDamage = 0,
         }
     }
@@ -130,17 +133,20 @@ fn sees(world: World, from: [f64; 3], to: [f64; 3]) -> bool { world.rayTrace(fro
 fn hoverSpot(world: World, own: [f64; 3], target: &EntityInfo, height: f64, radius: f32) -> [f64; 3]
 {
     let mut spot: [f64; 3] = target.pos;
+
     for _ in 0..queen::SPOT_TRIES
     {
         let spread = || f64::from((ids::fraction(world) - ids::fraction(world)) * radius);
         spot = [target.pos[0] + spread(), target.pos[1] + height, target.pos[2] + spread()];
         let blocked: bool =
             world.block(BlockPos::new(spot[0].floor() as i32, spot[1].floor() as i32, spot[2].floor() as i32)) != 0;
+
         if blocked && sees(world, own, spot) && sees(world, [target.pos[0], target.pos[1] + 1.62, target.pos[2]], spot)
         {
             break;
         }
     }
+
     spot
 }
 
@@ -153,6 +159,7 @@ fn pull(entity: Entity, info: &EntityInfo, to: [f64; 3], lift: f64)
         info.motion[1] + delta[1] / length * queen::PULL_UP + lift,
         info.motion[2] + delta[2] / length * queen::PULL,
     ];
+
     let _ = entity.setMotion(motion);
 }
 
@@ -160,27 +167,33 @@ fn pull(entity: Entity, info: &EntityInfo, to: [f64; 3], lift: f64)
 fn summon(world: World, target: &EntityInfo, brain: &mut Brain)
 {
     let mut spot: [f64; 3] = target.pos;
+
     for _ in 0..queen::SPOT_TRIES
     {
         let gaussian = |spread: f64| f64::from(ids::fraction(world) - ids::fraction(world)) * spread;
         let mut at: [f64; 3] =
             [target.pos[0] + gaussian(16.0), target.pos[1] + gaussian(8.0), target.pos[2] + gaussian(16.0)];
+
         while at[1] > 0.0
             && world.block(BlockPos::new(at[0].floor() as i32, at[1].floor() as i32 - 1, at[2].floor() as i32)) == 0
         {
             at[1] -= 1.0;
         }
+
         spot = at;
+
         if sees(world, [target.pos[0], target.pos[1] + 1.62, target.pos[2]], [at[0], at[1] + 1.0, at[2]])
         {
             break;
         }
     }
+
     if let Some(minion) = crate::entities::spawnAt(world, CRYSTAL, spot, 0.0)
     {
         minion.setField(EntityField::TargetId, f64::from(target.id));
         brain.m_minions.push((minion.id, queen::MINION_AGE));
     }
+
     brain.m_summons -= 1;
 }
 
@@ -190,11 +203,13 @@ fn ageMinions(world: World, brain: &mut Brain)
     brain.m_minions.retain_mut(|(id, left)|
     {
         *left -= 1;
+
         let alive: bool = Entity { world, id: *id }.info().is_some_and(|info| info.alive);
         if alive && *left <= 0
         {
             Entity { world, id: *id }.kill();
         }
+
         alive && *left > 0
     });
 }
@@ -204,6 +219,7 @@ fn smashIce(world: World, info: &EntityInfo)
 {
     let ice: i32 = ids::blockId("minecraft:ice");
     let below: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
+
     for x in -1..=1
     {
         for y in -1..=2
@@ -225,7 +241,9 @@ fn act(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brain
 {
     let world: World = entity.world;
     let own: [f64; 3] = eyes(entity, info);
+
     face(entity, info.pos, target.pos);
+
     match brain.m_phase
     {
         // EntityAITFHoverSummon
@@ -235,19 +253,23 @@ fn act(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brain
                 .m_spot
                 .get_or_insert_with(|| hoverSpot(world, own, target, queen::SUMMON_HEIGHT, queen::SUMMON_RADIUS));
             brain.m_seek += 1;
+
             if distance(info.pos, spot) <= queen::ARRIVED
             {
                 if brain.m_summons > 0 && brain.m_minions.len() < queen::MINIONS_AT_ONCE
                 {
                     summon(world, target, brain);
                 }
+
                 brain.m_spot = Some(hoverSpot(world, own, target, queen::SUMMON_HEIGHT, queen::SUMMON_RADIUS));
                 brain.m_seek = 0;
             }
+
             if brain.m_seek > queen::SEEK_TICKS || !sees(world, own, spot)
             {
                 brain.m_spot = None;
             }
+
             pull(entity, info, spot, queen::HOVER_LIFT);
         }
         // EntityAITFHoverThenDrop
@@ -255,10 +277,12 @@ fn act(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brain
         {
             let spot: [f64; 3] =
                 *brain.m_spot.get_or_insert_with(|| hoverSpot(world, own, target, queen::DROP_HEIGHT, 0.0));
+
             if brain.m_hover == 0 && brain.m_act == 0
             {
                 brain.m_floor = target.pos[1] - 1.0;
             }
+
             if distance(info.pos, spot) <= queen::ARRIVED || brain.m_hover > 0
             {
                 brain.m_hover += 1;
@@ -267,6 +291,7 @@ fn act(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brain
             {
                 brain.m_seek += 1;
             }
+
             if brain.m_hover < queen::HOVER_TICKS
             {
                 pull(entity, info, spot, queen::HOVER_LIFT);
@@ -274,10 +299,12 @@ fn act(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brain
             else
             {
                 brain.m_act += 1;
+
                 if info.pos[1] > brain.m_floor
                 {
                     smashIce(world, info);
                 }
+
                 if brain.m_act >= queen::DROP_TICKS
                 {
                     brain.m_drops += 1;
@@ -286,6 +313,7 @@ fn act(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brain
                     brain.m_act = 0;
                 }
             }
+
             if brain.m_seek > queen::SEEK_TICKS
             {
                 brain.m_spot = None;
@@ -298,10 +326,12 @@ fn act(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brain
             let mut spot: [f64; 3] = *brain
                 .m_spot
                 .get_or_insert_with(|| hoverSpot(world, own, target, queen::BEAM_HEIGHT, queen::BEAM_RADIUS));
+
             if brain.m_hover == 0 && brain.m_act == 0
             {
                 brain.m_floor = target.pos[1];
             }
+
             if distance(info.pos, spot) <= queen::ARRIVED || brain.m_hover > 0
             {
                 brain.m_hover += 1;
@@ -310,16 +340,19 @@ fn act(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brain
             {
                 brain.m_seek += 1;
             }
+
             if brain.m_hover >= queen::HOVER_TICKS
             {
                 brain.m_act += 1;
                 spot[1] = (spot[1] - queen::BEAM_SINK).max(brain.m_floor);
                 brain.m_spot = Some(spot);
             }
+
             if distance(info.pos, spot) > 0.5
             {
                 pull(entity, info, spot, queen::BEAM_LIFT);
             }
+
             if brain.m_act >= queen::BEAM_TICKS || brain.m_seek >= queen::SEEK_TICKS
             {
                 brain.m_spot = None;
@@ -342,9 +375,11 @@ fn act(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brain
 fn shields(entity: Entity, info: &EntityInfo, brain: &mut Brain)
 {
     let world: World = entity.world;
+
     for (index, shield) in brain.m_shields.iter_mut().enumerate()
     {
         let angle: f32 = queen::SHIELD_STEP * index as f32 + brain.m_ticks as f32 * queen::SHIELD_SPIN;
+
         let at: [f64; 3] = if index < SHIELDS - 1
         {
             let radians: f64 = f64::from(angle).to_radians();
@@ -356,6 +391,7 @@ fn shields(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         };
         let live: Option<Entity> =
             shield.map(|id| Entity { world, id }).filter(|shield| shield.info().is_some_and(|info| info.alive));
+
         let Some(live) = live.or_else(||
         {
             let spawned: Entity = world.spawnEntity(&format!("twilightforest:{SHIELD}"), at).ok()?;
@@ -368,9 +404,12 @@ fn shields(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         };
 
         *shield = Some(live.id);
+
         let _ = live.setPosition(at);
         let _ = live.setMotion([0.0; 3]);
+
         live.setField(EntityField::Yaw, f64::from(angle));
+
         for near in world.entitiesNear(at, queen::SHIELD_REACH)
         {
             if near.id == entity.id
@@ -384,6 +423,7 @@ fn shields(entity: Entity, info: &EntityInfo, brain: &mut Brain)
             if crate::combat::hit(victim, queen::ATTACK, Some(entity.id), crate::combat::kind::MOB)
             {
                 let _ = victim.setMotion([near.motion[0], near.motion[1] + queen::SHIELD_LIFT, near.motion[2]]);
+
                 world.playSound(info.pos, "mob.zombie.wood", 1.0, 1.0);
             }
         }
@@ -393,11 +433,13 @@ fn shields(entity: Entity, info: &EntityInfo, brain: &mut Brain)
 fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
 {
     let world: World = entity.world;
+
     if !brain.m_started
     {
         brain.enter(world, Phase::Summon);
         brain.m_started = true;
     }
+
     brain.m_ticks += 1;
     ageMinions(world, brain);
     shields(entity, info, brain);
@@ -415,10 +457,12 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
     let target: Option<EntityInfo> =
         crate::entities::ai::target(entity).or_else(|| crate::entities::closestPlayer(world, info, queen::SEARCH));
     entity.setField(EntityField::TargetId, target.as_ref().map_or(-1.0, |target| f64::from(target.id)));
+
     if let Some(target) = target
     {
         act(entity, info, &target, brain);
     }
+
     let shown: Shown = Shown { m_phase: brain.m_phase, m_breathing: brain.m_phase == Phase::Beam && brain.m_act > 0 };
     if entity.synced::<Shown>() != shown
     {
@@ -438,6 +482,7 @@ fn sparkle(entity: Entity, info: &EntityInfo)
     let world: World = entity.world;
     let shown: Shown = entity.synced();
     let height: f64 = entity.field(EntityField::Height) * 0.85;
+
     for _ in 0..3
     {
         let spread = |by: f32| f64::from((ids::fraction(world) - ids::fraction(world)) * by);
@@ -447,6 +492,7 @@ fn sparkle(entity: Entity, info: &EntityInfo)
             [0.0; 3],
         );
     }
+
     if !shown.m_breathing
     {
         return;
@@ -454,6 +500,7 @@ fn sparkle(entity: Entity, info: &EntityInfo)
 
     let aim: [f64; 3] = look(info.yaw, info.pitch);
     let mouth: [f64; 3] = [info.pos[0] + aim[0] * 0.5, info.pos[1] + 1.7 + aim[1] * 0.5, info.pos[2] + aim[2] * 0.5];
+
     for _ in 0..10
     {
         let speed: f64 = 2.0 + f64::from(ids::fraction(world)) * 0.15;
@@ -480,6 +527,7 @@ impl EntityBehavior for SnowQueen
         {
             think(entity, info, brains.borrow_mut().entry((entity.world.dimension, entity.id)).or_default())
         });
+
         showBar(entity, LABEL, info);
     }
 
@@ -496,6 +544,7 @@ impl EntityBehavior for SnowQueen
                 brain.m_beamDamage += amount;
             }
         });
+
         Some(amount)
     }
 
@@ -509,11 +558,13 @@ impl EntityBehavior for SnowQueen
                 Entity { world, id }.kill();
             }
         }
+
         if let Some(player) = killer(world, source)
         {
             progress::grant(player, Gate::Hunter);
             progress::grant(player, Gate::Glacier);
         }
+
         let Some(info) = entity.info()
         else
         {
@@ -524,6 +575,7 @@ impl EntityBehavior for SnowQueen
         {
             return;
         }
+
         let bow: &str = if world.random(2) == 0
         {
             item::TRIPLE_BOW
@@ -533,14 +585,17 @@ impl EntityBehavior for SnowQueen
             item::SEEKER_BOW
         };
         dropAt(world, info.pos, bow, 1);
+
         for _ in 0..queen::ICE_DROPS_MIN + world.random(queen::ICE_DROPS_SPREAD)
         {
             dropAt(world, info.pos, "minecraft:ice", 7);
         }
+
         for _ in 0..queen::SNOW_DROPS_MIN + world.random(queen::SNOW_DROPS_SPREAD)
         {
             dropAt(world, info.pos, "minecraft:snowball", 16);
         }
+
         dropAt(world, info.pos, item::SNOW_QUEEN_TROPHY, 1);
         super::conquer(world, info.pos);
     }
@@ -568,6 +623,7 @@ impl EntityBehavior for IceShield
 
         let owned: bool =
             BRAINS.with(|brains| brains.borrow().values().any(|brain| brain.m_shields.contains(&Some(entity.id))));
+
         if !owned
         {
             entity.kill();
@@ -584,7 +640,7 @@ impl EntityBehavior for IceShield
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,

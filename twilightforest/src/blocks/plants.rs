@@ -205,6 +205,7 @@ fn shapeModel(shape: Shape) -> Option<BlockModelSpec>
 {
     let pixels: f32 = 16.0;
     let cuboid = |from: [f32; 3], to: [f32; 3]| Cuboid { from, to, ..Cuboid::default() };
+
     match shape
     {
         Shape::Cross => None,
@@ -213,6 +214,7 @@ fn shapeModel(shape: Shape) -> Option<BlockModelSpec>
             cuboids: vec![cuboid([0.0; 3], [pixels, height, pixels])],
             ..BlockModelSpec::default()
         }),
+
         // BlockTFPlant.setBlockBoundsBasedOnState mayapple bounds
         Shape::Mayapple => Some(BlockModelSpec
         {
@@ -228,13 +230,16 @@ fn footed(footing: Footing, world: World, pos: BlockPos) -> bool
 {
     let below: i32 = world.block(pos.offset(0, -1, 0));
     let above: BlockPos = pos.offset(0, 1, 0);
+
     match footing
     {
         Footing::Soil => ids::soil(below),
+
         Footing::Lit =>
         {
             ids::soil(below) && (world.light(pos) >= LIT_PLANT_LIGHT || world.height(pos.x, pos.z) <= pos.y)
         }
+
         Footing::Solid => solidTop(world, pos.offset(0, -1, 0)),
         Footing::Hanging => rootHold(world, above),
         Footing::Stone => trollHold(world, above),
@@ -242,20 +247,20 @@ fn footed(footing: Footing, world: World, pos: BlockPos) -> bool
 }
 
 // BlockTFPlant.canBlockStay for a plant placed by world generation
-pub fn plantStays(world: World, pos: BlockPos, name: &str) -> bool
+pub(crate) fn plantStays(world: World, pos: BlockPos, name: &str) -> bool
 {
     PLANTS.iter().find(|row| row.m_name == name).is_some_and(|row| footed(row.m_footing, world, pos))
 }
 
 // BlockTFPlant.canPlaceRootBelow, roots grow down from dirt grass root strands and root blocks
-pub fn rootHold(world: World, pos: BlockPos) -> bool
+pub(crate) fn rootHold(world: World, pos: BlockPos) -> bool
 {
     let block: i32 = world.block(pos);
     ids::soil(block) || block == ids::blockId(block::ROOT_STRAND) || block == ids::blockId(block::ROOT)
 }
 
 // BlockTFTrollRoot.canPlaceRootBelow
-pub fn trollHold(world: World, pos: BlockPos) -> bool
+pub(crate) fn trollHold(world: World, pos: BlockPos) -> bool
 {
     let block: i32 = world.block(pos);
     ids::stony(block)
@@ -329,6 +334,7 @@ impl BlockBehavior for SmallPlant
     {
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
+
         if player.held().is_some_and(|stack| stack.item.is("minecraft:shears"))
         {
             let name: Option<Identifier> = b173_api::nameOf(RegistryKind::Block, ctx.block());
@@ -336,8 +342,10 @@ impl BlockBehavior for SmallPlant
             {
                 let _ = world.spawnItem(ids::center(pos), ItemStack::of(name, 1));
             }
+
             return;
         }
+
         let _ = world.dropBlockItems(pos, ctx.block(), i32::from(ctx.meta()));
     }
 
@@ -370,10 +378,12 @@ fn plantSpec(row: &Plant) -> Result<BlockSpecBuilder>
             m_ripens: row.m_name == block::UNRIPE_TROLLBER,
             m_spores: row.m_name == MOSS_PATCH,
         });
+
     if let Some(model) = shapeModel(row.m_shape)
     {
         spec = spec.model(model).collision(Vec::new());
     }
+
     spec = match row.m_drop
     {
         Some((name, count)) => spec.drops(vec![drop(
@@ -412,7 +422,7 @@ mod thorns
 
 const DIRECTIONS: [[i32; 3]; 6] = [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]];
 
-pub fn axisOf(direction: [i32; 3]) -> u8
+pub(crate) fn axisOf(direction: [i32; 3]) -> u8
 {
     match direction
     {
@@ -428,6 +438,7 @@ fn thornModel() -> BlockModelSpec
     let outer: f32 = 16.0 - thorns::INSET;
     let full: f32 = 16.0;
     let column = |from: [f32; 3], to: [f32; 3], meta: i32| Cuboid { from, to, metas: vec![meta], ..Cuboid::default() };
+
     BlockModelSpec
     {
         cuboids: vec![
@@ -454,6 +465,7 @@ fn growArm(world: World, pos: BlockPos, direction: [i32; 3], green: i32)
         {
             break;
         }
+
         let _ = world.setBlock(at, green, i32::from(axisOf(direction)));
     }
 }
@@ -463,6 +475,7 @@ fn burst(world: World, pos: BlockPos, axis: u8)
 {
     let green: i32 = ids::blockId(block::GREEN_THORNS);
     let _ = world.setBlock(pos, green, i32::from(axis));
+
     let along: usize = match axis
     {
         0 => 0,
@@ -471,6 +484,7 @@ fn burst(world: World, pos: BlockPos, axis: u8)
     };
     growArm(world, pos, DIRECTIONS[along], green);
     growArm(world, pos, DIRECTIONS[along + 1], green);
+
     for _ in 0..thorns::RANDOM_ARMS
     {
         growArm(world, pos, DIRECTIONS[world.random(DIRECTIONS.len() as i32) as usize], green);
@@ -495,11 +509,13 @@ impl BlockBehavior for Thorns
         {
             return;
         }
+
         if !self.m_burnt
         {
             crate::combat::hit(entity, thorns::DAMAGE, None, crate::combat::kind::CACTUS);
             return;
         }
+
         if entity.info().is_some_and(|info| info.health.is_some())
         {
             let world: World = ctx.world();
@@ -538,6 +554,7 @@ fn thornSpec(label: &str, look: &str, burnt: bool) -> BlockSpecBuilder
         .model(thornModel())
         .drops(Vec::new())
         .behavior(Thorns { m_burnt: burnt });
+
     if burnt
     {
         spec = spec.sound("sand").resistance(0.0);
@@ -577,6 +594,7 @@ fn registerThorns(ctx: &mut RegisterCtx) -> Result<()>
     super::put(ctx, block::BROWN_THORNS, thornSpec("Thorns", "brown", false))?;
     super::put(ctx, block::GREEN_THORNS, thornSpec("Green Thorns", "green", false))?;
     super::put(ctx, block::BURNT_THORNS, thornSpec("Burnt Thorns", "burnt", true))?;
+
     for name in [block::BROWN_THORNS, block::GREEN_THORNS, block::BURNT_THORNS]
     {
         ctx.blocks().states(
@@ -584,6 +602,7 @@ fn registerThorns(ctx: &mut RegisterCtx) -> Result<()>
             BlockStatesSpec { properties: vec![property("axis", &AXES)], ..BlockStatesSpec::default() },
         )?;
     }
+
     let roseHardness: f32 = 10.0;
     super::put(
         ctx,
@@ -609,10 +628,10 @@ mod lily
 struct HugeLilyPad;
 
 // a pad's quarters in TFGenHugeLilyPad order from its corner
-pub const PAD_PIECES: [[i32; 2]; 4] = [[0, 0], [1, 0], [1, 1], [0, 1]];
+pub(crate) const PAD_PIECES: [[i32; 2]; 4] = [[0, 0], [1, 0], [1, 1], [0, 1]];
 
 // TFGenHugeLilyPad and ItemBlockTFHugeLilyPad turn a pad by a hash of its corner
-pub fn padTurn(bx: i32, bz: i32) -> i32
+pub(crate) fn padTurn(bx: i32, bz: i32) -> i32
 {
     let salt: i64 = 8890919293;
     let hash: b173_api::terrain::Random = b173_api::terrain::Random::withSeed(salt);
@@ -622,7 +641,7 @@ pub fn padTurn(bx: i32, bz: i32) -> i32
 }
 
 // the piece property comes first so it is the high part of the state
-pub fn padMeta(piece: usize, turn: i32) -> i32 { piece as i32 * lily::PIECES + turn }
+pub(crate) fn padMeta(piece: usize, turn: i32) -> i32 { piece as i32 * lily::PIECES + turn }
 
 fn stillWater(world: World, pos: BlockPos) -> bool
 {
@@ -661,6 +680,7 @@ impl ItemBehavior for PadItem
         };
 
         let corner: BlockPos = BlockPos::new(water.x >> 1 << 1, water.y, water.z >> 1 << 1);
+
         let open: bool = PAD_PIECES.iter().all(|[dx, dz]|
         {
             let at: BlockPos = corner.offset(*dx, 0, *dz);
@@ -675,11 +695,13 @@ impl ItemBehavior for PadItem
         {
             let pad: i32 = ids::blockId(block::HUGE_LILY_PAD);
             let turn: i32 = padTurn(corner.x, corner.z);
+
             for (piece, [dx, dz]) in PAD_PIECES.iter().enumerate()
             {
                 let _ = world.setBlock(corner.offset(*dx, 1, *dz), pad, padMeta(piece, turn));
             }
         }
+
         spend(stack)
     }
 }
@@ -702,6 +724,7 @@ impl ItemBehavior for WaterLilyItem
         {
             let _ = world.setBlock(water.offset(0, 1, 0), ids::blockId(block::HUGE_WATER_LILY), 0);
         }
+
         spend(stack)
     }
 }
@@ -710,6 +733,7 @@ fn padHeld(world: World, pos: BlockPos, pad: i32) -> bool
 {
     let base: BlockPos = BlockPos::new(pos.x >> 1 << 1, pos.y, pos.z >> 1 << 1);
     let water: i32 = ids::blockId("minecraft:water");
+
     (0..2).all(|dx|
     {
         (0..2).all(|dz|
@@ -723,6 +747,7 @@ fn padHeld(world: World, pos: BlockPos, pad: i32) -> bool
 fn clearPad(world: World, pos: BlockPos, pad: i32)
 {
     let base: BlockPos = BlockPos::new(pos.x >> 1 << 1, pos.y, pos.z >> 1 << 1);
+
     for dx in 0..2
     {
         for dz in 0..2
@@ -747,6 +772,7 @@ impl BlockBehavior for HugeLilyPad
         if ctx.isAuthority() && !padHeld(ctx.world(), ctx.pos(), ctx.block())
         {
             clearPad(ctx.world(), ctx.pos(), ctx.block());
+
             let _ = ctx.world().setBlock(ctx.pos(), 0, 0);
         }
     }
@@ -766,6 +792,7 @@ impl BlockBehavior for HugeLilyPad
 fn padVariants() -> Vec<StateVariantSpec>
 {
     let mut variants: Vec<StateVariantSpec> = Vec::new();
+
     for orient in 0..lily::PIECES
     {
         for piece in 0..lily::PIECES
@@ -779,7 +806,9 @@ fn padVariants() -> Vec<StateVariantSpec>
             let display: i32 = (piece + turned) % lily::PIECES;
             let mut values: std::collections::BTreeMap<String, String> = when("orient", &orient.to_string());
             values.insert("piece".to_owned(), piece.to_string());
+
             let top: String = texture(&format!("huge_lilypad_{display}"));
+
             variants.push(StateVariantSpec
             {
                 when: values,
@@ -794,6 +823,7 @@ fn padVariants() -> Vec<StateVariantSpec>
             });
         }
     }
+
     variants
 }
 
@@ -834,6 +864,7 @@ fn registerWater(ctx: &mut RegisterCtx) -> Result<()>
             .behavior(HugeLilyPad)
             .itemBehavior(PadItem),
     )?;
+
     let quarters: Vec<String> = (0..lily::PIECES).map(|piece| piece.to_string()).collect();
     let values: Vec<&str> = quarters.iter().map(String::as_str).collect();
     ctx.blocks().states(
@@ -886,6 +917,7 @@ impl BlockBehavior for UberousSoil
         if covered(ctx.world(), ctx.pos())
         {
             let _ = ctx.world().scheduleTick(ctx.pos(), ids::blockId(block::UBEROUS_SOIL), 1);
+
             return;
         }
 
@@ -924,6 +956,7 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
             .tag("minecraft:flower_soil")
             .behavior(UberousSoil),
     )?;
+
     let stalkHardness: f32 = 1.25;
     let stalkResistance: f32 = 7.0;
     super::put(
@@ -936,6 +969,7 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
             .sustainsLeaves()
             .behavior(super::wood::Log),
     )?;
+
     let gloomHardness: f32 = 0.2;
     // BlockTFHugeGloomBlock drops nothing seven times in ten and up to two mushglooms otherwise
     let gloomDrop: DropSpec = drop(block::MUSHGLOOM, vec![1, 2], 0.3)?;
@@ -953,6 +987,7 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
             })
             .drops(vec![gloomDrop]),
     )?;
+
     let stem: FaceTextures = FaceTextures
     {
         top: Some(texture("huge_gloom_inside")),
@@ -975,6 +1010,7 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
         },
     )?;
     registerMushrooms(ctx, &stem)?;
+
     for (name, label, pine) in
         [(block::THORN_LEAVES, "Thorn Leaves", true), (block::BEANSTALK_LEAVES, "Beanstalk Leaves", false)]
     {
@@ -991,15 +1027,17 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
                 .drops(Vec::new()),
         )?;
     }
+
     Ok(())
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &PLANTS
     {
         super::put(ctx, row.m_name, plantSpec(row)?)?;
     }
+
     registerThorns(ctx)?;
     registerWater(ctx)?;
     registerGiantPlants(ctx)
@@ -1027,6 +1065,7 @@ fn registerMushrooms(ctx: &mut RegisterCtx, stem: &FaceTextures) -> Result<()>
         (block::HUGE_BROWN_MUSHROOM, "Huge Brown Mushroom", "minecraft:brown_mushroom", 0x8D6A50),
         (block::HUGE_RED_MUSHROOM, "Huge Red Mushroom", "minecraft:red_mushroom", 0xC8302A),
     ];
+
     for (name, label, small, cap) in rows
     {
         super::put(
@@ -1052,5 +1091,6 @@ fn registerMushrooms(ctx: &mut RegisterCtx, stem: &FaceTextures) -> Result<()>
             },
         )?;
     }
+
     Ok(())
 }

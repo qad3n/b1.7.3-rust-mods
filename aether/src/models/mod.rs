@@ -5,9 +5,10 @@ mod generated;
 
 use b173_api::terrain::math;
 use b173_api::{EntityModelSpec, ModelBox, ModelOp, ModelPart, PoseInput};
-pub use generated::*;
-use std::cell::RefCell;
+pub(crate) use generated::*;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
+use std::vec::IntoIter;
 
 // builders the generated models call, kept short so each generated part stays on one line
 pub(crate) fn part(
@@ -21,7 +22,8 @@ pub(crate) fn part(
     textureSize: Option<[i32; 2]>,
 ) -> ModelPart
 {
-    ModelPart {
+    ModelPart
+    {
         name: name.to_owned(),
         parent: parent.map(str::to_owned),
         uv,
@@ -39,112 +41,113 @@ pub(crate) fn cuboid(origin: [f32; 3], size: [i32; 3], inflate: f32, uv: Option<
 }
 
 // a pose program under construction, one call per ModelRenderer.render in the Java model
-pub struct Program
+pub(crate) struct Program
 {
     pub m_ops: Vec<ModelOp>,
 }
 
 impl Program
 {
-    pub fn new() -> Program { Program { m_ops: Vec::new() } }
+    pub(crate) fn new() -> Self { Self { m_ops: Vec::new() } }
 
-    pub fn part(&mut self, part: u16, rotation: [f32; 3], pivot: [f32; 3]) -> &mut Program
+    pub(crate) fn part(&mut self, part: u16, rotation: [f32; 3], pivot: [f32; 3]) -> &mut Self
     {
         self.m_ops.push(ModelOp::Part { part, rotation, pivot });
         self
     }
 
-    pub fn rest(&mut self, part: u16) -> &mut Program
+    pub(crate) fn rest(&mut self, part: u16) -> &mut Self
     {
         self.m_ops.push(ModelOp::Rest(part));
         self
     }
 
-    pub fn push(&mut self) -> &mut Program
+    pub(crate) fn push(&mut self) -> &mut Self
     {
         self.m_ops.push(ModelOp::Push);
         self
     }
 
-    pub fn pop(&mut self) -> &mut Program
+    pub(crate) fn pop(&mut self) -> &mut Self
     {
         self.m_ops.push(ModelOp::Pop);
         self
     }
 
-    pub fn translate(&mut self, x: f32, y: f32, z: f32) -> &mut Program
+    pub(crate) fn translate(&mut self, x: f32, y: f32, z: f32) -> &mut Self
     {
         self.m_ops.push(ModelOp::Translate([x, y, z]));
         self
     }
 
-    pub fn rotate(&mut self, degrees: f32, x: f32, y: f32, z: f32) -> &mut Program
+    pub(crate) fn rotate(&mut self, degrees: f32, x: f32, y: f32, z: f32) -> &mut Self
     {
         self.m_ops.push(ModelOp::Rotate(degrees, [x, y, z]));
         self
     }
 
-    pub fn scale(&mut self, x: f32, y: f32, z: f32) -> &mut Program
+    pub(crate) fn scale(&mut self, x: f32, y: f32, z: f32) -> &mut Self
     {
         self.m_ops.push(ModelOp::Scale([x, y, z]));
         self
     }
 
-    pub fn color(&mut self, red: f32, green: f32, blue: f32, alpha: f32) -> &mut Program
+    pub(crate) fn color(&mut self, red: f32, green: f32, blue: f32, alpha: f32) -> &mut Self
     {
         self.m_ops.push(ModelOp::Color([red, green, blue, alpha]));
         self
     }
 
-    pub fn texture(&mut self, texture: &str) -> &mut Program
+    pub(crate) fn texture(&mut self, texture: &str) -> &mut Self
     {
         self.m_ops.push(ModelOp::Texture(texture.to_owned()));
         self
     }
 
-    pub fn blend(&mut self, on: bool) -> &mut Program
+    pub(crate) fn blend(&mut self, on: bool) -> &mut Self
     {
         self.m_ops.push(ModelOp::Blend(on));
         self
     }
 
-    pub fn faceCamera(&mut self) -> &mut Program
+    pub(crate) fn faceCamera(&mut self) -> &mut Self
     {
         self.m_ops.push(ModelOp::FaceCamera);
         self
     }
 
-    pub fn normal(&mut self, x: f32, y: f32, z: f32) -> &mut Program
+    pub(crate) fn normal(&mut self, x: f32, y: f32, z: f32) -> &mut Self
     {
         self.m_ops.push(ModelOp::Normal([x, y, z]));
         self
     }
 
     // one quad of four x, y, z, u, v vertices
-    pub fn quad(&mut self, vertices: [[f32; 5]; 4]) -> &mut Program
+    pub(crate) fn quad(&mut self, vertices: [[f32; 5]; 4]) -> &mut Self
     {
         self.m_ops.push(ModelOp::Quads(vertices.to_vec()));
         self
     }
 
-    pub fn lighting(&mut self, on: bool) -> &mut Program
+    pub(crate) fn lighting(&mut self, on: bool) -> &mut Self
     {
         self.m_ops.push(ModelOp::Lighting(on));
         self
     }
 
-    pub fn take(&mut self) -> Vec<ModelOp> { std::mem::take(&mut self.m_ops) }
+    pub(crate) fn take(&mut self) -> Vec<ModelOp> { std::mem::take(&mut self.m_ops) }
 }
 
 // ModelBase angle conversions the Java models write inline
-pub const DEGREES_PER_RADIAN: f32 = 180.0 / std::f32::consts::PI;
-pub const HALF_PI: f32 = std::f32::consts::FRAC_PI_2;
+pub(crate) const DEGREES_PER_RADIAN: f32 = 180.0 / std::f32::consts::PI;
+pub(crate) const HALF_PI: f32 = std::f32::consts::FRAC_PI_2;
 
 // several Java models drawn as one spec, a later model's part index is shifted by the parts before it
-pub fn combine(models: Vec<EntityModelSpec>) -> EntityModelSpec
+pub(crate) fn combine(models: Vec<EntityModelSpec>) -> EntityModelSpec
 {
-    let mut models = models.into_iter();
+    let mut models: IntoIter<EntityModelSpec> = models.into_iter();
     let mut combined: EntityModelSpec = models.next().unwrap_or_default();
+
     for model in models
     {
         let size: [i32; 2] = model.texture_size;
@@ -152,28 +155,36 @@ pub fn combine(models: Vec<EntityModelSpec>) -> EntityModelSpec
             model.parts.into_iter().map(|part| ModelPart { texture_size: part.texture_size.or(Some(size)), ..part }),
         );
     }
+
     combined
 }
 
 // ModelQuadruped part order: head, body, then four legs
-pub mod quadruped
+pub(crate) mod quadruped
 {
-    pub const HEAD: u16 = 0;
-    pub const BODY: u16 = 1;
-    pub const LEGS: [u16; 4] = [2, 3, 4, 5];
-    pub const PARTS: u16 = 6;
-    pub const LEG_SWING: f32 = 1.4;
+    pub(crate) const HEAD: u16 = 0;
+    pub(crate) const BODY: u16 = 1;
+    pub(crate) const LEGS: [u16; 4] = [2, 3, 4, 5];
+    pub(crate) const PARTS: u16 = 6;
+    pub(crate) const LEG_SWING: f32 = 1.4;
 }
 
-pub const WALK_RATE: f32 = 0.6662;
+pub(crate) const WALK_RATE: f32 = 0.6662;
 
 // ModelQuadruped.setRotationAngles and render for the six parts starting at base
-pub fn quadrupedPose(program: &mut Program, base: u16, pivots: &[[f32; 3]], input: &PoseInput, headPitch: Option<f32>)
+pub(crate) fn quadrupedPose(
+    program: &mut Program,
+    base: u16,
+    pivots: &[[f32; 3]],
+    input: &PoseInput,
+    headPitch: Option<f32>,
+)
 {
     let pivot = |part: u16| pivots[part as usize];
     let pitch: f32 = headPitch.unwrap_or(input.head_pitch / DEGREES_PER_RADIAN);
     program.part(base + quadruped::HEAD, [pitch, input.head_yaw / DEGREES_PER_RADIAN, 0.0], pivot(quadruped::HEAD));
     program.part(base + quadruped::BODY, [HALF_PI, 0.0, 0.0], pivot(quadruped::BODY));
+
     let swing: f32 = math::cos(input.walk * WALK_RATE) * quadruped::LEG_SWING * input.walk_speed;
     let back: f32 = math::cos(input.walk * WALK_RATE + std::f32::consts::PI) * quadruped::LEG_SWING * input.walk_speed;
     for (leg, angle) in quadruped::LEGS.iter().zip([swing, back, back, swing])
@@ -184,22 +195,23 @@ pub fn quadrupedPose(program: &mut Program, base: u16, pivots: &[[f32; 3]], inpu
 
 // a per entity angle a Java entity steps once a tick for its renderer, kept on the client by the last tick seen
 #[derive(Default)]
-pub struct Phases
+pub(crate) struct Phases
 {
     m_phases: RefCell<HashMap<i32, (f32, i32)>>,
 }
 
 impl Phases
 {
-    pub fn advance(&self, id: i32, tick: i32, step: f32, wrap: f32) -> f32
+    pub(crate) fn advance(&self, id: i32, tick: i32, step: f32, wrap: f32) -> f32
     {
-        let mut phases = self.m_phases.borrow_mut();
+        let mut phases: RefMut<HashMap<i32, (f32, i32)>> = self.m_phases.borrow_mut();
         let entry: &mut (f32, i32) = phases.entry(id).or_insert((0.0, tick));
         while entry.1 < tick
         {
             entry.0 = (entry.0 + step) % wrap;
             entry.1 += 1;
         }
+
         entry.0
     }
 }

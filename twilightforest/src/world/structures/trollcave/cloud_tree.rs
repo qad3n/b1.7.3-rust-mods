@@ -1,7 +1,7 @@
 // draft from ComponentTFCloudTree.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(index: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(index: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::CloudTree);
     init(&this, index, x, y, z);
@@ -9,7 +9,7 @@ pub fn new(index: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFCloudTree constructor
-pub fn init(this: &Piece, _index: i32, mut x: i32, mut y: i32, mut z: i32)
+pub(crate) fn init(this: &Piece, _index: i32, mut x: i32, mut y: i32, mut z: i32)
 {
     this.setMode(0);
     x = (x >> 2) << 2;
@@ -20,7 +20,7 @@ pub fn init(this: &Piece, _index: i32, mut x: i32, mut y: i32, mut z: i32)
 }
 
 // ComponentTFCloudTree.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fillMeta(world, sbb, 0, 12, 0, 19, 19, 19, blk("tf:giantLeaves"), 0, blk("tf:giantLeaves"), 0, false);
     this.fillMeta(world, sbb, 4, 20, 4, 15, 23, 15, blk("tf:giantLeaves"), 0, blk("tf:giantLeaves"), 0, false);
@@ -28,5 +28,5 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
     this.fillMeta(world, sbb, 4, 24, 8, 15, 27, 11, blk("tf:giantLeaves"), 0, blk("tf:giantLeaves"), 0, false);
     this.fillMeta(world, sbb, 8, 0, 8, 11, 23, 11, blk("tf:giantLog"), 0, blk("tf:giantLog"), 0, false);
     this.fillMeta(world, sbb, 8, -4, 8, 11, -1, 11, blk("tf:fluffyCloud"), 0, blk("tf:fluffyCloud"), 0, false);
-    return true;
+    true
 }

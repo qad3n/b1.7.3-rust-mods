@@ -2,13 +2,13 @@ use crate::accessories::Worn;
 use crate::entities::fraction;
 use crate::progress::{self, Award};
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 const SHIELD: &str = "repulsion_shield";
 const INVISIBILITY: &str = "invisibility_cape";
 const WINGS_TEXTURE: &str = "aether:entity/valkyrie/valkyrie";
-const DEGREES_PER_RADIAN: f32 = 57.295_78;
+const DEGREES_PER_RADIAN: f32 = 57.29578;
 const WHITE: u32 = 0xFFFFFF;
 const ENTERED: &str = "entered_aether";
 // PlayerAetherEvents.onAchievementGet: the first trip into the Aether hands these over
@@ -63,7 +63,8 @@ mod wing
     pub const SNEAK_OFFSET: [f32; 2] = [-0.17, 0.112];
 }
 
-thread_local! {
+thread_local!
+{
     // AbilityFlight count and modifier of the local player
     static FLIGHT: RefCell<(i32, f64)> = const { RefCell::new((0, 1.0)) };
     // PlayerAether.wingSinage of every player this side draws
@@ -77,22 +78,26 @@ fn entityOf(player: Player) -> Option<(Entity, EntityInfo)>
 }
 
 // AbilityRepulsion.onUpdate: the projectile burns away and the shield wears, a shot with no shooter stops the sweep
-pub fn repel(player: Player, worn: &mut Worn)
+pub(crate) fn repel(player: Player, worn: &mut Worn)
 {
     let Some((entity, info)) = entityOf(player).filter(|_| worn.wearing(SHIELD))
     else
     {
         return;
     };
+
     let world: World = entity.world;
     let bottom: f64 = entity.field(EntityField::Bottom);
     let reach: f64 = repel::REACH + repel::PLAYER_HALF_WIDTH;
-    let inBox = |pos: [f64; 3]| {
+
+    let inBox = |pos: [f64; 3]|
+    {
         (pos[0] - info.pos[0]).abs() <= reach
             && (pos[2] - info.pos[2]).abs() <= reach
             && pos[1] >= bottom - repel::REACH
             && pos[1] <= bottom + repel::PLAYER_HEIGHT + repel::REACH
     };
+
     let radius: f64 = repel::REACH + repel::PLAYER_HEIGHT;
     for near in world.entitiesNear(info.pos, radius).into_iter().filter(|near| near.id != player.id && inBox(near.pos))
     {
@@ -106,13 +111,16 @@ pub fn repel(player: Player, worn: &mut Worn)
         {
             return;
         }
+
         projectile.kill();
+
         for _ in 0..repel::FLAMES
         {
             let push: [f64; 3] =
                 near.motion.map(|motion| -motion * repel::PUSH_BACK + (fraction(world) - repel::HALF) * repel::JITTER);
             world.particle("flame", near.pos, push);
         }
+
         world.playSound(info.pos, "note.snare", 1.0, 1.0);
         worn.wear(SHIELD, 1);
     }
@@ -145,17 +153,22 @@ fn fly(entity: Entity, info: &EntityInfo)
 {
     let jumping: bool = entity.flag(EntityField::Jumping);
     let grounded: bool = entity.flag(EntityField::OnGround);
-    FLIGHT.with(|state| {
+
+    FLIGHT.with(|state|
+    {
         let (count, modifier) = &mut *state.borrow_mut();
+
         if jumping
         {
             *modifier = modifier.min(flight::MAX_MOD);
+
             if *count > flight::LIFT_AFTER
             {
                 if *count < flight::MAX_COUNT
                 {
                     *modifier += flight::MOD_STEP;
                     let _ = entity.setMotion([info.motion[0], flight::LIFT * *modifier, info.motion[2]]);
+
                     *count += 1;
                 }
             }
@@ -168,6 +181,7 @@ fn fly(entity: Entity, info: &EntityInfo)
         {
             *modifier = 1.0;
         }
+
         if grounded
         {
             *count = 0;
@@ -179,8 +193,10 @@ fn fly(entity: Entity, info: &EntityInfo)
 fn flap(entity: Entity, id: i32)
 {
     let grounded: bool = entity.flag(EntityField::OnGround);
-    SINAGE.with(|sinage| {
-        let mut sinage = sinage.borrow_mut();
+
+    SINAGE.with(|sinage|
+    {
+        let mut sinage: RefMut<HashMap<i32, f32>> = sinage.borrow_mut();
         let angle: &mut f32 = sinage.entry(id).or_insert(0.0);
         *angle += if grounded
         {
@@ -190,6 +206,7 @@ fn flap(entity: Entity, id: i32)
         {
             wing::AIR_FLAP
         };
+
         if *angle > wing::TURN
         {
             *angle -= wing::TURN;
@@ -204,6 +221,7 @@ fn flap(entity: Entity, id: i32)
 fn tick()
 {
     let local: Option<i32> = localPlayer().map(|player| player.id);
+
     for player in allPlayers()
     {
         let Some((entity, info)) = entityOf(player)
@@ -213,11 +231,14 @@ fn tick()
         };
         let worn: Worn = Worn::of(player);
         entity.setField(EntityField::Invisible, if worn.wearing(INVISIBILITY) { 1.0 } else { 0.0 });
+
         if !isClient()
         {
             continue;
         }
+
         flap(entity, player.id);
+
         if local == Some(player.id) && worn.m_valkyrieSet
         {
             fly(entity, &info);
@@ -232,24 +253,30 @@ fn wingQuads(origin: [f32; 3], mirror: bool) -> Vec<[f32; 5]>
     let [mut x1, y1, z] = origin;
     let mut x2: f32 = x1 + wing::SIZE[0];
     let y2: f32 = y1 + wing::SIZE[1];
+
     if mirror
     {
         std::mem::swap(&mut x1, &mut x2);
     }
+
     let [u, v] = wing::UV;
     let [width, height] = wing::SIZE;
     let [textureWidth, textureHeight] = wing::TEXTURE;
     let corner =
         |x: f32, y: f32, u: f32, v: f32| [x * scale, y * scale, z * scale, u / textureWidth, v / textureHeight];
-    let face = |u1: f32, corners: [[f32; 2]; 4]| -> Vec<[f32; 5]> {
+
+    let face = |u1: f32, corners: [[f32; 2]; 4]| -> Vec<[f32; 5]>
+    {
         let u2: f32 = u1 + width;
         let uvs: [[f32; 2]; 4] = [[u2, v], [u1, v], [u1, v + height], [u2, v + height]];
         let mut quad: Vec<[f32; 5]> =
             corners.iter().zip(uvs.iter()).map(|([x, y], [u, v])| corner(*x, *y, *u, *v)).collect();
+
         if mirror
         {
             quad.reverse();
         }
+
         quad
     };
     let mut quads: Vec<[f32; 5]> = face(u, [[x2, y1], [x1, y1], [x1, y2], [x2, y2]]);
@@ -274,15 +301,17 @@ fn wingOps(origin: [f32; 3], pivot: [f32; 3], mirror: bool, angles: [f32; 3], of
 }
 
 // PlayerAetherRenderer: the full valkyrie set grows the valkyrie's wings, flapping harder in the air
-pub fn wings(player: &EntityInfo, worn: &Worn) -> Option<PlayerLayer>
+pub(crate) fn wings(player: &EntityInfo, worn: &Worn) -> Option<PlayerLayer>
 {
     if !worn.m_valkyrieSet
     {
         return None;
     }
+
     let entity: Entity = Entity { world: World { dimension: player.world }, id: player.id };
     let sinage: f32 = SINAGE.with(|sinage| sinage.borrow().get(&player.id).copied().unwrap_or(0.0));
     let sneaking: bool = entity.flag(EntityField::Sneaking);
+
     let rollDivisor: f32 = if entity.flag(EntityField::OnGround)
     {
         wing::GROUND_ROLL
@@ -292,6 +321,7 @@ pub fn wings(player: &EntityInfo, worn: &Worn) -> Option<PlayerLayer>
         wing::AIR_ROLL
     };
     let pitch: f32 = if sneaking { wing::SNEAK_PITCH } else { 0.0 };
+
     let offset: [f32; 2] = if sneaking
     {
         wing::SNEAK_OFFSET
@@ -311,7 +341,9 @@ pub fn wings(player: &EntityInfo, worn: &Worn) -> Option<PlayerLayer>
         [pitch, wing::YAW - swing, wing::ROLL - roll],
         offset,
     ));
-    Some(PlayerLayer {
+
+    Some(PlayerLayer
+    {
         texture: WINGS_TEXTURE.to_owned(),
         color: WHITE,
         parts: Vec::new(),
@@ -331,10 +363,12 @@ fn hardened(event: &mut Event)
         .and_then(|entity| entity.info())
         .filter(|info| info.player.is_some())
         .map(|info| Player { id: info.id });
+
     if !wearer.is_some_and(|player| crate::player::wearingSet(player, "obsidian"))
     {
         return;
     }
+
     if let EventData::Attack { amount, .. } = event.dataMut()
     {
         *amount = (*amount + 1) / 2;
@@ -352,19 +386,23 @@ fn welcome(event: &mut Event)
     {
         return;
     }
+
     progress::grant(player, Award::EnterAether);
+
     if player.data::<bool>(ENTERED)
     {
         return;
     }
+
     let _ = player.setData(ENTERED, &true);
+
     for gift in WELCOME_GIFTS
     {
         let _ = player.give(ItemStack::of(gift, 1));
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.events().on::<TickPost>(Priority::Normal, |_| tick())?;
     ctx.events().on::<LivingAttack>(Priority::Normal, shielded)?;

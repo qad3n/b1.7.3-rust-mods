@@ -68,12 +68,13 @@ struct Mind
     m_started: bool,
 }
 
-thread_local! {
+thread_local!
+{
     static MINDS: RefCell<HashMap<i32, Mind>> = RefCell::new(HashMap::new());
     static SINAGE: Phases = Phases::default();
 }
 
-pub fn bar(boss: Entity) -> BossBar { boss.synced::<Sync>().m_bar }
+pub(crate) fn bar(boss: Entity) -> BossBar { boss.synced::<Sync>().m_bar }
 
 fn mind(entity: Entity) -> Mind { MINDS.with(|minds| minds.borrow().get(&entity.id).copied()).unwrap_or_default() }
 
@@ -85,14 +86,18 @@ fn sync(entity: Entity) -> Sync
     if state.m_bar.m_name.is_empty() && entity.world.isAuthority()
     {
         let name: String = super::valkyrieName(entity.world);
-        state.m_bar = BossBar {
+
+        state.m_bar = BossBar
+        {
             m_name: format!("{name}, {}", translate("aether.title.valkyrie_queen")),
             m_health: queen::HEALTH,
             m_maxHealth: queen::HEALTH,
             m_focus: None,
         };
+
         let _ = entity.setSynced(&state);
     }
+
     state
 }
 
@@ -117,6 +122,7 @@ fn chat(entity: Entity, player: Player, key: &str)
 fn setEntrance(world: World, hall: [i32; 3], k: i32, block: i32)
 {
     let [x, y, z] = hall;
+
     for (dy, dz) in [(0, 0), (0, 1), (1, 1), (1, 0)]
     {
         let pos: BlockPos = BlockPos::new(x - 1, y + dy, z + k + dz);
@@ -131,6 +137,7 @@ fn setEntrance(world: World, hall: [i32; 3], k: i32, block: i32)
 fn sealEntrances(world: World, hall: [i32; 3])
 {
     let locked: i32 = blockId(LOCKED);
+
     for k in queen::ENTRANCES
     {
         setEntrance(world, hall, k, locked);
@@ -144,12 +151,15 @@ fn unlockTreasure(world: World, hall: [i32; 3])
 {
     let [x, y, z] = hall;
     let trapdoor: i32 = blockId("minecraft:trapdoor");
+
     for ([dx, dz], meta) in queen::TRAPDOORS
     {
         let _ = world.setBlock(BlockPos::new(x + dx, y + 1, z + dz), trapdoor, meta);
     }
+
     let swaps: [(i32, i32); 2] =
         [(blockId(LOCKED), blockId("angelic_stone")), (blockId(LOCKED_LIGHT), blockId("light_angelic_stone"))];
+
     for bx in x + queen::UNLOCK_LOW[0]..x + queen::UNLOCK_HIGH[0]
     {
         for by in y + queen::UNLOCK_LOW[1]..y + queen::UNLOCK_HIGH[1]
@@ -188,8 +198,10 @@ fn airy(world: World, x: i32, y: i32, z: i32) -> bool
 fn jump(entity: Entity, to: [f64; 3])
 {
     poof(entity.world, entity.info().map_or(to, |info| info.pos));
+
     let _ = entity.setPosition(to);
     let _ = entity.setMotion([0.0; 3]);
+
     entity.setField(EntityField::Jumping, 0.0);
 }
 
@@ -210,13 +222,16 @@ fn teleport(entity: Entity, info: &EntityInfo, target: [f64; 3], state: &mut Min
         (target[1] + b as f64 - 0.5).floor() as i32,
         (target[2] + c as f64 - 0.5).floor() as i32,
     ];
+
     let [hx, hy, hz] = hall(entity);
     let shift = || world.random(rad / 2) - world.random(rad / 2);
+
     for _ in 0..queen::TELEPORT_TRIES
     {
         let [i, j, k] = [start[0] + shift(), start[1] + shift(), start[2] + shift()];
         let inside: bool =
             i > hx && i < hx + queen::HALL[0] && j > hy && j < hy + queen::HALL[1] && k > hz && k < hz + queen::HALL[2];
+
         if inside && airy(world, i, j, k) && airy(world, i, j + 1, k) && !airy(world, i, j - 1, k)
         {
             jump(entity, [i as f64 + 0.5, j as f64 + 0.5, k as f64 + 0.5]);
@@ -224,7 +239,9 @@ fn teleport(entity: Entity, info: &EntityInfo, target: [f64; 3], state: &mut Min
             return;
         }
     }
+
     state.m_teleportIn -= world.random(queen::TELEPORT_RESET) + queen::TELEPORT_RESET;
+
     if info.pos[1] <= 0.0
     {
         state.m_teleportIn = queen::TELEPORT_GRACE;
@@ -235,6 +252,7 @@ fn teleport(entity: Entity, info: &EntityInfo, target: [f64; 3], state: &mut Min
 fn duel(entity: Entity, info: &EntityInfo, target: &EntityInfo, state: &mut Mind)
 {
     let world: World = entity.world;
+
     if target.pos[1] > info.pos[1]
     {
         state.m_climbTime += 1;
@@ -282,6 +300,7 @@ fn standDown(entity: Entity, sync: &mut Sync, loser: Option<Player>)
         setMind(entity, state);
         chat(entity, player, "gui.queen.lost");
     }
+
     entity.setField(EntityField::TargetId, -1.0);
     unlockDoor(entity.world, hall(entity));
     sync.m_ready = false;
@@ -309,26 +328,31 @@ impl EntityBehavior for ValkyrieQueen
         {
             return;
         }
+
         let before: Sync = sync(entity);
         let mut state: Sync = before.clone();
         let mut thinking: Mind = mind(entity);
         if !thinking.m_started
         {
-            thinking = Mind {
+            thinking = Mind
+            {
                 m_started: true,
                 m_teleportIn: world.random(queen::TELEPORT_START),
                 m_safeY: info.pos[1],
                 ..thinking
             };
         }
+
         thinking.m_chatTime -= 1;
         entity.setField(EntityField::AttackStrength, queen::DAMAGE as f64);
         valkyrie::glide(entity, info, &mut thinking.m_lastMotionY);
         state.m_bar.m_health = entity.field(EntityField::Health) as i32;
+
         if state.m_ready
         {
             entity.setField(EntityField::MoveSpeed, queen::SPEED);
             sealEntrances(world, hall(entity));
+
             let focus: Option<EntityInfo> = state.m_bar.m_focus.and_then(|id| Entity { world, id }.info());
             match focus
             {
@@ -337,6 +361,7 @@ impl EntityBehavior for ValkyrieQueen
                     entity.setField(EntityField::TargetId, target.id as f64);
                     duel(entity, info, &target, &mut thinking);
                 }
+
                 Some(target) => standDown(entity, &mut state, Some(Player { id: target.id })),
                 None =>
                 {}
@@ -345,10 +370,13 @@ impl EntityBehavior for ValkyrieQueen
         else
         {
             entity.setField(EntityField::MoveSpeed, 0.0);
+
             let _ = entity.setMotion([0.0, info.motion[1] * 0.5, 0.0]);
+
             watchClosest(entity, info);
         }
         setMind(entity, thinking);
+
         if state != before
         {
             let _ = entity.setSynced(&state);
@@ -362,6 +390,7 @@ impl EntityBehavior for ValkyrieQueen
         {
             return true;
         }
+
         if sync(entity).m_ready
         {
             chat(entity, player, "gui.queen.ready");
@@ -384,10 +413,12 @@ impl EntityBehavior for ValkyrieQueen
             entity.setField(EntityField::FireTicks, 0.0);
             return None;
         };
+
         if !world.isAuthority()
         {
             return Some(amount);
         }
+
         let player: Player = Player { id: attacker.id };
         let mut state: Sync = sync(entity);
         if !state.m_ready
@@ -396,6 +427,7 @@ impl EntityBehavior for ValkyrieQueen
             chat(entity, player, "gui.queen.nomedals");
             return None;
         }
+
         if state.m_bar.m_focus.is_none()
         {
             let mut thinking: Mind = mind(entity);
@@ -412,7 +444,9 @@ impl EntityBehavior for ValkyrieQueen
             setMind(entity, thinking);
         }
         state.m_bar.m_health = (entity.field(EntityField::Health) as i32 - amount).max(0);
+
         let _ = entity.setSynced(&state);
+
         Some(amount)
     }
 
@@ -424,9 +458,11 @@ impl EntityBehavior for ValkyrieQueen
         {
             return;
         };
+
         let hall: [i32; 3] = hall(entity);
         unlockDoor(world, hall);
         unlockTreasure(world, hall);
+
         if let Some(id) = sync(entity).m_bar.m_focus
         {
             let mut thinking: Mind = mind(entity);
@@ -435,9 +471,11 @@ impl EntityBehavior for ValkyrieQueen
             chat(entity, Player { id }, "gui.queen.defeated");
             progress::grant(Player { id }, Award::Silver);
         }
+
         let _ =
             world.spawnItem([info.pos[0], info.pos[1] + queen::KEY_LIFT, info.pos[2]], ItemStack::of("silver_key", 1));
         let _ = world.spawnItem(info.pos, ItemStack::of("minecraft:golden_sword", 1));
+
         poof(world, info.pos);
         MINDS.with(|minds| minds.borrow_mut().remove(&entity.id));
         entity.kill();
@@ -473,6 +511,7 @@ fn challenge(message: Challenge, player: Player)
     {
         return;
     };
+
     let world: World = World { dimension: info.world };
     let paid: bool =
         player.slot(message.m_slot).is_some_and(|stack| stack.item.is(VICTORY_MEDAL) && stack.count >= queen::MEDALS);
@@ -482,10 +521,12 @@ fn challenge(message: Challenge, player: Player)
     {
         return;
     }
+
     let _ = player.setSlot(message.m_slot, None);
     let mut state: Sync = sync(boss);
     state.m_ready = true;
     state.m_bar.m_focus = Some(player.id);
+
     let _ = boss.setSynced(&state);
 }
 
@@ -525,6 +566,7 @@ fn wrap(text: &str) -> Vec<String>
 {
     let mut lines: Vec<String> = Vec::new();
     let mut line: String = String::new();
+
     for word in text.split(' ')
     {
         let candidate: String = if line.is_empty()
@@ -535,6 +577,7 @@ fn wrap(text: &str) -> Vec<String>
         {
             format!("{line} {word}")
         };
+
         if textWidth(&candidate) > dialog::WRAP && !line.is_empty()
         {
             lines.push(std::mem::replace(&mut line, word.to_owned()));
@@ -544,6 +587,7 @@ fn wrap(text: &str) -> Vec<String>
             line = candidate;
         }
     }
+
     lines.push(line);
     lines
 }
@@ -552,7 +596,8 @@ impl Dialogue
 {
     fn title(&self) -> String
     {
-        let name: String = Entity {
+        let name: String = Entity
+        {
             world: World { dimension: localPlayer().and_then(Player::info).map_or(0, |info| info.world) },
             id: self.m_queen,
         }
@@ -573,6 +618,7 @@ impl Dialogue
     fn finish(&self, key: &str)
     {
         self.answer(key);
+
         if let Some(player) = localPlayer()
         {
             player.closeScreen();
@@ -582,6 +628,7 @@ impl Dialogue
     fn medalOption(&mut self) -> String
     {
         let player: Option<Player> = localPlayer();
+
         for slot in 0..dialog::MAIN_SLOTS
         {
             let Some(stack) = player.and_then(|player| player.slot(slot)).filter(|stack| stack.item.is(VICTORY_MEDAL))
@@ -589,11 +636,13 @@ impl Dialogue
             {
                 continue;
             };
+
             if stack.count >= queen::MEDALS
             {
                 self.m_medalSlot = Some(slot);
                 return translate("aether.gui.valkyrie.dialog.player.havemedals");
             }
+
             return format!(
                 "{} ({}/{})",
                 translate("aether.gui.valkyrie.dialog.player.lackmedals"),
@@ -601,6 +650,7 @@ impl Dialogue
                 queen::MEDALS
             );
         }
+
         format!("{} (0/{})", translate("aether.gui.valkyrie.dialog.player.lackmedals"), queen::MEDALS)
     }
 
@@ -617,20 +667,24 @@ impl Dialogue
         match (self.m_stage, index)
         {
             (Stage::Greeting, 0) => self.finish("gui.queen.answer.0"),
+
             (Stage::Greeting, 1) =>
             {
                 self.m_stage = Stage::Medals;
                 self.m_text = format!("{}: {}", self.title(), translate("aether.gui.queen.answer.1"));
                 self.m_options = vec![self.medalOption(), translate("aether.gui.valkyrie.dialog.player.denyfight")];
             }
+
             (Stage::Greeting, _) => self.finish("gui.queen.answer.2"),
             (Stage::Medals, 0) => match self.m_medalSlot
             {
                 Some(slot) =>
                 {
                     let _ = send(FIGHT, Target::Server, &Challenge { m_queen: self.m_queen, m_slot: slot });
+
                     self.finish("gui.valkyrie.dialog.ready");
                 }
+
                 None => self.finish("gui.valkyrie.dialog.nomedals"),
             },
             (Stage::Medals, _) => self.finish("gui.valkyrie.dialog.nofight"),
@@ -665,11 +719,14 @@ impl Screen for Dialogue
             );
             draw.text(-width / 2, row * dialog::TEXT_LINE, line, dialog::WHITE);
         }
+
         for index in 0..self.m_options.len()
         {
             let [x, y, w, h] = self.optionBox(index);
             let over: bool = mouse[0] >= x && mouse[1] >= y && mouse[0] < x + w && mouse[1] < y + h;
+
             draw.gradient(x, y, w, h, dialog::SHADE, dialog::SHADE);
+
             let label: String = format!("{}[{}]", if over { dialog::HOVER } else { "" }, self.m_options[index]);
             draw.text(x + dialog::PAD, y + dialog::PAD, &label, dialog::WHITE);
         }
@@ -681,7 +738,9 @@ impl Screen for Dialogue
         {
             return;
         }
-        let picked: Option<usize> = (0..self.m_options.len()).find(|index| {
+
+        let picked: Option<usize> = (0..self.m_options.len()).find(|index|
+        {
             let [left, top, w, h] = self.optionBox(*index);
             x >= left && y >= top && x < left + w && y < top + h
         });
@@ -691,16 +750,18 @@ impl Screen for Dialogue
             {
                 World { dimension: player.world }.playSound(player.pos, "random.click", 1.0, 1.0);
             }
+
             self.choose(index);
         }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:neutral_monster").ok(),
             texture: Some(TEXTURE.to_owned()),
             health: Some(queen::HEALTH),
@@ -714,7 +775,9 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         Some(std::rc::Rc::new(ValkyrieQueen)),
     )?;
     ctx.channels().register::<Challenge>(FIGHT, Direction::ToServer, challenge)?;
-    let blank: Dialogue = Dialogue {
+
+    let blank: Dialogue = Dialogue
+    {
         m_queen: -1,
         m_stage: Stage::Greeting,
         m_medalSlot: None,

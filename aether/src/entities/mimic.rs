@@ -47,7 +47,9 @@ impl EntityBehavior for Mimic
         {
             return None;
         }
+
         entity.setField(EntityField::TargetId, attacker as f64);
+
         let axe: bool = attackerInfo.is_some_and(|info| info.player.is_some())
             && Player { id: attacker }.held().is_some_and(|held| isAxe(&held));
         Some(
@@ -67,6 +69,7 @@ impl EntityBehavior for Mimic
     {
         let mouth: f32 = ((input.age / mimic::MOUTH_PERIOD * PI).cos() + 1.0) * mimic::MOUTH_OPEN;
         let phase: f32 = (input.age / mimic::STRIDE_TICKS).rem_euclid(2.0);
+
         let legs: f32 = if input.walk_speed > mimic::WALKING
         {
             if phase < 1.0
@@ -84,6 +87,7 @@ impl EntityBehavior for Mimic
         };
         let mut pre: Program = Program::new();
         pre.translate(0.0, mimic::MODEL_DROP, 0.0);
+
         let mut body: Program = Program::new();
         body.texture(HEAD).rest(model::BOX);
         body.texture(LEGS);
@@ -94,11 +98,12 @@ impl EntityBehavior for Mimic
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:monster").ok(),
             texture: Some(HEAD.to_owned()),
             size: Some([1.0, 2.0]),

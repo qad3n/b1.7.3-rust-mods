@@ -57,6 +57,7 @@ impl ItemBehavior for SkyrootBucket
         {
             return Use::Pass;
         };
+
         // ItemSkyrootBucket stacks empties to sixteen, only a single one fills
         match self.m_kind
         {
@@ -73,12 +74,15 @@ impl ItemBehavior for SkyrootBucket
                 {
                     return Use::Pass;
                 }
+
                 if world.isAuthority()
                 {
                     let _ = world.setBlock(hit.pos, 0, 0);
                 }
+
                 Use::Done(Some(ItemStack::of("skyroot_water_bucket", 1)))
             }
+
             Bucket::Water =>
             {
                 let Some(hit) = trace(world, &info, false)
@@ -92,18 +96,22 @@ impl ItemBehavior for SkyrootBucket
                 {
                     return Use::Pass;
                 }
+
                 if world.isAuthority()
                 {
                     let _ = world.setBlock(at, blockId("minecraft:flowing_water"), 0);
                 }
+
                 Use::Done(empty())
             }
+
             Bucket::Poison | Bucket::Remedy | Bucket::Milk =>
             {
                 if let Err(error) = player.setItemInUse(DRINK_TICKS)
                 {
                     warn(&format!("skyroot bucket drink: {error}"));
                 }
+
                 Use::Done(Some(stack))
             }
         }
@@ -127,19 +135,23 @@ impl ItemBehavior for SkyrootBucket
     fn onUseFinish(&self, world: World, player: Player, _stack: ItemStack) -> Use
     {
         let entity: Entity = Entity { world, id: player.id };
+
         match self.m_kind
         {
             Bucket::Poison => crate::player::poison(entity),
             Bucket::Remedy => crate::player::cure(entity),
+
             Bucket::Milk if world.isAuthority() =>
             {
                 crate::effects::remove(entity, Effect::Regeneration);
                 crate::effects::remove(entity, Effect::Weakness);
             }
+
             Bucket::Milk =>
             {}
             Bucket::Empty | Bucket::Water => return Use::Pass,
         }
+
         Use::Done(empty())
     }
 }
@@ -152,7 +164,7 @@ const BUCKETS: [(&str, Bucket); 5] = [
     ("skyroot_milk_bucket", Bucket::Milk),
 ];
 
-pub fn bucket(name: &str) -> Option<impl ItemBehavior>
+pub(crate) fn bucket(name: &str) -> Option<impl ItemBehavior>
 {
     BUCKETS.iter().find(|(item, _)| *item == name).map(|(_, kind)| SkyrootBucket { m_kind: *kind })
 }
@@ -196,6 +208,7 @@ impl ItemBehavior for ParachuteItem
         {
             return Use::Pass;
         }
+
         if world.isAuthority()
             && let Ok(chute) = world
                 .spawnEntity(&format!("aether:{PARACHUTE}"), [info.pos[0], info.pos[1] + chute::ABOVE, info.pos[2]])
@@ -209,13 +222,16 @@ impl ItemBehavior for ParachuteItem
                 "cold_aercloud"
             };
             chute.setField(EntityField::Block, blockId(cloud) as f64);
+
             let _ = chute.setSynced(&Chute { m_rider: player.id, m_golden: self.m_golden });
         }
+
         if self.m_golden
         {
             let worn: ItemStack = ItemStack { damage: stack.damage + 1, ..stack };
             return Use::Done((worn.damage < chute::GOLDEN_USES).then_some(worn));
         }
+
         Use::Done((stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }))
     }
 }
@@ -230,17 +246,17 @@ impl EntityBehavior for Parachute
     {
         let world: World = entity.world;
         let chute: Chute = entity.synced();
-        let cloud: i32 = blockId(
-            if chute.m_golden
-            {
-                "golden_aercloud"
-            }
-            else
-            {
-                "cold_aercloud"
-            },
-        );
+        let name: &str = if chute.m_golden
+        {
+            "golden_aercloud"
+        }
+        else
+        {
+            "cold_aercloud"
+        };
+        let cloud: i32 = blockId(name);
         entity.setField(EntityField::Block, cloud as f64);
+
         let rider: Entity = Entity { world, id: chute.m_rider };
         let Some(seat) = rider.info().filter(|seat| seat.alive)
         else
@@ -249,8 +265,10 @@ impl EntityBehavior for Parachute
             {
                 entity.kill();
             }
+
             return;
         };
+
         if rider.flag(EntityField::OnGround) || rider.flag(EntityField::InWater)
         {
             if world.isAuthority()
@@ -259,10 +277,13 @@ impl EntityBehavior for Parachute
                 {
                     world.particle("explode", info.pos, [0.0; 3]);
                 }
+
                 entity.kill();
             }
+
             return;
         }
+
         let _ = entity.setPosition([seat.pos[0], seat.pos[1] + chute::ABOVE, seat.pos[2]]);
         let _ = entity.setMotion(seat.motion);
         let local: bool = localPlayer().is_some_and(|player| player.id == chute.m_rider);
@@ -272,12 +293,13 @@ impl EntityBehavior for Parachute
             {
                 let _ = rider.setMotion([seat.motion[0], chute::FALL, seat.motion[2]]);
             }
+
             rider.setField(EntityField::FallDistance, 0.0);
         }
     }
 }
 
-pub fn parachute(name: &str) -> Option<impl ItemBehavior>
+pub(crate) fn parachute(name: &str) -> Option<impl ItemBehavior>
 {
     match name
     {
@@ -287,11 +309,12 @@ pub fn parachute(name: &str) -> Option<impl ItemBehavior>
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         PARACHUTE,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:moving_block").ok(),
             tracking_range: Some(160),
             update_frequency: Some(1),

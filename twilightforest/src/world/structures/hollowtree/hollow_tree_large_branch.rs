@@ -1,7 +1,7 @@
 // draft from ComponentTFHollowTreeLargeBranch.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle: f64, tilt: f64, leafy: bool) -> Rc<Piece>
+pub(crate) fn new(i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle: f64, tilt: f64, leafy: bool) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::HollowTreeLargeBranch);
     init(&this, i, sx, sy, sz, length, angle, tilt, leafy);
@@ -9,18 +9,19 @@ pub fn new(i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle: f64, tilt: f64
 }
 
 // ComponentTFHollowTreeLargeBranch constructor
-pub fn init(this: &Piece, i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle: f64, tilt: f64, leafy: bool)
+pub(crate) fn init(this: &Piece, i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle: f64, tilt: f64, leafy: bool)
 {
     hollow_tree_med_branch::init(this, i, sx, sy, sz, length, angle, tilt, leafy);
     this.m_hasLeafDungeon.set(false);
 }
 
 // ComponentTFHollowTreeLargeBranch.func_74861_a
-pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
 {
     let index: i32 = this.depth();
     let numMedBranches: i32 =
         random.nextIntBounded((this.m_length.get() / 6.0) as i32) + ((this.m_length.get() / 8.0) as i32);
+
     for i in 0..=numMedBranches
     {
         let outVar: f64 = (random.nextDouble() * 0.3) + 0.3;
@@ -47,7 +48,9 @@ pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, rando
             this.m_leafy.get(),
         );
     }
+
     this.m_hasLeafDungeon.set(random.nextIntBounded(8) == 0);
+
     if this.m_hasLeafDungeon.get()
     {
         hollow_tree_large_branch::makeLeafDungeon(
@@ -63,7 +66,7 @@ pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, rando
 }
 
 // ComponentTFHollowTreeLargeBranch.makeLeafDungeon
-pub fn makeLeafDungeon(this: &Piece, list: &mut Pieces, random: &Random, index: i32, x: i32, y: i32, z: i32)
+pub(crate) fn makeLeafDungeon(this: &Piece, list: &mut Pieces, random: &Random, index: i32, x: i32, y: i32, z: i32)
 {
     let dungeon: Rc<Piece> = hollow_tree_leaf_dungeon::new(index, x, y, z, 4);
     list.push(Rc::clone(&dungeon));
@@ -71,7 +74,7 @@ pub fn makeLeafDungeon(this: &Piece, list: &mut Pieces, random: &Random, index: 
 }
 
 // ComponentTFHollowTreeLargeBranch.makeMedBranch
-pub fn makeMedBranch10(
+pub(crate) fn makeMedBranch10(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -92,13 +95,14 @@ pub fn makeMedBranch10(
 }
 
 // ComponentTFHollowTreeLargeBranch.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     let rsrc: [i32; 3] = [
         this.m_src.get()[0] - this.m_box.get().m_min[0],
         this.m_src.get()[1] - this.m_box.get().m_min[1],
         this.m_src.get()[2] - this.m_box.get().m_min[2],
     ];
+
     let rdest: [i32; 3] = [
         this.m_dest.get()[0] - this.m_box.get().m_min[0],
         this.m_dest.get()[1] - this.m_box.get().m_min[1],
@@ -117,6 +121,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
         blk("tf:log"),
         12,
     );
+
     let reinforcements: i32 = 4;
     for i in 0..=reinforcements
     {
@@ -137,10 +142,12 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             12,
         );
     }
+
     let decoRNG: Random = Random::withSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
             ^ ((this.m_box.get().m_min[2] * 756839) as i64),
     );
+
     let numSmallBranches: i32 = decoRNG.nextIntBounded(2) + 1;
     for i in 0..=numSmallBranches
     {
@@ -161,15 +168,17 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             bsrc[0],
             bsrc[1],
             bsrc[2],
-            (this.m_length.get() * (0.3) as f64).max(2.0),
+            (this.m_length.get() * 0.3f64).max(2.0),
             this.m_angle.get() + angleVar,
             this.m_tilt.get(),
             this.m_leafy.get(),
         );
     }
+
     if this.m_leafy.get() && (!this.m_hasLeafDungeon.get())
     {
         hollow_tree_med_branch::makeLeafBlob(this, world, sbb, rdest[0], rdest[1], rdest[2], 3);
     }
-    return true;
+
+    true
 }

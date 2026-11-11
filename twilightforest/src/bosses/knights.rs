@@ -7,13 +7,13 @@ use crate::progress::{self, Gate};
 use crate::treasure::{self, Table};
 use crate::world::generate::GenWorld;
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
 // EntityTFKnightPhantom, six ghostly knights of the stronghold that fly in formations around their spawner and take
 // turns charging the player
-pub const NAME: &str = "knight_phantom";
+pub(crate) const NAME: &str = "knight_phantom";
 const LABEL: &str = "Knight Phantom";
 const KNIGHTS: i32 = 6;
 
@@ -130,20 +130,17 @@ thread_local!
 
 impl Formation
 {
-    fn charging(self) -> bool { matches!(self, Formation::AttackStart | Formation::AttackStrike) }
+    fn charging(self) -> bool { matches!(self, Self::AttackStart | Self::AttackStrike) }
 
     // EntityTFKnightPhantom.getMaxTicksForFormation
     fn length(self) -> i32
     {
         match self
         {
-            Formation::LargeClockwise | Formation::LargeAnticlockwise => length::LONG,
-            Formation::ChargePlusX | Formation::ChargeMinusX | Formation::ChargePlusZ | Formation::ChargeMinusZ =>
-            {
-                length::LONG
-            }
-            Formation::AttackStart | Formation::AttackStrike => length::CHARGE,
-            Formation::WaitingForLeader => length::WAIT,
+            Self::LargeClockwise | Self::LargeAnticlockwise => length::LONG,
+            Self::ChargePlusX | Self::ChargeMinusX | Self::ChargePlusZ | Self::ChargeMinusZ => length::LONG,
+            Self::AttackStart | Self::AttackStrike => length::CHARGE,
+            Self::WaitingForLeader => length::WAIT,
             _ => length::SHORT,
         }
     }
@@ -162,9 +159,11 @@ fn destination(state: &Knight, info: &EntityInfo, home: [f64; 3]) -> [f64; 3]
         let angle: f64 = (turn + knight::RING_STEP * f64::from(state.m_number)).to_radians();
         [home[0] + angle.cos() * radius, home[1] + bob(state), home[2] + angle.sin() * radius]
     };
+
     let across = |plus: bool, alongX: bool|
     {
         let line: f32 = state.m_number as f32 * knight::LINE_GAP - knight::LINE_FROM;
+
         let mut sweep: f32 = if state.m_ticks < knight::SWEEP_WAIT
         {
             knight::SWEEP_FROM
@@ -173,13 +172,16 @@ fn destination(state: &Knight, info: &EntityInfo, home: [f64; 3]) -> [f64; 3]
         {
             knight::SWEEP_FROM + (state.m_ticks - knight::SWEEP_WAIT) as f32 / knight::SWEEP_TICKS * knight::SWEEP_SPAN
         };
+
         if !plus
         {
             sweep = -sweep;
         }
+
         let (dx, dz): (f32, f32) = if alongX { (line, sweep) } else { (sweep, line) };
         [home[0] + f64::from(dx), home[1] + bob(state), home[2] + f64::from(dz)]
     };
+
     let hover = ||
     {
         let (ox, oz): (f64, f64) = (home[0] - info.pos[0], home[2] - info.pos[2]);
@@ -194,6 +196,7 @@ fn destination(state: &Knight, info: &EntityInfo, home: [f64; 3]) -> [f64; 3]
         };
         [x, home[1] + bob(state), z]
     };
+
     match state.m_formation
     {
         Formation::LargeClockwise => circle(knight::LARGE_CIRCLE, true),
@@ -242,15 +245,18 @@ fn nextFormation(entity: Entity, info: &EntityInfo, state: &mut Knight)
 {
     let world: World = entity.world;
     let near: Vec<(Entity, Knight)> = knightsNear(world, info.pos);
+
     match state.m_formation
     {
         Formation::AttackStart => switch(state, Formation::AttackStrike),
         Formation::AttackStrike if near.len() > 1 => switch(state, Formation::WaitingForLeader),
+
         Formation::AttackStrike =>
         {
             state.m_weapon = WEAPONS[world.random(3) as usize];
             switch(state, Formation::AttackStart);
         }
+
         Formation::WaitingForLeader => match near.get(1)
         {
             Some((_, other)) =>
@@ -258,17 +264,22 @@ fn nextFormation(entity: Entity, info: &EntityInfo, state: &mut Knight)
                 switch(state, other.m_formation);
                 state.m_ticks = other.m_ticks;
             }
+
             None => switch(state, Formation::AttackStart),
         },
+
         _ if near.iter().all(|(_, other)| other.m_number >= state.m_number) =>
         {
             let formation: Formation = RANDOM_FORMATIONS[world.random(RANDOM_FORMATIONS.len() as i32) as usize];
             switch(state, formation);
+
             let nobodyCharging: bool = near.iter().all(|(_, other)| !other.m_formation.charging());
             let charger: Option<i32> = nobodyCharging.then(|| near[world.random(near.len() as i32) as usize].0.id);
+
             ORDERS.with(|orders|
             {
-                let mut orders = orders.borrow_mut();
+                let mut orders: RefMut<HashMap<(i32, i32), Formation>> = orders.borrow_mut();
+
                 for (other, knightState) in &near
                 {
                     if Some(other.id) == charger
@@ -281,11 +292,13 @@ fn nextFormation(entity: Entity, info: &EntityInfo, state: &mut Knight)
                     }
                 }
             });
+
             if charger == Some(entity.id)
             {
                 switch(state, Formation::AttackStart);
             }
         }
+
         _ =>
         {}
     }
@@ -298,6 +311,7 @@ fn throwWeapon(entity: Entity, info: &EntityInfo, state: &Knight, target: &Entit
     let height: f64 = entity.field(EntityField::Height) * knight::HAND;
     let pitch: f32 = (ids::fraction(world) - ids::fraction(world)) * 0.2 + 0.4;
     world.playSound(info.pos, "random.bow", 1.0, pitch);
+
     match state.m_weapon
     {
         Weapon::Axe =>
@@ -307,6 +321,7 @@ fn throwWeapon(entity: Entity, info: &EntityInfo, state: &Knight, target: &Entit
             let toward: [f64; 3] = [target.pos[0], target.pos[1] + knight::CHEST, target.pos[2]];
             shots::fire(world, THROWN_AXE, from, toward, knight::AXE_SPEED, 1.0, Some(entity.id));
         }
+
         Weapon::Pick =>
         {
             for i in 0..knight::PICKS
@@ -317,6 +332,7 @@ fn throwWeapon(entity: Entity, info: &EntityInfo, state: &Knight, target: &Entit
                 shots::fire(world, THROWN_PICK, from, toward, knight::PICK_SPEED, 1.0, Some(entity.id));
             }
         }
+
         Weapon::Sword =>
         {}
     }
@@ -330,6 +346,7 @@ fn think(entity: Entity, info: &EntityInfo, state: &mut Knight)
     {
         switch(state, order);
     }
+
     state.m_ticks += 1;
     if state.m_ticks >= state.m_formation.length()
     {
@@ -337,6 +354,7 @@ fn think(entity: Entity, info: &EntityInfo, state: &mut Knight)
     }
 
     let home: [f64; 3] = homeOf(entity, info);
+
     let seek: f64 = if state.m_formation.charging()
     {
         knight::SEEK_CHARGING
@@ -350,6 +368,7 @@ fn think(entity: Entity, info: &EntityInfo, state: &mut Knight)
         && state.m_formation == Formation::AttackStart
     {
         let at: [i32; 3] = target.pos.map(|axis| axis.floor() as i32);
+
         state.m_charge = if distance(target.pos, home) < knight::HOME_RANGE
         {
             at
@@ -368,6 +387,7 @@ fn think(entity: Entity, info: &EntityInfo, state: &mut Knight)
     let _ = entity.setMotion(motion);
 
     state.m_cooldown -= 1;
+
     let Some(target) = target
     else
     {
@@ -375,10 +395,12 @@ fn think(entity: Entity, info: &EntityInfo, state: &mut Knight)
     };
 
     face(entity, info.pos, target.pos);
+
     let seen: bool = world.rayTrace(info.pos, target.pos, false).is_none();
     if seen && state.m_cooldown <= 0 && distance(info.pos, target.pos) < knight::REACH
     {
         state.m_cooldown = knight::COOLDOWN;
+
         let bonus: i32 = if state.m_formation.charging()
         {
             knight::CHARGE_BONUS
@@ -394,6 +416,7 @@ fn think(entity: Entity, info: &EntityInfo, state: &mut Knight)
             crate::combat::kind::MOB,
         );
     }
+
     if state.m_formation == Formation::AttackStrike && state.m_ticks % knight::THROW_PERIOD == 0
     {
         throwWeapon(entity, info, state, &target);
@@ -410,6 +433,7 @@ fn trail(entity: Entity, info: &EntityInfo)
     }
 
     let world: World = entity.world;
+
     if !entity.synced::<Shown>().m_charging
     {
         return;
@@ -417,6 +441,7 @@ fn trail(entity: Entity, info: &EntityInfo)
 
     let width: f64 = entity.field(EntityField::Width);
     let height: f64 = entity.field(EntityField::Height);
+
     for _ in 0..4
     {
         let spot = ||
@@ -445,6 +470,7 @@ impl EntityBehavior for KnightPhantom
 
         let mut state: Knight = entity.data();
         think(entity, info, &mut state);
+
         let _ = entity.setData(&state);
         let shown: Shown = Shown { m_charging: state.m_formation.charging(), m_weapon: state.m_weapon };
         if entity.synced::<Shown>() != shown
@@ -470,6 +496,7 @@ impl EntityBehavior for KnightPhantom
             progress::grant(player, Gate::Hunter);
             progress::grant(player, Gate::Knights);
         }
+
         let Some(info) = entity.info()
         else
         {
@@ -481,6 +508,7 @@ impl EntityBehavior for KnightPhantom
         {
             return;
         }
+
         let at: [i32; 3] = home(entity).map_or(info.pos.map(|axis| axis.floor() as i32), |[x, y, z]| [x, y - 1, z]);
         let generation: GenWorld = GenWorld::new(world);
         treasure::place(
@@ -498,6 +526,7 @@ impl EntityBehavior for KnightPhantom
     {
         let mut body: Program = Program::new();
         bipedPose(&mut body, &tf_knight_phantom::PIVOTS[..7], &tf_knight_phantom::ROTATIONS[..7], input);
+
         let shown: Shown = b173_api::fromBytes(&input.synced).unwrap_or_default();
         let weapon: &str = match shown.m_weapon
         {
@@ -506,8 +535,10 @@ impl EntityBehavior for KnightPhantom
             Weapon::Pick => ids::item::KNIGHTLY_PICK,
         };
         body.held(crate::models::biped::RIGHT_ARM, weapon);
+
         let armor: u16 = tf_knight_phantom::PIVOTS.len() as u16;
         body.texture("twilightforest:armor/phantom_1");
+
         for part in 0..tf_phantom_armor::PIVOTS.len() as u16
         {
             body.part(
@@ -516,12 +547,13 @@ impl EntityBehavior for KnightPhantom
                 tf_phantom_armor::PIVOTS[part as usize],
             );
         }
+
         Pose { pre: Vec::new(), model: body.take() }
     }
 }
 
 // TileEntityTFKnightPhantomsSpawner.spawnMyBoss, six knights in a ring, each with its number and weapon
-pub fn spawnGroup(world: World, pos: BlockPos)
+pub(crate) fn spawnGroup(world: World, pos: BlockPos)
 {
     for number in 0..KNIGHTS
     {
@@ -531,6 +563,7 @@ pub fn spawnGroup(world: World, pos: BlockPos)
             f64::from(pos.y) + 0.5,
             f64::from(pos.z) + 0.5 + angle.sin() * knight::RING,
         ];
+
         let yaw: f32 = ids::fraction(world) * 360.0;
         let Some(spawned) = crate::entities::spawnAt(world, &format!("twilightforest:{NAME}"), at, yaw)
         else
@@ -546,7 +579,7 @@ pub fn spawnGroup(world: World, pos: BlockPos)
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
@@ -563,6 +596,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
                 hurt: Some("twilightforest.mob.wraith.wraith".to_owned()),
                 death: Some("twilightforest.mob.wraith.wraith".to_owned()),
             }),
+
             model: Some(EntityModelSpec
             {
                 shadow: 0.75,

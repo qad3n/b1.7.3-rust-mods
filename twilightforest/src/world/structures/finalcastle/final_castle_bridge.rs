@@ -1,7 +1,7 @@
 // draft from ComponentTFFinalCastleBridge.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, x: i32, y: i32, z: i32, length: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, x: i32, y: i32, z: i32, length: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::FinalCastleBridge);
     init(&this, i, x, y, z, length, direction);
@@ -9,7 +9,7 @@ pub fn new(i: i32, x: i32, y: i32, z: i32, length: i32, direction: i32) -> Rc<Pi
 }
 
 // ComponentTFFinalCastleBridge constructor
-pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, length: i32, direction: i32)
+pub(crate) fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, length: i32, direction: i32)
 {
     this.m_depth.set(i);
     this.setMode(direction);
@@ -17,13 +17,13 @@ pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, length: i32, direction
 }
 
 // ComponentTFFinalCastleBridge.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFFinalCastleBridge.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     let length: i32 = if (this.m_mode.get() != 0) && (this.m_mode.get() != 2)
     {
@@ -36,6 +36,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.fillSelected(world, sbb, 0, 0, 0, length, 1, 6, false, random, this.m_deco.get().m_randomBlocks);
     this.fillSelected(world, sbb, 0, 1, 0, length, 2, 0, false, random, this.m_deco.get().m_randomBlocks);
     this.fillSelected(world, sbb, 0, 1, 6, length, 2, 6, false, random, this.m_deco.get().m_randomBlocks);
+
     let l3: i32 = length / 3;
     for i in 0..l3
     {
@@ -69,6 +70,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             this.m_deco.get().m_randomBlocks,
         );
     }
+
     this.fillMeta(
         world,
         sbb,
@@ -161,5 +163,5 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         false,
     );
     this.placeBlock(world, this.m_deco.get().m_pillarID, this.m_deco.get().m_pillarMeta, length, 7, 3, sbb);
-    return true;
+    true
 }

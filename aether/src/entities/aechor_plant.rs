@@ -3,7 +3,7 @@ use super::{closestPlayer, creature, onAetherGrass};
 use crate::ids::{Palette, item};
 use crate::models::{Program, aechor_plant as model};
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::f32::consts::PI;
 
@@ -58,7 +58,8 @@ struct PlantState
     m_hunting: bool,
 }
 
-thread_local! {
+thread_local!
+{
     static RELOADS: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
     static SINAGE: RefCell<HashMap<i32, (f32, i32)>> = RefCell::new(HashMap::new());
     static POISON_LEFT: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
@@ -71,11 +72,14 @@ fn size(entity: Entity) -> i32
     {
         state.m_size = plant::MIN_SIZE + entity.world.random(plant::SIZE_SPREAD);
         state.m_hunting = false;
+
         let _ = entity.setSynced(&state);
+
         entity.setField(EntityField::Width, (plant::BASE_WIDTH + state.m_size as f32 * plant::WIDTH_PER_SIZE) as f64);
         entity
             .setField(EntityField::Height, (plant::BASE_HEIGHT + state.m_size as f32 * plant::HEIGHT_PER_SIZE) as f64);
     }
+
     state.m_size
 }
 
@@ -91,16 +95,19 @@ impl EntityBehavior for AechorPlant
         let plantSize: i32 = size(entity);
         let below: BlockPos =
             BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32 - 1, info.pos[2].floor() as i32);
+
         if world.block(below) != Palette::load().m_grass
         {
             entity.damage(info.health.unwrap_or(0), None);
             return;
         }
+
         let _ = entity.setMotion([0.0, info.motion[1], 0.0]);
         let reach: f64 = plant::LOOK + plantSize as f64 / 2.0;
         let target: Option<EntityInfo> = closestPlayer(world, info, plant::SIGHT.min(reach));
         let hunted: Option<EntityInfo> = target.clone();
         let mut reload: i32 = RELOADS.with(|reloads| reloads.borrow().get(&entity.id).copied()).unwrap_or(0);
+
         match hunted
         {
             Some(player) =>
@@ -108,12 +115,14 @@ impl EntityBehavior for AechorPlant
                 let muzzle: [f64; 3] = [info.pos[0], info.pos[1] + plant::MUZZLE, info.pos[2]];
                 let seen: bool =
                     world.rayTrace(muzzle, [player.pos[0], player.pos[1] + 1.0, player.pos[2]], false).is_none();
+
                 if reload == plant::READY && seen
                 {
                     let [dx, dz] = [player.pos[0] - info.pos[0], player.pos[2] - info.pos[2]];
                     let flat: f64 = (dx * dx + dz * dz + 0.1).sqrt();
                     let lift: f64 = 0.1 + flat * 0.5 + (info.pos[1] - player.pos[1]) * 0.25;
                     let aim: [f64; 3] = [muzzle[0] + dx / flat * 1.5, muzzle[1] + lift, muzzle[2] + dz / flat * 1.5];
+
                     world.playSound(info.pos, "random.bow", 1.0, 1.2);
                     projectile::fire(
                         world,
@@ -126,19 +135,23 @@ impl EntityBehavior for AechorPlant
                     );
                     reload = plant::RELOAD;
                 }
+
                 if reload != plant::READY
                 {
                     reload += 1;
                 }
             }
+
             None => reload = 0,
         }
+
         let hunting: bool = target.is_some();
         let state: PlantState = entity.synced();
         if state.m_hunting != hunting
         {
             let _ = entity.setSynced(&PlantState { m_size: plantSize, m_hunting: hunting });
         }
+
         RELOADS.with(|reloads| reloads.borrow_mut().insert(entity.id, reload));
     }
 
@@ -150,7 +163,9 @@ impl EntityBehavior for AechorPlant
         {
             return false;
         };
-        let left: i32 = POISON_LEFT.with(|left| {
+
+        let left: i32 = POISON_LEFT.with(|left|
+        {
             *left
                 .borrow_mut()
                 .entry(entity.id)
@@ -160,7 +175,9 @@ impl EntityBehavior for AechorPlant
         {
             return false;
         }
+
         let poison: ItemStack = ItemStack::of("skyroot_poison_bucket", 1);
+
         if held.count == 1
         {
             let _ = player.setHeld(Some(poison));
@@ -183,8 +200,10 @@ impl EntityBehavior for AechorPlant
     fn pose(&self, input: &PoseInput) -> Pose
     {
         let state: PlantState = b173_api::fromBytes(&input.synced).unwrap_or_default();
-        let sinage: f32 = SINAGE.with(|sinage| {
-            let mut sinage = sinage.borrow_mut();
+
+        let sinage: f32 = SINAGE.with(|sinage|
+        {
+            let mut sinage: RefMut<HashMap<i32, (f32, i32)>> = sinage.borrow_mut();
             let tick: i32 = input.age as i32;
             let entry: &mut (f32, i32) = sinage.entry(input.entity.id).or_insert((0.0, tick));
             while entry.1 < tick
@@ -204,8 +223,10 @@ impl EntityBehavior for AechorPlant
                 entry.0 = (entry.0 + step) % (2.0 * PI);
                 entry.1 += 1;
             }
+
             entry.0
         });
+
         let hurt: bool = input.hurt_time > 0;
         let wave: f32 = if hurt
         {
@@ -215,6 +236,7 @@ impl EntityBehavior for AechorPlant
         {
             sinage.sin() * sway::CALM_WAVE
         };
+
         let lift: f32 = if hurt
         {
             sway::STEM_REST + (sinage + sway::HURT_PHASE).sin() * sway::HURT_STRETCH
@@ -227,6 +249,7 @@ impl EntityBehavior for AechorPlant
         let yaw: f32 = input.head_pitch.to_radians();
         let mut body: Program = Program::new();
         body.push().translate(0.0, sway::LIFT, 0.0).scale(scale, scale, scale);
+
         for i in 0..plant::PETALS
         {
             let even: bool = i % 2 == 0;
@@ -238,28 +261,33 @@ impl EntityBehavior for AechorPlant
                 [0.0, lift, 0.0],
             );
         }
+
         for i in 0..plant::STAMENS
         {
             let rotation: [f32; 3] = [0.2 + i as f32 / 15.0 + wave * 0.4, yaw + 0.1 + 2.0 * PI / 3.0 * i as f32, 0.0];
             body.part(model::STAMEN_0 + i, rotation, [0.0, lift + wave * 2.0, 0.0]);
             body.part(model::STAMEN2_0 + i, rotation, [0.0, lift + wave * 2.0, 0.0]);
         }
+
         body.part(model::HEAD, [0.0, yaw, 0.0], [0.0, lift + wave * 2.0, 0.0]);
         body.part(model::STEM, [0.0, yaw, 0.0], [0.0, lift * 0.5, 0.0]);
+
         for i in 0..plant::THORNS
         {
             body.part(model::THORN_0 + i, [0.0, yaw, 0.0], [0.0, lift * 0.5, 0.0]);
         }
+
         body.pop();
         Pose { pre: Vec::new(), model: body.take() }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:pig").ok(),
             texture: Some(TEXTURE.to_owned()),
             size: Some([plant::BASE_WIDTH + plant::WIDTH_PER_SIZE, plant::BASE_HEIGHT + plant::HEIGHT_PER_SIZE]),

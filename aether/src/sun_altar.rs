@@ -56,13 +56,13 @@ struct Sky
 
 impl Default for Sky
 {
-    fn default() -> Sky { Sky { m_unlocked: false, m_caughtUp: false, m_time: day::NOON } }
+    fn default() -> Self { Self { m_unlocked: false, m_caughtUp: false, m_time: day::NOON } }
 }
 
 fn eternalDay() -> bool { !config::enabled(config::DISABLE_ETERNAL_DAY) }
 
 // EntitySunSpirit.onDeath: the sky starts walking back to the world time
-pub fn unlock()
+pub(crate) fn unlock()
 {
     let mut sky: Sky = worldData(STATE);
     if eternalDay() && !sky.m_unlocked
@@ -83,6 +83,7 @@ fn advance(sky: &mut Sky, worldTime: i64)
     {
         let met: bool =
             sky.m_time == worldTime % day::LENGTH || sky.m_time == worldTime + 1 || sky.m_time == worldTime - 1;
+
         if met
         {
             sky.m_caughtUp = true;
@@ -109,19 +110,24 @@ fn tick()
     {
         return;
     }
+
     let before: Sky = worldData(STATE);
     let mut sky: Sky = before;
     let worldTime: i64 = world.time();
+
     if eternalDay()
     {
         advance(&mut sky, worldTime);
     }
+
     if sky != before
     {
         setWorldData(STATE, &sky);
     }
+
     let time: Option<i64> = shown(&sky);
     world.setSkyTime(time);
+
     if sky != before || worldTime % day::RESEND == 0
     {
         let _ = send(SKY, Target::Dimension(dimension), &time);
@@ -167,6 +173,7 @@ fn setTime(value: f32, player: Player)
     {
         return;
     };
+
     setWorldTime(timeFor(value.clamp(0.0, 1.0), World { dimension: info.world }.time()));
 }
 
@@ -182,7 +189,9 @@ impl BlockBehavior for SunAltar
         {
             return true;
         }
+
         let sky: Sky = worldData(STATE);
+
         let key: Option<&str> = if Some(ctx.world().dimension) != aetherDimension()
         {
             Some("message")
@@ -203,14 +212,17 @@ impl BlockBehavior for SunAltar
         {
             None
         };
+
         match key
         {
             Some(key) => player.chat(&translate(&format!("aether.gui.sun_altar.{key}"))),
+
             None =>
             {
                 let _ = player.openScreen(NAME, None, Vec::new());
             }
         }
+
         true
     }
 }
@@ -250,19 +262,23 @@ impl Screen for AltarScreen
     {
         let world: World = World { dimension: self.m_dimension };
         let title: &str = "Sun Altar";
+
         draw.texture(GUI, 0, 0, 0, 0, altar::WIDTH, altar::HEIGHT);
         draw.plain((altar::WIDTH - textWidth(title)) / 2, altar::TITLE_Y, title, altar::TITLE_COLOR);
+
         let [left, top] = self.m_button;
         let half: i32 = slider::WIDTH / 2;
         draw.texture(BUTTONS, left, top, 0, slider::BACK_V, half, slider::HEIGHT);
         draw.texture(BUTTONS, left + half, top, slider::BACK_RIGHT_U - half, slider::BACK_V, half, slider::HEIGHT);
         self.m_value = (world.time() % day::LENGTH) as f32 / day::LENGTH as f32;
+
         if self.m_dragging
         {
             self.m_value = self.valueAt(mouse[0]);
             setWorldTime(timeFor(self.m_value, world.time()));
             self.m_value = self.m_value.clamp(0.0, 1.0);
         }
+
         let knob: i32 = left + (self.m_value * slider::TRACK as f32) as i32;
         draw.texture(BUTTONS, knob, top, 0, slider::KNOB_V, slider::KNOB, slider::HEIGHT);
         draw.texture(
@@ -274,6 +290,7 @@ impl Screen for AltarScreen
             slider::KNOB,
             slider::HEIGHT,
         );
+
         let color: u32 = if self.over(mouse[0], mouse[1])
         {
             slider::HOVER_COLOR
@@ -299,19 +316,21 @@ impl Screen for AltarScreen
         if self.m_dragging
         {
             self.m_dragging = false;
+
             let _ = send(SET_TIME, Target::Server, &self.m_value);
         }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let texture = |name: &str| format!("aether:block/{name}");
     ctx.blocks().register(
         NAME,
         BlockSpecBuilder::template("minecraft:block")
             .material("rock")
-            .faces(FaceTextures {
+            .faces(FaceTextures
+            {
                 top: Some(texture("sun_altar_top")),
                 bottom: Some(texture("hellfire_stone")),
                 side: Some(texture("sun_altar_side")),

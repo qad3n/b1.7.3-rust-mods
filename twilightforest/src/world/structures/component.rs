@@ -9,7 +9,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub type Pieces = Vec<Rc<Piece>>;
+pub(crate) type Pieces = Vec<Rc<Piece>>;
 
 mod limits
 {
@@ -26,15 +26,15 @@ mod limits
 
 // a block as the structure code passes it around, a 1.7 or TF name before placing or an id read back from the world
 #[derive(Clone, Copy, Debug)]
-pub enum Blk
+pub(crate) enum Blk
 {
     Named(&'static str),
     Id(i32),
 }
 
-pub const AIR: Blk = Blk::Named("air");
+pub(crate) const AIR: Blk = Blk::Named("air");
 
-pub const fn blk(name: &'static str) -> Blk { Blk::Named(name) }
+pub(crate) const fn blk(name: &'static str) -> Blk { Blk::Named(name) }
 
 thread_local!
 {
@@ -46,16 +46,17 @@ thread_local!
 impl Blk
 {
     // the beta block id and metadata this block places as
-    pub fn resolve(self, meta: i32) -> (i32, i32)
+    pub(crate) fn resolve(self, meta: i32) -> (i32, i32)
     {
         match self
         {
-            Blk::Id(id) => (id, meta),
-            Blk::Named(name) => RESOLVED.with(|cache|
+            Self::Id(id) => (id, meta),
+            Self::Named(name) => RESOLVED.with(|cache|
             {
                 *cache.borrow_mut().entry((name, meta)).or_insert_with(||
                 {
                     let (target, meta): legacy::Resolved = legacy::resolve(name, meta);
+
                     let id: Option<i32> = if name.starts_with("tf:")
                     {
                         Blocks.id(target).ok()
@@ -64,32 +65,36 @@ impl Blk
                     {
                         Blocks.id(&format!("minecraft:{target}")).ok()
                     };
+
                     if id.is_none()
                     {
                         warn(&format!("structure block {name} as {target} is not registered"));
                     }
+
                     (id.unwrap_or(0), meta)
                 })
             }),
         }
     }
 
-    pub fn id(self) -> i32 { self.resolve(0).0 }
+    pub(crate) fn id(self) -> i32 { self.resolve(0).0 }
 
     // the registry name this block places as, for the generators that take a name
-    pub fn qualified(self) -> &'static str
+    pub(crate) fn qualified(self) -> &'static str
     {
-        let Blk::Named(name) = self
+        let Self::Named(name) = self
         else
         {
             return "minecraft:air";
         };
 
         let (target, _): legacy::Resolved = legacy::resolve(name, 0);
+
         if name.starts_with("tf:")
         {
             return target;
         }
+
         QUALIFIED.with(|names|
         {
             *names.borrow_mut().entry(target).or_insert_with(|| String::leak(format!("minecraft:{target}")))
@@ -99,18 +104,18 @@ impl Blk
 
 impl PartialEq for Blk
 {
-    fn eq(&self, other: &Blk) -> bool { self.id() == other.id() }
+    fn eq(&self, other: &Self) -> bool { self.id() == other.id() }
 }
 
 // pieces compared by address, as Java compares component references
-pub trait PieceRef
+pub(crate) trait PieceRef
 {
     fn address(&self) -> Option<*const Piece>;
 }
 
 impl PieceRef for Piece
 {
-    fn address(&self) -> Option<*const Piece> { Some(self as *const Piece) }
+    fn address(&self) -> Option<*const Piece> { Some(self as *const Self) }
 }
 
 impl PieceRef for &Piece
@@ -120,7 +125,7 @@ impl PieceRef for &Piece
 
 impl PieceRef for Rc<Piece>
 {
-    fn address(&self) -> Option<*const Piece> { Some(Rc::as_ptr(self)) }
+    fn address(&self) -> Option<*const Piece> { Some(Self::as_ptr(self)) }
 }
 
 impl PieceRef for Option<Rc<Piece>>
@@ -128,23 +133,23 @@ impl PieceRef for Option<Rc<Piece>>
     fn address(&self) -> Option<*const Piece> { self.as_ref().map(Rc::as_ptr) }
 }
 
-pub fn same(a: &impl PieceRef, b: &impl PieceRef) -> bool { a.address() == b.address() }
+pub(crate) fn same(a: &impl PieceRef, b: &impl PieceRef) -> bool { a.address() == b.address() }
 
 // StructureComponent.findIntersecting
-pub fn intersecting(list: &Pieces, check: StructureBox) -> Option<Rc<Piece>>
+pub(crate) fn intersecting(list: &Pieces, check: StructureBox) -> Option<Rc<Piece>>
 {
     list.iter().find(|piece| piece.m_box.get().intersects(&check)).cloned()
 }
 
 // StructureTFComponent.findIntersectingExcluding
-pub fn intersectingExcept(list: &Pieces, check: StructureBox, exclude: &Piece) -> Option<Rc<Piece>>
+pub(crate) fn intersectingExcept(list: &Pieces, check: StructureBox, exclude: &Piece) -> Option<Rc<Piece>>
 {
     list.iter().find(|piece| !same(*piece, &exclude) && piece.m_box.get().intersects(&check)).cloned()
 }
 
 // StructureTFComponent.getComponentToAddBoundingBox
 #[allow(clippy::too_many_arguments)]
-pub fn boxFor(
+pub(crate) fn boxFor(
     x: i32,
     y: i32,
     z: i32,
@@ -168,7 +173,7 @@ pub fn boxFor(
 
 // StructureTFComponent.getComponentToAddBoundingBox2
 #[allow(clippy::too_many_arguments)]
-pub fn boxFor2(
+pub(crate) fn boxFor2(
     x: i32,
     y: i32,
     z: i32,
@@ -192,7 +197,7 @@ pub fn boxFor2(
 
 // StructureBoundingBox.getComponentToAddBoundingBox, the vanilla rotation the stronghold pieces use
 #[allow(clippy::too_many_arguments)]
-pub fn vanillaBox(
+pub(crate) fn vanillaBox(
     x: i32,
     y: i32,
     z: i32,
@@ -227,7 +232,7 @@ pub fn vanillaBox(
 }
 
 // the StructureBoundingBox methods the SDK box lacks
-pub trait BoxExt
+pub(crate) trait BoxExt
 {
     fn empty() -> StructureBox;
     fn flat(minX: i32, minZ: i32, maxX: i32, maxZ: i32) -> StructureBox;
@@ -243,11 +248,11 @@ pub trait BoxExt
 
 impl BoxExt for StructureBox
 {
-    fn empty() -> StructureBox { StructureBox::new([i32::MAX; 3], [i32::MIN; 3]) }
+    fn empty() -> StructureBox { Self::new([i32::MAX; 3], [i32::MIN; 3]) }
 
     fn flat(minX: i32, minZ: i32, maxX: i32, maxZ: i32) -> StructureBox
     {
-        StructureBox::new([minX, 1, minZ], [maxX, limits::COLUMN_TOP, maxZ])
+        Self::new([minX, 1, minZ], [maxX, limits::COLUMN_TOP, maxZ])
     }
 
     fn intersectsXZ(&self, minX: i32, minZ: i32, maxX: i32, maxZ: i32) -> bool
@@ -271,7 +276,7 @@ impl BoxExt for StructureBox
 }
 
 // the World methods the structure code calls, on the generation world
-pub trait WorldExt
+pub(crate) trait WorldExt
 {
     fn setBlock(&self, x: i32, y: i32, z: i32, block: Blk, meta: i32, flags: i32);
     fn getBlock(&self, x: i32, y: i32, z: i32) -> Blk;
@@ -308,7 +313,7 @@ impl WorldExt for GenWorld
 
 // StructureTFDecorator, the blocks a tower family builds with
 #[derive(Clone, Copy, Debug)]
-pub struct Deco
+pub(crate) struct Deco
 {
     pub m_blockID: Blk,
     pub m_blockMeta: i32,
@@ -330,9 +335,9 @@ pub struct Deco
 
 impl Default for Deco
 {
-    fn default() -> Deco
+    fn default() -> Self
     {
-        Deco
+        Self
         {
             m_blockID: blk("stone"),
             m_blockMeta: 0,
@@ -357,9 +362,9 @@ impl Default for Deco
 impl Deco
 {
     // StructureDecoratorDarkTower
-    pub fn dark_tower() -> Deco
+    pub(crate) fn dark_tower() -> Self
     {
-        Deco
+        Self
         {
             m_blockID: blk("tf:towerWood"),
             m_accentID: blk("tf:towerWood"),
@@ -371,14 +376,14 @@ impl Deco
             m_platformID: blk("tf:towerWood"),
             m_platformMeta: 1,
             m_randomBlocks: Stones::TowerWoods,
-            ..Deco::default()
+            ..Self::default()
         }
     }
 
     // StructureDecoratorIceTower
-    pub fn ice_tower() -> Deco
+    pub(crate) fn ice_tower() -> Self
     {
-        Deco
+        Self
         {
             m_blockID: blk("tf:auroraBlock"),
             m_accentID: blk("planks"),
@@ -391,14 +396,14 @@ impl Deco
             m_floorID: blk("planks"),
             m_floorMeta: 2,
             m_randomBlocks: Stones::AuroraBricks,
-            ..Deco::default()
+            ..Self::default()
         }
     }
 
     // StructureDecoratorMushroomTower
-    pub fn mushroom_tower() -> Deco
+    pub(crate) fn mushroom_tower() -> Self
     {
-        Deco
+        Self
         {
             m_blockID: blk("red_mushroom_block"),
             m_blockMeta: 10,
@@ -409,14 +414,14 @@ impl Deco
             m_pillarID: blk("red_mushroom_block"),
             m_pillarMeta: 10,
             m_floorID: blk("planks"),
-            ..Deco::default()
+            ..Self::default()
         }
     }
 
     // StructureTFDecoratorStronghold
-    pub fn decorator_stronghold() -> Deco
+    pub(crate) fn decorator_stronghold() -> Self
     {
-        Deco
+        Self
         {
             m_blockID: blk("tf:underBrick"),
             m_accentID: blk("tf:underBrick"),
@@ -428,14 +433,14 @@ impl Deco
             m_platformID: blk("stone_slab"),
             m_platformMeta: 13,
             m_randomBlocks: Stones::KnightStones,
-            ..Deco::default()
+            ..Self::default()
         }
     }
 
     // StructureTFDecoratorCastle
-    pub fn decorator_castle() -> Deco
+    pub(crate) fn decorator_castle() -> Self
     {
-        Deco
+        Self
         {
             m_blockID: blk("tf:castleBlock"),
             m_accentID: blk("quartz_block"),
@@ -447,14 +452,14 @@ impl Deco
             m_fenceID: blk("fence"),
             m_stairID: blk("quartz_stairs"),
             m_randomBlocks: Stones::CastleBlocks,
-            ..Deco::default()
+            ..Self::default()
         }
     }
 }
 
 // the BlockSelector subclasses, the selection kept per thread as StructureComponent.BlockSelector keeps it per object
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Stones
+pub(crate) enum Stones
 {
     Stronghold,
     TowerWoods,
@@ -465,10 +470,10 @@ pub enum Stones
 
 impl Stones
 {
-    pub fn stronghold() -> Stones { Stones::Stronghold }
+    pub(crate) fn stronghold() -> Self { Self::Stronghold }
 
     // BlockSelector.selectBlocks
-    pub fn select(self, random: &Random, x: i32, _y: i32, z: i32, wall: bool)
+    pub(crate) fn select(self, random: &Random, x: i32, _y: i32, z: i32, wall: bool)
     {
         let picked: (Blk, i32) = if wall
         {
@@ -481,15 +486,15 @@ impl Stones
         SELECTED.with(|selected| selected.set(picked));
     }
 
-    pub fn block(self) -> Blk { SELECTED.with(|selected| selected.get().0) }
+    pub(crate) fn block(self) -> Blk { SELECTED.with(|selected| selected.get().0) }
 
-    pub fn meta(self) -> i32 { SELECTED.with(|selected| selected.get().1) }
+    pub(crate) fn meta(self) -> i32 { SELECTED.with(|selected| selected.get().1) }
 
     fn pick(self, random: &Random, x: i32, z: i32) -> (Blk, i32)
     {
         match self
         {
-            Stones::Stronghold =>
+            Self::Stronghold =>
             {
                 let roll: f32 = random.nextFloat();
                 match roll
@@ -500,7 +505,8 @@ impl Stones
                     _ => (blk("stonebrick"), 0),
                 }
             }
-            Stones::TowerWoods =>
+
+            Self::TowerWoods =>
             {
                 let roll: f32 = random.nextFloat();
                 let meta: i32 = match roll
@@ -512,8 +518,10 @@ impl Stones
                 };
                 (blk("tf:towerWood"), meta)
             }
-            Stones::AuroraBricks => (blk("tf:auroraBlock"), (x + z).abs() % 16),
-            Stones::KnightStones =>
+
+            Self::AuroraBricks => (blk("tf:auroraBlock"), (x + z).abs() % 16),
+
+            Self::KnightStones =>
             {
                 let roll: f32 = random.nextFloat();
                 (
@@ -532,7 +540,8 @@ impl Stones
                     },
                 )
             }
-            Stones::CastleBlocks =>
+
+            Self::CastleBlocks =>
             {
                 let roll: f32 = random.nextFloat();
                 (
@@ -555,31 +564,31 @@ impl Stones
     }
 }
 
-pub fn mob(name: &str) -> &'static str { legacy::mob(name) }
+pub(crate) fn mob(name: &str) -> &'static str { legacy::mob(name) }
 
-pub fn sin(value: f32) -> f32 { b173_api::terrain::math::sin(value) }
+pub(crate) fn sin(value: f32) -> f32 { b173_api::terrain::math::sin(value) }
 
-pub fn cos(value: f32) -> f32 { b173_api::terrain::math::cos(value) }
+pub(crate) fn cos(value: f32) -> f32 { b173_api::terrain::math::cos(value) }
 
-pub fn sqrtF(value: f32) -> f32 { value.sqrt() }
+pub(crate) fn sqrtF(value: f32) -> f32 { value.sqrt() }
 
-pub fn floorF(value: f32) -> i32 { floor(f64::from(value)) }
+pub(crate) fn floorF(value: f32) -> i32 { floor(f64::from(value)) }
 
-pub fn floor(value: f64) -> i32 { b173_api::terrain::math::floor(value) }
+pub(crate) fn floor(value: f64) -> i32 { b173_api::terrain::math::floor(value) }
 
 // StructureComponent and StructureTFComponent, the helpers every piece builds with
 #[allow(clippy::too_many_arguments)]
 impl Piece
 {
-    pub fn bounds(&self) -> StructureBox { self.m_box.get() }
+    pub(crate) fn bounds(&self) -> StructureBox { self.m_box.get() }
 
-    pub fn depth(&self) -> i32 { self.m_depth.get() }
+    pub(crate) fn depth(&self) -> i32 { self.m_depth.get() }
 
-    pub fn mode(&self) -> i32 { self.m_mode.get() }
+    pub(crate) fn mode(&self) -> i32 { self.m_mode.get() }
 
-    pub fn setMode(&self, mode: i32) { self.m_mode.set(mode); }
+    pub(crate) fn setMode(&self, mode: i32) { self.m_mode.set(mode); }
 
-    pub fn boxed(&self, edit: impl FnOnce(&mut StructureBox))
+    pub(crate) fn boxed(&self, edit: impl FnOnce(&mut StructureBox))
     {
         let mut bounds: StructureBox = self.m_box.get();
         edit(&mut bounds);
@@ -587,14 +596,16 @@ impl Piece
     }
 
     // StructureTFComponent.getXWithOffsetAsIfRotated, getXWithOffset when turned zero
-    pub fn xTurned(&self, x: i32, z: i32, turn: i32) -> i32
+    pub(crate) fn xTurned(&self, x: i32, z: i32, turn: i32) -> i32
     {
         let mode: i32 = self.mode();
         if mode < 0
         {
             return x;
         }
+
         let bounds: StructureBox = self.m_box.get();
+
         match (mode + turn) % 4
         {
             0 => bounds.m_min[0] + x,
@@ -604,14 +615,16 @@ impl Piece
         }
     }
 
-    pub fn zTurned(&self, x: i32, z: i32, turn: i32) -> i32
+    pub(crate) fn zTurned(&self, x: i32, z: i32, turn: i32) -> i32
     {
         let mode: i32 = self.mode();
         if mode < 0
         {
             return z;
         }
+
         let bounds: StructureBox = self.m_box.get();
+
         match (mode + turn) % 4
         {
             0 => bounds.m_min[2] + z,
@@ -621,11 +634,11 @@ impl Piece
         }
     }
 
-    pub fn xAt(&self, x: i32, z: i32) -> i32 { self.xTurned(x, z, 0) }
+    pub(crate) fn xAt(&self, x: i32, z: i32) -> i32 { self.xTurned(x, z, 0) }
 
-    pub fn zAt(&self, x: i32, z: i32) -> i32 { self.zTurned(x, z, 0) }
+    pub(crate) fn zAt(&self, x: i32, z: i32) -> i32 { self.zTurned(x, z, 0) }
 
-    pub fn yAt(&self, y: i32) -> i32
+    pub(crate) fn yAt(&self, y: i32) -> i32
     {
         if self.mode() < 0
         {
@@ -638,18 +651,18 @@ impl Piece
     }
 
     // StructureComponent.placeBlockAtCurrentPosition
-    pub fn placeBlock(&self, world: &GenWorld, block: Blk, meta: i32, x: i32, y: i32, z: i32, sbb: StructureBox)
+    pub(crate) fn placeBlock(&self, world: &GenWorld, block: Blk, meta: i32, x: i32, y: i32, z: i32, sbb: StructureBox)
     {
         self.placeTurned(world, block, meta, x, y, z, 0, sbb);
     }
 
     // StructureComponent.getBlockAtCurrentPosition
-    pub fn getBlock(&self, world: &GenWorld, x: i32, y: i32, z: i32, sbb: StructureBox) -> Blk
+    pub(crate) fn getBlock(&self, world: &GenWorld, x: i32, y: i32, z: i32, sbb: StructureBox) -> Blk
     {
         self.getTurned(world, x, y, z, 0, sbb)
     }
 
-    pub fn placeTurned(
+    pub(crate) fn placeTurned(
         &self,
         world: &GenWorld,
         block: Blk,
@@ -668,7 +681,7 @@ impl Piece
         }
     }
 
-    pub fn getTurned(&self, world: &GenWorld, x: i32, y: i32, z: i32, turn: i32, sbb: StructureBox) -> Blk
+    pub(crate) fn getTurned(&self, world: &GenWorld, x: i32, y: i32, z: i32, turn: i32, sbb: StructureBox) -> Blk
     {
         let (wx, wy, wz): (i32, i32, i32) = (self.xTurned(x, z, turn), self.yAt(y), self.zTurned(x, z, turn));
         if sbb.contains(wx, wy, wz)
@@ -687,7 +700,7 @@ impl Piece
     }
 
     // StructureComponent.fillWithMetadataBlocks
-    pub fn fillMeta(
+    pub(crate) fn fillMeta(
         &self,
         world: &GenWorld,
         sbb: StructureBox,
@@ -714,6 +727,7 @@ impl Piece
                     {
                         continue;
                     }
+
                     let wall: bool = y == minY || y == maxY || x == minX || x == maxX || z == minZ || z == maxZ;
                     if wall
                     {
@@ -729,7 +743,7 @@ impl Piece
     }
 
     // StructureComponent.fillWithBlocks
-    pub fn fill(
+    pub(crate) fn fill(
         &self,
         world: &GenWorld,
         sbb: StructureBox,
@@ -748,7 +762,7 @@ impl Piece
     }
 
     // StructureComponent.fillWithAir
-    pub fn fillAir(
+    pub(crate) fn fillAir(
         &self,
         world: &GenWorld,
         sbb: StructureBox,
@@ -773,7 +787,7 @@ impl Piece
     }
 
     // StructureComponent.fillWithRandomizedBlocks
-    pub fn fillSelected(
+    pub(crate) fn fillSelected(
         &self,
         world: &GenWorld,
         sbb: StructureBox,
@@ -798,6 +812,7 @@ impl Piece
                     {
                         continue;
                     }
+
                     let wall: bool = y == minY || y == maxY || x == minX || x == maxX || z == minZ || z == maxZ;
                     stones.select(random, x, y, z, wall);
                     self.placeBlock(world, stones.block(), stones.meta(), x, y, z, sbb);
@@ -807,7 +822,7 @@ impl Piece
     }
 
     // StructureComponent.randomlyFillWithBlocks
-    pub fn fillRandomly(
+    pub(crate) fn fillRandomly(
         &self,
         world: &GenWorld,
         sbb: StructureBox,
@@ -834,6 +849,7 @@ impl Piece
                     {
                         continue;
                     }
+
                     let wall: bool = y == minY || y == maxY || x == minX || x == maxX || z == minZ || z == maxZ;
                     self.placeBlock(world, if wall { edge } else { inside }, 0, x, y, z, sbb);
                 }
@@ -842,7 +858,7 @@ impl Piece
     }
 
     // StructureComponent.randomlyPlaceBlock
-    pub fn placeRandomly(
+    pub(crate) fn placeRandomly(
         &self,
         world: &GenWorld,
         sbb: StructureBox,
@@ -862,13 +878,13 @@ impl Piece
     }
 
     // StructureComponent.fillCurrentPositionBlocksDownwards
-    pub fn fillDown(&self, world: &GenWorld, block: Blk, meta: i32, x: i32, y: i32, z: i32, sbb: StructureBox)
+    pub(crate) fn fillDown(&self, world: &GenWorld, block: Blk, meta: i32, x: i32, y: i32, z: i32, sbb: StructureBox)
     {
         self.fillDownTurned(world, block, meta, x, y, z, 0, sbb);
     }
 
     // StructureTFComponent.fillToGroundRotated
-    pub fn fillDownTurned(
+    pub(crate) fn fillDownTurned(
         &self,
         world: &GenWorld,
         block: Blk,
@@ -894,7 +910,7 @@ impl Piece
     }
 
     // StructureComponent.isLiquidInStructureBoundingBox
-    pub fn liquidIn(&self, world: &GenWorld, sbb: StructureBox) -> bool
+    pub(crate) fn liquidIn(&self, world: &GenWorld, sbb: StructureBox) -> bool
     {
         let bounds: StructureBox = self.m_box.get();
         let min: [i32; 3] = [
@@ -902,11 +918,13 @@ impl Piece
             bounds.m_min[1].max(sbb.m_min[1]) - 1,
             bounds.m_min[2].max(sbb.m_min[2]) - 1,
         ];
+
         let max: [i32; 3] = [
             bounds.m_max[0].min(sbb.m_max[0]) + 1,
             bounds.m_max[1].min(sbb.m_max[1]) + 1,
             bounds.m_max[2].min(sbb.m_max[2]) + 1,
         ];
+
         for x in min[0]..=max[0]
         {
             for z in min[2]..=max[2]
@@ -917,6 +935,7 @@ impl Piece
                 }
             }
         }
+
         for x in min[0]..=max[0]
         {
             for y in min[1]..=max[1]
@@ -927,6 +946,7 @@ impl Piece
                 }
             }
         }
+
         for z in min[2]..=max[2]
         {
             for y in min[1]..=max[1]
@@ -937,11 +957,12 @@ impl Piece
                 }
             }
         }
+
         false
     }
 
     // StructureTFComponent.fillBlocksRotated
-    pub fn fillTurned(
+    pub(crate) fn fillTurned(
         &self,
         world: &GenWorld,
         sbb: StructureBox,
@@ -968,7 +989,7 @@ impl Piece
         }
     }
 
-    pub fn fillAirTurned(
+    pub(crate) fn fillAirTurned(
         &self,
         world: &GenWorld,
         sbb: StructureBox,
@@ -985,7 +1006,7 @@ impl Piece
     }
 
     // StructureTFComponent.randomlyFillBlocksRotated
-    pub fn fillRandomlyTurned(
+    pub(crate) fn fillRandomlyTurned(
         &self,
         world: &GenWorld,
         sbb: StructureBox,
@@ -1024,12 +1045,30 @@ impl Piece
     }
 
     // StructureTFComponent.placeSpawnerAtCurrentPosition
-    pub fn placeSpawner(&self, world: &GenWorld, _random: &Random, x: i32, y: i32, z: i32, mob: &str, sbb: StructureBox)
+    pub(crate) fn placeSpawner(
+        &self,
+        world: &GenWorld,
+        _random: &Random,
+        x: i32,
+        y: i32,
+        z: i32,
+        mob: &str,
+        sbb: StructureBox,
+    )
     {
         self.placeSpawnerRotated(world, x, y, z, 0, mob, sbb);
     }
 
-    pub fn placeSpawnerRotated(&self, world: &GenWorld, x: i32, y: i32, z: i32, turn: i32, mob: &str, sbb: StructureBox)
+    pub(crate) fn placeSpawnerRotated(
+        &self,
+        world: &GenWorld,
+        x: i32,
+        y: i32,
+        z: i32,
+        turn: i32,
+        mob: &str,
+        sbb: StructureBox,
+    )
     {
         let (wx, wy, wz): (i32, i32, i32) = (self.xTurned(x, z, turn), self.yAt(y), self.zTurned(x, z, turn));
         let spawner: i32 = world.id("minecraft:mob_spawner");
@@ -1045,7 +1084,7 @@ impl Piece
     }
 
     // StructureTFComponent.placeTreasureAtCurrentPosition, beta has no trapped chest so every chest is plain
-    pub fn placeTreasure(
+    pub(crate) fn placeTreasure(
         &self,
         world: &GenWorld,
         random: &Random,
@@ -1059,7 +1098,7 @@ impl Piece
         self.placeTreasureTurned(world, random, x, y, z, 0, table, sbb);
     }
 
-    pub fn placeTreasureTrapped(
+    pub(crate) fn placeTreasureTrapped(
         &self,
         world: &GenWorld,
         random: &Random,
@@ -1074,7 +1113,7 @@ impl Piece
         self.placeTreasureTurned(world, random, x, y, z, 0, table, sbb);
     }
 
-    pub fn placeTreasureRotated(
+    pub(crate) fn placeTreasureRotated(
         &self,
         world: &GenWorld,
         x: i32,
@@ -1088,7 +1127,7 @@ impl Piece
         self.placeTreasureTurned(world, &Random::withSeed(0), x, y, z, turn, table, sbb);
     }
 
-    pub fn placeTreasureRotatedTrapped(
+    pub(crate) fn placeTreasureRotatedTrapped(
         &self,
         world: &GenWorld,
         x: i32,
@@ -1123,7 +1162,16 @@ impl Piece
     }
 
     // StructureTFComponent.placeSignAtCurrentPosition, the sign stands without text since the port has no sign text call
-    pub fn placeSign(&self, world: &GenWorld, x: i32, y: i32, z: i32, _first: &str, _second: &str, sbb: StructureBox)
+    pub(crate) fn placeSign(
+        &self,
+        world: &GenWorld,
+        x: i32,
+        y: i32,
+        z: i32,
+        _first: &str,
+        _second: &str,
+        sbb: StructureBox,
+    )
     {
         let (wx, wy, wz): (i32, i32, i32) = (self.xAt(x, z), self.yAt(y), self.zAt(x, z));
         if sbb.contains(wx, wy, wz) && world.block(wx, wy, wz) != world.id("minecraft:standing_sign")
@@ -1133,20 +1181,21 @@ impl Piece
     }
 
     // StructureTFComponent.offsetTowerCoords
-    pub fn offsetTower(&self, x: i32, y: i32, z: i32, size: i32, dir: i32) -> Vec<i32>
+    pub(crate) fn offsetTower(&self, x: i32, y: i32, z: i32, size: i32, dir: i32) -> Vec<i32>
     {
         self.offsetTowerBase(x, y, z, size, dir).to_vec()
     }
 
     // StructureTFComponent.offsetTowerCCoords, which the castle and troll cave pieces override
-    pub fn offsetTowerAt(&self, x: i32, y: i32, z: i32, size: i32, dir: i32) -> [i32; 3]
+    pub(crate) fn offsetTowerAt(&self, x: i32, y: i32, z: i32, size: i32, dir: i32) -> [i32; 3]
     {
         self.offsetTowerCCoords(x, y, z, size, dir)
     }
 
-    pub fn offsetTowerBase(&self, x: i32, y: i32, z: i32, size: i32, dir: i32) -> [i32; 3]
+    pub(crate) fn offsetTowerBase(&self, x: i32, y: i32, z: i32, size: i32, dir: i32) -> [i32; 3]
     {
         let (dx, dy, dz): (i32, i32, i32) = (self.xAt(x, z), self.yAt(y), self.zAt(x, z));
+
         match dir
         {
             0 => [dx + 1, dy - 1, dz - size / 2],
@@ -1158,26 +1207,30 @@ impl Piece
     }
 
     // StructureTFComponent.getStairMeta
-    pub fn stairMeta(&self, dir: i32) -> i32 { [0, 2, 1, 3][((self.mode() + dir) % 4) as usize] }
+    pub(crate) fn stairMeta(&self, dir: i32) -> i32 { [0, 2, 1, 3][((self.mode() + dir) % 4) as usize] }
 
     // StructureTFComponent.getLadderMeta
-    pub fn ladderMeta(&self, dir: i32) -> i32 { [4, 2, 5, 3][((self.mode() + dir) % 4) as usize] }
+    pub(crate) fn ladderMeta(&self, dir: i32) -> i32 { [4, 2, 5, 3][((self.mode() + dir) % 4) as usize] }
 
-    pub fn ladderMetaTurned(&self, dir: i32, turn: i32) -> i32 { self.ladderMeta(dir + turn) }
+    pub(crate) fn ladderMetaTurned(&self, dir: i32, turn: i32) -> i32 { self.ladderMeta(dir + turn) }
 
     // StructureTFComponent.nullifySkyLight, beta relights generated chunks so the dark pockets come from the walls alone
-    pub fn darken(&self, _world: &GenWorld) {}
+    pub(crate) fn darken(&self, _world: &GenWorld) {}
 
-    pub fn darkenAt(&self, _world: &GenWorld, _sx: i32, _sy: i32, _sz: i32, _dx: i32, _dy: i32, _dz: i32) {}
+    pub(crate) fn darkenAt(&self, _world: &GenWorld, _sx: i32, _sy: i32, _sz: i32, _dx: i32, _dy: i32, _dz: i32) {}
 
     // StructureTFComponent.getAverageGroundLevel, which the labyrinth entrance pieces override
-    pub fn groundLevel(&self, world: &GenWorld, sbb: StructureBox) -> i32 { self.getAverageGroundLevel(world, sbb) }
+    pub(crate) fn groundLevel(&self, world: &GenWorld, sbb: StructureBox) -> i32
+    {
+        self.getAverageGroundLevel(world, sbb)
+    }
 
-    pub fn groundLevelBase(&self, world: &GenWorld, sbb: StructureBox) -> i32
+    pub(crate) fn groundLevelBase(&self, world: &GenWorld, sbb: StructureBox) -> i32
     {
         let bounds: StructureBox = self.m_box.get();
         let sea: i32 = crate::world::terrain::SEA_LEVEL;
         let (mut total, mut count): (i32, i32) = (0, 0);
+
         for z in bounds.m_min[2]..=bounds.m_max[2]
         {
             for x in bounds.m_min[0]..=bounds.m_max[0]
@@ -1189,11 +1242,12 @@ impl Piece
                 }
             }
         }
+
         if count == 0 { -1 } else { total / count }
     }
 
     // StructureTFComponent.getSampledDirtLevel, the first ground, stone or grass block down the clip's middle
-    pub fn dirtLevel(&self, world: &GenWorld, sbb: StructureBox) -> i32
+    pub(crate) fn dirtLevel(&self, world: &GenWorld, sbb: StructureBox) -> i32
     {
         let (x, z): (i32, i32) = (sbb.centerX(), sbb.centerZ());
         let ground: [i32; 4] = [
@@ -1207,7 +1261,7 @@ impl Piece
 }
 
 // a value java may leave null, read where the java code has already checked it
-pub trait Nullable<T>
+pub(crate) trait Nullable<T>
 {
     fn piece(&self) -> &T;
 }
@@ -1219,7 +1273,7 @@ impl<T> Nullable<T> for Option<T>
 
 // the Material classes structure code tests blocks against
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Material
+pub(crate) enum Material
 {
     Air,
     Grass,
@@ -1232,7 +1286,7 @@ pub enum Material
 impl Blk
 {
     // Block.getMaterial for the materials the structures ask about
-    pub fn material(self) -> Material
+    pub(crate) fn material(self) -> Material
     {
         let id: i32 = self.id();
         match id
@@ -1247,16 +1301,19 @@ impl Blk
     }
 
     // Block.isReplaceable at the spot, the block read from there
-    pub fn isReplaceable(self, world: &GenWorld, x: i32, y: i32, z: i32) -> bool { world.isReplaceable(x, y, z) }
+    pub(crate) fn isReplaceable(self, world: &GenWorld, x: i32, y: i32, z: i32) -> bool { world.isReplaceable(x, y, z) }
 
     // Block.canBeReplacedByLeaves, anything that does not fill its space
-    pub fn canBeReplacedByLeaves(self, world: &GenWorld, x: i32, y: i32, z: i32) -> bool { !world.isOpaque(x, y, z) }
+    pub(crate) fn canBeReplacedByLeaves(self, world: &GenWorld, x: i32, y: i32, z: i32) -> bool
+    {
+        !world.isOpaque(x, y, z)
+    }
 
     // Block.isNormalCube
-    pub fn isNormalCube(self, world: &GenWorld, x: i32, y: i32, z: i32) -> bool { world.isOpaque(x, y, z) }
+    pub(crate) fn normalCube(self, world: &GenWorld, x: i32, y: i32, z: i32) -> bool { world.isOpaque(x, y, z) }
 
     // Block.canPlaceBlockAt for the fireflies a trunk carries, an empty spot
-    pub fn canPlaceAt(self, world: &GenWorld, x: i32, y: i32, z: i32) -> bool { world.isAir(x, y, z) }
+    pub(crate) fn canPlaceAt(self, world: &GenWorld, x: i32, y: i32, z: i32) -> bool { world.isAir(x, y, z) }
 }
 
 thread_local!
@@ -1265,10 +1322,10 @@ thread_local!
 }
 
 // World.rand, the shared world random structures borrow for trees and loot
-pub fn worldRandom() -> &'static Random { WORLD_RANDOM.with(|random| *random) }
+pub(crate) fn worldRandom() -> &'static Random { WORLD_RANDOM.with(|random| *random) }
 
 // a mob a structure places while it generates, EntityCreature.setHomeArea kept as the boss home
-pub fn spawnHome(world: &GenWorld, kind: &str, x: i32, y: i32, z: i32, home: bool)
+pub(crate) fn spawnHome(world: &GenWorld, kind: &str, x: i32, y: i32, z: i32, home: bool)
 {
     let center: [f64; 3] = [f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5];
     let Some(spawned) = crate::entities::spawnAt(world.m_world, kind, center, 0.0)
@@ -1285,7 +1342,7 @@ pub fn spawnHome(world: &GenWorld, kind: &str, x: i32, y: i32, z: i32, home: boo
 
 // EnumDarkTowerDoor
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Door
+pub(crate) enum Door
 {
     Vanishing,
     Reappearing,
@@ -1293,4 +1350,4 @@ pub enum Door
 }
 
 // Facing.offsetsXForSide, offsetsYForSide and offsetsZForSide by side
-pub const FACING: [[i32; 3]; 6] = [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]];
+pub(crate) const FACING: [[i32; 3]; 6] = [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]];

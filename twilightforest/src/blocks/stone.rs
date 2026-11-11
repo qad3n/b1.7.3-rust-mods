@@ -242,6 +242,7 @@ impl BlockBehavior for Wearing
         {
             crate::items::wear(player, maze::WEAR, &[item::MAZEBREAKER_PICK]);
         }
+
         let _ = ctx.world().dropBlockItems(ctx.pos(), ctx.block(), i32::from(ctx.meta()));
     }
 }
@@ -267,6 +268,7 @@ impl BlockBehavior for AuroraTint
     fn colorMultiplier(&self, ctx: &mut BlockCtx) -> u32
     {
         let color: u32 = colors::aurora(ctx.pos().x, ctx.pos().z);
+
         if self.m_pale
         {
             colors::pale(color)
@@ -291,6 +293,7 @@ fn auroraVariants() -> Vec<StateVariantSpec>
             {
                 aurora::PHASES - 1 - phase
             };
+
             StateVariantSpec
             {
                 when: when("phase", &phase.to_string()),
@@ -313,6 +316,7 @@ fn registerAurora(ctx: &mut RegisterCtx) -> Result<()>
             .texture(&texture("aurorabrick0"))
             .behavior(AuroraTint { m_pale: false }),
     )?;
+
     let names: Vec<String> = phases();
     let values: Vec<&str> = names.iter().map(String::as_str).collect();
     ctx.blocks().states(
@@ -324,6 +328,7 @@ fn registerAurora(ctx: &mut RegisterCtx) -> Result<()>
             ..BlockStatesSpec::default()
         },
     )?;
+
     let slab: Cuboid =
         Cuboid { from: [0.0; 3], to: [super::PIXELS, super::PIXELS / 2.0, super::PIXELS], ..Cuboid::default() };
     super::put(
@@ -341,7 +346,7 @@ fn registerAurora(ctx: &mut RegisterCtx) -> Result<()>
 // BlockTFShield: unbreakable, the face it was placed against shows the inside
 // the six facings, then the latent shield the stronghold access chamber lays, outside on every face
 const SIDES: [&str; 7] = ["down", "up", "north", "south", "west", "east", "none"];
-pub const SHIELD_LATENT: i32 = 6;
+pub(crate) const SHIELD_LATENT: i32 = 6;
 
 // BlockTFShield, only the inside face can be dug, as fast as the player digs stone and a third slower
 struct Shield;
@@ -474,6 +479,7 @@ mod knightmetal
     {
         let (step, size, hair): (f32, f32, f32) = (6.0, 4.0, 1.0 / 64.0);
         let mut cuboids: Vec<Cuboid> = vec![shell()];
+
         for x in 0..3
         {
             for y in 0..3
@@ -486,6 +492,7 @@ mod knightmetal
                 }
             }
         }
+
         cuboids
     }
 }
@@ -543,14 +550,16 @@ impl BlockBehavior for Trollsteinn
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     // no block spec names the lit face, asking for its slot now gives it room in the atlas
     let _ = b173_api::world::terrainSlot(STEINN_LIT);
+
     for row in MAZE.iter().chain(CASTLE.iter())
     {
         super::put(ctx, row.m_name, super::build(row).behavior(Wearing))?;
     }
+
     for row in &PLAIN
     {
         let spec: BlockSpecBuilder = super::build(row);
@@ -565,6 +574,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
         super::put(ctx, row.m_name, spec)?;
     }
+
     registerAurora(ctx)?;
     registerShield(ctx)?;
     registerSpecial(ctx)

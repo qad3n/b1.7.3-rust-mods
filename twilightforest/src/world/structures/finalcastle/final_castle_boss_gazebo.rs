@@ -1,7 +1,7 @@
 // draft from ComponentTFFinalCastleBossGazebo.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(random: &Random, i: i32, keep: &Piece) -> Rc<Piece>
+pub(crate) fn new(random: &Random, i: i32, keep: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::FinalCastleBossGazebo);
     init(&this, random, i, keep);
@@ -9,7 +9,7 @@ pub fn new(random: &Random, i: i32, keep: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFFinalCastleBossGazebo constructor
-pub fn init(this: &Piece, _random: &Random, i: i32, keep: &Piece)
+pub(crate) fn init(this: &Piece, _random: &Random, i: i32, keep: &Piece)
 {
     this.m_depth.set(i);
     this.m_spawnListIndex.set(-1);
@@ -21,7 +21,7 @@ pub fn init(this: &Piece, _random: &Random, i: i32, keep: &Piece)
 }
 
 // ComponentTFFinalCastleBossGazebo.func_74861_a
-pub fn build(this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random)
+pub(crate) fn build(this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set(Deco::decorator_castle());
     this.m_deco.get().m_blockID = blk("tf:castleMagic");
@@ -31,7 +31,7 @@ pub fn build(this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random
 }
 
 // ComponentTFFinalCastleBossGazebo.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for rotation in 0..4
     {
@@ -49,6 +49,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             rotation,
         );
     }
+
     this.fillMeta(
         world,
         sbb,
@@ -65,5 +66,5 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
         false,
     );
     this.placeSign(world, 10, 0, 10, "Final Boss Here", "You win!", sbb);
-    return true;
+    true
 }

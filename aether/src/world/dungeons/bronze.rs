@@ -46,7 +46,9 @@ struct Palette
 fn palette(world: &GenWorld) -> Palette
 {
     let pick = |name: &'static str| (world.id(name), 0);
-    Palette {
+
+    Palette
+    {
         m_locked: pick("locked_carved_stone"),
         m_lockedLight: pick("locked_sentry_stone"),
         m_main: pick("carved_stone"),
@@ -70,13 +72,16 @@ struct Bronze<'a>
 }
 
 // the rooms and tubes it built, none when the spot failed its checks
-pub fn generate(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> Vec<StructureBox>
+pub(crate) fn generate(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> Vec<StructureBox>
 {
     let mut writer: Writer = Writer::dungeon(world, random);
     writer.m_replaceAir = true;
     writer.m_replaceSolid = true;
+
     let roomMaximum: i32 = random.nextIntBounded(size::EXTRA_ROOMS) + size::MIN_ROOMS;
-    let mut dungeon: Bronze = Bronze {
+
+    let mut dungeon: Bronze = Bronze
+    {
         m_writer: writer,
         m_palette: palette(world),
         m_needsCorridor: false,
@@ -93,8 +98,8 @@ impl Bronze<'_>
 
     fn bossRoom(&mut self, i: i32, j: i32, k: i32) -> bool
     {
-        if !self.m_writer.isBoxSolid([i, j - size::BOSS_CHECK_DROP, k], size::BOSS_CHECK)
-            || !self.m_writer.isBoxSolid([i + 20, j, k + 2], size::ENTRY_ROOM)
+        if !self.m_writer.boxSolid([i, j - size::BOSS_CHECK_DROP, k], size::BOSS_CHECK)
+            || !self.m_writer.boxSolid([i + 20, j, k + 2], size::ENTRY_ROOM)
         {
             return false;
         }
@@ -103,6 +108,7 @@ impl Bronze<'_>
         {
             return false;
         }
+
         self.m_writer.setChance(self.m_palette.m_locked, self.m_palette.m_lockedLight, size::LOCKED_CHANCE);
         self.m_writer.hollowBox([i, j, k], size::BOSS_ROOM);
         self.m_writer.hollowBox([i + 6, j - 2, k + 6], size::VAULT);
@@ -120,6 +126,7 @@ impl Bronze<'_>
     fn traps(&self, x: i32, y: i32, z: i32)
     {
         const SPACING: usize = 3;
+
         for p in (x + 2..x + 10).step_by(SPACING)
         {
             for q in (z + 2..z + 10).step_by(SPACING)
@@ -138,23 +145,27 @@ impl Bronze<'_>
             2 => (i + 2, k + 20, [i + 5, j, k + 15], 2),
             _ => (i + 2, k - 16, [i + 5, j, k - 5], 2),
         };
-        if !self.m_writer.isBoxSolid([x, j, z], size::ENTRY_ROOM)
+        if !self.m_writer.boxSolid([x, j, z], size::ENTRY_ROOM)
         {
             return true;
         }
+
         self.m_writer.setChance(self.m_palette.m_main, self.m_palette.m_mainLight, size::LOCKED_CHANCE);
         self.m_writer.hollowBox([x, j, z], size::ENTRY_ROOM);
         self.m_writer.setChance(self.m_palette.m_filler, self.m_palette.m_fillerMossy, size::FILLER_CHANCE);
         self.m_writer.squareTube(tube, size::TUBE, angle);
         self.traps(x, j, z);
+
         if !self.determineRoomPosition(x, j, z) && self.m_roomCount == 0
         {
             return false;
         }
+
         if self.m_needsCorridor
         {
             self.endCorridor(x, j, z);
         }
+
         true
     }
 
@@ -165,8 +176,10 @@ impl Bronze<'_>
             self.m_needsCorridor = true;
             return true;
         }
+
         let mut sides: [i32; 4] = SIDES;
         shuffle(self.random(), &mut sides);
+
         for side in sides
         {
             if self.roomWithSide(x, y, z, side)
@@ -174,6 +187,7 @@ impl Bronze<'_>
                 return true;
             }
         }
+
         self.m_needsCorridor = true;
         false
     }
@@ -197,28 +211,34 @@ impl Bronze<'_>
         let p: i32 = x + 5 + random.nextIntBounded(2);
         let q: i32 = z + 5 + random.nextIntBounded(2);
         let world: &GenWorld = self.m_writer.m_world;
+
         if kind == 0
         {
             self.m_writer.put(p, y + 2, q, (world.id("chest_mimic"), 0));
             return;
         }
+
         if world.block(p, y + 2, q) != 0
         {
             return;
         }
+
         self.m_writer.put(p, y + 2, q, (world.id("minecraft:chest"), 0));
         fillChest(world, random, BlockPos::new(p, y + 2, q), loot::bronzeRoom);
     }
 
     fn nextRoom(&mut self, x: i32, y: i32, z: i32, direction: i32) -> bool
     {
-        if !self.m_writer.isBoxSolid([x, y, z], size::ROOM)
+        if !self.m_writer.boxSolid([x, y, z], size::ROOM)
         {
             return false;
         }
+
         self.m_writer.setChance(self.m_palette.m_main, self.m_palette.m_mainLight, size::LOCKED_CHANCE);
         self.m_writer.hollowBox([x, y, z], size::ROOM);
+
         let main: i32 = self.m_palette.m_main.0;
+
         for p in x..x + size::ROOM[0]
         {
             for q in y..y + size::ROOM[1]
@@ -233,7 +253,9 @@ impl Bronze<'_>
                 }
             }
         }
+
         const CORNERS: usize = 7;
+
         for p in (x + 2..x + 10).step_by(CORNERS)
         {
             for q in (z + 2..z + 10).step_by(CORNERS)
@@ -241,9 +263,11 @@ impl Bronze<'_>
                 self.m_writer.put(p, y, q, (self.m_palette.m_trap, 0));
             }
         }
+
         self.m_writer.planeY(x + 4, y + 1, z + 4, 4, 4);
         self.roomChest(x, y, z);
         self.m_writer.setChance(self.m_palette.m_filler, self.m_palette.m_fillerMossy, size::FILLER_CHANCE);
+
         let (tube, angle): ([i32; 3], i32) = match direction
         {
             0 => ([x - 5, y, z + 3], 0),
@@ -271,7 +295,9 @@ impl Bronze<'_>
         {
             return false;
         }
+
         self.m_writer.m_replaceAir = false;
+
         // start, step, the box ahead checked for solid stone and the slice the tunnel occupies
         let (start, step, ahead, aheadSize, slice): ([i32; 3], [i32; 3], [i32; 3], [i32; 3], [i32; 3]) = match side
         {
@@ -281,34 +307,40 @@ impl Bronze<'_>
             _ => ([x + 3, y, z], [0, 0, -1], [0, 0, -1], [6, 8, 1], [6, 8, 1]),
         };
         let shifted = |at: [i32; 3]| [at[0] + ahead[0], at[1], at[2] + ahead[2]];
-        if !self.m_writer.isBoxSolid(shifted(start), aheadSize)
+        if !self.m_writer.boxSolid(shifted(start), aheadSize)
         {
             return false;
         }
+
         let along: usize = if step[0] != 0 { 0 } else { 2 };
         let room: [i32; 3] = [x, y, z];
         let lockedMain: i32 = self.m_palette.m_lockedMain;
         let mut at: [i32; 3] = start;
         let mut tunnelling: bool = true;
         let mut tooLong: bool = false;
+
         while tunnelling
         {
-            if self.m_writer.isBoxEmpty(at, slice)
+            if self.m_writer.boxEmpty(at, slice)
             {
                 tunnelling = false;
             }
+
             let next: [i32; 3] = shifted(at);
             if self.m_writer.hasBlock(next, aheadSize, self.m_palette.m_main.0)
                 || self.m_writer.hasBlock(next, aheadSize, lockedMain)
             {
                 tunnelling = false;
             }
+
             if (at[along] - room[along]).abs() > size::MAX_TUNNEL
             {
                 tooLong = true;
                 tunnelling = false;
             }
+
             self.m_writer.setChance(self.m_palette.m_filler, self.m_palette.m_fillerMossy, size::FILLER_CHANCE);
+
             let (wall, hole): ([i32; 3], [i32; 3]) = if along == 0
             {
                 ([1, 8, 6], [1, 6, 4])
@@ -319,6 +351,7 @@ impl Bronze<'_>
             };
             self.m_writer.fill(at, wall);
             self.m_writer.setChance(AIR, AIR, 1);
+
             let inset: [i32; 3] = if along == 0
             {
                 [at[0], at[1] + 1, at[2] + 1]
@@ -330,23 +363,26 @@ impl Bronze<'_>
             self.m_writer.fill(inset, hole);
             at[along] += step[along];
         }
+
         if tooLong
         {
             return false;
         }
+
         self.m_needsCorridor = false;
         true
     }
 }
 
 // a few loot rolls into random slots of a chest, the same slot may be rolled twice
-pub fn fillChest(world: &GenWorld, random: &Random, pos: BlockPos, table: fn(&Random) -> loot::Loot)
+pub(crate) fn fillChest(world: &GenWorld, random: &Random, pos: BlockPos, table: fn(&Random) -> loot::Loot)
 {
     // the Java loop draws a fresh bound every pass
     let mut roll: i32 = 0;
     while roll < size::MIN_LOOT + random.nextIntBounded(size::LOOT_SPREAD)
     {
         roll += 1;
+
         let slot: i32 = random.nextIntBounded(size::CHEST_SLOTS);
         let (name, count): loot::Loot = table(random);
         let _ = world.m_world.setTileSlot(pos, slot, Some(ItemStack::of(name, count)));

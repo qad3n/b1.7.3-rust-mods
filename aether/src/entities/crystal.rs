@@ -10,7 +10,7 @@ const NAME: &str = "crystal";
 
 // EnumCrystalType: what a crystal sounds and looks like when it bursts or fades
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Kind
+pub(crate) enum Kind
 {
     #[default]
     Fire,
@@ -28,20 +28,23 @@ struct KindRow
 }
 
 const KINDS: [KindRow; 4] = [
-    KindRow {
+    KindRow
+    {
         m_kind: Kind::Fire,
         m_texture: "aether:entity/crystals/fire",
         m_fade: ("random.fizz", "largesmoke"),
         m_burst: ("random.explode", "flame"),
     },
-    KindRow {
+    KindRow
+    {
         m_kind: Kind::Ice,
         m_texture: "aether:entity/crystals/ice",
         m_fade: ("random.glass", ""),
         m_burst: ("random.glass", "snowshovel"),
     },
     KindRow { m_kind: Kind::Thunder, m_texture: "aether:entity/crystals/thunder", m_fade: ("", ""), m_burst: ("", "") },
-    KindRow {
+    KindRow
+    {
         m_kind: Kind::Cloud,
         m_texture: "aether:entity/crystals/cloud",
         m_fade: ("random.glass", ""),
@@ -96,7 +99,7 @@ mod angle
 
 // what clients draw: the kind and where each of the three shells starts spinning
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
-pub struct Look
+pub(crate) struct Look
 {
     pub m_kind: Kind,
     m_spin: [f32; 3],
@@ -112,7 +115,8 @@ struct Flight
     m_target: Option<i32>,
 }
 
-thread_local! {
+thread_local!
+{
     static FLIGHTS: RefCell<HashMap<i32, Flight>> = RefCell::new(HashMap::new());
 }
 
@@ -130,13 +134,13 @@ fn drift(world: World) -> f64
 }
 
 // EntityCrystal constructors: a random drift on each axis, ice keeps level and slower, thunder hunts its target
-pub fn spawn(world: World, kind: Kind, pos: [f64; 3], target: Option<i32>, shooter: Option<i32>)
+pub(crate) fn spawn(world: World, kind: Kind, pos: [f64; 3], target: Option<i32>, shooter: Option<i32>)
 {
     spawnMoving(world, kind, pos, None, target, shooter);
 }
 
 // a crystal sent off along a set motion, as mini clouds fire them, instead of a random drift
-pub fn spawnMoving(
+pub(crate) fn spawnMoving(
     world: World,
     kind: Kind,
     pos: [f64; 3],
@@ -147,19 +151,24 @@ pub fn spawnMoving(
 {
     let mut motion: [f64; 3] = [drift(world), drift(world), drift(world)];
     let spin: [f32; 3] = [0.0; 3].map(|_| fraction(world) as f32 * crystal::SPIN_SPREAD);
+
     if kind == Kind::Ice
     {
         motion = [motion[0] / crystal::ICE_SLOW, 0.0, motion[2] / crystal::ICE_SLOW];
     }
+
     let Ok(entity) = world.spawnEntity(&format!("aether:{NAME}"), pos)
     else
     {
         return;
     };
+
     let _ = entity.setSynced(&Look { m_kind: kind, m_spin: spin });
+
     setFlight(
         entity,
-        Flight {
+        Flight
+        {
             m_motion: heading.unwrap_or(motion),
             m_wasHit: kind == Kind::Cloud,
             m_shooter: shooter,
@@ -181,6 +190,7 @@ fn moveTowards(entity: Entity, info: &EntityInfo, target: &EntityInfo, speed: f6
     let mut motion: [f64; 3] = info.motion;
     motion[0] -= heading.sin() * speed;
     motion[2] += heading.cos() * speed;
+
     let chest: f64 = target.pos[1] - crystal::TARGET_EYES;
     if chest < bottom - crystal::LEVEL_BAND
     {
@@ -194,11 +204,13 @@ fn moveTowards(entity: Entity, info: &EntityInfo, target: &EntityInfo, speed: f6
     {
         motion[1] += (chest - bottom) * (speed / 2.0);
     }
+
     if entity.flag(EntityField::OnGround)
     {
         entity.setField(EntityField::OnGround, 0.0);
         motion[1] = crystal::HOP;
     }
+
     let _ = entity.setMotion(motion);
 }
 
@@ -213,10 +225,12 @@ fn face(entity: Entity, info: &EntityInfo, target: &EntityInfo)
     {
         turn -= angle::FULL;
     }
+
     if turn < -angle::HALF
     {
         turn += angle::FULL;
     }
+
     entity.setField(EntityField::Yaw, (current + turn.clamp(-crystal::TURN, crystal::TURN)) as f64);
 }
 
@@ -226,6 +240,7 @@ fn puffs(world: World, at: [f64; 3], particle: &str, count: i32, spread: f64, sp
     {
         return;
     }
+
     for _ in 0..count
     {
         let signed = || fraction(world) * 2.0 - 1.0;
@@ -253,6 +268,7 @@ fn burst(entity: Entity, info: &EntityInfo, kind: Kind)
     {
         world.playSound(info.pos, row.m_burst.0, crystal::VOLUME, soundPitch(world));
     }
+
     let speed: f64 = if matches!(kind, Kind::Ice | Kind::Cloud)
     {
         crystal::BURST_SPEED / 2.0
@@ -273,6 +289,7 @@ fn fade(entity: Entity, info: &EntityInfo, kind: Kind)
     {
         world.playSound(info.pos, row.m_fade.0, crystal::VOLUME, soundPitch(world));
     }
+
     puffs(world, info.pos, row.m_fade.1, crystal::FADE_PUFFS, crystal::PUFF_SPREAD, 0.0);
     FLIGHTS.with(|flights| flights.borrow_mut().remove(&entity.id));
     entity.kill();
@@ -280,7 +297,8 @@ fn fade(entity: Entity, info: &EntityInfo, kind: Kind)
 
 fn isBoss(info: &EntityInfo) -> bool
 {
-    info.kind.as_ref().is_some_and(|kind| {
+    info.kind.as_ref().is_some_and(|kind|
+    {
         kind.namespace() == "aether"
             && [super::bosses::SLIDER, super::bosses::VALKYRIE_QUEEN, super::bosses::SUN_SPIRIT].contains(&kind.path())
     })
@@ -301,6 +319,7 @@ fn touch(entity: Entity, info: &EntityInfo, look: Look, state: &mut Flight) -> b
         .filter(|other| other.id != entity.id && other.health.is_some())
     {
         let victim: Entity = Entity { world, id: other.id };
+
         let hits: bool = match look.m_kind
         {
             Kind::Fire => !isBoss(&other) && !isMinion(&other),
@@ -316,6 +335,7 @@ fn touch(entity: Entity, info: &EntityInfo, look: Look, state: &mut Flight) -> b
         {
             continue;
         }
+
         match look.m_kind
         {
             Kind::Thunder =>
@@ -323,12 +343,15 @@ fn touch(entity: Entity, info: &EntityInfo, look: Look, state: &mut Flight) -> b
                 moveTowards(entity, info, &other, crystal::RECOIL);
                 continue;
             }
+
             Kind::Fire => victim.setField(EntityField::FireTicks, crystal::BURN_TICKS),
             Kind::Ice | Kind::Cloud => crate::effects::give(victim, Effect::Weakness, crystal::WEAK_TICKS),
         }
+
         burst(entity, info, look.m_kind);
         return true;
     }
+
     false
 }
 
@@ -352,6 +375,7 @@ fn bounce(world: World, info: &EntityInfo, bottom: f64, motion: &mut [f64; 3])
         {
             0
         };
+
         if sign != 0 && solid(step[0] * sign, step[1] * sign, step[2] * sign)
         {
             motion[axis] = -motion[axis];
@@ -375,8 +399,10 @@ impl EntityBehavior for Crystal
         {
             return;
         }
+
         let look: Look = entity.synced();
         let mut state: Flight = flight(entity);
+
         if look.m_kind == Kind::Thunder
         {
             let Some(target) = alive(world, state.m_target)
@@ -397,10 +423,13 @@ impl EntityBehavior for Crystal
                     burst(entity, info, look.m_kind);
                     return;
                 }
+
                 bounce(world, info, entity.field(EntityField::Bottom), &mut state.m_motion);
             }
+
             let _ = entity.setMotion(state.m_motion);
         }
+
         let life: f64 = if look.m_kind == Kind::Thunder
         {
             crystal::THUNDER_LIFE
@@ -409,19 +438,23 @@ impl EntityBehavior for Crystal
         {
             crystal::LIFE
         };
+
         if entity.field(EntityField::TicksExisted) >= life
         {
             if look.m_kind == Kind::Thunder
             {
                 let _ = world.lightning(info.pos);
             }
+
             fade(entity, info, look.m_kind);
             return;
         }
+
         if touch(entity, info, look, &mut state)
         {
             return;
         }
+
         setFlight(entity, state);
     }
 
@@ -430,18 +463,22 @@ impl EntityBehavior for Crystal
     {
         let world: World = entity.world;
         let attacker: EntityInfo = source.and_then(|id| Entity { world, id }.info())?;
+
         if !world.isAuthority()
         {
             return None;
         }
+
         let info: EntityInfo = entity.info()?;
         let look: Look = entity.synced();
         let mut state: Flight = flight(entity);
+
         if look.m_kind == Kind::Thunder
         {
             moveTowards(entity, &info, &attacker, crystal::PUSHED - amount as f64 / crystal::PUSH_PER_DAMAGE);
             return Some(amount);
         }
+
         let aim: [f64; 3] = lookOf(&attacker);
         state.m_motion = [
             aim[0],
@@ -469,8 +506,10 @@ impl EntityBehavior for Crystal
         let axes: [[f32; 3]; 3] = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
         let mut pre: Program = Program::new();
         pre.translate(0.0, crystal::LIFT, 0.0);
+
         let mut body: Program = Program::new();
         body.texture(row(look.m_kind).m_texture).translate(0.0, crystal::RAISE, 0.0).blend(true);
+
         for (index, axis) in axes.iter().enumerate()
         {
             let spin: f32 =
@@ -478,16 +517,18 @@ impl EntityBehavior for Crystal
             body.push().rotate(spin * DEGREES_PER_RADIAN, axis[0], axis[1], axis[2]);
             body.part(model::HEAD_0 + index as u16, head, model::PIVOTS[index]).pop();
         }
+
         body.blend(false);
         Pose { pre: pre.take(), model: body.take() }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:ghast").ok(),
             texture: Some(KINDS[0].m_texture.to_owned()),
             size: Some([0.9, 0.9]),

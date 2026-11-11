@@ -61,13 +61,13 @@ fn setState(entity: Entity, redcap: Redcap)
     REDCAPS.with(|redcaps| redcaps.borrow_mut().insert((entity.world.dimension, entity.id), redcap));
 }
 
-pub fn forget(entity: Entity)
+pub(crate) fn forget(entity: Entity)
 {
     REDCAPS.with(|redcaps| redcaps.borrow_mut().remove(&(entity.world.dimension, entity.id)));
 }
 
 // recentlyHit for the shy check
-pub fn hurt(entity: Entity)
+pub(crate) fn hurt(entity: Entity)
 {
     let redcap: Redcap = state(entity);
     setState(entity, Redcap { m_hit: entity.world.time(), ..redcap });
@@ -125,6 +125,7 @@ fn shy(entity: Entity, info: &EntityInfo, redcap: Redcap) -> bool
     {
         return false;
     }
+
     entity.walkTo(circle(info, &goal, redcap.m_lefty), tuning::SPEED);
     true
 }
@@ -137,6 +138,7 @@ fn light(entity: Entity, info: &EntityInfo, redcap: &mut Redcap) -> bool
         redcap.m_delay -= 1;
         return false;
     }
+
     let world: World = entity.world;
     let Some(tnt) = tntNear(world, floor(info.pos), tuning::LIGHT_SEARCH)
     else
@@ -150,15 +152,18 @@ fn light(entity: Entity, info: &EntityInfo, redcap: &mut Redcap) -> bool
         entity.walkTo(tnt, tuning::SPEED);
         return true;
     }
+
     if let Err(error) = world.setBlock(tnt, 0, 0)
     {
         warn(&format!("redcap tnt: {}", error.0));
         return true;
     }
+
     if let Err(error) = world.spawnEntity(PRIMED, center)
     {
         warn(&format!("redcap primed tnt: {}", error.0));
     }
+
     redcap.m_delay = tuning::LIGHT_DELAY;
     true
 }
@@ -167,35 +172,41 @@ fn light(entity: Entity, info: &EntityInfo, redcap: &mut Redcap) -> bool
 fn plant(entity: Entity, info: &EntityInfo, redcap: &mut Redcap)
 {
     let world: World = entity.world;
+
     let Some(goal) = target(entity)
     else
     {
         return;
     };
+
     let feet: BlockPos = floor(info.pos);
     let ready: bool = redcap.m_planted < SAPPER_TNT
         && distance(goal.pos, info.pos) < tuning::PLANT_REACH
         && !watched(info, &goal)
         && !litNear(world, info)
         && tntNear(world, feet, tuning::PLANT_CLEAR).is_none();
+
     if !ready || world.block(feet) != 0
     {
         return;
     }
+
     if let Err(error) = world.setBlock(feet, ids::blockId(TNT), 0)
     {
         warn(&format!("sapper tnt: {}", error.0));
         return;
     }
+
     redcap.m_planted += 1;
 }
 
-pub fn tick(entity: Entity, info: &EntityInfo, sapper: bool)
+pub(crate) fn tick(entity: Entity, info: &EntityInfo, sapper: bool)
 {
     let mut redcap: Redcap = state(entity);
     if !shy(entity, info, redcap) && !light(entity, info, &mut redcap) && sapper
     {
         plant(entity, info, &mut redcap);
     }
+
     setState(entity, redcap);
 }

@@ -96,13 +96,16 @@ const SHAPES: [Shape; 16] =
 const DIRECTIONS: [[i32; 3]; 6] = [[0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0], [0, -1, 0], [0, 1, 0]];
 
 // a block's meta counts from its item's source meta, so the item shows and places the source's item shape
-pub fn sourceHead(meta: i32) -> i32 { (meta + naga::HEAD_ITEM) % naga::HEADS }
+pub(crate) fn sourceHead(meta: i32) -> i32 { (meta + naga::HEAD_ITEM) % naga::HEADS }
 
-pub fn headMeta(source: i32) -> i32 { (source - naga::HEAD_ITEM).rem_euclid(naga::HEADS) }
+pub(crate) fn headMeta(source: i32) -> i32 { (source - naga::HEAD_ITEM).rem_euclid(naga::HEADS) }
 
-pub fn sourceBody(meta: i32) -> i32 { (meta + naga::BODY_ITEM - naga::FIRST_BODY) % naga::BODIES + naga::FIRST_BODY }
+pub(crate) fn sourceBody(meta: i32) -> i32
+{
+    (meta + naga::BODY_ITEM - naga::FIRST_BODY) % naga::BODIES + naga::FIRST_BODY
+}
 
-pub fn bodyMeta(source: i32) -> i32 { (source - naga::BODY_ITEM).rem_euclid(naga::BODIES) }
+pub(crate) fn bodyMeta(source: i32) -> i32 { (source - naga::BODY_ITEM).rem_euclid(naga::BODIES) }
 
 fn sprite(sprite: Sprite) -> i32 { b173_api::world::terrainSlot(&texture(SPRITES[sprite as usize])).unwrap_or(0) }
 
@@ -238,13 +241,14 @@ fn faceSprite(source: i32, face: i32) -> i32
     sprite(shape.m_faces[face.clamp(0, 5) as usize])
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     // the hooks pick every sprite, asking for their slots now gives them room in the atlas
     for name in SPRITES
     {
         let _ = b173_api::world::terrainSlot(&texture(name));
     }
+
     super::put(
         ctx,
         block::NAGASTONE_HEAD,

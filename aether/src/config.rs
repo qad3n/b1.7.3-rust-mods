@@ -1,9 +1,9 @@
 use b173_api::prelude::*;
 
-pub const VALKYRIE_CAPE: &str = "loot.valkyrie_cape";
-pub const GOLDEN_FEATHER: &str = "loot.golden_feather";
-pub const SUN_ALTAR_MULTIPLAYER: &str = "gameplay.sun_altar_multiplayer";
-pub const DISABLE_ETERNAL_DAY: &str = "gameplay.disable_eternal_day";
+pub(crate) const VALKYRIE_CAPE: &str = "loot.valkyrie_cape";
+pub(crate) const GOLDEN_FEATHER: &str = "loot.golden_feather";
+pub(crate) const SUN_ALTAR_MULTIPLAYER: &str = "gameplay.sun_altar_multiplayer";
+pub(crate) const DISABLE_ETERNAL_DAY: &str = "gameplay.disable_eternal_day";
 const MAX_LIFE_SHARDS: &str = "gameplay.max_life_shards";
 const LIFE_SHARD_LIMIT: i64 = 100;
 const SPAWN_RATE_CATEGORY: &str = "spawn_rates";
@@ -34,7 +34,7 @@ const SPAWN_RATES: [SpawnRate; 11] = [
 fn spawnKey(mob: &str) -> String { format!("{SPAWN_RATE_CATEGORY}.{mob}") }
 
 // AetherConfig.init, the options this port has features for
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let mut settings: Vec<Setting> = vec![
         Setting::bool(VALKYRIE_CAPE, true).label("Valkyrie Cape").comment("Enables the Valkyrie Cape in dungeon loot"),
@@ -50,19 +50,20 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             .comment("Disables eternal day making time cycle in the Aether without having to kill the Sun Spirit."),
     ];
     settings.extend(
-        SPAWN_RATES.iter().map(|row| {
+        SPAWN_RATES.iter().map(|row|
+        {
             Setting::int(&spawnKey(row.m_mob), row.m_default, 1..=MAX_SPAWN_RATE).comment(SPAWN_RATE_COMMENT)
         }),
     );
     ctx.config().options(settings)
 }
 
-pub fn enabled(key: &str) -> bool { Config.getBool(key) }
+pub(crate) fn enabled(key: &str) -> bool { Config.getBool(key) }
 
-pub fn maxLifeShards() -> i32 { Config.getInt(MAX_LIFE_SHARDS).clamp(0, LIFE_SHARD_LIMIT) as i32 }
+pub(crate) fn maxLifeShards() -> i32 { Config.getInt(MAX_LIFE_SHARDS).clamp(0, LIFE_SHARD_LIMIT) as i32 }
 
 // EntityPhyg.getCanSpawnHere and the other mobs: one try in the configured rate goes on to the usual checks
-pub fn spawnRoll(entity: Entity, mob: &str) -> bool
+pub(crate) fn spawnRoll(entity: Entity, mob: &str) -> bool
 {
     let rate: i32 = Config.getInt(&spawnKey(mob)).clamp(1, MAX_SPAWN_RATE) as i32;
     entity.world.random(rate) == 0

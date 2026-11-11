@@ -1,7 +1,7 @@
 use crate::ids::{Palette, block, blockId};
 use crate::world::DIMENSION_ID;
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 const GLOWSTONE: &str = "minecraft:glowstone";
@@ -65,7 +65,7 @@ struct PortalSize
 
 impl PortalSize
 {
-    fn measure(world: World, pos: BlockPos, axis: usize) -> Option<PortalSize>
+    fn measure(world: World, pos: BlockPos, axis: usize) -> Option<Self>
     {
         let [left, right] = AXES[axis];
         let mut pos: BlockPos = pos;
@@ -74,6 +74,7 @@ impl PortalSize
         {
             pos = pos.offset(0, -1, 0);
         }
+
         let toEdge: i32 = Self::distanceToEdge(world, pos, left) - 1;
         if toEdge < 0
         {
@@ -85,8 +86,9 @@ impl PortalSize
         {
             return None;
         }
-        let mut size: PortalSize =
-            PortalSize { m_right: right, m_bottomLeft: bottomLeft, m_width: width, m_height: 0, m_portals: 0 };
+
+        let mut size: Self =
+            Self { m_right: right, m_bottomLeft: bottomLeft, m_width: width, m_height: 0, m_portals: 0 };
         size.measureHeight(world, left);
         (frame::MIN_HEIGHT..=frame::MAX_SIZE).contains(&size.m_height).then_some(size)
     }
@@ -101,8 +103,10 @@ impl PortalSize
             {
                 break;
             }
+
             distance += 1;
         }
+
         if isFrame(world, step(pos, direction, distance))
         {
             distance
@@ -124,10 +128,12 @@ impl PortalSize
                 {
                     break 'rows;
                 }
+
                 if world.block(at) == blockId(block::AETHER_PORTAL)
                 {
                     self.m_portals += 1;
                 }
+
                 let side: Option<BlockPos> = if i == 0
                 {
                     Some(step(at, left, 1))
@@ -140,15 +146,19 @@ impl PortalSize
                 {
                     None
                 };
+
                 if side.is_some_and(|side| !isFrame(world, side))
                 {
                     break 'rows;
                 }
             }
+
             self.m_height += 1;
         }
+
         let topClosed: bool = (0..self.m_width)
             .all(|i| isFrame(world, step(self.m_bottomLeft, self.m_right, i).offset(0, self.m_height, 0)));
+
         if !topClosed
         {
             self.m_height = 0;
@@ -160,6 +170,7 @@ impl PortalSize
     fn place(&self, world: World)
     {
         let portal: i32 = blockId(block::AETHER_PORTAL);
+
         for i in 0..self.m_width
         {
             for l in 0..self.m_height
@@ -167,6 +178,7 @@ impl PortalSize
                 placeQuiet(world, step(self.m_bottomLeft, self.m_right, i).offset(0, l, 0), portal);
             }
         }
+
         remember(world.dimension, self.center());
     }
 
@@ -191,6 +203,7 @@ fn placeQuiet(world: World, pos: BlockPos, block: i32)
         warn(&format!("portal block {block} not placed at {pos:?}: {error}"));
         return;
     }
+
     world.markBlockForRender(pos);
 }
 
@@ -206,9 +219,11 @@ fn trySpawn(world: World, pos: BlockPos) -> bool
             {
                 size.place(world);
             }
+
             return true;
         }
     }
+
     false
 }
 
@@ -237,17 +252,21 @@ fn blockAt(point: [f64; 3]) -> BlockPos
 fn knownPortal(dimension: i32, x: i32, z: i32) -> Option<[f64; 3]>
 {
     let log: PortalLog = worldData(PORTALS_KEY);
-    let distance = |point: &[f64; 3]| {
+
+    let distance = |point: &[f64; 3]|
+    {
         let pos: BlockPos = blockAt(*point);
         ((pos.x - x).abs(), (pos.z - z).abs())
     };
     log.m_entries
         .iter()
-        .filter(|(entry, point)| {
+        .filter(|(entry, point)|
+        {
             let (dx, dz): (i32, i32) = distance(point);
             *entry == dimension && dx <= travel::SEARCH_RADIUS && dz <= travel::SEARCH_RADIUS
         })
-        .min_by_key(|(_, point)| {
+        .min_by_key(|(_, point)|
+        {
             let (dx, dz): (i32, i32) = distance(point);
             dx * dx + dz * dz
         })
@@ -265,14 +284,15 @@ struct Visitor
     m_armed: bool,
 }
 
-thread_local! {
+thread_local!
+{
     // ticks of this side's game loop; world clocks are shared between dimensions and step more than once a tick
     static TICKS: std::cell::Cell<i64> = const { std::cell::Cell::new(0) };
     static VISITORS: RefCell<HashMap<i32, Visitor>> = RefCell::new(HashMap::new());
     static ARRIVALS: RefCell<HashMap<i32, Option<[f64; 3]>>> = RefCell::new(HashMap::new());
 }
 
-pub fn aetherDimension() -> Option<i32>
+pub(crate) fn aetherDimension() -> Option<i32>
 {
     Identifier::parse(DIMENSION_ID).ok().and_then(|id| resolve(RegistryKind::Dimension, &id).ok())
 }
@@ -284,29 +304,29 @@ impl Visitor
     {
         if self.m_dimension != dimension
         {
-            *self = Visitor { m_ticks: 0, m_lastTick: now, m_dimension: dimension, m_armed: true };
+            *self = Self { m_ticks: 0, m_lastTick: now, m_dimension: dimension, m_armed: true };
         }
+
         // collisions arrive several times a tick, the counter moves once per tick
         if now == self.m_lastTick || !self.m_armed
         {
             return false;
         }
+
         if now - self.m_lastTick > 1
         {
             self.m_ticks = 0;
         }
+
         self.m_lastTick = now;
         self.m_ticks += 1;
         self.m_ticks >= travel::TICKS
     }
 
-    fn sent(&mut self, target: i32)
-    {
-        *self = Visitor { m_ticks: 0, m_lastTick: 0, m_dimension: target, m_armed: false };
-    }
+    fn sent(&mut self, target: i32) { *self = Self { m_ticks: 0, m_lastTick: 0, m_dimension: target, m_armed: false }; }
 }
 
-pub fn inPortal(info: &EntityInfo) -> bool
+pub(crate) fn inPortal(info: &EntityInfo) -> bool
 {
     let world: World = World { dimension: info.world };
     let portal: i32 = blockId(block::AETHER_PORTAL);
@@ -320,12 +340,14 @@ fn rearm()
 {
     let waiting: Vec<i32> = VISITORS
         .with(|visitors| visitors.borrow().iter().filter(|(_, visitor)| !visitor.m_armed).map(|(id, _)| *id).collect());
+
     for id in waiting
     {
         let outside: bool = Player { id }.info().is_some_and(|info| !inPortal(&info));
         if outside
         {
-            VISITORS.with(|visitors| {
+            VISITORS.with(|visitors|
+            {
                 if let Some(visitor) = visitors.borrow_mut().get_mut(&id)
                 {
                     visitor.m_armed = true;
@@ -339,9 +361,12 @@ fn rearm()
 fn enter(world: World, player: Player)
 {
     let now: i64 = TICKS.with(std::cell::Cell::get);
-    let ready: bool = VISITORS.with(|visitors| {
-        let mut visitors = visitors.borrow_mut();
-        let visitor: &mut Visitor = visitors.entry(player.id).or_insert(Visitor {
+
+    let ready: bool = VISITORS.with(|visitors|
+    {
+        let mut visitors: RefMut<HashMap<i32, Visitor>> = visitors.borrow_mut();
+        let visitor: &mut Visitor = visitors.entry(player.id).or_insert(Visitor
+        {
             m_ticks: 0,
             m_lastTick: now,
             m_dimension: world.dimension,
@@ -358,6 +383,7 @@ fn enter(world: World, player: Player)
     {
         return;
     };
+
     let target: i32 = if world.dimension == aether
     {
         travel::OVERWORLD
@@ -369,8 +395,10 @@ fn enter(world: World, player: Player)
     let (x, z): (i32, i32) = (info.pos[0].floor() as i32, info.pos[2].floor() as i32);
     let known: Option<[f64; 3]> = knownPortal(target, x, z);
     let hold: [f64; 3] = known.unwrap_or([x as f64 + 0.5, travel::HOLD_Y, z as f64 + 0.5]);
+
     ARRIVALS.with(|arrivals| arrivals.borrow_mut().insert(player.id, known));
     VISITORS.with(|visitors| visitors.borrow_mut().entry(player.id).or_default().sent(target));
+
     let _ = player.teleport(target, hold);
 }
 
@@ -394,6 +422,7 @@ fn buildPortal(world: World, x: i32, z: i32) -> [f64; 3]
     let glowstone: i32 = blockId(GLOWSTONE);
     let portal: i32 = blockId(block::AETHER_PORTAL);
     let palette: Palette = Palette::load();
+
     let floor: i32 = if aetherDimension() == Some(world.dimension)
     {
         palette.m_holystone
@@ -402,6 +431,7 @@ fn buildPortal(world: World, x: i32, z: i32) -> [f64; 3]
     {
         blockId(COBBLESTONE)
     };
+
     for dx in -1..=build::WIDTH
     {
         for dz in -1..=1
@@ -411,19 +441,23 @@ fn buildPortal(world: World, x: i32, z: i32) -> [f64; 3]
             {
                 placeQuiet(world, below, floor);
             }
+
             for dy in 0..=build::HEIGHT + 1
             {
                 let at: BlockPos = BlockPos::new(x + dx, y + dy, z + dz);
+
                 if dz != 0
                 {
                     placeQuiet(world, at, 0);
                     continue;
                 }
+
                 let edge: bool = dx == -1 || dx == build::WIDTH || dy == 0 || dy == build::HEIGHT + 1;
                 setFrame(world, at, glowstone, portal, !edge);
             }
         }
     }
+
     let center: [f64; 3] = [x as f64 + build::WIDTH as f64 / 2.0, (y + 1) as f64, z as f64 + 0.5];
     remember(world.dimension, center);
     center
@@ -437,12 +471,15 @@ fn arrive(player: Player, to: i32)
     {
         return;
     };
+
     let world: World = World { dimension: to };
     let standing: Option<[f64; 3]> =
         known.filter(|point| world.block(blockAt(*point)) == blockId(block::AETHER_PORTAL));
+
     let spot: [f64; 3] = match standing
     {
         Some(point) => point,
+
         None =>
         {
             let Some(info) = player.info()
@@ -450,6 +487,7 @@ fn arrive(player: Player, to: i32)
             {
                 return;
             };
+
             buildPortal(world, info.pos[0].floor() as i32, info.pos[2].floor() as i32)
         }
     };
@@ -468,6 +506,7 @@ impl BlockBehavior for Portal
         {
             return;
         }
+
         if let Some(info) = entity.info()
             && info.player.is_some()
         {
@@ -483,6 +522,7 @@ impl BlockBehavior for Portal
         let world: World = ctx.world();
         let intact: bool =
             (0..AXES.len()).any(|axis| PortalSize::measure(world, ctx.pos(), axis).is_some_and(|size| size.isFull()));
+
         if !intact && ctx.isAuthority()
         {
             let _ = world.setBlock(ctx.pos(), 0, 0);
@@ -494,7 +534,7 @@ const PORTAL_HARDNESS: f32 = -1.0;
 const PORTAL_RESISTANCE: f32 = 900000.0;
 const PORTAL_LIGHT: f32 = 0.75;
 
-pub fn registerBlock(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn registerBlock(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.blocks().register(
         block::AETHER_PORTAL,
@@ -510,9 +550,10 @@ pub fn registerBlock(ctx: &mut RegisterCtx) -> Result<()>
 }
 
 // AetherEventHandler.onFillBucket, water poured into a glowstone frame lights the portal on both sides
-pub fn registerEvents(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn registerEvents(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.events().on::<ItemUseOnBlock>(Priority::Normal, |event| {
+    ctx.events().on::<ItemUseOnBlock>(Priority::Normal, |event|
+    {
         let (Some(stack), Some(player), Some(world)) = (event.stack(), event.player(), event.world())
         else
         {
@@ -527,25 +568,32 @@ pub fn registerEvents(ctx: &mut RegisterCtx) -> Result<()>
         {
             return;
         }
+
         if trySpawn(world, faceOffset(pos, face))
         {
             event.cancel();
+
             if world.isAuthority()
             {
                 let _ = player.setHeld(Some(ItemStack::of(BUCKET, 1)));
             }
         }
     })?;
-    ctx.events().on::<TickPost>(Priority::Normal, |_| {
+
+    ctx.events().on::<TickPost>(Priority::Normal, |_|
+    {
         TICKS.with(|ticks| ticks.set(ticks.get() + 1));
         rearm();
     })?;
-    ctx.events().on::<PlayerChangeDimension>(Priority::Normal, |event| {
+
+    ctx.events().on::<PlayerChangeDimension>(Priority::Normal, |event|
+    {
         if let (EventData::Dimension { to, .. }, Some(player)) = (event.data().clone(), event.player())
         {
             arrive(player, to);
         }
     })?;
+
     Ok(())
 }
 

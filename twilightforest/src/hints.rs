@@ -23,7 +23,7 @@ mod tuning
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]
-pub struct Notes
+pub(crate) struct Notes
 {
     pub m_book: Option<String>,
 }
@@ -51,6 +51,7 @@ fn clear(world: World, pos: BlockPos) -> bool
 fn spot(world: World, player: &EntityInfo, pos: BlockPos) -> Option<BlockPos>
 {
     let spread = |range: i32| world.random(range) - world.random(range);
+
     (0..tuning::TRIES).find_map(|_|
     {
         let at: BlockPos = pos.offset(spread(tuning::SPREAD), spread(tuning::RISE), spread(tuning::SPREAD));
@@ -59,7 +60,7 @@ fn spot(world: World, player: &EntityInfo, pos: BlockPos) -> Option<BlockPos>
     })
 }
 
-pub fn trySpawn(world: World, player: Player, feature: Feature, pos: BlockPos)
+pub(crate) fn trySpawn(world: World, player: Player, feature: Feature, pos: BlockPos)
 {
     let now: i64 = world.time();
     let hint: &Hint = hintFor(feature);
@@ -85,15 +86,17 @@ pub fn trySpawn(world: World, player: Player, feature: Feature, pos: BlockPos)
     {
         return;
     };
+
     if let Err(error) = kobold.setData(&Notes { m_book: Some(hint.m_item.to_owned()) })
     {
         warn(&format!("hint kobold notes: {}", error.0));
     }
+
     LAST.with(|last| last.borrow_mut().insert(hint.m_feature, now));
 }
 
 // the notes a hint kobold drops on death, every time as its held book
-pub fn dropNotes(entity: Entity, info: &EntityInfo)
+pub(crate) fn dropNotes(entity: Entity, info: &EntityInfo)
 {
     let notes: Notes = entity.data();
     let Some(book) = notes.m_book
@@ -101,6 +104,7 @@ pub fn dropNotes(entity: Entity, info: &EntityInfo)
     {
         return;
     };
+
     if let Err(error) = entity.world.spawnItem(info.pos, ItemStack::of(book.as_str(), 1))
     {
         warn(&format!("hint kobold book: {}", error.0));
@@ -121,6 +125,7 @@ impl ItemBehavior for Book
         if world.isAuthority()
         {
             player.chat(&format!("§e{}§f by {AUTHOR}", self.m_hint.m_title));
+
             for page in self.m_hint.m_pages
             {
                 for line in page.replace("§0", "§f").lines()
@@ -129,11 +134,12 @@ impl ItemBehavior for Book
                 }
             }
         }
+
         Use::Done(Some(stack))
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for hint in &HINTS
     {
@@ -143,5 +149,6 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             ItemSpecBuilder::new().name(hint.m_title).texture(BOOK_ICON).maxStack(1).behavior(Book { m_hint: hint }),
         )?;
     }
+
     Ok(())
 }

@@ -5,14 +5,14 @@ use crate::ids::{self, item};
 use crate::models::{Program, bipedPose, tf_lich};
 use crate::progress::{self, Gate};
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
 // EntityTFLich: a shielded caster that splits into shadow clones, then calls up zombie minions, then fights hand to
 // hand once both run out
-pub const NAME: &str = "twilight_lich";
-pub const MINION: &str = "lich_minion";
+pub(crate) const NAME: &str = "twilight_lich";
+pub(crate) const MINION: &str = "lich_minion";
 const LABEL: &str = "Twilight Lich";
 
 mod lich
@@ -75,12 +75,14 @@ fn state(entity: Entity) -> Lich
     {
         return lich;
     }
+
     Lich { m_shield: lich::SHIELD, m_minions: lich::MINIONS, m_started: true, ..lich }
 }
 
 fn save(entity: Entity, lich: Lich)
 {
     let _ = entity.setData(&lich);
+
     if entity.synced::<Lich>() != lich
     {
         let _ = entity.setSynced(&lich);
@@ -121,6 +123,7 @@ fn mine(world: World, info: &EntityInfo, kind: &str, master: i32) -> Vec<EntityI
 fn spotSeenBy(world: World, target: &EntityInfo) -> Option<[f64; 3]>
 {
     let sight: [f64; 3] = eyes(Entity { world, id: target.id }, target);
+
     for _ in 0..lich::LOS_TRIES
     {
         let spread = |axis: usize| (ids::fraction(world) - ids::fraction(world)) as f64 * lich::LOS_SPREAD[axis];
@@ -131,6 +134,7 @@ fn spotSeenBy(world: World, target: &EntityInfo) -> Option<[f64; 3]>
         {
             y -= 1.0;
         }
+
         let feet: BlockPos = BlockPos::new(x.floor() as i32, y.floor() as i32, z.floor() as i32);
         let open: bool = world.isAir(feet) && world.isAir(feet.offset(0, 1, 0)) && world.isAir(feet.offset(0, 2, 0));
         if y > 0.0 && open && world.rayTrace(sight, [x, y, z], false).is_none()
@@ -138,6 +142,7 @@ fn spotSeenBy(world: World, target: &EntityInfo) -> Option<[f64; 3]>
             return Some([x, y, z]);
         }
     }
+
     None
 }
 
@@ -160,7 +165,9 @@ fn teleport(entity: Entity, info: &EntityInfo, goal: &EntityInfo)
     {
         return;
     };
+
     let _ = entity.setPosition(dest);
+
     trail(world, info.pos, dest, "portal");
     world.playSound(info.pos, "mob.endermen.portal", 1.0, 1.0);
     face(entity, dest, goal.pos);
@@ -176,8 +183,10 @@ fn launch(entity: Entity, info: &EntityInfo, goal: &EntityInfo, bomb: bool)
         info.pos[1] + height * lich::HAND_HEIGHT,
         info.pos[2] + yaw.sin() * lich::HAND_AHEAD,
     ];
+
     let aim: [f64; 3] =
         [goal.pos[0], goal.pos[1] + Entity { world, id: goal.id }.field(EntityField::Height) / 2.0, goal.pos[2]];
+
     let (shot, speed): (&str, f64) = if bomb
     {
         (LICH_BOMB, lich::BOMB_SPEED)
@@ -188,6 +197,7 @@ fn launch(entity: Entity, info: &EntityInfo, goal: &EntityInfo, bomb: bool)
     };
     let pitch: f32 = (ids::fraction(world) - ids::fraction(world)) * 0.2 + 1.0;
     world.playSound(info.pos, "mob.ghast.fireball", 1.0, pitch);
+
     let _ = shots::fire(world, shot, from, aim, speed, 1.0, Some(entity.id));
 }
 
@@ -196,6 +206,7 @@ fn popNearby(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
     let poppable: [&str; 5] = ["skeleton", "zombie", "spider", "creeper", "swarm_spider"];
+
     let victim: Option<EntityInfo> = world.entitiesNear(info.pos, lich::SEARCH).into_iter().find(|other|
     {
         other.kind.as_ref().is_some_and(|kind| poppable.contains(&kind.path()))
@@ -213,10 +224,12 @@ fn caster(entity: Entity, info: &EntityInfo, lich: &mut Lich, brain: &mut Brain,
     let world: World = entity.world;
     let gap: f64 = distance(info.pos, goal.pos);
     let seen: bool = world.rayTrace(eyes(entity, info), eyes(Entity { world, id: goal.id }, goal), false).is_none();
+
     if !lich.m_clone && brain.m_attack % lich::POP_EVERY == 0
     {
         popNearby(entity, info);
     }
+
     match phase(lich)
     {
         1 =>
@@ -224,6 +237,7 @@ fn caster(entity: Entity, info: &EntityInfo, lich: &mut Lich, brain: &mut Brain,
             if brain.m_attack == lich::CLONE_AT
             {
                 teleport(entity, info, goal);
+
                 if !lich.m_clone
                     && mine(world, info, NAME, entity.id).len() < lich::MAX_CLONES
                     && let Some(spot) = spotSeenBy(world, goal)
@@ -235,6 +249,7 @@ fn caster(entity: Entity, info: &EntityInfo, lich: &mut Lich, brain: &mut Brain,
                     trail(world, info.pos, spot, "portal");
                 }
             }
+
             if seen && brain.m_attack == 0 && gap < lich::RANGE
             {
                 launch(entity, info, goal, brain.m_bomb);
@@ -242,12 +257,14 @@ fn caster(entity: Entity, info: &EntityInfo, lich: &mut Lich, brain: &mut Brain,
                 brain.m_attack = lich::CAST_PHASE_ONE;
             }
         }
+
         2 =>
         {
             for clone in mine(world, info, NAME, entity.id)
             {
                 Entity { world, id: clone.id }.kill();
             }
+
             if brain.m_attack % lich::POP_EVERY == 0
                 && lich.m_minions > 0
                 && mine(world, info, MINION, entity.id).len() < lich::MAX_MINIONS
@@ -256,11 +273,13 @@ fn caster(entity: Entity, info: &EntityInfo, lich: &mut Lich, brain: &mut Brain,
                     crate::entities::spawnAt(world, &format!("twilightforest:{MINION}"), spot, info.yaw)
             {
                 let _ = minion.setData(&Lich { m_master: entity.id, ..Lich::default() });
+
                 minion.setField(EntityField::TargetId, f64::from(goal.id));
                 world.playSound(spot, "random.pop", 1.0, 2.0);
                 trail(world, eyes(entity, info), spot, "smoke");
                 lich.m_minions -= 1;
             }
+
             if brain.m_attack == 0
             {
                 if gap < lich::MELEE
@@ -286,6 +305,7 @@ fn caster(entity: Entity, info: &EntityInfo, lich: &mut Lich, brain: &mut Brain,
                 }
             }
         }
+
         _ =>
         {
             let height: f64 = entity.field(EntityField::Height);
@@ -315,23 +335,28 @@ impl EntityBehavior for TwilightLich
         {
             return;
         }
+
         let mut lich: Lich = state(entity);
         if lich.m_clone && (Entity { world, id: lich.m_master }).info().is_none_or(|master| !master.alive)
         {
             entity.kill();
             return;
         }
+
         BRAINS.with(|brains|
         {
-            let mut brains = brains.borrow_mut();
+            let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
             let brain: &mut Brain = brains.entry((world.dimension, entity.id)).or_default();
             brain.m_attack = (brain.m_attack - 1).max(0);
+
             if let Some(goal) = target(entity)
             {
                 caster(entity, info, &mut lich, brain, &goal);
             }
         });
+
         save(entity, lich);
+
         if !lich.m_clone
         {
             showBar(entity, LABEL, info);
@@ -346,38 +371,47 @@ impl EntityBehavior for TwilightLich
         let pitch: f32 = ((ids::fraction(world) - ids::fraction(world)) * 0.7 + 1.0) * 2.0;
         let info: Option<EntityInfo> = entity.info();
         let at: [f64; 3] = info.as_ref().map_or([0.0; 3], |info| info.pos);
+
         if lich.m_clone
         {
             world.playSound(at, "random.fizz", 1.0, pitch);
             return None;
         }
+
         let byLich: bool = source
             .and_then(|id| Entity { world, id }.info())
             .is_some_and(|attacker| attacker.kind.as_ref().is_some_and(|kind| kind.path() == NAME));
+
         if byLich
         {
             return None;
         }
+
         if lich.m_shield > 0
         {
             world.playSound(at, "random.break", 1.0, pitch);
+
             if source.is_some() && amount > lich::SHIELD_CRACK
             {
                 lich.m_shield -= 1;
                 save(entity, lich);
             }
+
             if let Some(attacker) =
                 source.filter(|id| Entity { world, id: *id }.info().is_some_and(|attacker| attacker.player.is_some()))
             {
                 entity.setField(EntityField::TargetId, f64::from(attacker));
             }
+
             return None;
         }
+
         if (phase(&lich) < 3 || world.random(4) == 0)
             && let (Some(info), Some(goal)) = (info, target(entity))
         {
             teleport(entity, &info, &goal);
         }
+
         Some(amount)
     }
 
@@ -386,6 +420,7 @@ impl EntityBehavior for TwilightLich
     {
         let world: World = entity.world;
         BRAINS.with(|brains| brains.borrow_mut().remove(&(world.dimension, entity.id)));
+
         let lich: Lich = state(entity);
         if lich.m_clone || !world.isAuthority()
         {
@@ -396,8 +431,10 @@ impl EntityBehavior for TwilightLich
         {
             return;
         };
+
         let scepters: [&str; 3] = [item::SCEPTER_ZOMBIE, item::SCEPTER_LIFE_DRAIN, item::SCEPTER_TWILIGHT];
         dropAt(world, info.pos, scepters[world.random(3) as usize], 1);
+
         let gold: [&str; 5] = [
             "minecraft:golden_sword",
             "minecraft:golden_helmet",
@@ -405,13 +442,16 @@ impl EntityBehavior for TwilightLich
             "minecraft:golden_leggings",
             "minecraft:golden_boots",
         ];
+
         for _ in 0..world.random(3) + 2
         {
             dropAt(world, info.pos, gold[world.random(5) as usize], 1);
         }
+
         dropAt(world, info.pos, "minecraft:bone", world.random(5) + 5);
         dropAt(world, info.pos, item::LICH_TROPHY, 1);
         super::conquer(world, info.pos);
+
         if let Some(player) = killer(world, source)
         {
             progress::grant(player, Gate::Hunter);
@@ -424,10 +464,12 @@ impl EntityBehavior for TwilightLich
     {
         let lich: Lich = b173_api::fromBytes(&input.synced).unwrap_or_default();
         let mut body: Program = Program::new();
+
         if lich.m_clone
         {
             body.blend(true).color(lich::CLONE_SHADE, lich::CLONE_SHADE, lich::CLONE_SHADE, lich::CLONE_ALPHA);
         }
+
         bipedPose(&mut body, &tf_lich::PIVOTS, &tf_lich::ROTATIONS, input);
         Pose { pre: Vec::new(), model: body.take() }
     }
@@ -445,6 +487,7 @@ impl EntityBehavior for Minion
         {
             return;
         }
+
         let master: i32 = entity.data::<Lich>().m_master;
         if (Entity { world: entity.world, id: master }).info().is_none_or(|lich| !lich.alive)
         {
@@ -463,6 +506,7 @@ impl EntityBehavior for Minion
             crate::effects::give(entity, crate::effects::Effect::Speed, speed, ticks);
             crate::effects::give(entity, crate::effects::Effect::Strength, strength, ticks);
         }
+
         Some(amount)
     }
 
@@ -480,7 +524,7 @@ impl EntityBehavior for Minion
 
 const MINION_TINT: [f32; 3] = [0.5, 1.0, 0.5];
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,

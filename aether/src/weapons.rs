@@ -1,4 +1,5 @@
-use crate::entities::projectile::{
+use crate::entities::projectile::
+{
     self, ENCHANTED_DART, FLAMING_ARROW, GOLDEN_DART, HAMMER, LIGHTNING_KNIFE, POISON_DART,
 };
 use crate::entities::{fraction, lookOf};
@@ -71,6 +72,7 @@ fn consume(player: Player, name: &str) -> bool
     };
 
     let _ = player.setSlot(slot, (stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }));
+
     true
 }
 
@@ -81,7 +83,7 @@ fn draw(held: i32) -> f64
     ((seconds * seconds + seconds * 2.0) / 3.0).min(1.0)
 }
 
-pub struct DartShooter
+pub(crate) struct DartShooter
 {
     m_dart: &'static str,
 }
@@ -100,7 +102,9 @@ impl ItemBehavior for DartShooter
         {
             return Use::Done(Some(stack));
         };
+
         world.playSound(info.pos, "aether.projectile.dart_shooter.shoot", 1.0, shootPitch(world));
+
         let (from, toward) = aim(&info);
         projectile::fire(world, self.m_dart, from, toward, weapon::DART_SPEED, weapon::SPREAD, Some(player.id));
         Use::Done(Some(stack))
@@ -108,7 +112,7 @@ impl ItemBehavior for DartShooter
 }
 
 // ItemNotchHammer: a shockwave hammer that wears with every swing
-pub struct NotchHammer;
+pub(crate) struct NotchHammer;
 
 #[item_behavior]
 impl ItemBehavior for NotchHammer
@@ -120,18 +124,21 @@ impl ItemBehavior for NotchHammer
         {
             return Use::Pass;
         };
+
         world.playSound(info.pos, "mob.ghast.fireball", 1.0, shootPitch(world));
+
         if world.isAuthority()
         {
             let (from, toward) = aim(&info);
             projectile::fire(world, HAMMER, from, toward, weapon::THROW_SPEED, weapon::SPREAD, Some(player.id));
         }
+
         Use::Done(Some(ItemStack { damage: stack.damage + weapon::HAMMER_WEAR, ..stack }))
     }
 }
 
 // ItemLightningKnife: thrown one at a time
-pub struct LightningKnife;
+pub(crate) struct LightningKnife;
 
 #[item_behavior]
 impl ItemBehavior for LightningKnife
@@ -143,7 +150,9 @@ impl ItemBehavior for LightningKnife
         {
             return Use::Pass;
         };
+
         world.playSound(info.pos, "random.bow", 1.0, shootPitch(world));
+
         if world.isAuthority()
         {
             let (from, toward) = aim(&info);
@@ -157,6 +166,7 @@ impl ItemBehavior for LightningKnife
                 Some(player.id),
             );
         }
+
         Use::Done((stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }))
     }
 }
@@ -182,7 +192,7 @@ enum Blade
     CandyCane,
 }
 
-pub struct Sword
+pub(crate) struct Sword
 {
     m_blade: Blade,
 }
@@ -197,9 +207,11 @@ impl ItemBehavior for Sword
         {
             return true;
         }
+
         match self.m_blade
         {
             Blade::Flaming => target.setField(EntityField::FireTicks, weapon::FLAME_TICKS),
+
             Blade::Lightning =>
             {
                 if let Some(info) = target.info()
@@ -207,6 +219,7 @@ impl ItemBehavior for Sword
                     let _ = world.lightning(info.pos);
                 }
             }
+
             Blade::Holy =>
             {
                 if UNDEAD.contains(&kindOf(target).as_str())
@@ -214,6 +227,7 @@ impl ItemBehavior for Sword
                     crate::damage::hit(target, weapon::HOLY_DAMAGE, None, crate::damage::kind::DROWN);
                 }
             }
+
             Blade::Vampire =>
             {
                 let wielder: Entity = Entity { world, id: attacker };
@@ -223,6 +237,7 @@ impl ItemBehavior for Sword
                     wielder.setField(EntityField::Health, (health + weapon::VAMPIRE_HEAL) as f64);
                 }
             }
+
             Blade::PigSlayer =>
             {
                 let kind: String = kindOf(target);
@@ -231,6 +246,7 @@ impl ItemBehavior for Sword
                     crate::damage::hit(target, weapon::PIG_SLAIN, Some(attacker), crate::damage::kind::MOB);
                 }
             }
+
             Blade::CandyCane =>
             {
                 if world.random(2) == 0
@@ -240,6 +256,7 @@ impl ItemBehavior for Sword
                 }
             }
         }
+
         true
     }
 }
@@ -260,7 +277,7 @@ const SHOOTERS: [(&str, &str); 3] = [
 ];
 
 // ItemPhoenixBow: a bow whose arrows fly burning, drawn while held and loosed on release with vanilla arrows
-pub struct PhoenixBow;
+pub(crate) struct PhoenixBow;
 
 #[item_behavior]
 impl ItemBehavior for PhoenixBow
@@ -277,6 +294,7 @@ impl ItemBehavior for PhoenixBow
         {
             warn(&format!("phoenix bow draw: {error}"));
         }
+
         Use::Done(Some(stack))
     }
 
@@ -311,6 +329,7 @@ impl ItemBehavior for PhoenixBow
 
         let (from, toward) = aim(&info);
         projectile::fire(world, FLAMING_ARROW, from, toward, bow::SPEED * power, weapon::SPREAD, Some(player.id));
+
         let pitch: f32 = 1.0 / (fraction(world) * weapon::SHOOT_PITCH_SPREAD + bow::PITCH_LOW) as f32
             + power as f32 * bow::PITCH_DRAW;
         world.playSound(info.pos, "random.bow", 1.0, pitch);
@@ -319,7 +338,7 @@ impl ItemBehavior for PhoenixBow
 }
 
 // no item spec names the pulling icons, asking for their slots now gives them room on the item sheet
-pub fn reservePulls()
+pub(crate) fn reservePulls()
 {
     for (_, icon) in PULLS
     {
@@ -327,16 +346,16 @@ pub fn reservePulls()
     }
 }
 
-pub fn blade(name: &str) -> Option<Sword>
+pub(crate) fn blade(name: &str) -> Option<Sword>
 {
     BLADES.iter().find(|(blade, _)| *blade == name).map(|(_, kind)| Sword { m_blade: *kind })
 }
 
-pub fn shooter(name: &str) -> Option<DartShooter>
+pub(crate) fn shooter(name: &str) -> Option<DartShooter>
 {
     SHOOTERS.iter().find(|(item, _)| *item == name).map(|(_, dart)| DartShooter { m_dart: dart })
 }
 
-pub fn hammer() -> NotchHammer { NotchHammer }
+pub(crate) fn hammer() -> NotchHammer { NotchHammer }
 
-pub fn knife() -> LightningKnife { LightningKnife }
+pub(crate) fn knife() -> LightningKnife { LightningKnife }

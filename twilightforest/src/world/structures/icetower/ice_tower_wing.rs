@@ -1,7 +1,7 @@
 // draft from ComponentTFIceTowerWing.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::IceTowerWing);
     init(&this, i, x, y, z, pSize, pHeight, direction);
@@ -9,7 +9,7 @@ pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: 
 }
 
 // ComponentTFIceTowerWing constructor
-pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
+pub(crate) fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
 {
     tower_wing::init7(this, i, x, y, z, pSize, pHeight, direction);
     this.m_hasBase.set(false);
@@ -17,18 +17,21 @@ pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i
 }
 
 // ComponentTFIceTowerWing.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
     this.addOpening(0, 1, this.m_size.get() / 2, 2);
     this.m_hasBase.set(this.shouldHaveBase(random));
+
     if this.depth() < 5
     {
         let dirOffset: i32 = random.nextIntBounded(4);
+
         for i in 0..4
         {
             let dir: i32 = (dirOffset + i) % 4;
             let dest: Vec<i32> = this.getValidOpening(random, dir);
+
             if ((this.depth() == 4) && (matches!(parent.m_kind, Kind::IceTowerMain))) && (!(parent).m_hasBossWing.get())
             {
                 let hasBoss: bool = ice_tower_wing::makeBossTowerWing(
@@ -52,29 +55,32 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
             }
         }
     }
+
     let floors: i32 = this.m_height.get() / 10;
     if (this.m_treasureFloor.get() == (-1)) && (floors > 1)
     {
         this.m_treasureFloor.set(random.nextIntBounded(floors - 1));
     }
-    this.makeARoof(&parent, list, random);
+
+    this.makeARoof(parent, list, random);
+
     if !this.m_hasBase.get()
     {
-        this.makeABeard(&parent, list, random);
+        this.makeABeard(parent, list, random);
     }
 }
 
 // ComponentTFIceTowerWing.shouldHaveBase
-pub fn shouldHaveBase(this: &Piece, random: &Random) -> bool { return (this.depth() == 0) || random.nextBoolean(); }
+pub(crate) fn shouldHaveBase(this: &Piece, random: &Random) -> bool { (this.depth() == 0) || random.nextBoolean() }
 
 // ComponentTFIceTowerWing.isOutOfRange
-pub fn isOutOfRange(_this: &Piece, parent: &Piece, nx: i32, _ny: i32, nz: i32, range: i32) -> bool
+pub(crate) fn isOutOfRange(_this: &Piece, parent: &Piece, nx: i32, _ny: i32, nz: i32, range: i32) -> bool
 {
-    return ((nx - parent.bounds().centerX()).abs() > range) || ((nz - parent.bounds().centerZ()).abs() > range);
+    ((nx - parent.bounds().centerX()).abs() > range) || ((nz - parent.bounds().centerZ()).abs() > range)
 }
 
 // ComponentTFIceTowerWing.makeTowerWing
-pub fn makeTowerWing(
+pub(crate) fn makeTowerWing(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -89,7 +95,7 @@ pub fn makeTowerWing(
 {
     let direction: i32 = (this.mode() + rotation) % 4;
     let dx: Vec<i32> = this.offsetTower(x, y, z, wingSize, direction);
-    if this.isOutOfRange(&Rc::clone(&list[(0) as usize]), dx[0], dx[1], dx[2], 17)
+    if this.isOutOfRange(&Rc::clone(&list[0usize]), dx[0], dx[1], dx[2], 17)
     {
         return false;
     }
@@ -99,14 +105,15 @@ pub fn makeTowerWing(
     {
         return false;
     }
+
     list.push(Rc::clone(&wing));
-    wing.build(&Rc::clone(&list[(0) as usize]), list, random);
+    wing.build(&Rc::clone(&list[0usize]), list, random);
     this.addOpening(x, y, z, rotation);
-    return true;
+    true
 }
 
 // ComponentTFIceTowerWing.makeBossTowerWing
-pub fn makeBossTowerWing(
+pub(crate) fn makeBossTowerWing(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -127,21 +134,22 @@ pub fn makeBossTowerWing(
     {
         return false;
     }
+
     list.push(Rc::clone(&wing));
-    wing.build(&Rc::clone(&list[(0) as usize]), list, random);
+    wing.build(&Rc::clone(&list[0usize]), list, random);
     this.addOpening(x, y, z, rotation);
-    return true;
+    true
 }
 
 // ComponentTFIceTowerWing.getYByStairs
-pub fn getYByStairs(this: &Piece, _rx: i32, random: &Random, _direction: i32) -> i32
+pub(crate) fn getYByStairs(this: &Piece, _rx: i32, random: &Random, _direction: i32) -> i32
 {
     let floors: i32 = this.m_height.get() / 10;
-    return 11 + (random.nextIntBounded(floors - 1) * 10);
+    11 + (random.nextIntBounded(floors - 1) * 10)
 }
 
 // ComponentTFIceTowerWing.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     let decoRNG: Random = Random::withSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
@@ -161,6 +169,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         this.m_deco.get().m_randomBlocks,
     );
     this.fillAir(world, sbb, 1, 1, 1, this.m_size.get() - 2, this.m_height.get() - 2, this.m_size.get() - 2);
+
     if this.m_hasBase.get()
     {
         for x in 0..this.m_size.get()
@@ -171,28 +180,33 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             }
         }
     }
+
     this.darken(world);
     this.makeFloorsForTower(world, &decoRNG, sbb);
     this.makeOpenings(world, sbb);
-    return true;
+    true
 }
 
 // ComponentTFIceTowerWing.makeFloorsForTower
-pub fn makeFloorsForTower(this: &Piece, world: &GenWorld, decoRNG: &Random, sbb: StructureBox)
+pub(crate) fn makeFloorsForTower(this: &Piece, world: &GenWorld, decoRNG: &Random, sbb: StructureBox)
 {
     let floors: i32 = this.m_height.get() / 10;
     let mut ladderDir: i32 = 3;
     let mut downLadderDir: i32 = -1;
     let floorHeight: i32 = 10;
+
     for i in 0..(floors - 1)
     {
         this.placeFloor5(world, decoRNG, sbb, floorHeight, i);
+
         downLadderDir =
         {
-            let old = ladderDir;
+            let old: i32 = ladderDir;
+
             ladderDir += 1;
             old
         };
+
         ladderDir %= 4;
         this.decorateFloor8(
             world,
@@ -205,6 +219,7 @@ pub fn makeFloorsForTower(this: &Piece, world: &GenWorld, decoRNG: &Random, sbb:
             sbb,
         );
     }
+
     let topFloor: i32 = floors - 1;
     this.decorateTopFloor(
         world,
@@ -219,7 +234,14 @@ pub fn makeFloorsForTower(this: &Piece, world: &GenWorld, decoRNG: &Random, sbb:
 }
 
 // ComponentTFIceTowerWing.placeFloor
-pub fn placeFloor5(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox, floorHeight: i32, floor: i32)
+pub(crate) fn placeFloor5(
+    this: &Piece,
+    world: &GenWorld,
+    _random: &Random,
+    sbb: StructureBox,
+    floorHeight: i32,
+    floor: i32,
+)
 {
     for x in 1..(this.m_size.get() - 1)
     {
@@ -239,9 +261,10 @@ pub fn placeFloor5(this: &Piece, world: &GenWorld, _random: &Random, sbb: Struct
 }
 
 // ComponentTFIceTowerWing.makeDoorOpening
-pub fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
+pub(crate) fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
 {
     tower_wing::makeDoorOpening(this, world, dx, dy, dz, sbb);
+
     if this.getBlock(world, dx, dy + 2, dz, sbb) != blk("air")
     {
         this.placeBlock(world, this.m_deco.get().m_accentID, this.m_deco.get().m_accentMeta, dx, dy + 2, dz, sbb);
@@ -249,7 +272,7 @@ pub fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32
 }
 
 // ComponentTFIceTowerWing.decorateFloor
-pub fn decorateFloor8(
+pub(crate) fn decorateFloor8(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -262,6 +285,7 @@ pub fn decorateFloor8(
 )
 {
     let hasTreasure: bool = this.m_treasureFloor.get() == floor;
+
     'case1:
     {
         match random.nextIntBounded(8)
@@ -269,7 +293,7 @@ pub fn decorateFloor8(
             // todo falls through to the next case
             0 =>
             {
-                if ice_tower_wing::isNoDoorAreaRotated(this, 9, bottom + 5, 1, 10, top + 1, 7, ladderUpDir)
+                if ice_tower_wing::noDoorAreaRotated(this, 9, bottom + 5, 1, 10, top + 1, 7, ladderUpDir)
                 {
                     ice_tower_wing::decorateWraparoundWallSteps(
                         this,
@@ -288,7 +312,7 @@ pub fn decorateFloor8(
             // todo falls through to the next case
             1 =>
             {
-                if ice_tower_wing::isNoDoorAreaRotated(this, 7, bottom, 0, 10, top + 1, 10, ladderUpDir)
+                if ice_tower_wing::noDoorAreaRotated(this, 7, bottom, 0, 10, top + 1, 10, ladderUpDir)
                 {
                     ice_tower_wing::decorateFarWallSteps(
                         this,
@@ -307,7 +331,7 @@ pub fn decorateFloor8(
             // todo falls through to the next case
             2 =>
             {
-                if ice_tower_wing::isNoDoorAreaRotated(this, 9, bottom + 5, 1, 10, top + 1, 7, ladderUpDir)
+                if ice_tower_wing::noDoorAreaRotated(this, 9, bottom + 5, 1, 10, top + 1, 7, ladderUpDir)
                 {
                     ice_tower_wing::decorateWraparoundWallStepsPillars(
                         this,
@@ -323,6 +347,7 @@ pub fn decorateFloor8(
                     break 'case1;
                 }
             }
+
             3 =>
             {
                 ice_tower_wing::decoratePlatform(
@@ -337,6 +362,7 @@ pub fn decorateFloor8(
                     sbb,
                 );
             }
+
             4 =>
             {
                 ice_tower_wing::decoratePillarParkour(
@@ -351,6 +377,7 @@ pub fn decorateFloor8(
                     sbb,
                 );
             }
+
             5 =>
             {
                 ice_tower_wing::decoratePillarPlatforms(
@@ -365,6 +392,7 @@ pub fn decorateFloor8(
                     sbb,
                 );
             }
+
             6 =>
             {
                 ice_tower_wing::decoratePillarPlatformsOutside(
@@ -379,6 +407,7 @@ pub fn decorateFloor8(
                     sbb,
                 );
             }
+
             7 =>
             {
                 ice_tower_wing::decorateQuadPillarStairs(
@@ -393,6 +422,7 @@ pub fn decorateFloor8(
                     sbb,
                 );
             }
+
             _ =>
             {}
         }
@@ -400,7 +430,7 @@ pub fn decorateFloor8(
 }
 
 // ComponentTFIceTowerWing.isNoDoorAreaRotated
-pub fn isNoDoorAreaRotated(
+pub(crate) fn noDoorAreaRotated(
     this: &Piece,
     minX: i32,
     minY: i32,
@@ -412,36 +442,25 @@ pub fn isNoDoorAreaRotated(
 ) -> bool
 {
     let mut isClear: bool = true;
-    let var10000: StructureBox;
-    match rotation
+
+    let var10000: StructureBox = match rotation
     {
-        1 =>
-        {
-            var10000 = StructureBox::new(
-                [(this.m_size.get() - 1) - maxZ, minY, minX],
-                [(this.m_size.get() - 1) - minZ, maxY, maxX],
-            );
-        }
-        2 =>
-        {
-            var10000 = StructureBox::new(
-                [(this.m_size.get() - 1) - maxX, minY, (this.m_size.get() - 1) - maxZ],
-                [(this.m_size.get() - 1) - minX, maxY, (this.m_size.get() - 1) - minZ],
-            );
-        }
-        3 =>
-        {
-            var10000 = StructureBox::new(
-                [minZ, minY, (this.m_size.get() - 1) - maxX],
-                [maxZ, maxY, (this.m_size.get() - 1) - minX],
-            );
-        }
-        _ =>
-        {
-            var10000 = StructureBox::new([minX, minY, minZ], [maxX, maxY, maxZ]);
-        }
-    }
+        1 => StructureBox::new(
+            [(this.m_size.get() - 1) - maxZ, minY, minX],
+            [(this.m_size.get() - 1) - minZ, maxY, maxX],
+        ),
+        2 => StructureBox::new(
+            [(this.m_size.get() - 1) - maxX, minY, (this.m_size.get() - 1) - maxZ],
+            [(this.m_size.get() - 1) - minX, maxY, (this.m_size.get() - 1) - minZ],
+        ),
+        3 => StructureBox::new(
+            [minZ, minY, (this.m_size.get() - 1) - maxX],
+            [maxZ, maxY, (this.m_size.get() - 1) - minX],
+        ),
+        _ => StructureBox::new([minX, minY, minZ], [maxX, maxY, maxZ]),
+    };
     let exclusionBox: StructureBox = var10000;
+
     for door in this.m_openings.borrow().clone()
     {
         if exclusionBox.contains(door[0], door[1], door[2])
@@ -449,11 +468,12 @@ pub fn isNoDoorAreaRotated(
             isClear = false;
         }
     }
-    return isClear;
+
+    isClear
 }
 
 // ComponentTFIceTowerWing.decorateTopFloor
-pub fn decorateTopFloor(
+pub(crate) fn decorateTopFloor(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -473,6 +493,7 @@ pub fn decorateTopFloor(
     {
         ice_tower_wing::decoratePillarsGrid(this, world, random, bottom, top, ladderDownDir, sbb);
     }
+
     if this.isDeadEnd()
     {
         ice_tower_wing::decorateTopFloorTreasure(this, world, random, bottom, top, ladderDownDir, sbb);
@@ -480,7 +501,7 @@ pub fn decorateTopFloor(
 }
 
 // ComponentTFIceTowerWing.decorateTopFloorTreasure
-pub fn decorateTopFloorTreasure(
+pub(crate) fn decorateTopFloorTreasure(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -507,7 +528,7 @@ pub fn decorateTopFloorTreasure(
 }
 
 // ComponentTFIceTowerWing.decoratePillars
-pub fn decoratePillars(
+pub(crate) fn decoratePillars(
     this: &Piece,
     world: &GenWorld,
     _random: &Random,
@@ -571,16 +592,8 @@ pub fn decoratePillars(
     );
 }
 
-// ComponentTFIceTowerWing.decoratePillarsGrid
-pub fn decoratePillarsGrid(
-    this: &Piece,
-    world: &GenWorld,
-    random: &Random,
-    bottom: i32,
-    top: i32,
-    rotation: i32,
-    sbb: StructureBox,
-)
+// beams across the floor at bottom plus five, turned to face the wing's mode
+pub(crate) fn crossBeams(this: &Piece, world: &GenWorld, bottom: i32, rotation: i32, sbb: StructureBox)
 {
     let beamMetaNS: i32 = if ((this.m_mode.get() + rotation) % 2) == 0
     {
@@ -643,11 +656,25 @@ pub fn decoratePillarsGrid(
         this.m_deco.get().m_pillarMeta + beamMetaNS,
         rotation,
     );
+}
+
+// ComponentTFIceTowerWing.decoratePillarsGrid
+pub(crate) fn decoratePillarsGrid(
+    this: &Piece,
+    world: &GenWorld,
+    random: &Random,
+    bottom: i32,
+    top: i32,
+    rotation: i32,
+    sbb: StructureBox,
+)
+{
+    crossBeams(this, world, bottom, rotation, sbb);
     ice_tower_wing::decoratePillars(this, world, random, bottom, top, rotation, sbb);
 }
 
 // ComponentTFIceTowerWing.decoratePillarsCorners
-pub fn decoratePillarsCorners(
+pub(crate) fn decoratePillarsCorners(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -657,73 +684,13 @@ pub fn decoratePillarsCorners(
     sbb: StructureBox,
 )
 {
-    let beamMetaNS: i32 = if ((this.m_mode.get() + rotation) % 2) == 0
-    {
-        4
-    }
-    else
-    {
-        8
-    };
-    let beamMetaEW: i32 = if beamMetaNS == 4 { 8 } else { 4 };
-    this.fillTurned(
-        world,
-        sbb,
-        3,
-        bottom + 5,
-        1,
-        3,
-        bottom + 5,
-        9,
-        this.m_deco.get().m_pillarID,
-        this.m_deco.get().m_pillarMeta + beamMetaEW,
-        rotation,
-    );
-    this.fillTurned(
-        world,
-        sbb,
-        7,
-        bottom + 5,
-        1,
-        7,
-        bottom + 5,
-        9,
-        this.m_deco.get().m_pillarID,
-        this.m_deco.get().m_pillarMeta + beamMetaEW,
-        rotation,
-    );
-    this.fillTurned(
-        world,
-        sbb,
-        1,
-        bottom + 5,
-        3,
-        9,
-        bottom + 5,
-        3,
-        this.m_deco.get().m_pillarID,
-        this.m_deco.get().m_pillarMeta + beamMetaNS,
-        rotation,
-    );
-    this.fillTurned(
-        world,
-        sbb,
-        1,
-        bottom + 5,
-        7,
-        9,
-        bottom + 5,
-        7,
-        this.m_deco.get().m_pillarID,
-        this.m_deco.get().m_pillarMeta + beamMetaNS,
-        rotation,
-    );
+    crossBeams(this, world, bottom, rotation, sbb);
     this.fillAirTurned(world, sbb, 3, bottom + 5, 3, 7, bottom + 5, 7, rotation);
     ice_tower_wing::decoratePillars(this, world, random, bottom, top, rotation, sbb);
 }
 
 // ComponentTFIceTowerWing.decorateFarWallSteps
-pub fn decorateFarWallSteps(
+pub(crate) fn decorateFarWallSteps(
     this: &Piece,
     world: &GenWorld,
     _random: &Random,
@@ -738,30 +705,26 @@ pub fn decorateFarWallSteps(
     for z in 1..10
     {
         let y: i32 = (bottom + 10) - (z / 2);
-        this.placeTurned(
-            world,
-            if (z % 2) == 0
-            {
-                this.m_deco.get().m_pillarID
-            }
-            else
-            {
-                this.m_deco.get().m_platformID
-            },
-            if (z % 2) == 0
-            {
-                this.m_deco.get().m_pillarMeta
-            }
-            else
-            {
-                this.m_deco.get().m_platformMeta
-            },
-            9,
-            y,
-            z,
-            ladderUpDir,
-            sbb,
-        );
+
+        let block: Blk = if (z % 2) == 0
+        {
+            this.m_deco.get().m_pillarID
+        }
+        else
+        {
+            this.m_deco.get().m_platformID
+        };
+
+        let meta: i32 = if (z % 2) == 0
+        {
+            this.m_deco.get().m_pillarMeta
+        }
+        else
+        {
+            this.m_deco.get().m_platformMeta
+        };
+        this.placeTurned(world, block, meta, 9, y, z, ladderUpDir, sbb);
+
         for by in bottom + 1..y
         {
             this.placeTurned(
@@ -776,6 +739,7 @@ pub fn decorateFarWallSteps(
             );
         }
     }
+
     for z in 1..10
     {
         let y: i32 = (bottom + 1) + (z / 2);
@@ -803,6 +767,7 @@ pub fn decorateFarWallSteps(
             ladderUpDir,
             sbb,
         );
+
         for by in bottom + 1..y
         {
             this.placeTurned(
@@ -817,6 +782,7 @@ pub fn decorateFarWallSteps(
             );
         }
     }
+
     this.placeTurned(
         world,
         this.m_deco.get().m_platformID,
@@ -827,13 +793,16 @@ pub fn decorateFarWallSteps(
         ladderUpDir,
         sbb,
     );
+
     for z in 2..7
     {
         this.placeTurned(world, blk("air"), 0, 9, top, z, ladderUpDir, sbb);
     }
+
     if hasTreasure
     {
         this.placeTreasureRotatedTrapped(world, 1, bottom + 8, 5, ladderUpDir, Table::AuroraCache, false, sbb);
+
         let beamMetaNS: i32 = if ((this.m_mode.get() + ladderUpDir) % 2) == 0
         {
             4
@@ -856,7 +825,7 @@ pub fn decorateFarWallSteps(
 }
 
 // ComponentTFIceTowerWing.decorateWraparoundWallSteps
-pub fn decorateWraparoundWallSteps(
+pub(crate) fn decorateWraparoundWallSteps(
     this: &Piece,
     world: &GenWorld,
     _random: &Random,
@@ -882,6 +851,7 @@ pub fn decorateWraparoundWallSteps(
             sbb,
         );
     }
+
     for x in 1..9
     {
         let y: i32 = (bottom + 2) + ((x - 1) / 2);
@@ -896,6 +866,7 @@ pub fn decorateWraparoundWallSteps(
             sbb,
         );
     }
+
     this.placeTurned(
         world,
         this.m_deco.get().m_platformID,
@@ -916,13 +887,16 @@ pub fn decorateWraparoundWallSteps(
         ladderUpDir,
         sbb,
     );
+
     for z in 2..7
     {
         this.placeTurned(world, blk("air"), 0, 9, top, z, ladderUpDir, sbb);
     }
+
     if hasTreasure
     {
         this.placeTreasureRotatedTrapped(world, 1, bottom + 5, 5, ladderUpDir, Table::AuroraCache, false, sbb);
+
         let beamMetaNS: i32 = if ((this.m_mode.get() + ladderUpDir) % 2) == 0
         {
             4
@@ -945,7 +919,7 @@ pub fn decorateWraparoundWallSteps(
 }
 
 // ComponentTFIceTowerWing.decorateWraparoundWallStepsPillars
-pub fn decorateWraparoundWallStepsPillars(
+pub(crate) fn decorateWraparoundWallStepsPillars(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -967,6 +941,7 @@ pub fn decorateWraparoundWallStepsPillars(
         8
     };
     let beamMetaEW: i32 = if beamMetaNS == 4 { 8 } else { 4 };
+
     ice_tower_wing::decorateWraparoundWallSteps(
         this,
         world,
@@ -1109,6 +1084,7 @@ pub fn decorateWraparoundWallStepsPillars(
         this.m_deco.get().m_pillarMeta + beamMetaEW,
         rotation,
     );
+
     if hasTreasure
     {
         this.placeTreasureRotatedTrapped(world, 7, bottom + 6, 1, ladderUpDir, Table::AuroraCache, false, sbb);
@@ -1116,7 +1092,7 @@ pub fn decorateWraparoundWallStepsPillars(
 }
 
 // ComponentTFIceTowerWing.decoratePlatform
-pub fn decoratePlatform(
+pub(crate) fn decoratePlatform(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -1142,6 +1118,7 @@ pub fn decoratePlatform(
         this.m_deco.get().m_floorMeta,
         ladderDownDir,
     );
+
     for z in 6..10
     {
         let y: i32 = (bottom - 2) + (z / 2);
@@ -1156,6 +1133,7 @@ pub fn decoratePlatform(
             sbb,
         );
     }
+
     for x in 2..6
     {
         let y: i32 = (bottom + 2) + (x / 2);
@@ -1170,6 +1148,7 @@ pub fn decoratePlatform(
             sbb,
         );
     }
+
     this.placeTurned(
         world,
         this.m_deco.get().m_platformID,
@@ -1190,6 +1169,7 @@ pub fn decoratePlatform(
         ladderUpDir,
         sbb,
     );
+
     for x in 5..10
     {
         let y: i32 = (bottom + 4) + (x / 2);
@@ -1203,14 +1183,17 @@ pub fn decoratePlatform(
             ladderUpDir,
             sbb,
         );
+
         if x > 6
         {
             this.placeTurned(world, blk("air"), 0, x, top, 1, ladderUpDir, sbb);
         }
     }
+
     for z in 2..5
     {
         let y: i32 = (bottom + 8) + (z / 2);
+
         this.placeTurned(world, blk("air"), 0, 9, top, z, ladderUpDir, sbb);
         this.placeTurned(
             world,
@@ -1223,6 +1206,7 @@ pub fn decoratePlatform(
             sbb,
         );
     }
+
     if hasTreasure
     {
         this.placeTreasureRotatedTrapped(world, 3, bottom + 6, 5, ladderDownDir, Table::AuroraCache, false, sbb);
@@ -1230,7 +1214,7 @@ pub fn decoratePlatform(
 }
 
 // ComponentTFIceTowerWing.decorateQuadPillarStairs
-pub fn decorateQuadPillarStairs(
+pub(crate) fn decorateQuadPillarStairs(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -1243,6 +1227,7 @@ pub fn decorateQuadPillarStairs(
 )
 {
     ice_tower_wing::decoratePillars(this, world, random, bottom, top, ladderDownDir, sbb);
+
     for z in 6..9
     {
         let y: i32 = (bottom - 2) + (z / 2);
@@ -1257,6 +1242,7 @@ pub fn decorateQuadPillarStairs(
             sbb,
         );
     }
+
     for x in 3..9
     {
         let y: i32 = (bottom + 1) + (x / 2);
@@ -1271,13 +1257,16 @@ pub fn decorateQuadPillarStairs(
             sbb,
         );
     }
+
     for z in (1 + 1..=7).rev()
     {
         let y: i32 = (top - 2) - ((z - 1) / 2);
+
         if z < 4
         {
             this.placeTurned(world, blk("air"), 0, 8, top, z, ladderDownDir, sbb);
         }
+
         this.placeTurned(
             world,
             this.m_deco.get().m_platformID,
@@ -1289,9 +1278,11 @@ pub fn decorateQuadPillarStairs(
             sbb,
         );
     }
+
     for x in (3 + 1..=7).rev()
     {
         let y: i32 = (top + 1) - ((x - 1) / 2);
+
         this.placeTurned(world, blk("air"), 0, x, top, 2, ladderDownDir, sbb);
         this.placeTurned(
             world,
@@ -1304,6 +1295,7 @@ pub fn decorateQuadPillarStairs(
             sbb,
         );
     }
+
     if hasTreasure
     {
         this.placeTreasureRotatedTrapped(world, 3, bottom + 7, 7, ladderUpDir, Table::AuroraCache, false, sbb);
@@ -1311,7 +1303,7 @@ pub fn decorateQuadPillarStairs(
 }
 
 // ComponentTFIceTowerWing.decoratePillarPlatforms
-pub fn decoratePillarPlatforms(
+pub(crate) fn decoratePillarPlatforms(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -1340,11 +1332,13 @@ pub fn decoratePillarPlatforms(
             rotation,
         );
     }
+
     this.fillAirTurned(world, sbb, 2, top, 2, 8, top, 4, ladderUpDir);
     this.fillAirTurned(world, sbb, 2, top, 2, 4, top, 6, ladderUpDir);
     this.placeTurned(world, this.m_deco.get().m_pillarID, this.m_deco.get().m_pillarMeta, 7, top, 3, ladderUpDir, sbb);
     this.placeTurned(world, this.m_deco.get().m_pillarID, this.m_deco.get().m_pillarMeta, 3, top, 3, ladderUpDir, sbb);
     ice_tower_wing::decoratePillars(this, world, random, bottom, top, ladderUpDir, sbb);
+
     if hasTreasure
     {
         this.placeTreasureRotatedTrapped(world, 3, bottom + 5, 2, ladderUpDir, Table::AuroraCache, false, sbb);
@@ -1352,7 +1346,7 @@ pub fn decoratePillarPlatforms(
 }
 
 // ComponentTFIceTowerWing.decoratePillarPlatformsOutside
-pub fn decoratePillarPlatformsOutside(
+pub(crate) fn decoratePillarPlatformsOutside(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -1394,6 +1388,7 @@ pub fn decoratePillarPlatformsOutside(
             rotation,
         );
     }
+
     let rotation: i32 = (ladderUpDir + 2) % 4;
     this.fillAirTurned(world, sbb, 5, top, 8, 9, top, 9, rotation);
     this.fillAirTurned(world, sbb, 8, top, 6, 9, top, 9, rotation);
@@ -1463,6 +1458,7 @@ pub fn decoratePillarPlatformsOutside(
         rotation,
     );
     ice_tower_wing::decoratePillars(this, world, random, bottom, top, ladderUpDir, sbb);
+
     if hasTreasure
     {
         this.placeTreasureRotatedTrapped(world, 3, bottom + 5, 2, ladderUpDir, Table::AuroraCache, false, sbb);
@@ -1470,7 +1466,7 @@ pub fn decoratePillarPlatformsOutside(
 }
 
 // ComponentTFIceTowerWing.decoratePillarParkour
-pub fn decoratePillarParkour(
+pub(crate) fn decoratePillarParkour(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -1492,6 +1488,7 @@ pub fn decoratePillarParkour(
         8
     };
     let beamMetaEW: i32 = if beamMetaNS == 4 { 8 } else { 4 };
+
     ice_tower_wing::decoratePillars(this, world, random, bottom, top, rotation, sbb);
     this.placeTurned(
         world,
@@ -1690,6 +1687,7 @@ pub fn decoratePillarParkour(
     );
     this.fillAirTurned(world, sbb, 2, top, 2, 8, top, 4, ladderUpDir);
     this.fillAirTurned(world, sbb, 2, top, 2, 4, top, 6, ladderUpDir);
+
     if hasTreasure
     {
         this.placeTreasureRotatedTrapped(world, 8, bottom + 8, 7, ladderUpDir, Table::AuroraCache, false, sbb);
@@ -1697,14 +1695,14 @@ pub fn decoratePillarParkour(
 }
 
 // ComponentTFIceTowerWing.makeARoof
-pub fn makeARoof(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn makeARoof(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let index: i32 = this.depth();
     tower_wing::tryToFitRoof(this, list, random, &ice_tower_roof::new(index + 1, this));
 }
 
 // ComponentTFIceTowerWing.makeABeard
-pub fn makeABeard(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn makeABeard(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let index: i32 = this.depth();
     let beard: Rc<Piece> = ice_tower_beard::new(index + 1, this);

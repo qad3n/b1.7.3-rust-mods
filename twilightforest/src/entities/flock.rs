@@ -1,7 +1,7 @@
 use super::ai::{distance, target};
 use crate::ids;
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 // EntityAITFFlockToSameKind, EntityAITFPanicOnFlockDeath and EntityAILeapAtTarget, the kobold's pack habits
@@ -47,21 +47,24 @@ fn same(world: World, info: &EntityInfo, reach: f64) -> Vec<EntityInfo>
     world.entitiesNear(info.pos, reach).into_iter().filter(|other| other.kind == info.kind).collect()
 }
 
-pub fn died(entity: Entity, info: &EntityInfo)
+pub(crate) fn died(entity: Entity, info: &EntityInfo)
 {
     let now: i64 = entity.world.time();
+
     DEATHS.with(|deaths|
     {
-        let mut deaths = deaths.borrow_mut();
+        let mut deaths: RefMut<Vec<(i32, [f64; 3], i64)>> = deaths.borrow_mut();
         deaths.retain(|(_, _, when)| now - when < tuning::DEATH_TICKS);
         deaths.push((entity.world.dimension, info.pos, now));
     });
+
     FLEEING.with(|fleeing| fleeing.borrow_mut().remove(&(entity.world.dimension, entity.id)));
 }
 
 fn frightened(world: World, info: &EntityInfo) -> bool
 {
     let now: i64 = world.time();
+
     DEATHS.with(|deaths|
     {
         deaths.borrow().iter().any(|(dimension, pos, when)|
@@ -80,6 +83,7 @@ fn setPanicked(entity: Entity, panicked: bool)
     {
         return;
     }
+
     if let Err(error) = entity.setSynced(&Panic { m_panicked: panicked })
     {
         warn(&format!("kobold panic: {}", error.0));
@@ -98,9 +102,11 @@ fn panic(entity: Entity, info: &EntityInfo) -> bool
         setPanicked(entity, false);
         return false;
     }
+
     if until.is_none()
     {
         FLEEING.with(|fleeing| fleeing.borrow_mut().insert(key, now + tuning::PANIC_TICKS));
+
         let spot: BlockPos = BlockPos::new(
             info.pos[0].floor() as i32 + world.random(tuning::FLEE * 2 + 1) - tuning::FLEE,
             info.pos[1].floor() as i32,
@@ -108,6 +114,7 @@ fn panic(entity: Entity, info: &EntityInfo) -> bool
         );
         entity.walkTo(spot, tuning::PANIC_SPEED);
     }
+
     setPanicked(entity, true);
     true
 }
@@ -126,13 +133,16 @@ fn leap(entity: Entity, info: &EntityInfo) -> bool
     {
         return false;
     }
+
     let (dx, dz): (f64, f64) = (goal.pos[0] - info.pos[0], goal.pos[2] - info.pos[2]);
     let flat: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-3);
+
     let push = |delta: f64, motion: f64|
     {
         delta / flat * tuning::LEAP_PUSH * (1.0 - tuning::LEAP_KEEP) + motion * tuning::LEAP_KEEP
     };
     let _ = entity.setMotion([push(dx, info.motion[0]), tuning::LEAP_LIFT, push(dz, info.motion[2])]);
+
     true
 }
 
@@ -155,6 +165,7 @@ fn gather(entity: Entity, info: &EntityInfo)
     {
         return;
     }
+
     entity.walkTo(
         BlockPos::new(middle[0].floor() as i32, middle[1].floor() as i32, middle[2].floor() as i32),
         tuning::SPEED,
@@ -169,9 +180,11 @@ fn sweat(entity: Entity, info: &EntityInfo)
     {
         return;
     }
+
     let world: World = entity.world;
     let width: f64 = entity.field(EntityField::Width) * tuning::SPLASH_SPREAD;
     let height: f64 = entity.field(EntityField::Height) * tuning::EYES;
+
     for _ in 0..tuning::SPLASHES
     {
         let at: [f64; 3] = [
@@ -184,20 +197,21 @@ fn sweat(entity: Entity, info: &EntityInfo)
 }
 
 // the sweat is the client's own, the pack habits run where the world is owned
-pub fn kobold(entity: Entity, info: &EntityInfo)
+pub(crate) fn kobold(entity: Entity, info: &EntityInfo)
 {
     if !entity.world.isAuthority()
     {
         sweat(entity, info);
         return;
     }
+
     if !panic(entity, info) && !leap(entity, info)
     {
         gather(entity, info);
     }
 }
 
-pub fn leaper(entity: Entity, info: &EntityInfo)
+pub(crate) fn leaper(entity: Entity, info: &EntityInfo)
 {
     if entity.world.isAuthority()
     {

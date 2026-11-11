@@ -53,17 +53,20 @@ impl ItemBehavior for Powder
         let range: f64 = 2.0;
         let aim: [f64; 3] = look(info.yaw, info.pitch);
         let center: [f64; 3] = [0, 1, 2].map(|axis| info.pos[axis] + aim[axis] * range);
+
         for _ in 0..SPARKS
         {
             let at: [f64; 3] = center.map(|value| value + f64::from(ids::fraction(world)) * 2.0 - 1.0);
             crate::particles::spawn(world, "magicCrit", at, [0.0; 3]);
         }
+
         Use::Pass
     }
 
     fn onInteractEntity(&self, _stack: ItemStack, target: Entity)
     {
         let world: World = target.world;
+
         let Some(info) = target.info()
         else
         {
@@ -71,6 +74,7 @@ impl ItemBehavior for Powder
         };
 
         let kind: String = info.kind.as_ref().map(ToString::to_string).unwrap_or_default();
+
         let Some(twin) = PAIRS.iter().find_map(|(a, b)|
         {
             if *a == kind
@@ -101,12 +105,15 @@ impl ItemBehavior for Powder
                 [0.0; 3],
             );
         }
+
         if !world.isAuthority()
         {
             return;
         }
+
         target.kill();
         crate::entities::spawnAt(world, twin, info.pos, info.yaw);
+
         if let Some(player) = holder(world, info.pos)
             && let Some(held) = player.held()
         {
@@ -119,7 +126,7 @@ impl ItemBehavior for Powder
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     put(
         ctx,

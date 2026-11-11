@@ -205,7 +205,8 @@ struct Machine
     m_particle: &'static str,
 }
 
-const ENCHANTER: Machine = Machine {
+const ENCHANTER: Machine = Machine
+{
     m_name: "enchanter",
     m_title: "Enchanter",
     m_faces: ["enchanter_bottom", "enchanter_bottom", "enchanter_side"],
@@ -216,7 +217,8 @@ const ENCHANTER: Machine = Machine {
 };
 
 // TileEntityFreezer checks for icestone at its own position, which never holds, so it has no booster
-const FREEZER: Machine = Machine {
+const FREEZER: Machine = Machine
+{
     m_name: "freezer",
     m_title: "Freezer",
     m_faces: ["freezer_top", "enchanter_bottom", "freezer_side"],
@@ -262,6 +264,7 @@ fn fits(recipe: &Recipe, result: &ItemStack, current: &Option<ItemStack>) -> boo
     match current
     {
         None => true,
+
         Some(stack) =>
         {
             recipe.m_output.is_some()
@@ -288,6 +291,7 @@ fn setLit(ctx: &mut BlockCtx, was: bool, now: bool)
 fn finish(world: World, pos: BlockPos, recipe: &Recipe, input: &ItemStack)
 {
     let result: ItemStack = output(recipe, input);
+
     let merged: ItemStack = match world.tileSlot(pos, slot::OUTPUT)
     {
         Some(existing) => ItemStack { count: existing.count + result.count, ..existing },
@@ -309,8 +313,10 @@ fn refuel(machine: &Machine, world: World, pos: BlockPos, state: &mut Work)
         Some(fuel) =>
         {
             state.m_power += machine::FUEL_TICKS;
+
             let _ = world.setTileSlot(pos, slot::FUEL, takeOne(fuel));
         }
+
         None =>
         {
             state.m_recipe = None;
@@ -326,6 +332,7 @@ fn work(machine: &Machine, ctx: &mut BlockCtx)
     {
         return;
     }
+
     let world: World = ctx.world();
     let pos: BlockPos = ctx.pos();
     let before: Work = ctx.tileData();
@@ -333,6 +340,7 @@ fn work(machine: &Machine, ctx: &mut BlockCtx)
     if state.m_power > 0
     {
         state.m_power -= machine::STEP;
+
         if state.m_recipe.is_some()
         {
             let below: BlockPos = BlockPos::new(pos.x, pos.y - 1, pos.z);
@@ -347,29 +355,35 @@ fn work(machine: &Machine, ctx: &mut BlockCtx)
             };
         }
     }
+
     let input: Option<ItemStack> = world.tileSlot(pos, slot::INPUT);
+
     match state.m_recipe
     {
         Some(index) =>
         {
             let recipe: &Recipe = &machine.m_recipes[index as usize];
+
             if state.m_progress >= state.m_required
                 && let Some(stack) = &input
             {
                 finish(world, pos, recipe, stack);
                 state.m_progress = 0;
             }
+
             let current: Option<ItemStack> = world.tileSlot(pos, slot::INPUT);
             if current.as_ref().and_then(|stack| recipeFor(machine, stack)) != Some(index)
             {
                 state.m_recipe = None;
                 state.m_progress = 0;
             }
+
             if state.m_power <= 0
             {
                 refuel(machine, world, pos, &mut state);
             }
         }
+
         None =>
         {
             if let Some(stack) = &input
@@ -384,7 +398,9 @@ fn work(machine: &Machine, ctx: &mut BlockCtx)
             }
         }
     }
+
     setLit(ctx, before.m_recipe.is_some(), state.m_recipe.is_some());
+
     if state != before
     {
         let _ = ctx.setTileData(&state);
@@ -398,13 +414,16 @@ fn hatchEgg(world: World, pos: BlockPos, egg: ItemStack)
     {
         above += 1;
     }
+
     let spot: [f64; 3] =
         [pos.x as f64 + lit::CENTER, (pos.y + above) as f64 + machine::HATCH_LIFT, pos.z as f64 + lit::CENTER];
     moa::hatch(world, &egg, spot);
+
     if let Some(owner) = progress::owner(world, pos)
     {
         progress::grant(owner, Award::Incubator);
     }
+
     let _ = world.setTileSlot(pos, slot::EGG, takeOne(egg));
 }
 
@@ -415,31 +434,38 @@ fn incubate(ctx: &mut BlockCtx)
     {
         return;
     }
+
     let world: World = ctx.world();
     let pos: BlockPos = ctx.pos();
     let before: Hatch = ctx.tileData();
     let mut state: Hatch = before;
     let egg: Option<ItemStack> = world.tileSlot(pos, slot::EGG);
+
     if state.m_power > 0
     {
         state.m_power -= machine::STEP;
+
         if egg.is_some()
         {
             state.m_progress += machine::STEP;
         }
     }
+
     // onSlotChanged resets the progress when the egg slot changes, an emptied slot is what the loader shows of that
     match egg
     {
         None => state.m_progress = 0,
+
         Some(stack) if state.m_progress >= machine::HATCH_TICKS =>
         {
             hatchEgg(world, pos, stack);
             state.m_progress = 0;
         }
+
         Some(_) =>
         {}
     }
+
     if state.m_power <= 0
     {
         let torch: Option<ItemStack> = world.tileSlot(pos, slot::TORCH).filter(|torch| torch.item.is(AMBROSIUM_TORCH));
@@ -449,8 +475,10 @@ fn incubate(ctx: &mut BlockCtx)
             Some(torch) =>
             {
                 state.m_power += machine::TORCH_TICKS;
+
                 let _ = world.setTileSlot(pos, slot::TORCH, takeOne(torch));
             }
+
             None =>
             {
                 state.m_power = 0;
@@ -458,7 +486,9 @@ fn incubate(ctx: &mut BlockCtx)
             }
         }
     }
+
     setLit(ctx, before.m_power > 0, state.m_power > 0);
+
     if state != before
     {
         let _ = ctx.setTileData(&state);
@@ -502,8 +532,10 @@ impl BlockBehavior for ContainerBlock
             {
                 progress::setOwner(ctx.world(), ctx.pos(), player);
             }
+
             let _ = player.openScreen(self.m_screen, Some(ctx.pos()), Vec::new());
         }
+
         true
     }
 
@@ -513,6 +545,7 @@ impl BlockBehavior for ContainerBlock
         {
             return;
         }
+
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let spot: [f64; 3] = [
@@ -552,17 +585,20 @@ impl Screen for MachineScreen
     fn draw(&mut self, draw: &mut Draw, _mouse: [i32; 2], _partial: f32)
     {
         labels(draw, self.m_machine.m_title);
+
         let Some(state) = tileState::<Work>(self.m_pos)
         else
         {
             return;
         };
+
         if state.m_recipe.is_some() && state.m_power > 0
         {
             let [x, y, u, v] = gui::FLAME;
             let flame: i32 = (state.m_power * v / machine::FUEL_TICKS).min(v);
             draw.texture(ALTAR_SHEET, x, y + v - flame, u, v - flame, gui::FLAME_WIDTH, flame + gui::FLAME_PAD);
         }
+
         if state.m_required > 0
         {
             let [x, y, u, v] = gui::ARROW;
@@ -585,11 +621,13 @@ impl Screen for IncubatorScreen
     fn draw(&mut self, draw: &mut Draw, _mouse: [i32; 2], _partial: f32)
     {
         labels(draw, INCUBATOR_TITLE);
+
         let Some(state) = tileState::<Hatch>(self.m_pos)
         else
         {
             return;
         };
+
         if state.m_power > 0
         {
             // getPowerTimeRemainingScaled divides by 500 while a torch gives 1000, the flame is capped at full
@@ -597,6 +635,7 @@ impl Screen for IncubatorScreen
             let flame: i32 = (state.m_power * v / machine::FUEL_TICKS).min(v);
             draw.texture(INCUBATOR_SHEET, x, y - flame, u, v - flame, gui::FLAME_WIDTH, flame + gui::FLAME_PAD);
         }
+
         let [x, y, u, v] = gui::BAR;
         let bar: i32 = state.m_progress * gui::BAR_LENGTH / machine::HATCH_TICKS;
         draw.texture(INCUBATOR_SHEET, x, y - bar, u, v - bar, gui::BAR_WIDTH, bar);
@@ -661,7 +700,7 @@ fn registerMachine(ctx: &mut RegisterCtx, machine: &'static Machine) -> Result<(
     )
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerMachine(ctx, &ENCHANTER)?;
     registerMachine(ctx, &FREEZER)?;

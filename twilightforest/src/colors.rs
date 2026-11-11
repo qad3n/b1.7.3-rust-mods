@@ -3,7 +3,7 @@ use b173_api::prelude::*;
 
 // leaves pick their tint from one of these, BlockTFLeaves and BlockTFMagicLeaves colorMultiplier
 #[derive(Clone, Copy)]
-pub enum Tint
+pub(crate) enum Tint
 {
     Foliage,
     Canopy,
@@ -60,7 +60,7 @@ const FADES: [Fade; 4] = [
 ];
 
 // a value climbing in steps of 256 folds back down so the pattern ping pongs
-pub fn fold(value: i32) -> i32
+pub(crate) fn fold(value: i32) -> i32
 {
     let folded: i32 = if value & channel::FOLD_BIT != 0
     {
@@ -73,13 +73,13 @@ pub fn fold(value: i32) -> i32
     folded & channel::MAX
 }
 
-pub fn rgb(red: i32, green: i32, blue: i32) -> u32
+pub(crate) fn rgb(red: i32, green: i32, blue: i32) -> u32
 {
     let mask: i32 = channel::MAX;
     ((red & mask) << channel::RED_SHIFT | (green & mask) << channel::GREEN_SHIFT | (blue & mask)) as u32
 }
 
-pub fn channels(color: u32) -> [u32; 3]
+pub(crate) fn channels(color: u32) -> [u32; 3]
 {
     [
         (color >> channel::RED_SHIFT) & channel::MASK,
@@ -88,12 +88,13 @@ pub fn channels(color: u32) -> [u32; 3]
     ]
 }
 
-pub fn average(color: u32, with: u32) -> u32 { ((color & blend::HALF_MASK) + with) / 2 }
+pub(crate) fn average(color: u32, with: u32) -> u32 { ((color & blend::HALF_MASK) + with) / 2 }
 
 // the biome foliage color averaged over the 3x3 columns around the block
-pub fn foliageAround(world: World, pos: BlockPos) -> u32
+pub(crate) fn foliageAround(world: World, pos: BlockPos) -> u32
 {
     let mut sums: [u32; 3] = [0; 3];
+
     for dz in -1..=1
     {
         for dx in -1..=1
@@ -105,6 +106,7 @@ pub fn foliageAround(world: World, pos: BlockPos) -> u32
             }
         }
     }
+
     rgb((sums[0] / AROUND) as i32, (sums[1] / AROUND) as i32, (sums[2] / AROUND) as i32)
 }
 
@@ -126,7 +128,7 @@ fn fade(row: &Fade, pos: BlockPos) -> u32
     rgb(mix(0), mix(1), mix(2))
 }
 
-pub fn tint(kind: Tint, world: World, pos: BlockPos) -> u32
+pub(crate) fn tint(kind: Tint, world: World, pos: BlockPos) -> u32
 {
     match kind
     {
@@ -139,7 +141,7 @@ pub fn tint(kind: Tint, world: World, pos: BlockPos) -> u32
 }
 
 // TFBlocks towerwood shades every plank a little by position
-pub fn towerwood(pos: BlockPos) -> u32
+pub(crate) fn towerwood(pos: BlockPos) -> u32
 {
     // planks keep at least half brightness
     let dimmest: i32 = 128;
@@ -148,7 +150,7 @@ pub fn towerwood(pos: BlockPos) -> u32
 }
 
 // BlockTFAuroraBrick.colorMultiplier
-pub fn aurora(x: i32, z: i32) -> u32
+pub(crate) fn aurora(x: i32, z: i32) -> u32
 {
     let floor: i32 = 128;
     let red: i32 = 16;
@@ -158,11 +160,12 @@ pub fn aurora(x: i32, z: i32) -> u32
     {
         green = floor - blue;
     }
+
     rgb(red, blue, green)
 }
 
 // BlockTFAuroraPillar.colorMultiplier, the aurora color washed out through hue saturation brightness
-pub fn pale(color: u32) -> u32
+pub(crate) fn pale(color: u32) -> u32
 {
     let [red, green, blue] = channels(color);
     // the source hands the channels over as red blue green

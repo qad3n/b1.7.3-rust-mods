@@ -1,7 +1,7 @@
 // draft from ComponentTFFinalCastleMain.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::FinalCastleMain);
     init(&this, world, random, i, x, y, z);
@@ -9,30 +9,35 @@ pub fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) ->
 }
 
 // ComponentTFFinalCastleMain constructor
-pub fn init(this: &Piece, _world: &GenWorld, _random: &Random, _i: i32, mut x: i32, y: i32, mut z: i32)
+pub(crate) fn init(this: &Piece, _world: &GenWorld, _random: &Random, _i: i32, mut x: i32, y: i32, mut z: i32)
 {
     this.setMode(0);
     this.m_spawnListIndex.set(1);
     x = ((x + 127) >> 8) << 8;
     z = ((z + 127) >> 8) << 8;
     this.m_box.set(boxFor(x, y, z, -24, 120, -24, 48, 40, 48, 0));
+
     let _cx: i32 = (x >> 8) << 8;
     let _cz: i32 = (z >> 8) << 8;
+
     this.m_deco.set(Deco::decorator_castle());
 }
 
 // ComponentTFFinalCastleMain.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let foundation: Rc<Piece> = final_castle_foundation48::new(random, 4, this);
     list.push(Rc::clone(&foundation));
     foundation.build(this, list, random);
+
     let roof: Rc<Piece> = final_castle_roof48_crenellated::new(random, 4, this);
     list.push(Rc::clone(&roof));
     roof.build(this, list, random);
+
     let gazebo: Rc<Piece> = final_castle_boss_gazebo::new(random, 5, this);
     list.push(Rc::clone(&gazebo));
     gazebo.build(this, list, random);
+
     let tower0: Rc<Piece> = final_castle_stair_tower::new(
         random,
         3,
@@ -43,6 +48,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
     );
     list.push(Rc::clone(&tower0));
     tower0.build(this, list, random);
+
     let tower1: Rc<Piece> = final_castle_large_tower::new(
         random,
         3,
@@ -53,6 +59,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
     );
     list.push(Rc::clone(&tower1));
     tower1.build(this, list, random);
+
     let tower2: Rc<Piece> = final_castle_stair_tower::new(
         random,
         3,
@@ -63,6 +70,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
     );
     list.push(Rc::clone(&tower2));
     tower2.build(this, list, random);
+
     let tower3: Rc<Piece> = final_castle_stair_tower::new(
         random,
         3,
@@ -73,10 +81,12 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
     );
     list.push(Rc::clone(&tower3));
     tower3.build(this, list, random);
+
     let mut dest: [i32; 3] = [this.m_box.get().m_min[0] - 4, this.m_box.get().m_max[1], this.m_box.get().m_min[2] - 24];
     final_castle_main::buildTowerMaze(this, list, random, 48, 0, 24, 60, 0, 0, dest);
     dest = [this.m_box.get().m_max[0] + 4, this.m_box.get().m_min[1], this.m_box.get().m_max[2] + 24];
     final_castle_main::buildTowerMaze(this, list, random, 0, 30, 24, 60, 2, 1, dest);
+
     let steps0: Rc<Piece> = final_castle_dungeon_steps::new(
         random,
         5,
@@ -87,22 +97,26 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
     );
     list.push(Rc::clone(&steps0));
     steps0.build(this, list, random);
-    let steps1: Rc<Piece> = final_castle_dungeon_steps::buildMoreStepsTowards(&steps0, &parent, list, random, 3);
-    let steps2: Rc<Piece> = final_castle_dungeon_steps::buildMoreStepsTowards(&steps1, &parent, list, random, 3);
-    let steps3: Rc<Piece> = final_castle_dungeon_steps::buildMoreStepsTowards(&steps2, &parent, list, random, 3);
-    let _dRoom: Rc<Piece> = final_castle_dungeon_steps::buildLevelUnder(&steps3, &parent, list, random, 1);
+
+    let steps1: Rc<Piece> = final_castle_dungeon_steps::buildMoreStepsTowards(&steps0, parent, list, random, 3);
+    let steps2: Rc<Piece> = final_castle_dungeon_steps::buildMoreStepsTowards(&steps1, parent, list, random, 3);
+    let steps3: Rc<Piece> = final_castle_dungeon_steps::buildMoreStepsTowards(&steps2, parent, list, random, 3);
+    let _dRoom: Rc<Piece> = final_castle_dungeon_steps::buildLevelUnder(&steps3, parent, list, random, 1);
     let mc: [i32; 3] = this.offsetTowerAt(48, 23, 25, 1, 0);
     let ComponentTFFinalCastleMural0: Rc<Piece> = final_castle_mural::new(random, 7, mc[0], mc[1], mc[2], 35, 30, 0);
+
     list.push(Rc::clone(&ComponentTFFinalCastleMural0));
     ComponentTFFinalCastleMural0.build(this, list, random);
+
     let mc1: [i32; 3] = this.offsetTowerAt(48, 33, 24, -1, 0);
     let ComponentTFFinalCastleMural1: Rc<Piece> = final_castle_mural::new(random, 7, mc1[0], mc1[1], mc[2], 19, 12, 2);
+
     list.push(Rc::clone(&ComponentTFFinalCastleMural1));
     ComponentTFFinalCastleMural1.build(this, list, random);
 }
 
 // ComponentTFFinalCastleMain.buildTowerMaze
-pub fn buildTowerMaze(
+pub(crate) fn buildTowerMaze(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -127,7 +141,8 @@ pub fn buildTowerMaze(
         bridge.build(this, list, random);
         list.push(Rc::clone(&sTower));
         final_castle_maze_tower13::buildTowards(&sTower, this, list, random, dest);
-        if final_castle_main::isMazeComplete(this, list, r#type)
+
+        if final_castle_main::mazeComplete(this, list, r#type)
         {
             return;
         }
@@ -137,7 +152,7 @@ pub fn buildTowerMaze(
 }
 
 // ComponentTFFinalCastleMain.isMazeComplete
-pub fn isMazeComplete(_this: &Piece, list: &mut Pieces, r#type: i32) -> bool
+pub(crate) fn mazeComplete(_this: &Piece, list: &mut Pieces, r#type: i32) -> bool
 {
     for structurecomponent in list.clone()
     {
@@ -147,41 +162,48 @@ pub fn isMazeComplete(_this: &Piece, list: &mut Pieces, r#type: i32) -> bool
             return true;
         }
     }
-    return false;
+
+    false
 }
 
 // ComponentTFFinalCastleMain.offsetTowerCCoords
-pub fn offsetTowerCCoords(this: &Piece, x: i32, y: i32, z: i32, howFar: i32, direction: i32) -> [i32; 3]
+pub(crate) fn offsetTowerCCoords(this: &Piece, x: i32, y: i32, z: i32, howFar: i32, direction: i32) -> [i32; 3]
 {
     let mut dx: i32 = this.xAt(x, z);
     let dy: i32 = this.yAt(y);
     let mut dz: i32 = this.zAt(x, z);
+
     match direction
     {
         0 =>
         {
             dx += howFar;
         }
+
         1 =>
         {
             dz += howFar;
         }
+
         2 =>
         {
             dx -= howFar;
         }
+
         3 =>
         {
             dz -= howFar;
         }
+
         _ =>
         {}
     }
-    return [dx, dy, dz];
+
+    [dx, dy, dz]
 }
 
 // ComponentTFFinalCastleMain.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     this.fillSelected(world, sbb, 0, 0, 0, 48, 40, 48, false, random, this.m_deco.get().m_randomBlocks);
     this.fillSelected(world, sbb, 13, 30, 1, 47, 30, 12, false, random, this.m_deco.get().m_randomBlocks);
@@ -191,12 +213,14 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.fillSelected(world, sbb, 1, 30, 1, 12, 30, 47, false, random, this.m_deco.get().m_randomBlocks);
     this.fill(world, sbb, 12, 31, 12, 12, 31, 36, this.m_deco.get().m_fenceID, this.m_deco.get().m_fenceID, false);
     this.fillSelected(world, sbb, 38, 25, 13, 47, 25, 35, false, random, this.m_deco.get().m_randomBlocks);
+
     for i in 0..5
     {
         let mut y: i32 = 30 - i;
         final_castle_main::makeMezzTopStairs(this, world, sbb, y, 10 + i, 3);
         final_castle_main::makeMezzTopStairs(this, world, sbb, y, 38 - i, 1);
         y = 25 - i;
+
         let x: i32 = 37 - i;
         this.fillMeta(
             world,
@@ -259,6 +283,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             false,
         );
     }
+
     for x in (11..47).step_by(12)
     {
         for z in (11..47).step_by(12)
@@ -284,6 +309,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             final_castle_main::makePillarBase(this, world, sbb, x, z, 39, 4);
         }
     }
+
     for rotation in 0..4
     {
         for z in (11..47).step_by(12)
@@ -310,7 +336,9 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             }
         }
     }
+
     this.fillSelected(world, sbb, 1, 20, 1, 47, 20, 47, false, random, this.m_deco.get().m_randomBlocks);
+
     let fieldBlock: Blk = blk("tf:forceField");
     let fieldMeta: i32 = 6;
     this.fillMeta(world, sbb, 12, 1, 12, 24, 10, 12, fieldBlock, fieldMeta, fieldBlock, fieldMeta, false);
@@ -326,11 +354,11 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     final_castle_main::makeComponentTFFinalCastleLargeTowerStairs(this, world, sbb, 2);
     this.fillMeta(world, sbb, 48, 1, 23, 48, 4, 25, blk("tf:castleDoor"), 0, blk("air"), 0, false);
     this.fillMeta(world, sbb, 0, 31, 23, 0, 34, 25, blk("tf:castleDoor"), 1, blk("air"), 0, false);
-    return true;
+    true
 }
 
 // ComponentTFFinalCastleMain.makeSmallTowerStairs
-pub fn makeSmallTowerStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32)
+pub(crate) fn makeSmallTowerStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32)
 {
     for y in 1..4
     {
@@ -365,7 +393,12 @@ pub fn makeSmallTowerStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, r
 }
 
 // ComponentTFFinalCastleMain.makeComponentTFFinalCastleLargeTowerStairs
-pub fn makeComponentTFFinalCastleLargeTowerStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32)
+pub(crate) fn makeComponentTFFinalCastleLargeTowerStairs(
+    this: &Piece,
+    world: &GenWorld,
+    sbb: StructureBox,
+    rotation: i32,
+)
 {
     for y in 1..4
     {
@@ -400,7 +433,7 @@ pub fn makeComponentTFFinalCastleLargeTowerStairs(this: &Piece, world: &GenWorld
 }
 
 // ComponentTFFinalCastleMain.makeMezzTopStairs
-pub fn makeMezzTopStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, y: i32, z: i32, stairMeta: i32)
+pub(crate) fn makeMezzTopStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, y: i32, z: i32, stairMeta: i32)
 {
     this.fillMeta(
         world,
@@ -436,7 +469,7 @@ pub fn makeMezzTopStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, y: i
 }
 
 // ComponentTFFinalCastleMain.makeHalfPillarBase
-pub fn makeHalfPillarBase(
+pub(crate) fn makeHalfPillarBase(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,
@@ -482,7 +515,7 @@ pub fn makeHalfPillarBase(
 }
 
 // ComponentTFFinalCastleMain.makePillarBase
-pub fn makePillarBase(this: &Piece, world: &GenWorld, sbb: StructureBox, x: i32, z: i32, y: i32, metaBit: i32)
+pub(crate) fn makePillarBase(this: &Piece, world: &GenWorld, sbb: StructureBox, x: i32, z: i32, y: i32, metaBit: i32)
 {
     this.fillMeta(
         world,

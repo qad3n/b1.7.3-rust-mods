@@ -4,7 +4,7 @@ use b173_api::prelude::*;
 use b173_api::terrain::math;
 
 const NAME: &str = "fire_minion";
-pub const SPIRIT_TEXTURE: &str = "aether:entity/boss/sun_spirit/sun_spirit";
+pub(crate) const SPIRIT_TEXTURE: &str = "aether:entity/boss/sun_spirit/sun_spirit";
 const HURT: &str = "random.hurt";
 
 mod minion
@@ -27,7 +27,7 @@ mod look
 }
 
 // SunSpiritModel.setRotationAngles and render: floating fists that breathe, the sun spirit draws it larger
-pub fn spiritPose(input: &PoseInput, scale: f32) -> Pose
+pub(crate) fn spiritPose(input: &PoseInput, scale: f32) -> Pose
 {
     let pivot = |part: u16| model::PIVOTS[part as usize];
     let head: [f32; 3] = [input.head_pitch / DEGREES_PER_RADIAN, input.head_yaw / DEGREES_PER_RADIAN, 0.0];
@@ -40,10 +40,12 @@ pub fn spiritPose(input: &PoseInput, scale: f32) -> Pose
     body.scale(scale, scale, scale).translate(0.0, look::LIFT, 0.0);
     body.part(model::HEAD, head, pivot(model::HEAD));
     body.part(model::HEADWEAR, head, pivot(model::HEADWEAR));
+
     for piece in [model::BODY, model::BIPED_BODY2, model::BIPED_BODY3, model::BIPED_BODY4]
     {
         body.part(piece, [0.0; 3], pivot(piece));
     }
+
     body.push().translate(look::ARM_OFFSET, 0.0, 0.0).part(model::RIGHT_ARM, rightArm, pivot(model::RIGHT_ARM)).pop();
     body.part(model::BIPED_RIGHT_ARM2, negate(rightArm), pivot(model::BIPED_RIGHT_ARM2));
     body.part(model::BIPED_RIGHT_ARM3, negate(rightArm), pivot(model::BIPED_RIGHT_ARM3));
@@ -65,10 +67,12 @@ impl EntityBehavior for FireMinion
         {
             entity.setField(EntityField::AttackStrength, minion::DAMAGE as f64);
         }
+
         if entity.world.isAuthority() && !isClient()
         {
             return;
         }
+
         for _ in 0..minion::FLAMES
         {
             let [dx, rise, dz] = [fraction(entity.world) - 0.5, fraction(entity.world), fraction(entity.world) - 0.5];
@@ -81,11 +85,12 @@ impl EntityBehavior for FireMinion
     fn pose(&self, input: &PoseInput) -> Pose { spiritPose(input, 1.0) }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:monster").ok(),
             texture: Some(SPIRIT_TEXTURE.to_owned()),
             size: Some([1.1, 1.8]),

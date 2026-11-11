@@ -8,13 +8,13 @@ use crate::progress::{self, Gate};
 use crate::treasure::{self, Table};
 use crate::world::generate::GenWorld;
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
 // EntityTFUrGhast, the dark tower's boss: it circles the tower's ghast traps, spits triple fireballs, and every 48
 // damage throws a crying tantrum that calls mini ghasts from the traps and hurts whoever stands under the open sky
-pub const NAME: &str = "ur_ghast";
+pub(crate) const NAME: &str = "ur_ghast";
 const LABEL: &str = "Ur-Ghast";
 
 const TENTACLES: usize = 9;
@@ -82,7 +82,7 @@ const TENTACLE_ROOTS: [([f32; 3], f32); TENTACLES] = [
 ];
 
 // ModelTFTowerBoss, a ghast body with nine three jointed tentacles
-pub fn model() -> EntityModelSpec
+pub(crate) fn model() -> EntityModelSpec
 {
     let mut parts: Vec<ModelPart> = vec![part(
         "body",
@@ -94,6 +94,7 @@ pub fn model() -> EntityModelSpec
         vec![cuboid([-8.0, -8.0, -8.0], [16, 16, 16], 0.0, None)],
         None,
     )];
+
     for (number, (pivot, lean)) in TENTACLE_ROOTS.iter().enumerate()
     {
         let tentacle: String = format!("tentacle{number}");
@@ -108,7 +109,9 @@ pub fn model() -> EntityModelSpec
             vec![cuboid([-1.5, 0.0, -1.5], [3, 5, 3], 0.0, None)],
             None,
         ));
+
         let mut parent: String = tentacle;
+
         for joint in 0..JOINTS
         {
             let name: String = format!("tentacle{number}_{joint}");
@@ -126,22 +129,26 @@ pub fn model() -> EntityModelSpec
             parent = name;
         }
     }
+
     EntityModelSpec { texture_size: [64, 32], parts, ..EntityModelSpec::default() }
 }
 
 fn tentaclePart(number: usize) -> u16 { (1 + number * (JOINTS + 1)) as u16 }
 
 // ModelTFTowerBoss.setRotationAngles and render for a model whose parts start at first, the tentacles wave with age
-pub fn drawBody(body: &mut Program, first: u16, age: f32, look: [f32; 2])
+pub(crate) fn drawBody(body: &mut Program, first: u16, age: f32, look: [f32; 2])
 {
     body.part(first, [look[0], look[1], 0.0], [0.0, 8.0, 0.0]);
+
     for (number, (pivot, lean)) in TENTACLE_ROOTS.iter().enumerate()
     {
         let time: f32 = (age + number as f32 * 9.0) / 2.0;
         let base: u16 = first + tentaclePart(number);
         body.part(base, [0.0, boss::TWIST * (time * 0.3).sin(), *lean], *pivot);
+
         let swing: [f32; JOINTS] =
             [0.2 + (time * 0.3335).cos() * 0.15, 0.1 + (time * 0.4445).cos() * 0.2, 0.1 + (time * 0.5555).cos() * 0.25];
+
         for (joint, angle) in swing.iter().enumerate()
         {
             body.part(base + 1 + joint as u16, [*angle, 0.0, 0.0], [0.0, 4.0, 0.0]);
@@ -223,6 +230,7 @@ fn scanTwice(world: World, info: &EntityInfo, brain: &mut Brain)
 {
     let at: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
     scan(world, at, &mut brain.m_traps);
+
     if !brain.m_traps.is_empty()
     {
         let center: [i32; 3] = average(&brain.m_traps);
@@ -235,6 +243,7 @@ fn makePath(world: World, info: &EntityInfo, brain: &mut Brain)
 {
     let at: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
     let reach: i32 = boss::PATH_REACH;
+
     let mut points: Vec<[i32; 3]> = if brain.m_noTraps
     {
         vec![
@@ -249,10 +258,12 @@ fn makePath(world: World, info: &EntityInfo, brain: &mut Brain)
         brain.m_traps.clone()
     };
     brain.m_path.clear();
+
     while !points.is_empty()
     {
         brain.m_path.push(points.remove(world.random(points.len() as i32) as usize));
     }
+
     if brain.m_noTraps
     {
         brain.m_path.push([at[0], at[1] - reach, at[2]]);
@@ -276,7 +287,9 @@ fn minionsAt(world: World, trap: [i32; 3])
     {
         warn(&format!("ur-ghast trap lightning: {}", error.0));
     }
+
     let mut spawned: i32 = 0;
+
     for _ in 0..boss::MINION_TRIES
     {
         let spread = || f64::from(ids::fraction(world) - ids::fraction(world)) * boss::MINION_XZ;
@@ -285,10 +298,12 @@ fn minionsAt(world: World, trap: [i32; 3])
         {
             continue;
         }
+
         if crate::entities::spawnAt(world, crate::entities::MINI_GHAST, at, ids::fraction(world) * 360.0).is_some()
         {
             spawned += 1;
         }
+
         if spawned >= boss::MINION_MAX
         {
             break;
@@ -314,6 +329,7 @@ fn changeCourse(world: World, info: &EntityInfo, brain: &mut Brain)
     {
         makePath(world, info, brain);
     }
+
     if brain.m_path.is_empty()
     {
         return;
@@ -322,15 +338,18 @@ fn changeCourse(world: World, info: &EntityInfo, brain: &mut Brain)
     if brain.m_pathIndex >= brain.m_path.len()
     {
         brain.m_pathIndex = 0;
+
         let flocked: bool = brain
             .m_traps
             .iter()
             .any(|trap| miniGhastsNear(world, trap.map(f64::from), boss::FLOCK_REACH).len() >= boss::TRAP_GHASTS);
+
         if !flocked
         {
             minions(world, brain);
         }
     }
+
     let [x, y, z] = brain.m_path[brain.m_pathIndex];
     brain.m_course = Some([f64::from(x), f64::from(y + boss::HOVER), f64::from(z)]);
     brain.m_pathIndex += 1;
@@ -341,6 +360,7 @@ fn makeWaypoint(world: World, info: &EntityInfo, brain: &mut Brain)
 {
     let course: [f64; 3] = brain.m_course.unwrap_or(info.pos);
     let mut best: f64 = distance(info.pos, course).powi(2);
+
     for _ in 0..boss::WAYPOINT_TRIES
     {
         let wander = || f64::from(ids::fraction(world) * 2.0 - 1.0) * boss::WANDER;
@@ -362,6 +382,7 @@ fn exposed(world: World, entity: Entity, player: &EntityInfo) -> bool
     let underSky: bool = world.height(x, z) <= y;
     let eyes: [f64; 3] = [player.pos[0], player.pos[1] + 1.62, player.pos[2]];
     let height: f64 = entity.field(EntityField::Height);
+
     let seen: bool = entity.info().is_some_and(|info|
     {
         world.rayTrace(eyes, [info.pos[0], info.pos[1] + height / 2.0, info.pos[2]], false).is_none()
@@ -380,8 +401,11 @@ fn spit(entity: Entity, info: &EntityInfo, target: &EntityInfo)
         info.pos[1] + height / 2.0 + aim[1] * boss::SHOT_REACH,
         info.pos[2] + aim[2] * boss::SHOT_REACH,
     ];
+
     let goal: [f64; 3] = [target.pos[0], target.pos[1] + 0.9, target.pos[2]];
+
     world.playSound(info.pos, "mob.ghast.fireball", 10.0, 1.0);
+
     for shot in 0..3
     {
         let scatter = ||
@@ -404,6 +428,7 @@ fn spit(entity: Entity, info: &EntityInfo, target: &EntityInfo)
 fn tantrumRain(world: World, info: &EntityInfo, entity: Entity)
 {
     let width: f64 = entity.field(EntityField::Width);
+
     for player in world.players()
     {
         let Some(found) = Entity { world, id: player.id }.info()
@@ -420,6 +445,7 @@ fn tantrumRain(world: World, info: &EntityInfo, entity: Entity)
             Entity { world, id: found.id }.damage(boss::RAIN_DAMAGE, None);
         }
     }
+
     for ghast in miniGhastsNear(world, info.pos, boss::RAIN_DEPTH + width / 2.0)
     {
         if ghast.pos[1] < info.pos[1]
@@ -433,19 +459,24 @@ fn tantrumRain(world: World, info: &EntityInfo, entity: Entity)
 fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
 {
     let world: World = entity.world;
+
     brain.m_ticks += 1;
+
     if !brain.m_started
     {
         brain.m_untilPhase = boss::FIRST_PHASE_DAMAGE;
         brain.m_started = true;
     }
+
     let width: f64 = entity.field(EntityField::Width);
     for ghast in miniGhastsNear(world, info.pos, width / 2.0 + 1.0)
     {
         Entity { world, id: ghast.id }.kill();
+
         let health: f64 = entity.field(EntityField::Health);
         entity.setField(EntityField::Health, (health + boss::HEAL).min(f64::from(boss::HEALTH)));
     }
+
     if brain.m_traps.is_empty() && !brain.m_noTraps
     {
         scanTwice(world, info, brain);
@@ -461,6 +492,7 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
 
     let mut target: Option<EntityInfo> =
         brain.m_target.and_then(|id| Entity { world, id }.info()).filter(|target| target.alive);
+
     match &target
     {
         None =>
@@ -468,6 +500,7 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
             target = crate::entities::closestPlayer(world, info, boss::AGGRO_RANGE)
                 .filter(|player| distance(player.pos, info.pos) < boss::STARE_RANGE || exposed(world, entity, player));
         }
+
         Some(player) if !brain.m_aggressive =>
         {
             if exposed(world, entity, player)
@@ -476,6 +509,7 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
                 {
                     world.playSound(info.pos, "mob.ghast.moan", 1.0, 1.0);
                 }
+
                 brain.m_aggro += 1;
                 if brain.m_aggro > boss::AGGRO_TICKS
                 {
@@ -488,9 +522,11 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
                 brain.m_aggro = 0;
             }
         }
+
         Some(_) =>
         {}
     }
+
     if brain.m_tantrum
     {
         target = None;
@@ -500,11 +536,13 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
             world.playSound(info.pos, "twilightforest.mob.urghast.hurt", 16.0, 0.5);
             brain.m_cry = boss::CRY_MIN + world.random(boss::CRY_SPREAD);
         }
+
         if brain.m_ticks % boss::RAIN_PERIOD == 0
         {
             tantrumRain(world, info, entity);
         }
     }
+
     brain.m_target = target.as_ref().map(|target| target.id);
 
     // EntityTFUrGhast.checkAndChangeCourse and the waypoint flight
@@ -512,20 +550,26 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
     {
         changeCourse(world, info, brain);
     }
+
     let away: f64 = distance(brain.m_waypoint, info.pos).powi(2);
     if !(boss::WAYPOINT_NEAR..=boss::WAYPOINT_FAR).contains(&away)
     {
         makeWaypoint(world, info, brain);
     }
+
     brain.m_steer -= 1;
+
     let mut motion: [f64; 3] = info.motion.map(|axis| axis * boss::DRAG);
+
     if brain.m_steer <= 0
     {
         brain.m_steer += world.random(5);
+
         let delta: [f64; 3] = [0, 1, 2].map(|axis| brain.m_waypoint[axis] - info.pos[axis]);
         let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
         motion = [0, 1, 2].map(|axis| motion[axis] + delta[axis] / length * boss::SPEED);
     }
+
     let _ = entity.setMotion(motion);
 
     let range: f64 = if brain.m_aggro <= 0 && !brain.m_aggressive
@@ -540,17 +584,20 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
     let center: [f64; 3] = [info.pos[0], info.pos[1] + height / 2.0, info.pos[2]];
     let inSight: Option<EntityInfo> = target
         .filter(|target| distance(target.pos, info.pos) < range && world.rayTrace(center, target.pos, false).is_none());
+
     match inSight
     {
         Some(target) =>
         {
             crate::entities::ai::face(entity, info.pos, target.pos);
+
             if brain.m_aggressive
             {
                 if brain.m_attack == boss::SPIT_CHARGE
                 {
                     world.playSound(info.pos, "mob.ghast.charge", 16.0, 0.5);
                 }
+
                 brain.m_attack += 1;
                 if brain.m_attack == boss::SPIT
                 {
@@ -559,15 +606,18 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
                 }
             }
         }
+
         None =>
         {
             brain.m_aggressive = false;
             brain.m_target = None;
+
             let yaw: f64 = -motion[0].atan2(motion[2]).to_degrees();
             entity.setField(EntityField::Yaw, yaw);
             entity.setField(EntityField::Pitch, 0.0);
         }
     }
+
     if brain.m_attack > 0 && !brain.m_aggressive
     {
         brain.m_attack -= 1;
@@ -583,6 +633,7 @@ fn switchPhase(world: World, brain: &mut Brain)
         storm();
         minions(world, brain);
     }
+
     brain.m_untilPhase = boss::PHASE_DAMAGE;
 }
 
@@ -597,7 +648,7 @@ fn storm()
     }
 }
 
-pub fn trapped(entity: Entity)
+pub(crate) fn trapped(entity: Entity)
 {
     BRAINS.with(|brains|
     {
@@ -622,9 +673,10 @@ impl EntityBehavior for UrGhast
 
         let shown: Shown = BRAINS.with(|brains|
         {
-            let mut brains = brains.borrow_mut();
+            let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
             let brain: &mut Brain = brains.entry((entity.world.dimension, entity.id)).or_default();
             think(entity, info, brain);
+
             let status: u8 = if brain.m_attack > boss::SPIT_CHARGE
             {
                 2
@@ -643,6 +695,7 @@ impl EntityBehavior for UrGhast
         {
             let _ = entity.setSynced(&shown);
         }
+
         showBar(entity, LABEL, info);
     }
 
@@ -675,9 +728,10 @@ impl EntityBehavior for UrGhast
         }
 
         let world: World = entity.world;
+
         BRAINS.with(|brains|
         {
-            let mut brains = brains.borrow_mut();
+            let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
             let brain: &mut Brain = brains.entry((world.dimension, entity.id)).or_default();
             let dealt: i32 = if brain.m_tantrum
             {
@@ -692,6 +746,7 @@ impl EntityBehavior for UrGhast
             {
                 switchPhase(world, brain);
             }
+
             Some(dealt)
         })
     }
@@ -701,11 +756,13 @@ impl EntityBehavior for UrGhast
     {
         let world: World = entity.world;
         let brain: Option<Brain> = BRAINS.with(|brains| brains.borrow_mut().remove(&(world.dimension, entity.id)));
+
         if let Some(player) = killer(world, source)
         {
             progress::grant(player, Gate::Hunter);
             progress::grant(player, Gate::UrGhast);
         }
+
         let Some(info) = entity.info()
         else
         {
@@ -716,6 +773,7 @@ impl EntityBehavior for UrGhast
         {
             return;
         }
+
         let traps: Vec<[i32; 3]> = brain.map(|brain| brain.m_traps).unwrap_or_default();
         let chest: [i32; 3] = if traps.is_empty()
         {
@@ -754,6 +812,7 @@ impl EntityBehavior for UrGhast
             2 => "twilightforest:model/towerboss_fire",
             _ => "twilightforest:model/towerboss",
         };
+
         let mut body: Program = Program::new();
         body.texture(texture);
         drawBody(&mut body, 0, input.age, [input.head_pitch.to_radians(), input.head_yaw.to_radians()]);
@@ -761,7 +820,7 @@ impl EntityBehavior for UrGhast
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,

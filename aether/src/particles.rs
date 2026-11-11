@@ -10,11 +10,11 @@ struct Kind
     m_lifetime: Option<i32>,
 }
 
-pub const GOLDEN_OAK: &str = "aether:golden_oak_leaves";
-pub const CRYSTAL: &str = "aether:crystal_leaves";
-pub const HOLIDAY: &str = "aether:holiday_leaves";
-pub const WHIRLY: &str = "aether:whirly";
-pub const EVIL_WHIRLY: &str = "aether:evil_whirly";
+pub(crate) const GOLDEN_OAK: &str = "aether:golden_oak_leaves";
+pub(crate) const CRYSTAL: &str = "aether:crystal_leaves";
+pub(crate) const HOLIDAY: &str = "aether:holiday_leaves";
+pub(crate) const WHIRLY: &str = "aether:whirly";
+pub(crate) const EVIL_WHIRLY: &str = "aether:evil_whirly";
 
 // the colours the leaf motes and whirlies draw in
 mod colour
@@ -35,7 +35,8 @@ const KINDS: [Kind; 5] = [
     // ParticlePassiveWhirly, a pale puff about two and a half times smoke that lives some thirty ticks
     Kind { m_name: WHIRLY, m_base: "smoke", m_color: Some(colour::WHIRLY), m_scale: Some(2.5), m_lifetime: Some(29) },
     // ParticleEvilWhirly, a dark puff at three and a half times three quarters of smoke for some forty six ticks
-    Kind {
+    Kind
+    {
         m_name: EVIL_WHIRLY,
         m_base: "smoke",
         m_color: Some(colour::EVIL_WHIRLY),
@@ -44,11 +45,12 @@ const KINDS: [Kind; 5] = [
     },
 ];
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &KINDS
     {
-        let spec: ParticleSpec = ParticleSpec {
+        let spec: ParticleSpec = ParticleSpec
+        {
             base: row.m_base.to_owned(),
             color: row.m_color,
             scale: row.m_scale,
@@ -57,5 +59,6 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
         ctx.particles().register(row.m_name.trim_start_matches("aether:"), spec)?;
     }
+
     Ok(())
 }

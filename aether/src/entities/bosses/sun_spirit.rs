@@ -99,11 +99,12 @@ struct Mind
     m_chatCount: i32,
 }
 
-thread_local! {
+thread_local!
+{
     static MINDS: RefCell<HashMap<i32, Mind>> = RefCell::new(HashMap::new());
 }
 
-pub fn bar(boss: Entity) -> BossBar { boss.synced::<Sync>().m_bar }
+pub(crate) fn bar(boss: Entity) -> BossBar { boss.synced::<Sync>().m_bar }
 
 fn mind(entity: Entity) -> Mind { MINDS.with(|minds| minds.borrow().get(&entity.id).copied()).unwrap_or_default() }
 
@@ -114,14 +115,17 @@ fn sync(entity: Entity) -> Sync
     let mut state: Sync = entity.synced();
     if state.m_bar.m_name.is_empty() && entity.world.isAuthority()
     {
-        state.m_bar = BossBar {
+        state.m_bar = BossBar
+        {
             m_name: bossName(entity.world, NAME),
             m_health: spirit::HEALTH,
             m_maxHealth: spirit::HEALTH,
             m_focus: None,
         };
+
         let _ = entity.setSynced(&state);
     }
+
     state
 }
 
@@ -134,6 +138,7 @@ fn line(player: Player, color: &str, key: &str)
 fn door(world: World, home: &Home, far: bool, block: i32)
 {
     let [x, y, z] = home.m_dungeon;
+
     let side: i32 = match (home.m_direction, far)
     {
         (0, false) | (1, true) => -spirit::DOOR_REACH,
@@ -141,6 +146,7 @@ fn door(world: World, home: &Home, far: bool, block: i32)
         (3, false) | (2, true) => spirit::DOOR_REACH,
         _ => -spirit::DOOR_REACH,
     };
+
     for dy in -1..2
     {
         for across in -1..2
@@ -153,6 +159,7 @@ fn door(world: World, home: &Home, far: bool, block: i32)
             {
                 BlockPos::new(x + across, y + dy, z + side)
             };
+
             if world.block(pos) != block
             {
                 let _ = world.setBlock(pos, block, 0);
@@ -164,9 +171,11 @@ fn door(world: World, home: &Home, far: bool, block: i32)
 fn unlockTreasure(world: World, home: &Home)
 {
     door(world, home, true, 0);
+
     let [x, y, z] = home.m_dungeon;
     let swaps: [(i32, i32); 2] =
         [(blockId(LOCKED), blockId("hellfire_stone")), (blockId(LOCKED_LIGHT), blockId("light_hellfire_stone"))];
+
     for bx in x - spirit::UNLOCK_REACH..x + spirit::UNLOCK_REACH
     {
         for by in y + spirit::UNLOCK_LOW..y + spirit::UNLOCK_HIGH
@@ -200,10 +209,12 @@ fn burn(entity: Entity, info: &EntityInfo)
         // crystals and minions are immune to fire like the spirit's own aura
         let fireproof: bool =
             other.kind.as_ref().is_some_and(|kind| kind.namespace() == "aether" && FIREPROOF.contains(&kind.path()));
+
         if !horizontal || fireproof
         {
             continue;
         }
+
         let victim: Entity = Entity { world, id: other.id };
         crate::damage::hit(victim, spirit::BURN_DAMAGE, Some(entity.id), crate::damage::kind::MOB);
         victim.setField(EntityField::FireTicks, spirit::BURN_TICKS);
@@ -231,8 +242,11 @@ fn evaporate(entity: Entity, info: &EntityInfo, originY: i32)
                 {
                     continue;
                 }
+
                 let _ = world.setBlock(pos, 0, 0);
+
                 world.playSound(info.pos, "random.fizz", spirit::FIZZ_VOLUME, pitch(world));
+
                 for _ in 0..spirit::STEAM_PUFFS
                 {
                     world.particle(
@@ -257,6 +271,7 @@ fn fireBall(entity: Entity, info: &EntityInfo, state: &mut Mind)
     {
         state.m_ballCount = 0;
     }
+
     let at: [f64; 3] = [info.pos[0] - info.motion[0] / 2.0, info.pos[1], info.pos[2] - info.motion[2] / 2.0];
     crystal::spawn(world, if icy { Kind::Ice } else { Kind::Fire }, at, None, Some(entity.id));
 }
@@ -270,23 +285,29 @@ fn circle(entity: Entity, info: &EntityInfo, target: &EntityInfo, home: &Home, s
     let velocity: f64 = spirit::BASE_SPEED - health / spirit::SPEED_HEALTH * spirit::SPEED_LOSS;
     let _ = entity.setPosition([info.pos[0], oy, info.pos[2]]);
     let mut changed: bool = false;
+
     if (info.motion[0] >= 0.0 && info.pos[0] > ox + spirit::EAST_EDGE)
         || (info.motion[0] <= 0.0 && info.pos[0] < ox - spirit::WEST_EDGE)
     {
         state.m_rotary = spirit::FULL_TURN - state.m_rotary;
         changed = true;
     }
+
     if (info.motion[2] >= 0.0 && info.pos[2] > oz + spirit::SOUTH_EDGE)
         || (info.motion[2] <= 0.0 && info.pos[2] < oz - spirit::NORTH_EDGE)
     {
         state.m_rotary = spirit::HALF_TURN - state.m_rotary;
         changed = true;
     }
+
     state.m_rotary = state.m_rotary.rem_euclid(spirit::FULL_TURN);
+
     let yaw: f64 = (target.pos[2] - info.pos[2]).atan2(target.pos[0] - info.pos[0]).to_degrees() - 90.0;
     entity.setField(EntityField::Yaw, yaw);
+
     let angle: f64 = state.m_rotary.to_radians();
     let _ = entity.setMotion([angle.sin() * velocity, 0.0, angle.cos() * velocity]);
+
     state.m_motionTimer += 1;
     if state.m_motionTimer >= spirit::COURSE_TICKS || changed
     {
@@ -294,13 +315,16 @@ fn circle(entity: Entity, info: &EntityInfo, target: &EntityInfo, home: &Home, s
         {
             state.m_rotary += (fraction(world) - fraction(world)) * spirit::SWERVE;
         }
+
         state.m_motionTimer = 0;
     }
+
     state.m_flameCount += 1;
     if state.m_flameCount == spirit::FLAME_AT
     {
         let below: BlockPos =
             BlockPos::new(info.pos[0].floor() as i32, home.m_dungeon[1] - 2, info.pos[2].floor() as i32);
+
         if world.isAir(below)
         {
             let _ = world.setBlock(below, blockId("minecraft:fire"), 0);
@@ -319,6 +343,7 @@ fn reset(entity: Entity, home: &Home, sync: &mut Sync, state: &mut Mind, loser: 
     let [x, y, z] = home.m_dungeon;
     let _ = entity.setPosition([x as f64 + 0.5, y as f64, z as f64 + 0.5]);
     let _ = entity.setMotion([0.0; 3]);
+
     state.m_chatLine = spirit::RETORT_LINE;
     line(loser, RED, "playerdied");
     state.m_chatCount = spirit::CHAT_PAUSE;
@@ -341,15 +366,18 @@ impl EntityBehavior for SunSpirit
         {
             return;
         }
+
         let home: Home = entity.data();
         let mut state: Mind = mind(entity);
         let target: Option<EntityInfo> =
             sync(entity).m_bar.m_focus.and_then(|id| Entity { world, id }.info()).filter(|target| target.alive);
+
         match target
         {
             Some(target) => circle(entity, info, &target, &home, &mut state),
             None => entity.setField(EntityField::Yaw, spirit::FACING[home.m_direction.clamp(0, 3) as usize]),
         }
+
         setMind(entity, state);
     }
 
@@ -368,6 +396,7 @@ impl EntityBehavior for SunSpirit
             world.particle("flame", spot, [0.0, spirit::FALL, 0.0]);
             return;
         }
+
         let home: Home = entity.data();
         let before: Sync = sync(entity);
         let mut state: Sync = before.clone();
@@ -377,8 +406,10 @@ impl EntityBehavior for SunSpirit
             thinking.m_started = true;
             thinking.m_rotary = fraction(world) * spirit::FULL_TURN;
         }
+
         let health: i32 = entity.field(EntityField::Health) as i32;
         state.m_bar.m_health = health.max(0);
+
         if let Some(id) = state.m_bar.m_focus
             && (Entity { world, id }).info().is_none_or(|target| !target.alive)
         {
@@ -386,16 +417,20 @@ impl EntityBehavior for SunSpirit
         }
         // hurt frames freeze it on the client from hurt_time, only death keeps it frozen here
         state.m_freezing = health <= 0;
+
         if health > 0
         {
             burn(entity, info);
+
             if entity.field(EntityField::TicksExisted) % spirit::STEAM_EVERY == 0.0
             {
                 evaporate(entity, info, home.m_dungeon[1]);
             }
         }
+
         thinking.m_chatCount -= 1;
         setMind(entity, thinking);
+
         if state != before
         {
             let _ = entity.setSynced(&state);
@@ -415,7 +450,9 @@ impl EntityBehavior for SunSpirit
         {
             return false;
         }
+
         let fighting: bool = sync(entity).m_bar.m_focus.is_some();
+
         match state.m_chatLine
         {
             spoken if spoken < spirit::DIALOGUE_LINES =>
@@ -424,25 +461,33 @@ impl EntityBehavior for SunSpirit
                 {
                     line(player, RED, key);
                 }
+
                 state.m_chatLine += 1;
                 setMind(entity, state);
                 false
             }
+
             spirit::DUEL_LINE =>
             {
                 line(player, GOLD, "line9");
                 state.m_chatLine = spirit::RETORT_LINE;
+
                 if let (Some(info), Some(seen)) = (entity.info(), player.info())
                 {
                     state.m_rotary = (info.pos[0] - seen.pos[0]).atan2(info.pos[2] - seen.pos[2]).to_degrees();
                 }
+
                 setMind(entity, state);
+
                 let mut synced: Sync = sync(entity);
                 synced.m_bar.m_focus = Some(player.id);
+
                 let _ = entity.setSynced(&synced);
+
                 door(world, &entity.data(), false, blockId(LOCKED));
                 true
             }
+
             _ =>
             {
                 if !fighting
@@ -451,6 +496,7 @@ impl EntityBehavior for SunSpirit
                     state.m_chatLine = spirit::DUEL_LINE;
                     setMind(entity, state);
                 }
+
                 false
             }
         }
@@ -468,6 +514,7 @@ impl EntityBehavior for SunSpirit
         {
             return None;
         }
+
         if world.isAuthority()
             && let Some(info) = entity.info()
             && let Ok(minion) = world.spawnEntity("aether:fire_minion", info.pos)
@@ -475,6 +522,7 @@ impl EntityBehavior for SunSpirit
         {
             minion.setField(EntityField::TargetId, focus as f64);
         }
+
         Some(amount)
     }
 
@@ -487,20 +535,27 @@ impl EntityBehavior for SunSpirit
         {
             return;
         };
+
         let home: Home = entity.data();
         let mut state: Sync = sync(entity);
         state.m_freezing = true;
+
         if let Some(id) = state.m_bar.m_focus
         {
             line(Player { id }, AQUA, "dead");
+
             let hallReach: [f64; 3] = [20.0, 3.0, 20.0];
             progress::grantInside(world, home.m_dungeon, hallReach, Award::Gold);
             progress::grant(Player { id }, Award::Gold);
         }
+
         state.m_bar.m_health = 0;
+
         let _ = entity.setSynced(&state);
+
         door(world, &home, false, 0);
         unlockTreasure(world, &home);
+
         let _ =
             world.spawnItem([info.pos[0], info.pos[1] + spirit::KEY_LIFT, info.pos[2]], ItemStack::of("golden_key", 1));
         let _ =
@@ -515,6 +570,7 @@ impl EntityBehavior for SunSpirit
         let state: Sync = b173_api::fromBytes(&input.synced).unwrap_or_default();
         let mut pre: Program = Program::new();
         pre.translate(0.0, spirit::LIFT, 0.0);
+
         let body: Pose = spiritPose(input, spirit::SCALE);
         let mut model: Program = Program::new();
         model.texture(
@@ -532,11 +588,12 @@ impl EntityBehavior for SunSpirit
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:ghast").ok(),
             texture: Some(SPIRIT_TEXTURE.to_owned()),
             size: Some([spirit::SIZE, spirit::SIZE]),

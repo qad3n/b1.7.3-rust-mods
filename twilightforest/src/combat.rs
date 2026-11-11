@@ -28,19 +28,19 @@ mod aura
 }
 
 // the vanilla damage types the source's DamageSources stand for, other mods read them through damageType
-pub mod kind
+pub(crate) mod kind
 {
-    pub const MOB: &str = "minecraft:mob";
-    pub const PLAYER: &str = "minecraft:player";
-    pub const THROWN: &str = "minecraft:thrown";
-    pub const FIREBALL: &str = "minecraft:fireball";
-    pub const EXPLOSION: &str = "minecraft:explosion";
-    pub const IN_FIRE: &str = "minecraft:in_fire";
-    pub const ON_FIRE: &str = "minecraft:on_fire";
-    pub const LAVA: &str = "minecraft:lava";
-    pub const IN_WALL: &str = "minecraft:in_wall";
-    pub const CACTUS: &str = "minecraft:cactus";
-    pub const MAGIC: &str = "minecraft:magic";
+    pub(crate) const MOB: &str = "minecraft:mob";
+    pub(crate) const PLAYER: &str = "minecraft:player";
+    pub(crate) const THROWN: &str = "minecraft:thrown";
+    pub(crate) const FIREBALL: &str = "minecraft:fireball";
+    pub(crate) const EXPLOSION: &str = "minecraft:explosion";
+    pub(crate) const IN_FIRE: &str = "minecraft:in_fire";
+    pub(crate) const ON_FIRE: &str = "minecraft:on_fire";
+    pub(crate) const LAVA: &str = "minecraft:lava";
+    pub(crate) const IN_WALL: &str = "minecraft:in_wall";
+    pub(crate) const CACTUS: &str = "minecraft:cactus";
+    pub(crate) const MAGIC: &str = "minecraft:magic";
 }
 
 thread_local!
@@ -60,6 +60,7 @@ fn armored(target: &EntityInfo) -> bool
         let player: Player = Player { id: target.id };
         return (0..4).any(|slot| player.slot(crate::items::ARMOR_FIRST_SLOT + slot).is_some());
     }
+
     target.kind.as_ref().is_some_and(|kind| kind.namespace() == "twilightforest" && ARMORED.contains(&kind.path()))
 }
 
@@ -71,6 +72,7 @@ fn burn(world: World, target: Entity, info: &EntityInfo)
     {
         world.particle("flame", [info.pos[0], info.pos[1] + 1.0, info.pos[2]], [0.0; 3]);
     }
+
     target.setField(EntityField::FireTicks, f64::from(weapon::BURN_TICKS));
 }
 
@@ -79,27 +81,33 @@ fn weaponHit(event: &mut Event, target: &EntityInfo, attacker: Player)
 {
     let world: World = World { dimension: target.world };
     let entity: Entity = Entity { world, id: target.id };
+
     if holding(attacker, item::FIERY_SWORD) || holding(attacker, item::FIERY_PICK)
     {
         burn(world, entity, target);
     }
+
     // ItemTFIceSword.hitEntity, ten seconds of slowness three
     if holding(attacker, item::ICE_SWORD)
     {
         crate::effects::give(entity, crate::effects::Effect::Slowness, weapon::CHILL, weapon::CHILL_TICKS);
+
         for _ in 0..weapon::FLAKES
         {
             crate::particles::spawn(world, "snowstuff", target.pos, [0.0; 3]);
         }
     }
+
     let EventData::Attack { amount, .. } = event.data()
     else
     {
         return;
     };
+
     let bonus: bool = ((holding(attacker, item::KNIGHTLY_SWORD) || holding(attacker, item::KNIGHTLY_PICK))
         && armored(target))
         || (holding(attacker, item::KNIGHTLY_AXE) && !armored(target));
+
     if bonus
     {
         let raised: i32 = amount + weapon::KNIGHTLY_BONUS;
@@ -150,6 +158,7 @@ fn hurt(event: &mut Event)
     {
         return;
     };
+
     if attacker.player.is_some()
     {
         weaponHit(event, &target, Player { id: attacker.id });
@@ -161,7 +170,7 @@ fn hurt(event: &mut Event)
 }
 
 // ItemTFFieryPick marks the block it breaks, the harvest then smelts what drops
-pub fn markSmelt(world: World, pos: BlockPos) { SMELT_AT.set(Some((world.dimension, pos))); }
+pub(crate) fn markSmelt(world: World, pos: BlockPos) { SMELT_AT.set(Some((world.dimension, pos))); }
 
 fn smeltDrops(event: &mut Event)
 {
@@ -179,7 +188,9 @@ fn smeltDrops(event: &mut Event)
     {
         return;
     }
+
     let recipes: Vec<RecipeView> = recipeList();
+
     for drop in drops.iter_mut()
     {
         let smelted: Option<&StackData> = recipes.iter().find_map(|recipe| match &recipe.shape
@@ -189,6 +200,7 @@ fn smeltDrops(event: &mut Event)
             {
                 Some(&recipe.output)
             }
+
             _ => None,
         });
         if let Some(result) = smelted
@@ -198,7 +210,7 @@ fn smeltDrops(event: &mut Event)
     }
 }
 
-pub fn hit(victim: Entity, amount: i32, source: Option<i32>, kind: &str) -> bool
+pub(crate) fn hit(victim: Entity, amount: i32, source: Option<i32>, kind: &str) -> bool
 {
     victim.damageAs(amount, source, kind).unwrap_or_else(|error|
     {
@@ -208,7 +220,7 @@ pub fn hit(victim: Entity, amount: i32, source: Option<i32>, kind: &str) -> bool
 }
 
 // a body part passes its hit on to the body under the type the hit came with
-pub fn forward(victim: Entity, amount: i32, source: Option<i32>) -> bool
+pub(crate) fn forward(victim: Entity, amount: i32, source: Option<i32>) -> bool
 {
     match damageType()
     {
@@ -218,12 +230,12 @@ pub fn forward(victim: Entity, amount: i32, source: Option<i32>) -> bool
 }
 
 // the type of the hit an onHurt call is handling, as the source compares its DamageSource
-pub fn hurtBy(kind: &str) -> bool { damageType().is_some_and(|current| current.to_string() == kind) }
+pub(crate) fn hurtBy(kind: &str) -> bool { damageType().is_some_and(|current| current.to_string() == kind) }
 
 // DamageSource.isFireDamage
-pub fn burning() -> bool { [kind::IN_FIRE, kind::ON_FIRE, kind::LAVA, kind::FIREBALL].into_iter().any(hurtBy) }
+pub(crate) fn burning() -> bool { [kind::IN_FIRE, kind::ON_FIRE, kind::LAVA, kind::FIREBALL].into_iter().any(hurtBy) }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.events().on::<LivingHurt>(Priority::Normal, hurt)?;
     ctx.events().on::<BlockHarvestDrops>(Priority::Normal, smeltDrops)?;

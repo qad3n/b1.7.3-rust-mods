@@ -165,22 +165,26 @@ const SHAPED: [Shaped; 37] = [
 ];
 
 const SHAPELESS: [Shapeless; 4] = [
-    Shapeless {
+    Shapeless
+    {
         m_name: "poison_dart_shooter",
         m_result: "poison_dart_shooter",
         m_ingredients: &["golden_dart_shooter", POISON_BUCKET],
     },
-    Shapeless {
+    Shapeless
+    {
         m_name: "book_of_lore_ambrosium",
         m_result: "lore_book",
         m_ingredients: &["minecraft:book", item::AMBROSIUM_SHARD],
     },
-    Shapeless {
+    Shapeless
+    {
         m_name: "book_of_lore_flint",
         m_result: "lore_book",
         m_ingredients: &["minecraft:book", "minecraft:flint"],
     },
-    Shapeless {
+    Shapeless
+    {
         m_name: "book_of_lore_glowstone",
         m_result: "lore_book",
         m_ingredients: &["minecraft:book", "minecraft:glowstone_dust"],
@@ -230,10 +234,12 @@ const CHARCOAL: i32 = 1;
 fn build(ctx: &mut RegisterCtx, name: &str, result: ItemStack, pattern: &[&str], keys: &[Key]) -> Result<()>
 {
     let mut builder: ShapedBuilder = ctx.recipes().shaped(name, result).rows(pattern);
+
     for (symbol, ingredient, meta) in keys
     {
         builder = builder.keyStack(*symbol, ItemStack::of(*ingredient, 1).withDamage(*meta));
     }
+
     builder.build()
 }
 
@@ -247,10 +253,12 @@ fn families(ctx: &mut RegisterCtx) -> Result<()>
             {
                 continue;
             }
+
             let name: String = format!("{prefix}_{shape}");
             build(ctx, &name, ItemStack::of(name.as_str(), count), pattern, &[('Z', source, 0)])?;
         }
     }
+
     Ok(())
 }
 
@@ -264,6 +272,7 @@ fn gear(ctx: &mut RegisterCtx) -> Result<()>
             build(ctx, &name, ItemStack::of(name.as_str(), 1), &pattern, &[('Z', ingredient, 0), STICK])?;
         }
     }
+
     for (material, ingredient) in ARMOR_MATERIALS
     {
         for (piece, pattern) in ARMOR_SHAPES
@@ -272,22 +281,26 @@ fn gear(ctx: &mut RegisterCtx) -> Result<()>
             build(ctx, &name, ItemStack::of(name.as_str(), 1), pattern, &[('X', ingredient, 0)])?;
         }
     }
+
     Ok(())
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &SHAPED
     {
         build(ctx, row.m_name, ItemStack::of(row.m_result, row.m_count), row.m_pattern, row.m_keys)?;
     }
+
     for row in &SHAPELESS
     {
         let ingredients: Vec<ItemStack> = row.m_ingredients.iter().map(|name| ItemStack::of(*name, 1)).collect();
         ctx.recipes().shapeless(row.m_name, ItemStack::of(row.m_result, 1), &ingredients)?;
     }
+
     families(ctx)?;
     gear(ctx)?;
+
     for log in [block::SKYROOT_LOG, block::GOLDEN_OAK_LOG]
     {
         ctx.recipes().shapeless(
@@ -301,6 +314,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             ItemStack::of("minecraft:coal", 1).withDamage(CHARCOAL),
         )?;
     }
+
     ctx.recipes().shapeless(
         "purple_dye",
         ItemStack::of("minecraft:dye", PURPLE_DYE_COUNT).withDamage(PURPLE_DYE),

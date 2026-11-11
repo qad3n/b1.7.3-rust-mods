@@ -57,6 +57,7 @@ impl BigTree<'_>
     fn clearRun(&self, from: [i32; 3], to: [i32; 3]) -> i32
     {
         let delta: [i32; 3] = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+
         let lead: usize = (0..3).fold(0, |best, axis|
         {
             if delta[axis].abs() > delta[best].abs()
@@ -72,6 +73,7 @@ impl BigTree<'_>
         {
             return -1;
         }
+
         let (first, second): (usize, usize) = (OTHER_AXES[lead], OTHER_AXES[lead + 3]);
         let step: i32 = if delta[lead] > 0 { 1 } else { -1 };
         let slopeFirst: f64 = f64::from(delta[first]) / f64::from(delta[lead]);
@@ -79,6 +81,7 @@ impl BigTree<'_>
         let end: i32 = delta[lead] + step;
         let mut offset: i32 = 0;
         let leaves: i32 = self.m_builder.m_world.id("minecraft:leaves");
+
         while offset != end
         {
             let mut at: [i32; 3] = [0; 3];
@@ -90,8 +93,10 @@ impl BigTree<'_>
             {
                 break;
             }
+
             offset += step;
         }
+
         if offset == end { -1 } else { offset.abs() }
     }
 
@@ -101,6 +106,7 @@ impl BigTree<'_>
         {
             return -1.618;
         }
+
         let half: f32 = self.m_limit as f32 / 2.0;
         let offset: f32 = half - layer as f32;
         let size: f32 = if offset == 0.0
@@ -122,12 +128,15 @@ impl BigTree<'_>
     fn nodes(&mut self)
     {
         self.m_height = ((f64::from(self.m_limit) * shape::ATTENUATION) as i32).min(self.m_limit - 1);
+
         let perLayer: i32 = ((1.382 + (shape::DENSITY * f64::from(self.m_limit) / 13.0).powi(2)) as i32).max(1);
         let mut y: i32 = self.m_base[1] + self.m_limit - self.m_leafReach;
         let top: i32 = self.m_base[1] + self.m_height;
         let mut layer: i32 = y - self.m_base[1];
+
         self.m_nodes = vec![[self.m_base[0], y, self.m_base[2], top]];
         y -= 1;
+
         while layer >= 0
         {
             let size: f32 = self.layerSize(layer);
@@ -144,6 +153,7 @@ impl BigTree<'_>
                     {
                         continue;
                     }
+
                     let distance: f64 = f64::from((self.m_base[0] - nx).pow(2) + (self.m_base[2] - nz).pow(2)).sqrt();
                     let drop: f64 = distance * shape::SLOPE;
                     let baseY: i32 = if f64::from(y) - drop > f64::from(top)
@@ -154,12 +164,14 @@ impl BigTree<'_>
                     {
                         (f64::from(y) - drop) as i32
                     };
+
                     if self.clearRun([self.m_base[0], baseY, self.m_base[2]], node) == -1
                     {
                         self.m_nodes.push([nx, y, nz, baseY]);
                     }
                 }
             }
+
             y -= 1;
             layer -= 1;
         }
@@ -178,6 +190,7 @@ impl BigTree<'_>
                 {
                     continue;
                 }
+
                 let (x, z): (i32, i32) = (center[0] + a, center[2] + b);
                 let there: i32 = self.m_builder.block(x, center[1], z);
                 if there == 0 || crate::ids::leaves(there) || !self.m_builder.m_world.info(there).opaque
@@ -191,6 +204,7 @@ impl BigTree<'_>
     fn leaves(&self)
     {
         let leaf: Placed = self.leaf();
+
         for node in &self.m_nodes
         {
             for dy in 0..self.m_leafReach
@@ -212,6 +226,7 @@ impl BigTree<'_>
     fn logLine(&self, from: [i32; 3], to: [i32; 3])
     {
         let delta: [i32; 3] = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+
         let lead: usize = (0..3).fold(0, |best, axis|
         {
             if delta[axis].abs() > delta[best].abs()
@@ -227,6 +242,7 @@ impl BigTree<'_>
         {
             return;
         }
+
         let (first, second): (usize, usize) = (OTHER_AXES[lead], OTHER_AXES[lead + 3]);
         let step: i32 = if delta[lead] > 0 { 1 } else { -1 };
         let slopeFirst: f64 = f64::from(delta[first]) / f64::from(delta[lead]);
@@ -275,15 +291,17 @@ impl BigTree<'_>
         {
             return false;
         }
+
         self.m_limit = run;
         true
     }
 }
 
-pub fn large(builder: &Builder, random: &Random, x: i32, y: i32, z: i32, vanilla: bool) -> bool
+pub(crate) fn large(builder: &Builder, random: &Random, x: i32, y: i32, z: i32, vanilla: bool) -> bool
 {
     let own: Random = Random::withSeed(random.nextLong());
     let limit: i32 = 5 + own.nextIntBounded(shape::LIMIT);
+
     let mut tree: BigTree = BigTree
     {
         m_builder: builder,
@@ -299,10 +317,13 @@ pub fn large(builder: &Builder, random: &Random, x: i32, y: i32, z: i32, vanilla
     {
         return false;
     }
+
     tree.nodes();
     tree.leaves();
     tree.logLine(tree.m_base, [x, y + tree.m_height, z]);
+
     let floor: f64 = f64::from(tree.m_limit) * 0.2;
+
     for node in tree.m_nodes.clone()
     {
         if f64::from(node[3] - tree.m_base[1]) >= floor
@@ -310,5 +331,6 @@ pub fn large(builder: &Builder, random: &Random, x: i32, y: i32, z: i32, vanilla
             tree.logLine([x, node[3], z], [node[0], node[1], node[2]]);
         }
     }
+
     true
 }

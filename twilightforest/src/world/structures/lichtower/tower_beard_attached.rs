@@ -1,7 +1,7 @@
 // draft from ComponentTFTowerBeardAttached.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
+pub(crate) fn new(i: i32, wing: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::TowerBeardAttached);
     init(&this, i, wing);
@@ -9,9 +9,9 @@ pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFTowerBeardAttached constructor
-pub fn init(this: &Piece, i: i32, wing: &Piece)
+pub(crate) fn init(this: &Piece, i: i32, wing: &Piece)
 {
-    tower_beard::init(this, i, &wing);
+    tower_beard::init(this, i, wing);
     this.m_box.set(StructureBox::new(
         [wing.bounds().m_min[0], (wing.bounds().m_min[1] - this.m_height.get()) - 1, wing.bounds().m_min[2]],
         [wing.bounds().m_max[0], wing.bounds().m_min[1] - 1, wing.bounds().m_max[2]],
@@ -19,13 +19,13 @@ pub fn init(this: &Piece, i: i32, wing: &Piece)
 }
 
 // ComponentTFTowerBeardAttached.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
-    return tower_beard_attached::makeAttachedBeard(this, world, random, sbb);
+    tower_beard_attached::makeAttachedBeard(this, world, random, sbb)
 }
 
 // ComponentTFTowerBeardAttached.makeAttachedBeard
-pub fn makeAttachedBeard(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn makeAttachedBeard(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     for y in 0..=this.m_height.get()
     {
@@ -45,5 +45,6 @@ pub fn makeAttachedBeard(this: &Piece, world: &GenWorld, random: &Random, sbb: S
             Stones::stronghold(),
         );
     }
-    return true;
+
+    true
 }

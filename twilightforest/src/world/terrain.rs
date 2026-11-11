@@ -4,10 +4,10 @@ use super::noise::Octaves;
 use crate::ids::{self, block};
 use b173_api::prelude::*;
 use b173_api::terrain::{ChunkBlocks, NoiseGeneratorOctaves, Random};
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 
 // TFWorld, terrain is shaped 256 tall with sea level 63 and squished into half that
-pub const SEA_LEVEL: i32 = 31;
+pub(crate) const SEA_LEVEL: i32 = 31;
 const TALL: usize = 256;
 const SHAPE_SEA_LEVEL: i32 = 63;
 const HEIGHT: i32 = 128;
@@ -26,7 +26,7 @@ struct Noises
 
 impl Noises
 {
-    fn new(seed: i64) -> Noises
+    fn new(seed: i64) -> Self
     {
         let random: Random = Random::withSeed(seed);
         let canopy: NoiseGeneratorOctaves = NoiseGeneratorOctaves::new(&random, 4);
@@ -39,14 +39,16 @@ impl Noises
         let selector: NoiseGeneratorOctaves = NoiseGeneratorOctaves::new(&random, 8);
         let stone: Octaves = Octaves::new(&random, 4);
         let mut parabolic: [f32; 25] = [0.0; 25];
-        for j in -2..=2_i32
+
+        for j in -2..=2i32
         {
-            for k in -2..=2_i32
+            for k in -2..=2i32
             {
                 parabolic[(j + 2 + (k + 2) * 5) as usize] = 10.0 / ((j * j + k * k) as f32 + 0.2).sqrt();
             }
         }
-        Noises
+
+        Self
         {
             m_canopy: canopy,
             m_depth: depth,
@@ -68,11 +70,12 @@ fn withNoises<T>(seed: i64, run: impl FnOnce(&Noises) -> T) -> T
 {
     NOISES.with(|noises|
     {
-        let mut noises = noises.borrow_mut();
+        let mut noises: RefMut<Option<(i64, Noises)>> = noises.borrow_mut();
         if noises.as_ref().is_none_or(|(known, _)| *known != seed)
         {
             *noises = Some((seed, Noises::new(seed)));
         }
+
         run(&noises.as_ref().expect("noises are built for the seed").1)
     })
 }
@@ -86,7 +89,7 @@ struct Tall
 
 impl Tall
 {
-    fn new() -> Tall { Tall { m_blocks: vec![0; 16 * 16 * TALL], m_meta: vec![0; 16 * 16 * TALL] } }
+    fn new() -> Self { Self { m_blocks: vec![0; 16 * 16 * TALL], m_meta: vec![0; 16 * 16 * TALL] } }
 
     fn index(x: i32, y: i32, z: i32) -> usize { ((x * 16 + z) as usize) * TALL + y as usize }
 
@@ -96,6 +99,7 @@ impl Tall
         {
             return 0;
         }
+
         i32::from(self.m_blocks[Self::index(x, y, z)])
     }
 
@@ -105,6 +109,7 @@ impl Tall
         {
             return;
         }
+
         let index: usize = Self::index(x, y, z);
         self.m_blocks[index] = block as u16;
         self.m_meta[index] = meta as u8;
@@ -133,9 +138,9 @@ struct Palette
 
 impl Palette
 {
-    fn load() -> Palette
+    fn load() -> Self
     {
-        Palette
+        Self
         {
             m_stone: ids::blockId("minecraft:stone"),
             m_water: ids::blockId("minecraft:water"),
@@ -189,42 +194,52 @@ fn density(noises: &Noises, biomes: &[Biome], x: i32, z: i32) -> Vec<f64>
         4.277575000000001,
         8.555150000000001,
     );
+
     let low: Vec<f64> =
         noises.m_low.generateNoiseOctaves(None, f64::from(x), 0.0, f64::from(z), 5, 33, 5, 684.412, 684.412, 684.412);
     let high: Vec<f64> =
         noises.m_high.generateNoiseOctaves(None, f64::from(x), 0.0, f64::from(z), 5, 33, 5, 684.412, 684.412, 684.412);
     let mut values: Vec<f64> = Vec::with_capacity(5 * 33 * 5);
     let mut noiseIndex: usize = 0;
+
     for ax in 0..5_i32
     {
         for az in 0..5_i32
         {
             let center: &biomes::BiomeRow = biomes::rowOf(biomes[(ax + 2 + (az + 2) * 10) as usize]);
             let (mut variation, mut height, mut total): (f32, f32, f32) = (0.0, 0.0, 0.0);
-            for ox in -2..=2_i32
+
+            for ox in -2..=2i32
             {
-                for oz in -2..=2_i32
+                for oz in -2..=2i32
                 {
                     let near: &biomes::BiomeRow = biomes::rowOf(biomes[(ax + ox + 2 + (az + oz + 2) * 10) as usize]);
                     let (root, spread): (f32, f32) = near.m_height;
                     let mut factor: f32 = noises.m_parabolic[(ox + 2 + (oz + 2) * 5) as usize] / (root + 2.0);
+
                     if root > center.m_height.0
                     {
                         factor /= 2.0;
                     }
+
                     variation += spread * factor;
                     height += root * factor;
                     total += factor;
                 }
             }
+
             variation = variation / total * 0.9 + 0.1;
             height = (height / total * 4.0 - 1.0) / 8.0;
+
             let mut terrain: f64 = depth[noiseIndex] / 8000.0;
+
             noiseIndex += 1;
+
             if terrain < 0.0
             {
                 terrain = -terrain * 0.3;
             }
+
             terrain = terrain * 3.0 - 2.0;
             if terrain < 0.0
             {
@@ -236,6 +251,7 @@ fn density(noises: &Noises, biomes: &[Biome], x: i32, z: i32) -> Vec<f64>
             }
             let heightCalc: f64 = (f64::from(height) + terrain * 0.2) * 8.5 / 8.0;
             let base: f64 = 8.5 + heightCalc * 4.0;
+
             for ay in 0..33
             {
                 let index: usize = values.len();
@@ -244,19 +260,23 @@ fn density(noises: &Noises, biomes: &[Biome], x: i32, z: i32) -> Vec<f64>
                 {
                     falloff *= 4.0;
                 }
+
                 let lower: f64 = low[index] / 512.0;
                 let upper: f64 = high[index] / 512.0;
                 let blend: f64 = (selector[index] / 10.0 + 1.0) / 2.0;
                 let mut value: f64 = clampedLerp(lower, upper, blend) - falloff;
+
                 if ay > 29
                 {
                     let top: f64 = f64::from(ay - 29) / 3.0;
                     value = value * (1.0 - top) + -10.0 * top;
                 }
+
                 values.push(value);
             }
         }
     }
+
     values
 }
 
@@ -271,6 +291,7 @@ fn shape(tall: &mut Tall, palette: &Palette, grid: &[f64])
             let c01: usize = (k * 5 + j1 + 1) * 33;
             let c10: usize = ((k + 1) * 5 + j1) * 33;
             let c11: usize = ((k + 1) * 5 + j1 + 1) * 33;
+
             for k2 in 0..32_usize
             {
                 let eighth: f64 = 0.125;
@@ -282,6 +303,7 @@ fn shape(tall: &mut Tall, palette: &Palette, grid: &[f64])
                 let d6: f64 = (grid[c01 + k2 + 1] - d2) * eighth;
                 let d7: f64 = (grid[c10 + k2 + 1] - d3) * eighth;
                 let d8: f64 = (grid[c11 + k2 + 1] - d4) * eighth;
+
                 for l2 in 0..8_usize
                 {
                     let quarter: f64 = 0.25;
@@ -290,14 +312,17 @@ fn shape(tall: &mut Tall, palette: &Palette, grid: &[f64])
                     let d12: f64 = (d3 - d1) * quarter;
                     let d13: f64 = (d4 - d2) * quarter;
                     let y: i32 = (k2 * 8 + l2) as i32;
+
                     for i3 in 0..4_usize
                     {
                         let x: i32 = (i3 + k * 4) as i32;
                         let d16: f64 = (d11 - d10) * quarter;
                         let mut d15: f64 = d10 - d16;
+
                         for k3 in 0..4_usize
                         {
                             let z: i32 = (j1 * 4 + k3) as i32;
+
                             d15 += d16;
                             let block: i32 = if d15 > 0.0
                             {
@@ -313,9 +338,11 @@ fn shape(tall: &mut Tall, palette: &Palette, grid: &[f64])
                             };
                             tall.set(x, y, z, block, 0);
                         }
+
                         d10 += d12;
                         d11 += d13;
                     }
+
                     d1 += d5;
                     d2 += d6;
                     d3 += d7;
@@ -330,6 +357,7 @@ fn shape(tall: &mut Tall, palette: &Palette, grid: &[f64])
 fn squish(tall: &mut Tall)
 {
     let half: i32 = TALL as i32 / 2;
+
     for x in 0..16
     {
         for z in 0..16
@@ -364,6 +392,7 @@ fn canopy(
 )
 {
     let mut thicks: [i32; 25] = [0; 25];
+
     for z in 0..5_i32
     {
         for x in 0..5_i32
@@ -380,10 +409,12 @@ fn canopy(
             }
         }
     }
+
     if thicks.iter().all(|thick| *thick == 0)
     {
         return;
     }
+
     let scale: f64 = 0.03125 * 2.0;
     let noise: Vec<f64> = noises.m_canopy.generateNoiseOctaves(
         None,
@@ -397,6 +428,7 @@ fn canopy(
         scale,
         scale,
     );
+
     for z in 0..16_i32
     {
         for x in 0..16_i32
@@ -410,6 +442,7 @@ fn canopy(
                 + thick(0, 1) * (1.0 - xWeight) * zWeight
                 + thick(1, 1) * xWeight * zWeight
                 - 4.0;
+
             if near.0 == Feature::DarkTower
             {
                 let (dx, dz): (i32, i32) = (x - near.1[0], z - near.1[1]);
@@ -420,6 +453,7 @@ fn canopy(
                     thickness -= (clearing - distance) as f32;
                 }
             }
+
             if thickness <= 1.0
             {
                 continue;
@@ -436,9 +470,11 @@ fn canopy(
             {
                 continue;
             }
+
             let wobble: i32 = ((noise[((x & 15) << 4 | (z & 15)) as usize] / 1.25) as i32).min(3);
             let mut bottom: i32 = top.0 + 12 - (thickness * 0.5) as i32;
             let roof: i32 = bottom + (thickness * 1.5) as i32;
+
             bottom -= wobble;
             for y in bottom..roof
             {
@@ -452,6 +488,7 @@ fn canopy(
 fn glaciers(tall: &mut Tall, palette: &Palette, columns: &biomes::Columns)
 {
     let thickness: i32 = 32;
+
     for z in 0..16_i32
     {
         for x in 0..16_i32
@@ -460,11 +497,13 @@ fn glaciers(tall: &mut Tall, palette: &Palette, columns: &biomes::Columns)
             {
                 continue;
             }
+
             let top: i32 = (0..HEIGHT).rev().find(|y| tall.get(x, *y, z) == palette.m_stone).unwrap_or(-1);
             if top >= 0
             {
                 tall.set(x, top, z, palette.m_gravel, 0);
             }
+
             for y in top + 1..=(top + thickness + 1).min(HEIGHT - 1)
             {
                 tall.set(x, y, z, palette.m_ice, 0);
@@ -487,18 +526,22 @@ fn raiseHills(
 {
     let size: i32 = features::row(feature).m_size;
     let mut ground: Option<i32> = None;
+
     for y in 0..TALL as i32
     {
         if ground.is_none() && tall.get(x, y, z) != palette.m_stone
         {
             ground = Some(y + hill);
         }
+
         if ground.is_some_and(|top| y <= top)
         {
             tall.set(x, y, z, palette.m_stone, 0);
         }
     }
+
     let mut hollow: i32 = hill - 4 - size;
+
     if feature == Feature::HydraLair
     {
         let (mx, mz): (i32, i32) = (offset.0 + 16, offset.1 + 16);
@@ -507,7 +550,9 @@ fn raiseHills(
         let mound: i32 = ((distance / reach * std::f64::consts::PI).cos() * reach) as i32;
         hollow = hollow.max(mound - 4);
     }
+
     hollow = hollow.max(0);
+
     let floor: i32 = if feature == Feature::HydraLair
     {
         SEA_LEVEL
@@ -516,12 +561,14 @@ fn raiseHills(
     {
         SEA_LEVEL - 3 - hollow / 8
     };
+
     for y in 0..TALL as i32
     {
         if hill > 0 && y < SEA_LEVEL && tall.get(x, y, z) != palette.m_stone
         {
             tall.set(x, y, z, palette.m_stone, 0);
         }
+
         if y > floor && y < floor + hollow
         {
             tall.set(x, y, z, 0, 0);
@@ -557,11 +604,13 @@ fn flatten(tall: &mut Tall, palette: &Palette, size: i32, x: i32, z: i32, dx: i3
     let boundary: i32 = (size * 2 + 1) * 8 - 8;
     let squish: f32 = squishFactor(dx, dz, boundary);
     let mut level: i32 = SEA_LEVEL + 1;
+
     if squish > 0.0
         && let Some(ground) = firstAir(tall, palette, x, z)
     {
         level = (level as f32 + (ground - level) as f32 * squish) as i32;
     }
+
     for y in 0..HEIGHT
     {
         let block: i32 = tall.get(x, y, z);
@@ -569,6 +618,7 @@ fn flatten(tall: &mut Tall, palette: &Palette, size: i32, x: i32, z: i32, dx: i3
         {
             tall.set(x, y, z, palette.m_stone, 0);
         }
+
         if y >= level && block != palette.m_water
         {
             tall.set(x, y, z, 0, 0);
@@ -583,6 +633,7 @@ fn yetiLair(tall: &mut Tall, palette: &Palette, size: i32, x: i32, z: i32, dx: i
     let squish: f32 = squishFactor(dx, dz, outer);
     let cave: i32 = size * 2 * 8 - 8;
     let offset: i32 = dx.abs().min(dz.abs());
+
     let mut ceiling: i32 = if (-cave..=cave).contains(&dx) && (-cave..=cave).contains(&dz)
     {
         SEA_LEVEL + 16
@@ -593,14 +644,17 @@ fn yetiLair(tall: &mut Tall, palette: &Palette, size: i32, x: i32, z: i32, dx: i
     };
     ceiling -= offset / 6;
     ceiling = ceiling.min(SEA_LEVEL + 16);
+
     let mut top: i32 = SEA_LEVEL + 24;
     let mut floor: i32 = SEA_LEVEL - 1 + offset / 6;
+
     if squish > 0.0
         && let Some(ground) = firstAir(tall, palette, x, z)
     {
         top = (top as f32 + (ground - top) as f32 * squish) as i32;
         floor = (floor as f32 + (ground - floor) as f32 * squish) as i32;
     }
+
     for y in 0..HEIGHT
     {
         let block: i32 = tall.get(x, y, z);
@@ -608,10 +662,12 @@ fn yetiLair(tall: &mut Tall, palette: &Palette, size: i32, x: i32, z: i32, dx: i
         {
             tall.set(x, y, z, palette.m_stone, 0);
         }
+
         if y > floor && y < ceiling
         {
             tall.set(x, y, z, 0, 0);
         }
+
         if y == floor && y < ceiling && y < SEA_LEVEL + 3
         {
             tall.set(x, y, z, palette.m_ice, 0);
@@ -624,6 +680,7 @@ fn yetiLair(tall: &mut Tall, palette: &Palette, size: i32, x: i32, z: i32, dx: i
 fn trollClouds(tall: &mut Tall, palette: &Palette, chunkX: i32, center: [i32; 2], random: &Random)
 {
     let cloudTop: i32 = HEIGHT - 8;
+
     for bx in 0..4
     {
         for bz in 0..4
@@ -643,18 +700,22 @@ fn trollClouds(tall: &mut Tall, palette: &Palette, chunkX: i32, center: [i32; 2]
             let edge: f64 = distance - 7.0 - f64::from(roll) * 3.0;
             let y: i32 = if roll < 0.1 { cloudTop + 1 } else { cloudTop };
             let depth: i32 = 4 + i32::from(roll > 0.6) + i32::from(roll > 0.9);
+
             for sx in 0..4
             {
                 for sz in 0..4
                 {
                     let (x, z): (i32, i32) = (bx * 4 + sx, bz * 4 + sz);
+
                     if distance < 7.0 || edge < 0.05
                     {
                         tall.set(x, y, z, palette.m_wispy, 0);
+
                         for d in 1..depth
                         {
                             tall.set(x, y - d, z, palette.m_fluffy, 0);
                         }
+
                         tall.set(x, y - depth, z, palette.m_wispy, 0);
                     }
                     else if distance < 8.0 || edge < 1.0
@@ -677,16 +738,20 @@ fn deform(tall: &mut Tall, palette: &Palette, chunkX: i32, near: (Feature, [i32;
     {
         return;
     }
+
     let size: i32 = features::row(feature).m_size;
+
     if feature == Feature::TrollCave
     {
         trollClouds(tall, palette, chunkX, center, random);
     }
+
     for x in 0..16
     {
         for z in 0..16
         {
             let (dx, dz): (i32, i32) = (x - center[0], z - center[1]);
+
             match feature
             {
                 Feature::SmallHill | Feature::MediumHill | Feature::LargeHill | Feature::HydraLair =>
@@ -697,10 +762,12 @@ fn deform(tall: &mut Tall, palette: &Palette, chunkX: i32, near: (Feature, [i32;
                         * (f64::from(diameter) / 3.0)) as i32;
                     raiseHills(tall, palette, feature, diameter, x, z, (dx, dz), hill);
                 }
+
                 Feature::HedgeMaze | Feature::NagaCourtyard | Feature::QuestGrove =>
                 {
                     flatten(tall, palette, size, x, z, dx, dz)
                 }
+
                 Feature::YetiCave => yetiLair(tall, palette, size, x, z, dx, dz),
                 _ =>
                 {}
@@ -714,6 +781,7 @@ fn surface(tall: &mut Tall, palette: &Palette, biome: Biome, random: &Random, x:
 {
     let sea: i32 = SEA_LEVEL + 1;
     let deadrock: bool = matches!(biome, Biome::Thornlands | Biome::FinalPlateau);
+
     let (topBlock, fillerBlock): ((i32, i32), (i32, i32)) = match biome
     {
         _ if deadrock => ((palette.m_weathered, 0), (palette.m_cracked, 0)),
@@ -725,6 +793,7 @@ fn surface(tall: &mut Tall, palette: &Palette, biome: Biome, random: &Random, x:
     let mut depth: i32 = -1;
     let maxDepth: i32 = (noise / 3.0 + 3.0 + random.nextDouble() * 0.25) as i32;
     let temperature: f32 = biomes::rowOf(biome).m_temperature;
+
     for y in (0..TALL as i32).rev()
     {
         if y <= random.nextIntBounded(5)
@@ -732,14 +801,17 @@ fn surface(tall: &mut Tall, palette: &Palette, biome: Biome, random: &Random, x:
             tall.set(x, y, z, palette.m_bedrock, 0);
             continue;
         }
+
         if tall.get(x, y, z) != palette.m_stone
         {
             continue;
         }
+
         if deadrock
         {
             tall.set(x, y, z, palette.m_solid, 0);
         }
+
         if depth == -1
         {
             if maxDepth <= 0
@@ -752,6 +824,7 @@ fn surface(tall: &mut Tall, palette: &Palette, biome: Biome, random: &Random, x:
                 top = topBlock;
                 filler = fillerBlock;
             }
+
             if y < sea - 1 && top.0 == 0
             {
                 top = if temperature < 0.15
@@ -763,7 +836,9 @@ fn surface(tall: &mut Tall, palette: &Palette, biome: Biome, random: &Random, x:
                     (palette.m_water, 0)
                 };
             }
+
             depth = maxDepth;
+
             if y >= sea - 2
             {
                 tall.set(x, y, z, top.0, top.1);
@@ -783,6 +858,7 @@ fn surface(tall: &mut Tall, palette: &Palette, biome: Biome, random: &Random, x:
         {
             depth -= 1;
             tall.set(x, y, z, filler.0, filler.1);
+
             if depth == 0 && filler.0 == palette.m_sand
             {
                 depth = random.nextIntBounded(4) + (y - (sea - 1)).max(0);
@@ -806,6 +882,7 @@ fn surfaces(
     let lacunarity: f64 = 1.0;
     let stone: Vec<f64> =
         noises.m_stone.region(f64::from(chunkX * 16), f64::from(chunkZ * 16), 16, 16, [scale, scale], lacunarity);
+
     for z in 0..16_i32
     {
         for x in 0..16_i32
@@ -817,16 +894,18 @@ fn surfaces(
 }
 
 // ChunkProviderTwilightForest.provideChunk
-pub fn generate(chunk: &ChunkInfo, blocks: &mut ChunkBlocks)
+pub(crate) fn generate(chunk: &ChunkInfo, blocks: &mut ChunkBlocks)
 {
     let palette: Palette = Palette::load();
     let random: Random = Random::withSeed(
         i64::from(chunk.x).wrapping_mul(341873128712).wrapping_add(i64::from(chunk.z).wrapping_mul(132897987541)),
     );
+
     let mut tall: Tall = Tall::new();
     let coarse: Vec<Biome> = biomes::coarse(chunk.seed, chunk.x * 4 - 2, chunk.z * 4 - 2, 10, 10);
     let near: (Feature, [i32; 2]) = features::nearest(chunk.seed, chunk.x, chunk.z);
     let columns: biomes::Columns = biomes::chunk(chunk.seed, chunk.x, chunk.z);
+
     withNoises(chunk.seed, |noises|
     {
         let grid: Vec<f64> = density(noises, &coarse, chunk.x * 4, chunk.z * 4);
@@ -839,7 +918,9 @@ pub fn generate(chunk: &ChunkInfo, blocks: &mut ChunkBlocks)
         deform(&mut tall, &palette, chunk.x, near, &clouds);
         surfaces(&mut tall, &palette, noises, &columns, chunk.x, chunk.z, &random);
     });
+
     super::caves::carve(chunk, &mut tall.m_blocks, &palette.carvable());
+
     for x in 0..16
     {
         for z in 0..16
@@ -870,4 +951,4 @@ impl Palette
     }
 }
 
-pub fn height() -> i32 { HEIGHT }
+pub(crate) fn height() -> i32 { HEIGHT }

@@ -1,7 +1,7 @@
 // draft from ComponentTFIceTowerBridge.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(index: i32, x: i32, y: i32, z: i32, length: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(index: i32, x: i32, y: i32, z: i32, length: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::IceTowerBridge);
     init(&this, index, x, y, z, length, direction);
@@ -9,7 +9,7 @@ pub fn new(index: i32, x: i32, y: i32, z: i32, length: i32, direction: i32) -> R
 }
 
 // ComponentTFIceTowerBridge constructor
-pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, length: i32, direction: i32)
+pub(crate) fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, length: i32, direction: i32)
 {
     this.m_depth.set(index);
     this.m_lengthIceTowerBridge.set(length);
@@ -18,13 +18,13 @@ pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, length: i32, direc
 }
 
 // ComponentTFIceTowerBridge.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFIceTowerBridge.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fillAir(world, sbb, 0, 1, 0, this.m_lengthIceTowerBridge.get(), 5, 4);
     this.fill(
@@ -53,6 +53,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
         this.m_deco.get().m_blockID,
         false,
     );
+
     for x in (2..this.m_lengthIceTowerBridge.get()).step_by(3)
     {
         this.fillMeta(
@@ -86,5 +87,6 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             false,
         );
     }
-    return true;
+
+    true
 }

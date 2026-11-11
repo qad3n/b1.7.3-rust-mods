@@ -1,7 +1,7 @@
 // draft from ComponentTFIceTowerBossWing.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(index: i32, x: i32, y: i32, z: i32, wingSize: i32, wingHeight: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(index: i32, x: i32, y: i32, z: i32, wingSize: i32, wingHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::IceTowerBossWing);
     init(&this, index, x, y, z, wingSize, wingHeight, direction);
@@ -9,17 +9,24 @@ pub fn new(index: i32, x: i32, y: i32, z: i32, wingSize: i32, wingHeight: i32, d
 }
 
 // ComponentTFIceTowerBossWing constructor
-pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, wingSize: i32, wingHeight: i32, direction: i32)
+pub(crate) fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, wingSize: i32, wingHeight: i32, direction: i32)
 {
     ice_tower_wing::init(this, index, x, y, z, wingSize, wingHeight, direction);
     this.m_spawnListIndex.set(-1);
 }
 
 // ComponentTFIceTowerBossWing.shouldHaveBase
-pub fn shouldHaveBase(_this: &Piece, _random: &Random) -> bool { return false; }
+pub(crate) fn shouldHaveBase(_this: &Piece, _random: &Random) -> bool { false }
 
 // ComponentTFIceTowerBossWing.placeFloor
-pub fn placeFloor5(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox, floorHeight: i32, floor: i32)
+pub(crate) fn placeFloor5(
+    this: &Piece,
+    world: &GenWorld,
+    random: &Random,
+    sbb: StructureBox,
+    floorHeight: i32,
+    floor: i32,
+)
 {
     for x in 1..(this.m_size.get() - 1)
     {
@@ -43,7 +50,7 @@ pub fn placeFloor5(this: &Piece, world: &GenWorld, random: &Random, sbb: Structu
 }
 
 // ComponentTFIceTowerBossWing.decorateFloor
-pub fn decorateFloor8(
+pub(crate) fn decorateFloor8(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -59,15 +66,17 @@ pub fn decorateFloor8(
     {
         let rotation: i32 = (ladderDownDir + y) % 4;
         let rotation2: i32 = ((ladderDownDir + y) + 2) % 4;
+
         ice_tower_boss_wing::placeIceStairs(this, world, sbb, random, bottom + (y * 3), rotation);
         ice_tower_boss_wing::placeIceStairs(this, world, sbb, random, bottom + (y * 3), rotation2);
     }
 }
 
 // ComponentTFIceTowerBossWing.placeIceStairs
-pub fn placeIceStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, random: &Random, y: i32, rotation: i32)
+pub(crate) fn placeIceStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, random: &Random, y: i32, rotation: i32)
 {
     this.fillTurned(world, sbb, 8, y + 1, 1, 10, y + 1, 3, blk("packed_ice"), 0, rotation);
+
     if y > 1
     {
         this.fillRandomlyTurned(
@@ -88,6 +97,7 @@ pub fn placeIceStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, random:
             rotation,
         );
     }
+
     this.fillTurned(world, sbb, 11, y + 2, 1, 13, y + 2, 3, blk("packed_ice"), 0, rotation);
     this.fillRandomlyTurned(
         world,
@@ -127,7 +137,7 @@ pub fn placeIceStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, random:
 }
 
 // ComponentTFIceTowerBossWing.decorateTopFloor
-pub fn decorateTopFloor(
+pub(crate) fn decorateTopFloor(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -158,6 +168,7 @@ pub fn decorateTopFloor(
             }
         }
     }
+
     this.placeTurned(world, blk("tf:bossSpawner"), 5, 7, top - 6, 7, 0, sbb);
     this.fillAir(world, sbb, 5, top - 3, 5, 9, top - 1, 9);
 }

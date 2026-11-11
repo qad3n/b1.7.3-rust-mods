@@ -45,7 +45,7 @@ thread_local!
     static RECOIL: RefCell<HashMap<(i32, i32), i32>> = RefCell::new(HashMap::new());
 }
 
-pub fn model() -> EntityModelSpec
+pub(crate) fn model() -> EntityModelSpec
 {
     combine(vec![tf_block_goblin::model(), tf_spike_block::model(), tf_goblin_chain::model()])
 }
@@ -71,12 +71,12 @@ fn blockOffset(angle: f64, length: f64) -> [f64; 3]
     [radians.cos() * length, tuning::HANG - length / tuning::HANG_DROP, radians.sin() * length]
 }
 
-pub fn forget(entity: Entity)
+pub(crate) fn forget(entity: Entity)
 {
     RECOIL.with(|recoil| recoil.borrow_mut().remove(&(entity.world.dimension, entity.id)));
 }
 
-pub fn tick(entity: Entity, info: &EntityInfo)
+pub(crate) fn tick(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
     let key: (i32, i32) = (world.dimension, entity.id);
@@ -90,6 +90,7 @@ pub fn tick(entity: Entity, info: &EntityInfo)
     }
 
     let mut left: i32 = recoil;
+
     if swinging
     {
         let offset: [f64; 3] = blockOffset(angle(world, 0.0), length(true));
@@ -99,17 +100,20 @@ pub fn tick(entity: Entity, info: &EntityInfo)
             .into_iter()
             .filter(|other| other.id != entity.id && other.health.is_some())
             .collect();
+
         for hit in struck
         {
             let victim: Entity = Entity { world, id: hit.id };
             if crate::combat::hit(victim, tuning::DAMAGE, Some(entity.id), crate::combat::kind::MOB)
             {
                 let _ = victim.setMotion([hit.motion[0], hit.motion[1] + tuning::TOSS, hit.motion[2]]);
+
                 world.playSound(block, HIT_SOUND, 1.0, 1.0);
                 left = tuning::RECOIL;
             }
         }
     }
+
     RECOIL.with(|recoil| recoil.borrow_mut().insert(key, left));
 }
 
@@ -127,15 +131,17 @@ fn drawAt(body: &mut Program, offset: [f64; 3], yaw: f64, turn: f64, parts: std:
 {
     let [x, y, z]: [f32; 3] = modelSpace(offset, yaw);
     body.push().translate(x, y, z).rotate((turn - yaw) as f32, 0.0, 1.0, 0.0);
+
     for part in parts
     {
         body.rest(part);
     }
+
     body.pop();
 }
 
 // RenderTFBlockGoblin draws the spike block and the three links with their own renderers
-pub fn draw(body: &mut Program, input: &PoseInput)
+pub(crate) fn draw(body: &mut Program, input: &PoseInput)
 {
     let world: World = World { dimension: input.entity.world };
     let chain: Chain = b173_api::fromBytes(&input.synced).unwrap_or_default();
@@ -145,10 +151,12 @@ pub fn draw(body: &mut Program, input: &PoseInput)
     let goblinParts: u16 = tf_block_goblin::PIVOTS.len() as u16;
     let spikeParts: u16 = tf_spike_block::PIVOTS.len() as u16;
     let linkPart: u16 = goblinParts + spikeParts + tf_goblin_chain::CHAIN;
+
     drawAt(body, offset, yaw, spin, goblinParts..goblinParts + spikeParts);
 
     let head: [f64; 3] = [0.0, HEIGHT - tuning::HEAD_DROP, 0.0];
     let reach: [f64; 3] = [head[0] - offset[0], head[1] - offset[1] - tuning::BLOCK_THIRD, head[2] - offset[2]];
+
     for share in tuning::LINKS
     {
         let link: [f64; 3] = [0, 1, 2].map(|axis| head[axis] - reach[axis] * share);

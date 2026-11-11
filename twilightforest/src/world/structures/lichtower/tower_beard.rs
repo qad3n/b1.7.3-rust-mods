@@ -1,7 +1,7 @@
 // draft from ComponentTFTowerBeard.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
+pub(crate) fn new(i: i32, wing: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::TowerBeard);
     init(&this, i, wing);
@@ -9,7 +9,7 @@ pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFTowerBeard constructor
-pub fn init(this: &Piece, i: i32, wing: &Piece)
+pub(crate) fn init(this: &Piece, i: i32, wing: &Piece)
 {
     this.m_depth.set(i);
     this.setMode(wing.mode());
@@ -22,13 +22,13 @@ pub fn init(this: &Piece, i: i32, wing: &Piece)
 }
 
 // ComponentTFTowerBeard.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
-    return tower_beard::makePyramidBeard(this, world, random, sbb);
+    tower_beard::makePyramidBeard(this, world, random, sbb)
 }
 
 // ComponentTFTowerBeard.makePyramidBeard
-pub fn makePyramidBeard(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn makePyramidBeard(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     for y in 0..=this.m_height.get()
     {
@@ -48,5 +48,6 @@ pub fn makePyramidBeard(this: &Piece, world: &GenWorld, random: &Random, sbb: St
             Stones::stronghold(),
         );
     }
-    return true;
+
+    true
 }

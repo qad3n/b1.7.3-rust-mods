@@ -24,7 +24,7 @@ mod leaves
 
 const LOG_HARDNESS: f32 = 2.0;
 // BlockLog orientation bits as a state, metadata 0 stands upright, 1 and 2 lie along x and z, 3 is all bark
-pub const LOG_AXES: [&str; 4] = ["y", "x", "z", "none"];
+pub(crate) const LOG_AXES: [&str; 4] = ["y", "x", "z", "none"];
 const PLANK_HARDNESS: f32 = 2.0;
 // a root block splits into three or four sticks
 const ROOT_STICKS: [i32; 2] = [3, 4];
@@ -237,7 +237,7 @@ struct Core
 }
 
 #[derive(Clone, Copy)]
-pub enum Effect
+pub(crate) enum Effect
 {
     Time,
     Transformation,
@@ -333,6 +333,7 @@ fn hurtsOnTouch(entity: Entity) -> bool
     {
         return false;
     };
+
     let kind: String = info.kind.map(|kind| kind.to_string()).unwrap_or_default();
     !matches!(kind.as_str(), "minecraft:spider" | "minecraft:item") && !kind.ends_with("spider")
 }
@@ -408,14 +409,15 @@ impl BlockBehavior for SaplingGrowth
         {
             return;
         }
+
         trees::growSapling(world, ctx.pos(), ctx.block(), self.m_tree);
     }
 }
 
-pub fn isSapling(block: i32) -> bool { SAPLINGS.iter().any(|row| ids::blockId(row.m_name) == block) }
+pub(crate) fn isSapling(block: i32) -> bool { SAPLINGS.iter().any(|row| ids::blockId(row.m_name) == block) }
 
 // TFEventListener.bonemealUsed, bone meal grows a twilight sapling at once
-pub fn fertilize(world: World, pos: BlockPos) -> bool
+pub(crate) fn fertilize(world: World, pos: BlockPos) -> bool
 {
     let here: i32 = world.block(pos);
     let Some(row) = SAPLINGS.iter().find(|row| ids::blockId(row.m_name) == here)
@@ -423,10 +425,12 @@ pub fn fertilize(world: World, pos: BlockPos) -> bool
     {
         return false;
     };
+
     if world.isAuthority()
     {
         trees::growSapling(world, pos, here, row.m_tree);
     }
+
     true
 }
 
@@ -448,7 +452,9 @@ fn boneMeal(event: &mut Event)
     {
         return;
     }
+
     event.cancel();
+
     if world.isAuthority()
     {
         let left: Option<ItemStack> = (stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack });
@@ -484,10 +490,12 @@ impl BlockBehavior for MagicCore
     {
         let stopped: bool = ctx.meta() & CORE_STOPPED != 0;
         ctx.setMeta(if stopped { 0 } else { CORE_STOPPED });
+
         if stopped && ctx.isAuthority()
         {
             let _ = ctx.world().scheduleTick(ctx.pos(), ctx.block(), CORE_INTERVAL);
         }
+
         true
     }
 
@@ -497,19 +505,22 @@ impl BlockBehavior for MagicCore
         {
             return;
         }
+
         if ctx.isAuthority()
         {
             crate::magic::coreEffect(ctx.world(), ctx.pos(), self.m_effect);
         }
+
         let _ = ctx.world().scheduleTick(ctx.pos(), ctx.block(), CORE_INTERVAL);
     }
 }
 
 // BlockLog.onBlockRemoval, leaves near a broken log start to decay
-pub fn shedLeaves(world: World, pos: BlockPos)
+pub(crate) fn shedLeaves(world: World, pos: BlockPos)
 {
     let reach: i32 = 4;
     let decaying: i32 = 8;
+
     for x in -reach..=reach
     {
         for y in -reach..=reach
@@ -533,7 +544,7 @@ pub fn shedLeaves(world: World, pos: BlockPos)
 }
 
 // BlockLog, a plain log that lets its leaves go when broken
-pub struct Log;
+pub(crate) struct Log;
 
 #[block_behavior]
 impl BlockBehavior for Log
@@ -562,6 +573,7 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
             BlockStatesSpec { properties: vec![super::property("axis", &LOG_AXES)], ..BlockStatesSpec::default() },
         )?;
     }
+
     for row in &CORES
     {
         let spec: BlockSpecBuilder = base("minecraft:block", row.m_label, Kind::Wood, LOG_HARDNESS)
@@ -571,6 +583,7 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
             .sustainsLeaves()
             .behavior(MagicCore { m_effect: row.m_effect });
         super::put(ctx, row.m_name, spec)?;
+
         let side: FaceTextures = faces(&Look::Column { top: row.m_top, side: row.m_off });
         ctx.blocks().states(
             row.m_name,
@@ -587,6 +600,7 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
             },
         )?;
     }
+
     super::put(
         ctx,
         block::ROOT,
@@ -625,10 +639,12 @@ fn leafSpec(row: &Leaf) -> Result<BlockSpecBuilder>
 fn magicTreasure(name: &str) -> Result<Vec<DropSpec>>
 {
     let chance: f32 = leaves::MAGIC_TREASURE_CHANCE;
+
     Ok(match name
     {
         block::TIME_LEAVES => vec![drop("minecraft:clock", vec![1], chance)?],
         block::TRANS_LEAVES => vec![drop(block::FIREFLY, vec![2], chance)?],
+
         block::MINE_LEAVES =>
         {
             let ores: [&str; 6] = [
@@ -639,9 +655,11 @@ fn magicTreasure(name: &str) -> Result<Vec<DropSpec>>
                 "minecraft:coal_ore",
                 "minecraft:redstone_ore",
             ];
+
             let each: f32 = chance / ores.len() as f32;
             ores.iter().map(|ore| drop(ore, vec![1], each)).collect::<Result<Vec<DropSpec>>>()?
         }
+
         block::SORT_LEAVES => vec![drop("minecraft:chest", vec![1], chance)?],
         _ => Vec::new(),
     })
@@ -659,8 +677,10 @@ fn registerLeaves(ctx: &mut RegisterCtx) -> Result<()>
             all.extend(treasure);
             spec = spec.drops(all);
         }
+
         super::put(ctx, row.m_name, spec)?;
     }
+
     super::put(
         ctx,
         block::DARK_LEAVES,
@@ -675,6 +695,7 @@ fn registerLeaves(ctx: &mut RegisterCtx) -> Result<()>
             .drops(vec![drop("darkwood_sapling", vec![1], leaves::SAPLING_CHANCE)?])
             .behavior(LeafTint { m_tint: Tint::Foliage, m_runes: false }),
     )?;
+
     let sliver: f32 = 15.0;
     super::put(
         ctx,
@@ -708,10 +729,11 @@ fn registerSaplings(ctx: &mut RegisterCtx) -> Result<()>
                 .behavior(SaplingGrowth { m_tree: row.m_tree }),
         )?;
     }
+
     Ok(())
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.events().on::<ItemUseOnBlock>(Priority::Normal, boneMeal)?;
     registerLogs(ctx)?;

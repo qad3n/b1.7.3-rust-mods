@@ -1,50 +1,50 @@
 // registry names, shared by registration, generation and behaviors
-pub mod block
+pub(crate) mod block
 {
-    pub const AETHER_GRASS: &str = "aether_grass";
-    pub const ENCHANTED_AETHER_GRASS: &str = "enchanted_aether_grass";
-    pub const AETHER_DIRT: &str = "aether_dirt";
-    pub const HOLYSTONE: &str = "holystone";
-    pub const QUICKSOIL: &str = "quicksoil";
-    pub const ICESTONE: &str = "icestone";
-    pub const AMBROSIUM_ORE: &str = "ambrosium_ore";
-    pub const ZANITE_ORE: &str = "zanite_ore";
-    pub const GRAVITITE_ORE: &str = "gravitite_ore";
-    pub const ENCHANTED_GRAVITITE: &str = "enchanted_gravitite";
-    pub const COLD_AERCLOUD: &str = "cold_aercloud";
-    pub const BLUE_AERCLOUD: &str = "blue_aercloud";
-    pub const GOLDEN_AERCLOUD: &str = "golden_aercloud";
-    pub const SKYROOT_LOG: &str = "skyroot_log";
-    pub const GOLDEN_OAK_LOG: &str = "golden_oak_log";
-    pub const SKYROOT_LEAVES: &str = "skyroot_leaves";
-    pub const GOLDEN_OAK_LEAVES: &str = "golden_oak_leaves";
-    pub const CRYSTAL_LEAVES: &str = "crystal_leaves";
-    pub const CRYSTAL_FRUIT_LEAVES: &str = "crystal_fruit_leaves";
-    pub const SKYROOT_SAPLING: &str = "skyroot_sapling";
-    pub const GOLDEN_OAK_SAPLING: &str = "golden_oak_sapling";
-    pub const WHITE_FLOWER: &str = "white_flower";
-    pub const PURPLE_FLOWER: &str = "purple_flower";
-    pub const BERRY_BUSH: &str = "berry_bush";
-    pub const AETHER_PORTAL: &str = "aether_portal";
+    pub(crate) const AETHER_GRASS: &str = "aether_grass";
+    pub(crate) const ENCHANTED_AETHER_GRASS: &str = "enchanted_aether_grass";
+    pub(crate) const AETHER_DIRT: &str = "aether_dirt";
+    pub(crate) const HOLYSTONE: &str = "holystone";
+    pub(crate) const QUICKSOIL: &str = "quicksoil";
+    pub(crate) const ICESTONE: &str = "icestone";
+    pub(crate) const AMBROSIUM_ORE: &str = "ambrosium_ore";
+    pub(crate) const ZANITE_ORE: &str = "zanite_ore";
+    pub(crate) const GRAVITITE_ORE: &str = "gravitite_ore";
+    pub(crate) const ENCHANTED_GRAVITITE: &str = "enchanted_gravitite";
+    pub(crate) const COLD_AERCLOUD: &str = "cold_aercloud";
+    pub(crate) const BLUE_AERCLOUD: &str = "blue_aercloud";
+    pub(crate) const GOLDEN_AERCLOUD: &str = "golden_aercloud";
+    pub(crate) const SKYROOT_LOG: &str = "skyroot_log";
+    pub(crate) const GOLDEN_OAK_LOG: &str = "golden_oak_log";
+    pub(crate) const SKYROOT_LEAVES: &str = "skyroot_leaves";
+    pub(crate) const GOLDEN_OAK_LEAVES: &str = "golden_oak_leaves";
+    pub(crate) const CRYSTAL_LEAVES: &str = "crystal_leaves";
+    pub(crate) const CRYSTAL_FRUIT_LEAVES: &str = "crystal_fruit_leaves";
+    pub(crate) const SKYROOT_SAPLING: &str = "skyroot_sapling";
+    pub(crate) const GOLDEN_OAK_SAPLING: &str = "golden_oak_sapling";
+    pub(crate) const WHITE_FLOWER: &str = "white_flower";
+    pub(crate) const PURPLE_FLOWER: &str = "purple_flower";
+    pub(crate) const BERRY_BUSH: &str = "berry_bush";
+    pub(crate) const AETHER_PORTAL: &str = "aether_portal";
 }
 
-pub mod item
+pub(crate) mod item
 {
-    pub const AMBROSIUM_SHARD: &str = "ambrosium_shard";
-    pub const ZANITE_GEMSTONE: &str = "zanite_gemstone";
-    pub const GOLDEN_AMBER: &str = "golden_amber";
-    pub const SKYROOT_STICK: &str = "skyroot_stick";
-    pub const BLUEBERRY: &str = "blueberry";
-    pub const WHITE_APPLE: &str = "white_apple";
-    pub const SWET_BALL: &str = "swet_ball";
-    pub const AECHOR_PETAL: &str = "aechor_petal";
-    pub const VICTORY_MEDAL: &str = "victory_medal";
+    pub(crate) const AMBROSIUM_SHARD: &str = "ambrosium_shard";
+    pub(crate) const ZANITE_GEMSTONE: &str = "zanite_gemstone";
+    pub(crate) const GOLDEN_AMBER: &str = "golden_amber";
+    pub(crate) const SKYROOT_STICK: &str = "skyroot_stick";
+    pub(crate) const BLUEBERRY: &str = "blueberry";
+    pub(crate) const WHITE_APPLE: &str = "white_apple";
+    pub(crate) const SWET_BALL: &str = "swet_ball";
+    pub(crate) const AECHOR_PETAL: &str = "aechor_petal";
+    pub(crate) const VICTORY_MEDAL: &str = "victory_medal";
 }
 
-pub fn blockId(name: &str) -> i32 { b173_api::Blocks.id(name).unwrap_or(0) }
+pub(crate) fn blockId(name: &str) -> i32 { b173_api::Blocks.id(name).unwrap_or(0) }
 
 // numeric ids change with every world and server, so generation resolves them once per call
-pub struct Palette
+pub(crate) struct Palette
 {
     pub m_grass: i32,
     pub m_enchantedGrass: i32,
@@ -71,9 +71,10 @@ pub struct Palette
 
 impl Palette
 {
-    pub fn load() -> Palette
+    pub(crate) fn load() -> Self
     {
-        Palette {
+        Self
+        {
             m_grass: blockId(block::AETHER_GRASS),
             m_enchantedGrass: blockId(block::ENCHANTED_AETHER_GRASS),
             m_dirt: blockId(block::AETHER_DIRT),
@@ -99,7 +100,7 @@ impl Palette
     }
 
     // blocks plants and saplings take root in, BlockAetherFlower.canThisPlantGrowOnThisBlock
-    pub fn isSoil(&self, block: i32) -> bool
+    pub(crate) fn isSoil(&self, block: i32) -> bool
     {
         block == self.m_grass || block == self.m_dirt || block == self.m_enchantedGrass
     }

@@ -63,7 +63,8 @@ fn state(entity: Entity) -> MoaState
     let mut state: MoaState = entity.synced();
     if !state.m_ready && entity.world.isAuthority()
     {
-        state = MoaState {
+        state = MoaState
+        {
             m_ready: true,
             m_kind: entity.world.random(TYPES.len() as i32) as u8,
             m_eggSeconds: moa::EGG_SECONDS + entity.world.random(moa::EGG_SPREAD),
@@ -71,6 +72,7 @@ fn state(entity: Entity) -> MoaState
         };
         let _ = entity.setSynced(&state);
     }
+
     state
 }
 
@@ -79,7 +81,7 @@ fn moaType(state: &MoaState) -> &'static MoaType { &TYPES[(state.m_kind as usize
 fn eggName(kind: &MoaType) -> String { format!("{}_moa_egg", kind.m_name) }
 
 // TileEntityIncubator.updateEntity: a hatched moa is a player grown baby of the egg's type
-pub fn hatch(world: World, egg: &ItemStack, pos: [f64; 3]) -> bool
+pub(crate) fn hatch(world: World, egg: &ItemStack, pos: [f64; 3]) -> bool
 {
     let Some(kind) = TYPES.iter().position(|kind| egg.item.is(&eggName(kind)))
     else
@@ -91,7 +93,9 @@ pub fn hatch(world: World, egg: &ItemStack, pos: [f64; 3]) -> bool
     {
         return false;
     };
-    let state: MoaState = MoaState {
+
+    let state: MoaState = MoaState
+    {
         m_ready: true,
         m_kind: kind as u8,
         m_playerGrown: true,
@@ -102,7 +106,7 @@ pub fn hatch(world: World, egg: &ItemStack, pos: [f64; 3]) -> bool
     moa.setSynced(&state).is_ok()
 }
 
-pub fn isEgg(stack: &ItemStack) -> bool { TYPES.iter().any(|kind| stack.item.is(&eggName(kind))) }
+pub(crate) fn isEgg(stack: &ItemStack) -> bool { TYPES.iter().any(|kind| stack.item.is(&eggName(kind))) }
 
 struct Moa;
 
@@ -113,15 +117,19 @@ impl EntityBehavior for Moa
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
         entity.setField(EntityField::FallDistance, 0.0);
+
         let mut current: MoaState = state(entity);
         let kind: &MoaType = moaType(&current);
         entity.setField(EntityField::AirJumps, kind.m_jumps as f64);
         entity.setField(EntityField::MountSpeed, kind.m_speed as f64);
+
         if !entity.world.isAuthority() || entity.field(EntityField::TicksExisted) as i32 % moa::TICKS_PER_SECOND != 0
         {
             return;
         }
+
         let mut changed: bool = false;
+
         if current.m_hungerSeconds > 0
         {
             current.m_hungerSeconds -= 1;
@@ -131,17 +139,22 @@ impl EntityBehavior for Moa
             current.m_hungry = true;
             changed = true;
         }
+
         if !current.m_baby && entity.rider().is_none()
         {
             current.m_eggSeconds -= 1;
             if current.m_eggSeconds <= 0
             {
                 entity.world.playSound(info.pos, "mob.chickenplop", 1.0, 1.0);
+
                 let _ = entity.world.spawnItem(info.pos, ItemStack::of(eggName(kind).as_str(), 1));
+
                 current.m_eggSeconds = moa::EGG_SECONDS + entity.world.random(moa::EGG_SPREAD);
             }
+
             changed = true;
         }
+
         if changed
         {
             let _ = entity.setSynced(&current);
@@ -162,23 +175,30 @@ impl EntityBehavior for Moa
                 current.m_hungry = false;
                 current.m_hungerSeconds = moa::HUNGER_SECONDS + entity.world.random(moa::HUNGER_SECONDS);
                 current.m_baby = current.m_fed < moa::FEEDS_TO_GROW;
+
                 let left: i32 = held.count - 1;
                 let _ = player.setHeld((left > 0).then_some(ItemStack { count: left, ..held.clone() }));
                 let _ = entity.setSynced(&current);
+
                 return true;
             }
+
             if held.item.is(NATURE_STAFF)
             {
                 current.m_sitting = !current.m_sitting;
+
                 let _ = entity.setSynced(&current);
                 let _ = player.setHeld(Some(ItemStack { damage: held.damage + 2, ..held.clone() }));
+
                 return true;
             }
         }
+
         if current.m_baby || !current.m_playerGrown
         {
             return false;
         }
+
         if !current.m_saddled
         {
             let Some(held) = held.filter(|held| held.item.is(SADDLE))
@@ -186,16 +206,21 @@ impl EntityBehavior for Moa
             {
                 return false;
             };
+
             current.m_saddled = true;
+
             let _ = entity.setSynced(&current);
             let left: i32 = held.count - 1;
             let _ = player.setHeld((left > 0).then_some(ItemStack { count: left, ..held }));
+
             return true;
         }
+
         if entity.rider().is_none() && entity.world.isAuthority()
         {
             let _ = Entity { world: entity.world, id: player.id }.mount(Some(entity.id));
         }
+
         true
     }
 
@@ -232,6 +257,7 @@ impl EntityBehavior for Moa
     {
         let current: MoaState = b173_api::fromBytes(&input.synced).unwrap_or_default();
         let kind: &MoaType = moaType(&current);
+
         let scale: f32 = if current.m_baby
         {
             moa::BABY_SCALE
@@ -242,10 +268,12 @@ impl EntityBehavior for Moa
         };
         let mut pre: Program = Program::new();
         pre.scale(scale, scale, scale);
+
         let swing: f32 = bird::wingSwing(input);
         let mut body: Program = Program::new();
         body.texture(&format!("aether:entity/moa/moa_{}", kind.m_name));
         bird::pose(&mut body, 0, &model::PIVOTS, &model::ROTATIONS, input, current.m_sitting, swing);
+
         if current.m_saddled
         {
             body.texture(
@@ -262,20 +290,23 @@ impl EntityBehavior for Moa
             bird::pose(&mut body, PARTS, &model::PIVOTS, &model::ROTATIONS, input, current.m_sitting, swing);
             body.pop();
         }
+
         Pose { pre: pre.take(), model: body.take() }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for kind in &TYPES
     {
         ctx.items()
             .register(&eggName(kind), ItemSpecBuilder::new().texture(EGG_TEXTURE).maxStack(1).color(kind.m_color))?;
     }
+
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:pig").ok(),
             texture: Some("aether:entity/moa/moa_blue".to_owned()),
             size: Some([1.0, 2.0]),
@@ -284,11 +315,14 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             // EntityMoa.dropFewItems, three feathers every time
             drops: Some(vec![super::drop("minecraft:feather", [3, 3])]),
             sounds: super::sounds("aether.aemob.moa.say", "aether.aemob.moa.say", "aether.aemob.moa.say"),
-            model: Some(EntityModelSpec {
+            model: Some(EntityModelSpec
+            {
                 shadow: 1.0,
                 ..combine(vec![model::model(), crate::models::moa_saddle::model()])
             }),
-            steering: Some(SteeringSpec {
+
+            steering: Some(SteeringSpec
+            {
                 jump: moa::GROUND_JUMP,
                 air_jump: moa::AIR_JUMP,
                 air_jump_falling: true,

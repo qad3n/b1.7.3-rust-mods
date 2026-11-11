@@ -1,7 +1,7 @@
 // draft from ComponentTFDarkTowerBridge.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::DarkTowerBridge);
     init(&this, i, x, y, z, pSize, pHeight, direction);
@@ -9,7 +9,7 @@ pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: 
 }
 
 // ComponentTFDarkTowerBridge constructor
-pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
+pub(crate) fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
 {
     tower_wing::init7(this, i, x, y, z, 5, 5, direction);
     this.m_dSize.set(pSize);
@@ -17,14 +17,14 @@ pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i
 }
 
 // ComponentTFDarkTowerBridge.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
     this.makeTowerWing(list, random, this.depth(), 4, 1, 2, this.m_dSize.get(), this.m_dHeight.get(), 0);
 }
 
 // ComponentTFDarkTowerBridge.makeTowerWing
-pub fn makeTowerWing(
+pub(crate) fn makeTowerWing(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -53,14 +53,15 @@ pub fn makeTowerWing(
     {
         return false;
     }
+
     list.push(Rc::clone(&wing));
     wing.build(this, list, random);
     this.addOpening(x, y, z, rotation);
-    return true;
+    true
 }
 
 // ComponentTFDarkTowerBridge.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fill(
         world,
@@ -75,6 +76,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
         this.m_deco.get().m_blockID,
         false,
     );
+
     for x in 0..this.m_size.get()
     {
         this.placeBlock(world, this.m_deco.get().m_accentID, this.m_deco.get().m_accentMeta, x, 0, 0, sbb);
@@ -106,16 +108,17 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             sbb,
         );
     }
+
     this.darken(world);
     this.fillAir(world, sbb, 0, 1, 1, this.m_size.get() - 1, this.m_height.get() - 2, this.m_size.get() - 2);
-    return true;
+    true
 }
 
 // ComponentTFDarkTowerBridge.getWingBB
-pub fn getWingBB(this: &Piece) -> StructureBox
+pub(crate) fn getWingBB(this: &Piece) -> StructureBox
 {
     let dest: Vec<i32> = this.offsetTower(4, 1, 2, this.m_dSize.get(), this.mode());
-    return boxFor(
+    boxFor(
         dest[0],
         dest[1],
         dest[2],
@@ -126,5 +129,5 @@ pub fn getWingBB(this: &Piece) -> StructureBox
         this.m_dHeight.get() - 1,
         this.m_dSize.get() - 1,
         this.mode(),
-    );
+    )
 }

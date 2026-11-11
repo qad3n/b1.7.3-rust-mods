@@ -8,7 +8,7 @@ use std::collections::HashMap;
 // EntityAITFBreathAttack with IBreathAttacker: a winter wolf breathes frost and a fire beetle breathes fire at what
 // it hunts within five blocks, the beetle's flames burn what they reach
 #[derive(PartialEq)]
-pub struct Breath
+pub(crate) struct Breath
 {
     pub m_particle: &'static str,
     pub m_puffs: i32,
@@ -19,9 +19,10 @@ pub struct Breath
     pub m_burns: bool,
 }
 
-pub const FROST: Breath =
+pub(crate) const FROST: Breath =
     Breath { m_particle: "snowstuff", m_puffs: 10, m_mouth: [0.5, 1.25], m_speed: 3.0, m_burns: false };
-pub const FIRE: Breath = Breath { m_particle: "flame", m_puffs: 2, m_mouth: [0.9, 0.25], m_speed: 0.15, m_burns: true };
+pub(crate) const FIRE: Breath =
+    Breath { m_particle: "flame", m_puffs: 2, m_mouth: [0.9, 0.25], m_speed: 0.15, m_burns: true };
 
 mod tuning
 {
@@ -52,7 +53,10 @@ thread_local!
     static LEFT: RefCell<HashMap<(i32, i32), i32>> = RefCell::new(HashMap::new());
 }
 
-pub fn forget(entity: Entity) { LEFT.with(|left| left.borrow_mut().remove(&(entity.world.dimension, entity.id))); }
+pub(crate) fn forget(entity: Entity)
+{
+    LEFT.with(|left| left.borrow_mut().remove(&(entity.world.dimension, entity.id)));
+}
 
 fn setOn(entity: Entity, on: bool)
 {
@@ -60,6 +64,7 @@ fn setOn(entity: Entity, on: bool)
     {
         return;
     }
+
     if let Err(error) = entity.setSynced(&Breathing { m_on: on })
     {
         warn(&format!("breath: {}", error.0));
@@ -86,11 +91,13 @@ fn scorch(entity: Entity, info: &EntityInfo)
         .entitiesAlong(from, to, tuning::HIT_RADIUS, Some(entity.id))
         .into_iter()
         .find(|other| other.health.is_some());
+
     let Some(hit) = hit
     else
     {
         return;
     };
+
     let victim: Entity = Entity { world, id: hit.id };
     let burning: bool = victim.field(EntityField::FireTicks) > 0.0;
     if !burning && crate::combat::hit(victim, tuning::BURN_DAMAGE, Some(entity.id), crate::combat::kind::IN_FIRE)
@@ -100,7 +107,7 @@ fn scorch(entity: Entity, info: &EntityInfo)
 }
 
 // the server side, EntityAITFBreathAttack's start, continue and update
-pub fn tick(entity: Entity, info: &EntityInfo, breath: &Breath)
+pub(crate) fn tick(entity: Entity, info: &EntityInfo, breath: &Breath)
 {
     let key: (i32, i32) = (entity.world.dimension, entity.id);
     let left: i32 = LEFT.with(|left| left.borrow().get(&key).copied().unwrap_or(0));
@@ -113,6 +120,7 @@ pub fn tick(entity: Entity, info: &EntityInfo, breath: &Breath)
     };
     LEFT.with(|left| left.borrow_mut().insert(key, next));
     setOn(entity, next > 0);
+
     let Some(goal) = goal.filter(|_| next > 0)
     else
     {
@@ -120,6 +128,7 @@ pub fn tick(entity: Entity, info: &EntityInfo, breath: &Breath)
     };
 
     face(entity, info.pos, goal.pos);
+
     if breath.m_burns && tuning::TICKS - next > tuning::WARMUP
     {
         scorch(entity, info);
@@ -127,18 +136,21 @@ pub fn tick(entity: Entity, info: &EntityInfo, breath: &Breath)
 }
 
 // onLivingUpdate on the client, puffs from the mouth and the hiss of the breath
-pub fn puff(entity: Entity, info: &EntityInfo, breath: &Breath)
+pub(crate) fn puff(entity: Entity, info: &EntityInfo, breath: &Breath)
 {
     let world: World = entity.world;
+
     if !entity.synced::<Breathing>().m_on
     {
         return;
     }
+
     let aim: [f64; 3] = look(info.yaw, info.pitch);
     let [ahead, height] = breath.m_mouth;
     let mouth: [f64; 3] =
         [info.pos[0] + aim[0] * ahead, info.pos[1] + height + aim[1] * ahead, info.pos[2] + aim[2] * ahead];
     let draw = || f64::from(ids::fraction(world));
+
     for _ in 0..breath.m_puffs
     {
         let spread: f64 = tuning::SPREAD + draw() * tuning::SPREAD_RANGE;
@@ -146,6 +158,7 @@ pub fn puff(entity: Entity, info: &EntityInfo, breath: &Breath)
         let motion: [f64; 3] = aim.map(|axis| (axis + gaussian(draw(), draw()) * tuning::SCATTER * spread) * speed);
         crate::particles::spawn(world, breath.m_particle, mouth, motion);
     }
+
     let (volume, pitch): (f32, f32) =
         (ids::fraction(world) * tuning::SOUND_SPREAD, ids::fraction(world) * tuning::SOUND_SPREAD);
     world.playSound(info.pos, "mob.ghast.fireball", volume, pitch);

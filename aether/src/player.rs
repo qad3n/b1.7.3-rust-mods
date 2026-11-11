@@ -5,8 +5,8 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 
 // EntityPlayer.health starts at twenty half hearts, life shards add two each
-pub const BASE_HEALTH: i32 = 20;
-pub const SHARD_HEALTH: i32 = 2;
+pub(crate) const BASE_HEALTH: i32 = 20;
+pub(crate) const SHARD_HEALTH: i32 = 2;
 
 mod inebriation
 {
@@ -23,7 +23,8 @@ mod inebriation
     pub const SPIT: &str = "iconcrack_351_1";
 }
 
-thread_local! {
+thread_local!
+{
     // entities the Aether poisoned by dimension and id, followed until the loader's effect runs out
     static POISONED: RefCell<HashSet<(i32, i32)>> = RefCell::new(HashSet::new());
     // PotionInebriation keeps one push and one turn for every poisoned entity
@@ -33,7 +34,7 @@ thread_local! {
 
 fn poisoned(entity: Entity) -> bool { crate::effects::has(entity, Effect::Inebriation) }
 
-pub fn poison(entity: Entity)
+pub(crate) fn poison(entity: Entity)
 {
     if !entity.world.isAuthority()
     {
@@ -45,7 +46,7 @@ pub fn poison(entity: Entity)
 }
 
 // the remedy bucket and the white apple cure it
-pub fn cure(entity: Entity)
+pub(crate) fn cure(entity: Entity)
 {
     if !entity.world.isAuthority()
     {
@@ -64,7 +65,9 @@ fn distract(entity: Entity, info: &EntityInfo)
     let push: f64 = (1.0 - inebriation::PUSH_KEEP) * inebriation::PUSH * gaussian + inebriation::PUSH_KEEP * push;
     let turn: f64 = (1.0 - inebriation::TURN_KEEP) * inebriation::TURN * gaussian + inebriation::TURN_KEEP * turn;
     DRIFT.set((push, turn));
+
     let _ = entity.setMotion([info.motion[0] + push, info.motion[1], info.motion[2] + push]);
+
     entity.setField(EntityField::Yaw, f64::from(info.yaw) + turn);
     entity.setField(EntityField::Pitch, f64::from(info.pitch) + turn);
 }
@@ -74,6 +77,7 @@ fn spit(entity: Entity, info: &EntityInfo)
     let height: f64 = entity.field(EntityField::Height);
     let mouth: [f64; 3] =
         [info.pos[0], entity.field(EntityField::Bottom) + height * inebriation::SPIT_HEIGHT, info.pos[2]];
+
     for _ in 0..inebriation::SPITS
     {
         entity.world.particle(inebriation::SPIT, mouth, [0.0; 3]);
@@ -93,6 +97,7 @@ fn localPoison()
     {
         return;
     };
+
     let entity: Entity = Entity { world: World { dimension: info.world }, id: player.id };
     if poisoned(entity)
     {
@@ -119,6 +124,7 @@ fn tick()
         {
             distract(entity, &info);
         }
+
         spit(entity, &info);
     }
 }
@@ -142,13 +148,14 @@ mod armor
 fn armorPiece(player: Player, index: usize) -> Option<ItemStack> { player.slot(armor::FIRST_SLOT + index as i32) }
 
 // isWearingGravititeSet and friends: the four pieces and the matching gloves
-pub fn wearingSet(player: Player, set: &str) -> bool
+pub(crate) fn wearingSet(player: Player, set: &str) -> bool
 {
     let gloves: bool = crate::accessories::Worn::of(player)
         .stack(armor::GLOVES)
         .is_some_and(|stack| stack.item.is(&format!("{set}_gloves")));
     gloves
-        && armor::PIECES.iter().enumerate().all(|(index, piece)| {
+        && armor::PIECES.iter().enumerate().all(|(index, piece)|
+        {
             armorPiece(player, index).is_some_and(|stack| stack.item.is(&format!("{set}_{piece}")))
         })
 }
@@ -163,6 +170,7 @@ fn quench(player: Player)
         {
             continue;
         };
+
         let worn: i32 = stack.damage + 1;
         let limit: i32 = crate::items::armorUses("phoenix", index).unwrap_or(i32::MAX);
         let replaced: ItemStack = if worn > limit
@@ -184,17 +192,22 @@ fn serverArmor(player: Player)
     {
         return;
     };
+
     let world: World = World { dimension: info.world };
     let entity: Entity = Entity { world, id: player.id };
+
     if Some(info.world) == crate::portal::aetherDimension() && info.pos[1] < armor::FALL_OUT
     {
         let _ = player.teleport(armor::OVERWORLD, [info.pos[0], armor::SKY, info.pos[2]]);
+
         return;
     }
+
     if entity.flag(EntityField::InWater) && entity.field(EntityField::TicksExisted) % armor::QUENCH_EVERY == 0.0
     {
         quench(player);
     }
+
     if wearingSet(player, "phoenix")
     {
         entity.setField(EntityField::FireTicks, 0.0);
@@ -210,7 +223,8 @@ fn serverArmor(player: Player)
     }
 }
 
-thread_local! {
+thread_local!
+{
     static JUMP_BOOSTED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
@@ -227,17 +241,21 @@ fn localArmor()
     {
         return;
     };
+
     let entity: Entity = Entity { world: World { dimension: info.world }, id: player.id };
     let jumping: bool = entity.flag(EntityField::Jumping);
     if wearingSet(player, "gravitite") && jumping && !JUMP_BOOSTED.with(std::cell::Cell::get)
     {
         let _ = entity.setMotion([info.motion[0], armor::GRAVITITE_JUMP, info.motion[2]]);
+
         JUMP_BOOSTED.with(|boosted| boosted.set(true));
     }
+
     if !jumping && entity.flag(EntityField::OnGround)
     {
         JUMP_BOOSTED.with(|boosted| boosted.set(false));
     }
+
     let swimmer: bool = wearingSet(player, "neptune") || wearingSet(player, "phoenix");
     if swimmer && entity.flag(EntityField::InWater)
     {
@@ -254,13 +272,15 @@ fn localArmor()
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.events().on::<TickPost>(Priority::Normal, |_| {
+    ctx.events().on::<TickPost>(Priority::Normal, |_|
+    {
         if isClient()
         {
             localArmor();
         }
+
         for player in allPlayers()
         {
             if player.info().is_some_and(|info| World { dimension: info.world }.isAuthority())
@@ -269,12 +289,16 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             }
         }
     })?;
-    ctx.events().on::<TickPost>(Priority::Normal, |_| {
+
+    ctx.events().on::<TickPost>(Priority::Normal, |_|
+    {
         tick();
+
         if isClient()
         {
             localPoison();
         }
     })?;
+
     Ok(())
 }

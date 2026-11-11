@@ -1,7 +1,7 @@
 // draft from ComponentTFTowerRoofFence.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
+pub(crate) fn new(i: i32, wing: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::TowerRoofFence);
     init(&this, i, wing);
@@ -9,19 +9,20 @@ pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFTowerRoofFence constructor
-pub fn init(this: &Piece, i: i32, wing: &Piece)
+pub(crate) fn init(this: &Piece, i: i32, wing: &Piece)
 {
-    tower_roof::init(this, i, &wing);
+    tower_roof::init(this, i, wing);
     this.setMode(wing.mode());
     this.m_size.set(wing.m_size.get());
     this.m_height.set(0);
-    tower_roof::makeCapBB(this, &wing);
+    tower_roof::makeCapBB(this, wing);
 }
 
 // ComponentTFTowerRoofFence.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     let y: i32 = this.m_height.get() + 1;
+
     for x in 0..=(this.m_size.get() - 1)
     {
         for z in 0..=(this.m_size.get() - 1)
@@ -32,5 +33,6 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             }
         }
     }
-    return true;
+
+    true
 }

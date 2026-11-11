@@ -1,7 +1,7 @@
 // draft from ComponentTFDarkTowerBossTrap.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::DarkTowerBossTrap);
     init(&this, i, x, y, z, pSize, pHeight, direction);
@@ -9,18 +9,19 @@ pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: 
 }
 
 // ComponentTFDarkTowerBossTrap constructor
-pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
+pub(crate) fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
 {
     dark_tower_wing::init(this, i, x, y, z, pSize, pHeight, direction);
     this.m_spawnListIndex.set(-1);
 }
 
 // ComponentTFDarkTowerBossTrap.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
     this.addOpening(0, 1, this.m_size.get() / 2, 2);
-    this.makeABeard(&parent, list, random);
+    this.makeABeard(parent, list, random);
+
     for i in 0..4
     {
         if (i != 2) && (!random.nextBoolean())
@@ -33,10 +34,10 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFDarkTowerBossTrap.makeARoof
-pub fn makeARoof(_this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random) {}
+pub(crate) fn makeARoof(_this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFDarkTowerBossTrap.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     let decoRNG: Random = Random::withSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
@@ -98,11 +99,18 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.placeBlock(world, blk("redstone_wire"), 0, 4, 1, 8, sbb);
     this.placeBlock(world, blk("redstone_wire"), 0, 3, 1, 8, sbb);
     this.placeBlock(world, blk("wooden_pressure_plate"), 0, 2, 1, 8, sbb);
-    return true;
+    true
 }
 
 // ComponentTFDarkTowerBossTrap.addBossTrapFloors
-pub fn addBossTrapFloors(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox, _bottom: i32, _top: i32)
+pub(crate) fn addBossTrapFloors(
+    this: &Piece,
+    world: &GenWorld,
+    _random: &Random,
+    sbb: StructureBox,
+    _bottom: i32,
+    _top: i32,
+)
 {
     dark_tower_wing::makeFullFloor(this, world, sbb, 3, 4, 4);
     dark_tower_wing::addStairsDown6(this, world, sbb, 3, 4, this.m_size.get() - 2, 4);

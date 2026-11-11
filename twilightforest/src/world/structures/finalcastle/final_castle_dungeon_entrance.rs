@@ -1,7 +1,7 @@
 // draft from ComponentTFFinalCastleDungeonEntrance.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32, level: i32) -> Rc<Piece>
+pub(crate) fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32, level: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::FinalCastleDungeonEntrance);
     init(&this, random, i, x, y, z, direction, level);
@@ -9,14 +9,14 @@ pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32, leve
 }
 
 // ComponentTFFinalCastleDungeonEntrance constructor
-pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32, level: i32)
+pub(crate) fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32, level: i32)
 {
     final_castle_dungeon_room31::init(this, random, i, x, y, z, direction, level);
     this.m_hasExit.set(false);
 }
 
 // ComponentTFFinalCastleDungeonEntrance.func_74861_a
-pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     this.m_deco.set(Deco::decorator_castle());
     this.m_deco.get().m_blockID = blk("tf:castleMagic");
@@ -27,9 +27,10 @@ pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFFinalCastleDungeonEntrance.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     final_castle_dungeon_room31::add(this, world, random, sbb);
+
     for y in 0..=this.m_height.get()
     {
         let x: i32 = (this.m_size.get() / 2) - 2;
@@ -51,6 +52,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         );
         this.fillMeta(world, sbb, x, 0, z, x + 4, y - 1, z, blk("tf:deadrock"), 0, blk("tf:deadrock"), 0, false);
     }
+
     this.fillMeta(world, sbb, 23, 0, 12, 23, 3, 14, blk("tf:castleDoor"), 2, blk("air"), 0, false);
     this.fillMeta(
         world,
@@ -67,11 +69,11 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         this.m_deco.get().m_blockMeta,
         false,
     );
-    return true;
+    true
 }
 
 // ComponentTFFinalCastleDungeonEntrance.getForceFieldMeta
-pub fn getForceFieldMeta(_this: &Piece, _decoRNG: &Random) -> i32 { return 1; }
+pub(crate) fn getForceFieldMeta(_this: &Piece, _decoRNG: &Random) -> i32 { 1 }
 
 // ComponentTFFinalCastleDungeonEntrance.getRuneMeta
-pub fn getRuneMeta(_this: &Piece, _fieldMeta: i32) -> i32 { return 0; }
+pub(crate) fn getRuneMeta(_this: &Piece, _fieldMeta: i32) -> i32 { 0 }

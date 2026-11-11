@@ -93,6 +93,7 @@ impl ItemBehavior for TwilightWand
         {
             return Use::Pass;
         }
+
         holdInUse(player, held::LONGEST)
     }
 
@@ -108,6 +109,7 @@ impl ItemBehavior for TwilightWand
             letGo(player);
             return;
         }
+
         let Some(info) = player.info().filter(|_| left % scepter::WAND_EVERY == 0)
         else
         {
@@ -116,6 +118,7 @@ impl ItemBehavior for TwilightWand
 
         let pitch: f32 = (ids::fraction(world) - ids::fraction(world)) * 0.2 + 1.0;
         world.playSound(info.pos, "mob.ghast.fireball", 1.0, pitch);
+
         if world.isAuthority()
         {
             let from: [f64; 3] = eyes(&info);
@@ -146,6 +149,7 @@ impl ItemBehavior for LifeDrain
         {
             return Use::Pass;
         }
+
         holdInUse(player, held::LONGEST)
     }
 
@@ -161,6 +165,7 @@ impl ItemBehavior for LifeDrain
             letGo(player);
             return;
         }
+
         let Some(info) = player.info().filter(|_| left % scepter::DRAIN_EVERY == 0)
         else
         {
@@ -174,31 +179,40 @@ impl ItemBehavior for LifeDrain
 
         let victim: Entity = Entity { world, id: target.id };
         let health: i32 = target.health.unwrap_or(0);
+
         trail(world, eyes(&info), target.pos);
+
         if world.isAuthority()
         {
             if !held(victim) && health >= 1
             {
                 world.playSound(info.pos, "fire.ignite", 1.0, 1.0);
                 crate::combat::hit(victim, scepter::DRAIN, Some(player.id), crate::combat::kind::MAGIC);
+
                 let _ = victim.setMotion([0.0, target.motion[1], 0.0]);
+
                 hold(victim);
             }
             else if health <= scepter::SHATTER
             {
                 world.playSound(target.pos, "random.hurt", 1.0, 2.0);
+
                 for _ in 0..50
                 {
                     world.particle("explode", target.pos, [0.0; 3]);
                 }
+
                 crate::combat::hit(victim, health.max(1) * 10, Some(player.id), crate::combat::kind::MAGIC);
                 letGo(player);
             }
             else
             {
                 crate::combat::hit(victim, scepter::SIPHON, Some(player.id), crate::combat::kind::MAGIC);
+
                 let _ = victim.setMotion([0.0, 0.2, 0.0]);
+
                 hold(victim);
+
                 if left % scepter::HEAL_EVERY == 0
                 {
                     let own: Entity = Entity { world, id: player.id };
@@ -238,6 +252,7 @@ impl ItemBehavior for ZombieWand
             return Use::Pass;
         }
         let using: Use = holdInUse(player, scepter::ZOMBIE_USE);
+
         if !world.isAuthority()
         {
             return using;
@@ -259,6 +274,7 @@ impl ItemBehavior for ZombieWand
             crate::effects::give(spawned, crate::effects::Effect::Strength, zombie::STRENGTH, zombie::STRENGTH_TICKS);
             wearHeld(player, 1);
         }
+
         using
     }
 
@@ -284,10 +300,12 @@ impl EntityBehavior for LoyalZombie
         let mut state: Loyal = entity.data();
         state.m_age += 1;
         state.m_cooldown -= 1;
+
         if state.m_age > zombie::LIFETIME
         {
             entity.setField(EntityField::FireTicks, zombie::BURN);
         }
+
         let owner: Option<EntityInfo> = state.m_owner.and_then(|id| Entity { world, id }.info());
         let foe: Option<EntityInfo> = world
             .entitiesNear(info.pos, zombie::SEARCH)
@@ -298,6 +316,7 @@ impl EntityBehavior for LoyalZombie
             })
             .filter(|near| Entity { world, id: near.id }.field(EntityField::AttackStrength) > 0.0)
             .min_by(|a, b| distance(a.pos, info.pos).total_cmp(&distance(b.pos, info.pos)));
+
         let goal: Option<[f64; 3]> = match (&foe, &owner)
         {
             (Some(foe), _) => Some(foe.pos),
@@ -308,6 +327,7 @@ impl EntityBehavior for LoyalZombie
         {
             let (dx, dz): (f64, f64) = (goal[0] - info.pos[0], goal[2] - info.pos[2]);
             let flat: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-4);
+
             let up: f64 = if entity.flag(EntityField::Collided) && entity.flag(EntityField::OnGround)
             {
                 0.42
@@ -317,8 +337,10 @@ impl EntityBehavior for LoyalZombie
                 info.motion[1]
             };
             let _ = entity.setMotion([dx / flat * zombie::WALK, up, dz / flat * zombie::WALK]);
+
             face(entity, info.pos, goal);
         }
+
         if let Some(foe) = foe
             && state.m_cooldown <= 0
             && distance(foe.pos, info.pos) < zombie::REACH
@@ -328,15 +350,17 @@ impl EntityBehavior for LoyalZombie
             {
                 let _ = victim.setMotion([foe.motion[0], foe.motion[1] + zombie::LEAP, foe.motion[2]]);
             }
+
             state.m_cooldown = zombie::COOLDOWN;
         }
+
         let _ = entity.setData(&state);
     }
 
     fn pose(&self, input: &PoseInput) -> Pose { crate::models::minionPose(input, zombie::TINT) }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let wand = |label: &str, look: &str, charges: i32|
     {

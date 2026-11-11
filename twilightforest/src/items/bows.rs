@@ -62,6 +62,7 @@ fn takeArrow(player: Player) -> bool
         warn(&format!("bow arrow: {}", error.0));
         return false;
     }
+
     true
 }
 
@@ -87,6 +88,7 @@ impl ItemBehavior for Bow
         {
             return Use::Done(player.held());
         }
+
         super::magic::holdInUse(player, super::magic::held::LONGEST)
     }
 
@@ -118,8 +120,10 @@ impl ItemBehavior for Bow
         {
             return Use::Pass;
         }
+
         let speed: f64 = self.m_speed * power;
         let mut fired: bool = arrows::shoot(world, self.m_arrow, &info, speed, 0.0, 0.0).is_some();
+
         if self.m_triple
         {
             for side in [1.0, -1.0]
@@ -128,17 +132,19 @@ impl ItemBehavior for Bow
                 fired |= arrows::shoot(world, SIDE, &info, speed, lift, rise).is_some();
             }
         }
+
         if fired
         {
             let pitch: f32 = 1.0 / (crate::ids::fraction(world) * 0.4 + 1.2) + power as f32 * 0.5;
             world.playSound(info.pos, "random.bow", 1.0, pitch);
             super::magic::wearHeld(player, 1);
         }
+
         Use::Done(player.held())
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let rows: [(&str, &str, &str, Bow); 4] = [
         (
@@ -167,6 +173,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             Bow { m_arrow: PLAIN, m_speed: bow::SPEED, m_triple: false, m_pulls: pulls!("enderbow") },
         ),
     ];
+
     for (name, label, look, behavior) in rows
     {
         // no item spec names the pulling icons, asking for their slots now gives them room on the item sheet
@@ -174,6 +181,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         {
             let _ = b173_api::world::itemSlot(pull);
         }
+
         put(
             ctx,
             name,
@@ -185,5 +193,6 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .behavior(behavior),
         )?;
     }
+
     Ok(())
 }

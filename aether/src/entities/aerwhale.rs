@@ -29,7 +29,7 @@ mod course
     pub const DESPAWN_Y: f64 = -64.0;
     // the Java's float degrees to radians factor, kept for the same headings
     pub const RADIANS: f32 = 0.01745329;
-    pub const JITTER_STEPS: i32 = 1_000_000;
+    pub const JITTER_STEPS: i32 = 1000000;
 }
 
 #[derive(Default, Clone, Copy)]
@@ -39,7 +39,8 @@ struct Heading
     m_pitch: f64,
 }
 
-thread_local! {
+thread_local!
+{
     static HEADINGS: RefCell<HashMap<i32, Heading>> = RefCell::new(HashMap::new());
 }
 
@@ -58,6 +59,7 @@ fn openDistance(world: World, info: &EntityInfo, yawOffset: f32, pitchOffset: f3
         from[1] + sinPitch as f64 * course::SIGHT,
         from[2] + (cosYaw * cosPitch) as f64 * course::SIGHT,
     ];
+
     match world.rayTrace(from, to, true)
     {
         Some(hit) =>
@@ -65,6 +67,7 @@ fn openDistance(world: World, info: &EntityInfo, yawOffset: f32, pitchOffset: f3
             let [dx, dy, dz] = [hit.pos.x as f64 - from[0], hit.pos.y as f64 - from[1], hit.pos.z as f64 - from[2]];
             (dx * dx + dy * dy + dz * dz).sqrt()
         }
+
         None => course::SIGHT,
     }
 }
@@ -72,7 +75,8 @@ fn openDistance(world: World, info: &EntityInfo, yawOffset: f32, pitchOffset: f3
 fn anyBlock(world: World, from: [f64; 3], to: [f64; 3]) -> bool
 {
     let floor = |value: f64| value.floor() as i32;
-    (floor(from[0])..=floor(to[0])).any(|x| {
+    (floor(from[0])..=floor(to[0])).any(|x|
+    {
         (floor(from[1])..=floor(to[1]))
             .any(|y| (floor(from[2])..=floor(to[2])).any(|z| !world.isAir(BlockPos::new(x, y, z))))
     })
@@ -90,6 +94,7 @@ fn unstuck(world: World, info: &EntityInfo, motion: &mut [f64; 3])
         ([x - 2.0, y, z + 1.0], [x, y + 2.0, z + 1.0], [0.0, 1.0, -1.0]),
         ([x - 2.0, y, z - 3.0], [x, y + 2.0, z - 3.0], [0.0, 1.0, 1.0]),
     ];
+
     for (from, to, push) in nudges
     {
         if anyBlock(world, from, to)
@@ -112,6 +117,7 @@ impl EntityBehavior for Aerwhale
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
         entity.setField(EntityField::FireTicks, 0.0);
+
         if info.pos[1] < course::DESPAWN_Y
         {
             entity.kill();
@@ -124,6 +130,7 @@ impl EntityBehavior for Aerwhale
         let world: World = entity.world;
         let mut motion: [f64; 3] = info.motion;
         unstuck(world, info, &mut motion);
+
         let distances: [f64; 5] = [
             openDistance(world, info, 0.0, 0.0),
             openDistance(world, info, course::SIDE, 0.0),
@@ -131,7 +138,9 @@ impl EntityBehavior for Aerwhale
             openDistance(world, info, -course::SIDE, 0.0),
             openDistance(world, info, 0.0, -course::SIDE),
         ];
-        let best: usize = (1..distances.len()).fold(0, |best, index| {
+
+        let best: usize = (1..distances.len()).fold(0, |best, index|
+        {
             if distances[index] > distances[best]
             {
                 index
@@ -141,35 +150,42 @@ impl EntityBehavior for Aerwhale
                 best
             }
         });
+
         let mut heading: Heading =
             HEADINGS.with(|headings| headings.borrow().get(&entity.id).copied()).unwrap_or_default();
         let mut yaw: f32 = info.yaw;
         let mut pitch: f32 = info.pitch;
+
         match best
         {
             0 if distances[0] == course::SIGHT =>
             {
                 heading.m_yaw *= course::DAMPING;
                 heading.m_pitch *= course::DAMPING;
+
                 if info.pos[1] > course::CEILING
                 {
                     heading.m_pitch -= course::CLIMB;
                 }
+
                 if info.pos[1] < course::FLOOR
                 {
                     heading.m_pitch += course::CLIMB;
                 }
             }
+
             0 =>
             {
                 pitch = -pitch;
                 yaw = -yaw;
             }
+
             1 => heading.m_yaw += course::TURN,
             2 => heading.m_pitch -= course::TURN,
             3 => heading.m_yaw -= course::TURN,
             _ => heading.m_pitch += course::TURN,
         }
+
         heading.m_yaw += jitter(world);
         heading.m_pitch += jitter(world);
         pitch = ((pitch as f64 + course::STEER * heading.m_pitch) as f32).clamp(-course::MAX_PITCH, course::MAX_PITCH)
@@ -179,6 +195,7 @@ impl EntityBehavior for Aerwhale
         motion[0] = (motion[0] + course::THRUST * yawRadians.cos() * pitchRadians.cos()) * course::DRAG;
         motion[1] = (motion[1] + course::THRUST * pitchRadians.sin()) * course::DRAG;
         motion[2] = (motion[2] + course::THRUST * yawRadians.sin() * pitchRadians.cos()) * course::DRAG;
+
         let at: BlockPos =
             BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32, info.pos[2].floor() as i32);
         let bounces: [(usize, [i32; 3], f64, bool); 3] = [
@@ -186,6 +203,7 @@ impl EntityBehavior for Aerwhale
             (1, [0, 1, 0], course::BOUNCE_TURN, false),
             (2, [0, 0, 1], course::BOUNCE_TURN, true),
         ];
+
         for (axis, step, turn, yawTurn) in bounces
         {
             let sign: i32 = if motion[axis] > 0.0
@@ -200,10 +218,13 @@ impl EntityBehavior for Aerwhale
             {
                 0
             };
+
             if sign != 0 && !world.isAir(at.offset(step[0] * sign, step[1] * sign, step[2] * sign))
             {
                 motion[axis] = -motion[axis];
+
                 let change: f64 = -turn * sign as f64;
+
                 if yawTurn
                 {
                     heading.m_yaw += change
@@ -214,9 +235,11 @@ impl EntityBehavior for Aerwhale
                 }
             }
         }
+
         HEADINGS.with(|headings| headings.borrow_mut().insert(entity.id, heading));
         entity.setField(EntityField::Yaw, yaw as f64);
         entity.setField(EntityField::Pitch, pitch as f64);
+
         let _ = entity.setMotion(motion);
     }
 
@@ -230,7 +253,9 @@ impl EntityBehavior for Aerwhale
     {
         let mut pre: Program = Program::new();
         pre.translate(0.0, 1.2, 0.0).rotate(-90.0, 0.0, 1.0, 0.0).scale(2.0, 2.0, 2.0);
+
         let mut body: Program = Program::new();
+
         for part in [
             model::FRONT_BODY,
             model::RIGHT_FIN,
@@ -251,11 +276,12 @@ impl EntityBehavior for Aerwhale
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:ghast").ok(),
             texture: Some(TEXTURE.to_owned()),
             size: Some([3.0, 3.0]),

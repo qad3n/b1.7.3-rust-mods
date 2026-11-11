@@ -29,11 +29,13 @@ impl ItemBehavior for Holystone
         {
             return true;
         };
+
         let world: World = World { dimension: info.world };
         if world.isAuthority() && world.random(tool::SHARD_ROLL) < tool::SHARD_BELOW
         {
             let _ = world.spawnItem([pos.x as f64, pos.y as f64, pos.z as f64], ItemStack::of("ambrosium_shard", 1));
         }
+
         true
     }
 }
@@ -55,10 +57,12 @@ impl ItemBehavior for Gravitite
         {
             return Use::Pass;
         }
+
         if world.isAuthority()
         {
             floating_block::lift(world, pos);
         }
+
         Use::Done(Some(ItemStack { damage: stack.damage + tool::LIFT_WEAR, ..stack }))
     }
 }
@@ -110,6 +114,7 @@ fn zaniteSpeed(event: &mut Event)
     {
         return;
     };
+
     if let EventData::BreakSpeed { speed, .. } = event.dataMut()
         && *speed > 1.0
     {
@@ -117,11 +122,11 @@ fn zaniteSpeed(event: &mut Event)
     }
 }
 
-pub fn holystone() -> impl ItemBehavior { Holystone }
+pub(crate) fn holystone() -> impl ItemBehavior { Holystone }
 
-pub fn gravitite() -> impl ItemBehavior { Gravitite }
+pub(crate) fn gravitite() -> impl ItemBehavior { Gravitite }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.events().on::<PlayerBreakSpeed>(Priority::Normal, zaniteSpeed)?;
     ctx.events().on::<LivingHurt>(Priority::Normal, zaniteHit)

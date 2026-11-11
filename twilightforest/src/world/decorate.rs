@@ -138,28 +138,34 @@ impl Decorator<'_>
                 ruins::generate(self.m_world, self.m_random, x, y, z);
             }
         }
+
         self.canopy();
+
         for _ in 0..self.m_decor.m_mangroves
         {
             let (x, z): (i32, i32) = self.column();
             trees::mangrove(&self.m_builder, self.m_random, x, self.height(x, z), z);
         }
+
         for _ in 0..self.m_decor.m_lakes
         {
             let (x, z): (i32, i32) = self.column();
             vanilla::lake(self.m_world, self.m_random, x, self.height(x, z), z, self.id("minecraft:water"));
         }
+
         if self.m_random.nextFloat() <= self.m_decor.m_lava
         {
             let (x, z): (i32, i32) = self.column();
             vanilla::lake(self.m_world, self.m_random, x, self.height(x, z), z, self.id("minecraft:lava"));
         }
+
         for _ in 0..self.m_decor.m_mycelium
         {
             let (x, z): (i32, i32) = self.column();
             let size: i32 = 5;
             scatter::groundBlob(self.m_world, self.m_random, x, self.height(x, z), z, self.id("minecraft:dirt"), size);
         }
+
         self.vanilla();
         self.underground();
     }
@@ -183,6 +189,7 @@ impl Decorator<'_>
             let y: i32 = self.height(x, z);
             let alternate: bool =
                 self.m_decor.m_altCanopy > 0.0 && self.m_random.nextFloat() <= self.m_decor.m_altCanopy;
+
             match (self.m_biome, alternate)
             {
                 // the savanna's alternate canopy is TFGenNoTree
@@ -197,6 +204,7 @@ impl Decorator<'_>
     fn grow(&self, kind: Grow, x: i32, y: i32, z: i32)
     {
         let (world, random): (&GenWorld, &Random) = (self.m_world, self.m_random);
+
         match kind
         {
             Grow::Oak | Grow::Swamp => vanilla::oak(world, random, x, y, z),
@@ -215,7 +223,9 @@ impl Decorator<'_>
     fn vanilla(&self)
     {
         let random: &Random = self.m_random;
+
         self.ores();
+
         let (sand, gravel, clay, dirt, grass): (i32, i32, i32, i32, i32) = (
             self.id("minecraft:sand"),
             self.id("minecraft:gravel"),
@@ -223,18 +233,22 @@ impl Decorator<'_>
             self.id("minecraft:dirt"),
             self.id("minecraft:grass"),
         );
+
         for _ in 0..counts::SAND
         {
             let (x, z): (i32, i32) = self.column();
             vanilla::disc(self.m_world, random, [x, self.m_world.topSolid(x, z), z], sand, 7, 2, &[dirt, grass]);
         }
+
         for _ in 0..self.m_decor.m_clay
         {
             let (x, z): (i32, i32) = self.column();
             vanilla::disc(self.m_world, random, [x, self.m_world.topSolid(x, z), z], clay, 4, 1, &[dirt, clay]);
         }
+
         let (x, z): (i32, i32) = self.column();
         vanilla::disc(self.m_world, random, [x, self.m_world.topSolid(x, z), z], gravel, 6, 2, &[dirt, grass]);
+
         let trees: i32 = self.m_decor.m_trees + i32::from(random.nextIntBounded(odds::EXTRA_TREE) == 0);
         for _ in 0..trees
         {
@@ -242,24 +256,29 @@ impl Decorator<'_>
             let y: i32 = self.height(x, z);
             self.grow(flora::tree(self.m_biome, random), x, y, z);
         }
+
         for _ in 0..self.m_decor.m_bigMushrooms
         {
             let (x, z): (i32, i32) = self.column();
             vanilla::bigMushroom(self.m_world, random, x, self.height(x, z), z);
         }
+
         self.flowers();
+
         for _ in 0..self.m_decor.m_grass
         {
             let (x, z): (i32, i32) = self.column();
             let y: i32 = self.below(self.height(x, z) * 2);
             self.grass(flora::grass(self.m_biome, random), x, y, z);
         }
+
         for _ in 0..self.m_decor.m_deadBush
         {
             let (x, z): (i32, i32) = self.column();
             let y: i32 = self.below(self.height(x, z) * 2);
             vanilla::deadBush(self.m_world, random, x, y, z);
         }
+
         for _ in 0..self.m_decor.m_waterlily
         {
             let (x, z): (i32, i32) = self.column();
@@ -268,21 +287,26 @@ impl Decorator<'_>
             {
                 y -= 1;
             }
+
             vanilla::waterlily(random, x, y, z);
         }
+
         self.mushrooms();
+
         for _ in 0..self.m_decor.m_reeds + counts::REEDS
         {
             let (x, z): (i32, i32) = self.column();
             let y: i32 = self.below(self.height(x, z) * 2);
             vanilla::reeds(self.m_world, random, x, y, z);
         }
+
         if random.nextIntBounded(odds::PUMPKIN) == 0
         {
             let (x, z): (i32, i32) = self.column();
             let y: i32 = self.below(self.height(x, z) * 2);
             vanilla::pumpkins(self.m_world, random, x, y, z);
         }
+
         if self.m_decor.m_springs
         {
             self.springs();
@@ -292,10 +316,12 @@ impl Decorator<'_>
     fn flowers(&self)
     {
         let random: &Random = self.m_random;
+
         for _ in 0..self.m_decor.m_flowers
         {
             let (x, z): (i32, i32) = self.column();
             let y: i32 = self.below(self.height(x, z) + 32);
+
             let name: &'static str = match flora::flower(self.m_biome, random, x, z)
             {
                 Flower::Rose => "minecraft:red_flower",
@@ -308,10 +334,12 @@ impl Decorator<'_>
     fn grass(&self, kind: Grass, x: i32, y: i32, z: i32)
     {
         let tallgrass: i32 = self.id("minecraft:tallgrass");
+
         match kind
         {
             Grass::Grass => vanilla::tallGrass(self.m_world, self.m_random, x, y, z, (tallgrass, 1), vanilla::lit),
             Grass::Fern => vanilla::tallGrass(self.m_world, self.m_random, x, y, z, (tallgrass, 2), vanilla::lit),
+
             Grass::Twilight(plant) =>
             {
                 scatter::plantPatch(self.m_world, self.m_random, x, y, z, plant);
@@ -331,6 +359,7 @@ impl Decorator<'_>
             "minecraft:brown_mushroom"
         };
         let brightest: i32 = 13;
+
         let dim = |world: &GenWorld, bx: i32, by: i32, bz: i32|
         {
             world.m_world.light(BlockPos::new(bx, by, bz)) < brightest && world.isOpaque(bx, by - 1, bz)
@@ -341,6 +370,7 @@ impl Decorator<'_>
     fn mushrooms(&self)
     {
         let random: &Random = self.m_random;
+
         for _ in 0..self.m_decor.m_mushrooms
         {
             if random.nextIntBounded(odds::BROWN_MUSHROOM) == 0
@@ -348,6 +378,7 @@ impl Decorator<'_>
                 let (x, z): (i32, i32) = self.column();
                 self.mushroom(false, x, self.height(x, z), z);
             }
+
             if random.nextIntBounded(odds::RED_MUSHROOM) == 0
             {
                 let (x, z): (i32, i32) = self.column();
@@ -355,6 +386,7 @@ impl Decorator<'_>
                 self.mushroom(true, x, y, z);
             }
         }
+
         for (red, odds) in [(false, odds::BROWN_MUSHROOM), (true, odds::RED_MUSHROOM)]
         {
             if random.nextIntBounded(odds) == 0
@@ -371,6 +403,7 @@ impl Decorator<'_>
     {
         let random: &Random = self.m_random;
         let (water, lava): (i32, i32) = (self.id("minecraft:flowing_water"), self.id("minecraft:flowing_lava"));
+
         for _ in 0..counts::WATER_SPRINGS
         {
             let x: i32 = self.m_x + random.nextIntBounded(chunk::SIZE) + chunk::EDGE;
@@ -378,6 +411,7 @@ impl Decorator<'_>
             let z: i32 = self.m_z + random.nextIntBounded(chunk::SIZE) + chunk::EDGE;
             vanilla::spring(self.m_world, x, y, z, water);
         }
+
         for _ in 0..counts::LAVA_SPRINGS
         {
             let x: i32 = self.m_x + random.nextIntBounded(chunk::SIZE) + chunk::EDGE;
@@ -400,10 +434,13 @@ impl Decorator<'_>
             ("minecraft:redstone_ore", 8, 7, 16),
             ("minecraft:diamond_ore", 1, 7, 16),
         ];
+
         let random: &Random = self.m_random;
+
         for (name, count, size, top) in rows
         {
             let block: i32 = self.id(name);
+
             for _ in 0..count
             {
                 let x: i32 = self.m_x + random.nextIntBounded(chunk::SIZE);
@@ -412,6 +449,7 @@ impl Decorator<'_>
                 vanilla::ore(self.m_world, random, x, y, z, block, size);
             }
         }
+
         let (center, spread): (i32, i32) = (16, 16);
         let x: i32 = self.m_x + random.nextIntBounded(chunk::SIZE);
         let y: i32 = random.nextIntBounded(spread) + random.nextIntBounded(spread) + center - spread;
@@ -423,11 +461,13 @@ impl Decorator<'_>
     fn underground(&self)
     {
         let random: &Random = self.m_random;
+
         for _ in 0..counts::PLANT_ROOTS
         {
             let (x, z): (i32, i32) = self.column();
             scatter::plantRoots(self.m_world, random, x, height::ROOTS, z);
         }
+
         for _ in 0..counts::WOOD_ROOTS
         {
             let x: i32 = self.m_x + random.nextIntBounded(chunk::SIZE) + chunk::EDGE;
@@ -435,9 +475,11 @@ impl Decorator<'_>
             let z: i32 = self.m_z + random.nextIntBounded(chunk::SIZE) + chunk::EDGE;
             scatter::woodRoots(self.m_world, random, x, y, z);
         }
+
         if self.m_decor.m_springs
         {
             let water: i32 = self.id("minecraft:flowing_water");
+
             for _ in 0..counts::CAVE_SPRINGS
             {
                 let x: i32 = self.m_x + random.nextIntBounded(chunk::SIZE) + chunk::EDGE;
@@ -446,6 +488,7 @@ impl Decorator<'_>
                 vanilla::spring(self.m_world, x, y, z, water);
             }
         }
+
         for _ in 0..counts::TORCHBERRIES
         {
             let (x, z): (i32, i32) = self.column();
@@ -464,24 +507,28 @@ impl Decorator<'_>
             let (x, z): (i32, i32) = self.column();
             trees::darkCanopy(&self.m_builder, random, x, self.height(x, z), z);
         }
+
         for _ in 0..self.m_decor.m_trees
         {
             let (x, z): (i32, i32) = self.column();
             let y: i32 = self.ground(x, z, &[]);
             self.grow(flora::tree(self.m_biome, random), x, y, z);
         }
+
         for _ in 0..self.m_decor.m_deadBush
         {
             let (x, z): (i32, i32) = self.column();
             let y: i32 = random.nextIntBounded(height::DARK);
             scatter::plants(self.m_world, random, x, y, z, block::DRIED_BUSH, counts::DEAD_BUSHES);
         }
+
         for _ in 0..self.m_decor.m_deadBush
         {
             let (x, z): (i32, i32) = self.column();
             let y: i32 = random.nextIntBounded(height::DARK);
             scatter::plantPatch(self.m_world, random, x, y, z, block::FOREST_GRASS);
         }
+
         for _ in 0..self.m_decor.m_mushrooms
         {
             for (red, odds) in [(false, odds::DARK_BROWN), (true, odds::DARK_RED)]
@@ -492,12 +539,14 @@ impl Decorator<'_>
                     self.mushroom(red, x, self.ground(x, z, &[]), z);
                 }
             }
+
             if random.nextIntBounded(odds::MUSHGLOOM) == 0
             {
                 let (x, z): (i32, i32) = self.column();
                 scatter::plantPatch(self.m_world, random, x, self.ground(x, z, &[]), z, block::MUSHGLOOM);
             }
         }
+
         for (red, odds) in [(false, odds::BROWN_MUSHROOM), (true, odds::RED_MUSHROOM)]
         {
             if random.nextIntBounded(odds) == 0
@@ -506,6 +555,7 @@ impl Decorator<'_>
                 self.mushroom(red, x, random.nextIntBounded(height::DARK), z);
             }
         }
+
         if random.nextIntBounded(odds::PUMPKIN) == 0
         {
             let (x, z): (i32, i32) = self.column();
@@ -523,6 +573,7 @@ impl Decorator<'_>
             .map(|name| self.id(name))
             .collect();
         let mut last: i32 = height::SEA;
+
         for y in height::SEA..super::terrain::height() - 1
         {
             let block: i32 = self.m_world.block(x, y, z);
@@ -530,11 +581,13 @@ impl Decorator<'_>
             {
                 return y + 1;
             }
+
             if earth.contains(&block)
             {
                 last = y + 1;
             }
         }
+
         last
     }
 
@@ -561,20 +614,24 @@ impl Decorator<'_>
     fn biome(&self, decorated: bool)
     {
         let random: &Random = self.m_random;
+
         match self.m_biome
         {
             Biome::DenseForest => self.doublePlants(double::FERN, counts::DOUBLE_PLANTS),
+
             Biome::EnchantedForest =>
             {
                 self.vines(counts::ENCHANTED_VINES);
                 self.doublePlants(double::FERN, counts::ENCHANTED_PLANTS);
             }
+
             Biome::OakSavanna => self.doublePlants(double::GRASS, counts::DOUBLE_PLANTS),
             Biome::FireflyForest => self.fireflyFlowers(),
             Biome::Highlands => self.highlands(),
             _ =>
             {}
         }
+
         match self.m_biome
         {
             Biome::DarkForest | Biome::DarkForestCenter =>
@@ -583,52 +640,64 @@ impl Decorator<'_>
                 {
                     self.dark();
                 }
+
                 self.underground();
                 self.ores();
             }
+
             _ if decorated => self.decorate(),
+
             _ =>
             {
                 self.underground();
                 self.ores();
             }
         }
+
         match self.m_biome
         {
             Biome::Swamp =>
             {
                 self.vines(counts::VINES);
+
                 for _ in 0..counts::LILY_PADS
                 {
                     let (x, z): (i32, i32) = self.column();
                     scatter::lilyPads(self.m_world, random, x, height::SEA, z);
                 }
+
                 for _ in 0..counts::WATER_LILIES
                 {
                     let (x, z): (i32, i32) = self.column();
                     scatter::waterLilies(self.m_world, random, x, height::SEA, z);
                 }
             }
+
             Biome::FireSwamp if decorated =>
             {
                 self.vines(counts::VINES);
+
                 if random.nextIntBounded(odds::SMOKER) == 0
                 {
                     let (x, z): (i32, i32) = self.column();
                     scatter::fireJet(self.m_world, random, x, height::SEA, z, block::SMOKER);
                 }
+
                 let (x, z): (i32, i32) = self.column();
                 scatter::fireJet(self.m_world, random, x, height::SEA, z, block::FIRE_JET);
             }
+
             Biome::Glacier if random.nextIntBounded(odds::PENGUINS) == 0 =>
             {
                 let (x, z): (i32, i32) = self.column();
                 scatter::critters(self.m_world, random, x, z, crate::entities::PENGUIN, counts::PENGUINS);
             }
+
             Biome::Thornlands =>
             {
                 let extra: [&'static str; 4] =
                     ["minecraft:sandstone", "minecraft:sand", "minecraft:clay", block::SOLID_DEADROCK];
+
                 for _ in 0..counts::THORNS
                 {
                     let (x, z): (i32, i32) = self.column();
@@ -636,6 +705,7 @@ impl Decorator<'_>
                     scatter::thorns(self.m_world, random, x, y, z);
                 }
             }
+
             Biome::FireflyForest => self.fireflyLights(),
             _ =>
             {}
@@ -662,17 +732,20 @@ impl Decorator<'_>
             let (x, z): (i32, i32) = self.column();
             scatter::plantPatch(self.m_world, random, x, self.ground(x, z, &[]), z, block::MUSHGLOOM);
         }
+
         for _ in 0..counts::LAMPS
         {
             let (x, z): (i32, i32) = self.column();
             let y: i32 = height::SEA + random.nextIntBounded(height::SOURCE - height::SEA);
             scatter::hangingLamp(self.m_world, x, y, z);
         }
+
         if random.nextIntBounded(odds::LAMPPOST) == 0
         {
             let (x, z): (i32, i32) = self.column();
             scatter::lamppost(self.m_world, random, x, self.ground(x, z, &[]), z);
         }
+
         if random.nextIntBounded(odds::PUMPKIN) == 0
         {
             let (x, z): (i32, i32) = self.column();
@@ -690,10 +763,13 @@ impl Decorator<'_>
             let (x, z): (i32, i32) = self.column();
             vanilla::boulder(self.m_world, random, x, self.height(x, z), z, self.id("minecraft:mossy_cobblestone"));
         }
+
         self.doublePlants(double::FERN, counts::DOUBLE_PLANTS);
+
         let (x, z): (i32, i32) = self.column();
         let y: i32 = random.nextIntBounded(height::ROOTS);
         scatter::plantPatch(self.m_world, random, x, y, z, block::MUSHGLOOM);
+
         for _ in 0..counts::TROLL_ROOTS
         {
             let (x, z): (i32, i32) = self.column();
@@ -703,7 +779,7 @@ impl Decorator<'_>
 }
 
 // ChunkProviderTwilightForest.populate, the chunk seed then every decoration of the chunk
-pub fn populate(chunk: ChunkInfo)
+pub(crate) fn populate(chunk: ChunkInfo)
 {
     let world: GenWorld = GenWorld::new(World { dimension: chunk.world });
     let random: Random = Random::withSeed(chunk.seed);
@@ -712,14 +788,18 @@ pub fn populate(chunk: ChunkInfo)
     random.setSeed(
         i64::from(chunk.x).wrapping_mul(xFactor).wrapping_add(i64::from(chunk.z).wrapping_mul(zFactor)) ^ chunk.seed,
     );
+
     let (mapX, mapZ): (i32, i32) = (chunk.x * 16, chunk.z * 16);
     let biome: Biome = biomes::at(chunk.seed, mapX + 16, mapZ + 16);
     let decor: &'static Decor = flora::decor(biome);
     // ChunkProviderTwilightForest.populate, a structure crossing the chunk keeps lakes out, a nearby feature also the decorations
     let built: bool = super::structures::generate(&world, &random, chunk.seed, chunk.x, chunk.z);
+
     super::structures::hollowTrees(&world, &random, chunk.seed, chunk.x, chunk.z);
+
     let decorated: bool = features::row(features::nearest(chunk.seed, chunk.x, chunk.z).0).m_decorated;
     let open: bool = decorated && !built;
+
     let column = ||
     {
         (
@@ -727,22 +807,26 @@ pub fn populate(chunk: ChunkInfo)
             mapZ + random.nextIntBounded(chunk::SIZE) + chunk::EDGE,
         )
     };
+
     if open && random.nextIntBounded(odds::LAKE) == 0 && decor.m_springs
     {
         let (x, z): (i32, i32) = column();
         let y: i32 = random.nextIntBounded(height::SOURCE);
         vanilla::lake(&world, &random, x, y, z, world.id("minecraft:water"));
     }
+
     if open && random.nextIntBounded(odds::LAVA_LAKE) == 0
     {
         let x: i32 = mapX + random.nextIntBounded(chunk::SIZE) + chunk::EDGE;
         let y: i32 = random.nextIntBounded(random.nextIntBounded(height::SOURCE - 8) + 8);
         let z: i32 = mapZ + random.nextIntBounded(chunk::SIZE) + chunk::EDGE;
+
         if y < height::SEA || random.nextIntBounded(odds::SURFACE_LAVA) == 0
         {
             vanilla::lake(&world, &random, x, y, z, world.id("minecraft:lava"));
         }
     }
+
     for _ in 0..counts::DUNGEONS
     {
         let x: i32 = mapX + random.nextIntBounded(chunk::SIZE) + chunk::EDGE;
@@ -750,6 +834,7 @@ pub fn populate(chunk: ChunkInfo)
         let z: i32 = mapZ + random.nextIntBounded(chunk::SIZE) + chunk::EDGE;
         vanilla::dungeon(&world, &random, x, y, z);
     }
+
     let decorator: Decorator = Decorator
     {
         m_world: &world,
@@ -771,6 +856,7 @@ fn freeze(world: &GenWorld, x: i32, z: i32)
     let seed: i64 = world.m_world.seed();
     let (ice, snow, water): (i32, i32, i32) =
         (world.id("minecraft:ice"), world.id("minecraft:snow_layer"), world.id("minecraft:water"));
+
     for dx in 0..16
     {
         for dz in 0..16
@@ -781,6 +867,7 @@ fn freeze(world: &GenWorld, x: i32, z: i32)
             {
                 continue;
             }
+
             let top: i32 = world.topSolid(bx, bz).max(world.height(bx, bz));
             if world.block(bx, top - 1, bz) == water && world.meta(bx, top - 1, bz) == 0
             {

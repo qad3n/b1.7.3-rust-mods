@@ -33,9 +33,11 @@ fn consume(player: Player, name: &str) -> bool
         {
             continue;
         };
+
         let left: Option<ItemStack> = (stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack });
         return player.setSlot(slot, left).is_ok();
     }
+
     false
 }
 
@@ -80,7 +82,9 @@ fn release(world: World, owner: &EntityInfo, charm: &str)
 {
     let (volume, pitch): (f32, f32) = (1.5, 1.0);
     world.playSound(owner.pos, "mob.zombie.unfect", volume, pitch);
+
     let texture: String = crate::items::texture(&charm.replace('_', ""));
+
     for offset in [0.0, std::f64::consts::PI]
     {
         let Ok(effect) = world.spawnEntity(&format!("twilightforest:{CHARM_EFFECT}"), owner.pos)
@@ -89,6 +93,7 @@ fn release(world: World, owner: &EntityInfo, charm: &str)
             warn("cannot spawn the charm effect");
             continue;
         };
+
         let orbit: Orbit = Orbit { m_owner: owner.id, m_offset: offset, m_age: 0, m_texture: texture.clone() };
         if let Err(error) = effect.setSynced(&orbit)
         {
@@ -112,6 +117,7 @@ impl EntityBehavior for CharmEffect
 
         let mut state: Orbit = entity.synced();
         state.m_age += 1;
+
         let owner: Option<EntityInfo> = Entity { world, id: state.m_owner }.info().filter(|owner| owner.alive);
         let Some(owner) = owner.filter(|_| state.m_age <= orbit::LIFETIME)
         else
@@ -123,10 +129,12 @@ impl EntityBehavior for CharmEffect
         let turn: f64 = f64::from(state.m_age) / orbit::SPIN + state.m_offset;
         let at: [f64; 3] =
             [owner.pos[0] + turn.cos() * orbit::RADIUS, owner.pos[1], owner.pos[2] - turn.sin() * orbit::RADIUS];
+
         if let Err(error) = entity.setPosition(at)
         {
             warn(&format!("charm effect: {}", error.0));
         }
+
         if let Err(error) = entity.setSynced(&state)
         {
             warn(&format!("charm effect: {}", error.0));
@@ -178,7 +186,9 @@ fn hurt(event: &mut Event)
     {
         return;
     }
+
     event.cancel();
+
     if second
     {
         // the second charm's resistance and fire resistance have no beta stat, its regeneration and full heal stay
@@ -249,9 +259,11 @@ fn died(event: &mut Event)
     {
         return;
     };
+
     let player: Player = Player { id: target.id };
     let mut kept: Kept = Kept::default();
     let armor = || ARMOR_FIRST_SLOT..ARMOR_FIRST_SLOT + ARMOR_SLOTS;
+
     if consume(player, item::CHARM_OF_KEEPING_3)
     {
         take(player, armor().chain(0..MAIN_SLOTS), &mut kept);
@@ -271,6 +283,7 @@ fn died(event: &mut Event)
     let keys: Vec<i32> =
         (0..MAIN_SLOTS).filter(|slot| player.slot(*slot).is_some_and(|stack| stack.item.is(item::TOWER_KEY))).collect();
     take(player, keys.into_iter(), &mut kept);
+
     if !kept.m_slots.is_empty() || kept.m_charm.is_some()
     {
         KEPT.with(|all| all.borrow_mut().insert(name, kept));
@@ -290,7 +303,9 @@ fn respawned(event: &mut Event)
     {
         return;
     };
+
     let player: Player = Player { id: player };
+
     for (slot, stack) in kept.m_slots
     {
         if let Err(error) = player.setSlot(slot, Some(stack))
@@ -298,6 +313,7 @@ fn respawned(event: &mut Event)
             warn(&format!("kept item for {name}: {}", error.0));
         }
     }
+
     if let Some(charm) = kept.m_charm
         && let Some(info) = player.info()
     {
@@ -305,7 +321,7 @@ fn respawned(event: &mut Event)
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         CHARM_EFFECT,

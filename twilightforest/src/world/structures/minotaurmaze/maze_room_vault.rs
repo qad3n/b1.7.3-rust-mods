@@ -1,7 +1,7 @@
 // draft from ComponentTFMazeRoomVault.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MazeRoomVault);
     init(&this, i, random, x, y, z);
@@ -9,14 +9,14 @@ pub fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFMazeRoomVault constructor
-pub fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
 {
     maze_room::init(this, i, random, x, y, z);
     this.m_spawnListIndex.set(i32::MAX);
 }
 
 // ComponentTFMazeRoomVault.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     this.fillMeta(world, sbb, 0, 1, 0, 15, 4, 15, blk("tf:mazestone"), 3, blk("air"), 0, false);
     this.fillMeta(world, sbb, 0, 2, 0, 15, 3, 15, blk("tf:mazestone"), 1, blk("air"), 0, false);
@@ -41,5 +41,5 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.placeTreasure(world, random, 6, 2, 8, Table::LabyrinthVault, sbb);
     this.placeBlock(world, blk("chest"), 0, 9, 2, 8, sbb);
     this.placeTreasure(world, random, 9, 2, 7, Table::LabyrinthVault, sbb);
-    return true;
+    true
 }

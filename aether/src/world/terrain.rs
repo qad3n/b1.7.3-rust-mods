@@ -1,7 +1,7 @@
 use crate::ids::Palette;
 use b173_api::ChunkInfo;
 use b173_api::terrain::{ChunkBlocks, NoiseGeneratorOctaves, Random, chunk, structure};
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 
 mod noise
 {
@@ -81,14 +81,16 @@ struct Noise
     m_perlin1: NoiseGeneratorOctaves,
 }
 
-thread_local! {
+thread_local!
+{
     static NOISE: RefCell<Option<Noise>> = const { RefCell::new(None) };
 }
 
 fn withNoise<R>(seed: i64, body: impl FnOnce(&Noise) -> R) -> R
 {
-    NOISE.with(|slot| {
-        let mut slot = slot.borrow_mut();
+    NOISE.with(|slot|
+    {
+        let mut slot: RefMut<Option<Noise>> = slot.borrow_mut();
         if slot.as_ref().is_none_or(|noise| noise.m_seed != seed)
         {
             let random: Random = Random::withSeed(seed);
@@ -96,6 +98,7 @@ fn withNoise<R>(seed: i64, body: impl FnOnce(&Noise) -> R) -> R
             let perlin1: NoiseGeneratorOctaves = NoiseGeneratorOctaves::new(&random, noise::PERLIN1_OCTAVES);
             *slot = Some(Noise { m_seed: seed, m_noise1: noise1, m_perlin1: perlin1 });
         }
+
         body(slot.as_ref().expect("noise was just built"))
     })
 }
@@ -129,23 +132,28 @@ fn density(noise: &Noise, x: i32, z: i32) -> Vec<f64>
         noise::HORIZONTAL / noise::PERLIN_HORIZONTAL_DIVISOR,
         noise::VERTICAL / noise::PERLIN_VERTICAL_DIVISOR,
     );
+
     let ar: Vec<f64> = sample(&noise.m_noise1, x, z, noise::HORIZONTAL, noise::VERTICAL);
     let br: Vec<f64> = sample(&noise.m_noise1, x, z, noise::HORIZONTAL, noise::VERTICAL);
     (0..noise::SIZE)
-        .map(|id| {
+        .map(|id|
+        {
             let layer: usize = id % noise::LAYERS;
             let low: f64 = ar[id] / noise::AMPLITUDE;
             let high: f64 = br[id] / noise::AMPLITUDE;
             let blend: f64 = (pnr[id] / noise::BLEND_SCALE + 1.0) * 0.5;
             let mut value: f64 = low + (high - low) * blend.clamp(0.0, 1.0) - noise::BIAS;
+
             if layer > 1
             {
                 value = fadeTo(value, ((layer - 1) as f32 / noise::TOP_FADE_LAYERS) as f64);
             }
+
             if layer < noise::BOTTOM_FADE_START
             {
                 value = fadeTo(value, ((noise::BOTTOM_FADE_START - layer) as f32 / noise::BOTTOM_FADE_LAYERS) as f64);
             }
+
             value
         })
         .collect()
@@ -157,6 +165,7 @@ fn shape(blocks: &mut ChunkBlocks, buffer: &[f64], holystone: u16)
     let at = |cellX: usize, cellZ: usize, layer: usize| buffer[(cellX * noise::CELLS + cellZ) * noise::LAYERS + layer];
     let vertical: f64 = 1.0 / cell::HEIGHT as f64;
     let horizontal: f64 = 1.0 / cell::WIDTH as f64;
+
     for cellX in 0..cell::PER_AXIS
     {
         for cellZ in 0..cell::PER_AXIS
@@ -169,22 +178,26 @@ fn shape(blocks: &mut ChunkBlocks, buffer: &[f64], holystone: u16)
                     at(cellX + 1, cellZ, layer),
                     at(cellX + 1, cellZ + 1, layer),
                 ];
+
                 let rise: [f64; 4] = [
                     (at(cellX, cellZ, layer + 1) - corners[0]) * vertical,
                     (at(cellX, cellZ + 1, layer + 1) - corners[1]) * vertical,
                     (at(cellX + 1, cellZ, layer + 1) - corners[2]) * vertical,
                     (at(cellX + 1, cellZ + 1, layer + 1) - corners[3]) * vertical,
                 ];
+
                 for step in 0..cell::HEIGHT
                 {
                     let mut near: f64 = corners[0];
                     let mut far: f64 = corners[1];
                     let nearStep: f64 = (corners[2] - corners[0]) * horizontal;
                     let farStep: f64 = (corners[3] - corners[1]) * horizontal;
+
                     for x in 0..cell::WIDTH
                     {
                         let mut value: f64 = near;
                         let zStep: f64 = (far - near) * horizontal;
+
                         for z in 0..cell::WIDTH
                         {
                             let index: usize = ChunkBlocks::index(
@@ -195,9 +208,11 @@ fn shape(blocks: &mut ChunkBlocks, buffer: &[f64], holystone: u16)
                             blocks.m_blocks[index] = if value > 0.0 { holystone } else { 0 };
                             value += zStep;
                         }
+
                         near += nearStep;
                         far += farStep;
                     }
+
                     for (corner, delta) in corners.iter_mut().zip(rise)
                     {
                         *corner += delta;
@@ -212,6 +227,7 @@ fn shape(blocks: &mut ChunkBlocks, buffer: &[f64], holystone: u16)
 fn surface(blocks: &mut ChunkBlocks, random: &Random, palette: &Palette)
 {
     let holystone: u16 = palette.m_holystone as u16;
+
     for z in 0..chunk::WIDTH
     {
         for x in 0..chunk::WIDTH
@@ -220,6 +236,7 @@ fn surface(blocks: &mut ChunkBlocks, random: &Random, palette: &Palette)
             let thickness: i32 = (surface::DEPTH + random.nextDouble() * surface::DEPTH_JITTER) as i32;
             let mut top: u16 = palette.m_grass as u16;
             let mut filler: u16 = palette.m_dirt as u16;
+
             for y in (0..chunk::HEIGHT).rev()
             {
                 let index: usize = ChunkBlocks::index(x, y, z);
@@ -237,6 +254,7 @@ fn surface(blocks: &mut ChunkBlocks, random: &Random, palette: &Palette)
                             top = 0;
                             filler = holystone;
                         }
+
                         depth = thickness;
                         blocks.m_blocks[index] = top;
                     }
@@ -259,12 +277,15 @@ fn quicksoil(blocks: &mut ChunkBlocks, random: &Random, palette: &Palette)
     {
         return;
     }
+
     let grass: i32 = palette.m_grass;
+
     for x in quicksoil::FIRST..quicksoil::LAST
     {
         for z in quicksoil::FIRST..quicksoil::LAST
         {
-            let found: Option<i32> = (quicksoil::LOWEST..quicksoil::HIGHEST).find(|y| {
+            let found: Option<i32> = (quicksoil::LOWEST..quicksoil::HIGHEST).find(|y|
+            {
                 blocks.get(z, *y, x) == 0 && blocks.get(z, y + 1, x) == grass && blocks.get(z, y + 2, x) == 0
             });
             if let Some(y) = found
@@ -310,7 +331,9 @@ fn puff(random: &Random) -> Puff
     // nextInt(1) is always zero but still advances the random
     let yMax: i32 = random.nextIntBounded(1) + cloud::HEIGHT;
     let zMax: i32 = random.nextIntBounded(cloud::WIDTH_SPREAD) + cloud::MIN_WIDTH;
-    Puff {
+
+    Puff
+    {
         m_offset: [xOffset, if rises { yOffset } else { 0 }, zOffset],
         m_size: [xMax, yMax, zMax],
         m_shape: random.nextIntBounded(cloud::SHAPES),
@@ -327,11 +350,13 @@ fn largeCloud(blocks: &mut ChunkBlocks, chunkX: i32, chunkZ: i32, start: [i32; 2
     let minZ: i32 = start[1] * chunk::WIDTH + cloud::BOX_INSET;
     let origin: [i32; 3] = [minX + cloud::ORIGIN[0], cloud::ORIGIN[1], minZ + cloud::ORIGIN[2]];
     let [mut x, mut y, mut z]: [i32; 3] = [0, 0, 0];
+
     for puff in &puffs
     {
         x += puff.m_offset[0] + xTendency;
         y += puff.m_offset[1];
         z += puff.m_offset[2] + zTendency;
+
         for x1 in x..x + puff.m_size[0]
         {
             for y1 in y..y + puff.m_size[1]
@@ -342,6 +367,7 @@ fn largeCloud(blocks: &mut ChunkBlocks, chunkX: i32, chunkZ: i32, start: [i32; 2
                     {
                         continue;
                     }
+
                     let worldX: i32 = origin[0] + x1;
                     let worldZ: i32 = origin[2] + z1;
                     let inStart: bool = (minX..=minX + cloud::EXTENT).contains(&worldX)
@@ -365,7 +391,8 @@ fn largeCloud(blocks: &mut ChunkBlocks, chunkX: i32, chunkZ: i32, start: [i32; 2
 // MapGenLargeColdAercloud.canSpawnStructureAtCoords: one chunk in fifty starts a cloud sheet
 fn largeClouds(blocks: &mut ChunkBlocks, chunkInfo: &ChunkInfo, cloudBlock: i32)
 {
-    structure::candidates(chunkInfo.seed, chunkInfo.x, chunkInfo.z, cloud::RANGE, |startX, startZ, random| {
+    structure::candidates(chunkInfo.seed, chunkInfo.x, chunkInfo.z, cloud::RANGE, |startX, startZ, random|
+    {
         if random.nextIntBounded(cloud::CHANCE) == 0
         {
             largeCloud(blocks, chunkInfo.x, chunkInfo.z, [startX, startZ], random, cloudBlock);
@@ -374,13 +401,15 @@ fn largeClouds(blocks: &mut ChunkBlocks, chunkInfo: &ChunkInfo, cloudBlock: i32)
 }
 
 // ChunkProviderAether.provideChunk
-pub fn generate(chunkInfo: &ChunkInfo, blocks: &mut ChunkBlocks)
+pub(crate) fn generate(chunkInfo: &ChunkInfo, blocks: &mut ChunkBlocks)
 {
     let palette: Palette = Palette::load();
     let random: Random = Random::withSeed(
         (chunkInfo.x as i64).wrapping_mul(seed::X).wrapping_add((chunkInfo.z as i64).wrapping_mul(seed::Z)),
     );
-    let buffer: Vec<f64> = withNoise(chunkInfo.seed, |noise| {
+
+    let buffer: Vec<f64> = withNoise(chunkInfo.seed, |noise|
+    {
         density(noise, chunkInfo.x * cell::PER_AXIS as i32, chunkInfo.z * cell::PER_AXIS as i32)
     });
     shape(blocks, &buffer, palette.m_holystone as u16);

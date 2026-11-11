@@ -2,25 +2,27 @@
 use crate::world::structures::prelude::*;
 
 // StructureTFStrongholdComponent constructor
-pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 {
     this.m_depth.set(i);
     *this.m_doors.borrow_mut() = Vec::new();
+
     if let Some(bounds) = this.generateBoundingBox(facing, x, y, z)
     {
         this.m_box.set(bounds);
     }
+
     this.setMode(facing);
 }
 
 // StructureTFStrongholdComponent.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // StructureTFStrongholdComponent.addNewComponent
-pub fn addNewComponent(
+pub(crate) fn addNewComponent(
     this: &Piece,
     entrance: &Piece,
     list: &mut Pieces,
@@ -36,10 +38,10 @@ pub fn addNewComponent(
     let nx: i32 = this.xAt(x, z);
     let ny: i32 = this.yAt(y);
     let nz: i32 = this.zAt(x, z);
-    if (index <= 50) && (!this.isOutOfRange(&entrance, nx, ny, nz, 112))
+    if (index <= 50) && (!this.isOutOfRange(entrance, nx, ny, nz, 112))
     {
         let breakIn: Option<Rc<Piece>> = stronghold_component::findBreakInComponent(this, list, nx, ny, nz);
-        if (breakIn.is_some()) && stronghold_component::attemptToBreakIn(&breakIn.piece(), nx, ny, nz)
+        if (breakIn.is_some()) && stronghold_component::attemptToBreakIn(breakIn.piece(), nx, ny, nz)
         {
             stronghold_component::addDoorwayTo(this, x, y, z, facing);
         }
@@ -47,10 +49,11 @@ pub fn addNewComponent(
         {
             let nextComponent: Option<Rc<Piece>> =
                 entrance.m_lowerPieces.getNextComponent(list, random, index, nFacing, nx, ny, nz);
+
             if nextComponent.is_some()
             {
                 list.push(Rc::clone(nextComponent.piece()));
-                nextComponent.piece().build(&entrance, list, random);
+                nextComponent.piece().build(entrance, list, random);
                 stronghold_component::addDoorwayTo(this, x, y, z, facing);
             }
         }
@@ -58,7 +61,7 @@ pub fn addNewComponent(
 }
 
 // StructureTFStrongholdComponent.findBreakInComponent
-pub fn findBreakInComponent(_this: &Piece, list: &mut Pieces, x: i32, y: i32, z: i32) -> Option<Rc<Piece>>
+pub(crate) fn findBreakInComponent(_this: &Piece, list: &mut Pieces, x: i32, y: i32, z: i32) -> Option<Rc<Piece>>
 {
     for component in list.clone()
     {
@@ -67,11 +70,12 @@ pub fn findBreakInComponent(_this: &Piece, list: &mut Pieces, x: i32, y: i32, z:
             return Some(Rc::clone(&component));
         }
     }
-    return None;
+
+    None
 }
 
 // StructureTFStrongholdComponent.addNewUpperComponent
-pub fn addNewUpperComponent(
+pub(crate) fn addNewUpperComponent(
     this: &Piece,
     parent: &Piece,
     list: &mut Pieces,
@@ -87,49 +91,41 @@ pub fn addNewUpperComponent(
     let nx: i32 = this.xAt(x, z);
     let ny: i32 = this.yAt(y);
     let nz: i32 = this.zAt(x, z);
-    if (index <= 100) && (!this.isOutOfRange(&parent, nx, ny, nz, 48))
+    if (index <= 100) && (!this.isOutOfRange(parent, nx, ny, nz, 48))
     {
-        let var10000: Rc<Piece>;
-        match random.nextIntBounded(5)
+        let var10000: Rc<Piece> = match random.nextIntBounded(5)
         {
-            1 =>
-            {
-                var10000 = stronghold_upper_left_turn::new(index, nFacing, nx, ny, nz);
-            }
-            2 =>
-            {
-                var10000 = stronghold_upper_right_turn::new(index, nFacing, nx, ny, nz);
-            }
-            3 =>
-            {
-                var10000 = stronghold_upper_corridor::new(index, nFacing, nx, ny, nz);
-            }
-            4 =>
-            {
-                var10000 = stronghold_upper_ascender::new(index, nFacing, nx, ny, nz);
-            }
-            _ =>
-            {
-                var10000 = stronghold_upper_tintersection::new(index, nFacing, nx, ny, nz);
-            }
-        }
+            1 => stronghold_upper_left_turn::new(index, nFacing, nx, ny, nz),
+            2 => stronghold_upper_right_turn::new(index, nFacing, nx, ny, nz),
+            3 => stronghold_upper_corridor::new(index, nFacing, nx, ny, nz),
+            4 => stronghold_upper_ascender::new(index, nFacing, nx, ny, nz),
+            _ => stronghold_upper_tintersection::new(index, nFacing, nx, ny, nz),
+        };
         let attempted: Option<Rc<Piece>> = Some(Rc::clone(&var10000));
         if attempted.is_some() && intersecting(list, attempted.piece().bounds()).is_none()
         {
             list.push(Rc::clone(attempted.piece()));
-            attempted.piece().build(&parent, list, random);
+            attempted.piece().build(parent, list, random);
         }
     }
 }
 
 // StructureTFStrongholdComponent.isOutOfRange
-pub fn isOutOfRange(_this: &Piece, parent: &Piece, nx: i32, _ny: i32, nz: i32, range: i32) -> bool
+pub(crate) fn isOutOfRange(_this: &Piece, parent: &Piece, nx: i32, _ny: i32, nz: i32, range: i32) -> bool
 {
-    return ((nx - parent.bounds().m_min[0]).abs() > range) || ((nz - parent.bounds().m_min[2]).abs() > range);
+    ((nx - parent.bounds().m_min[0]).abs() > range) || ((nz - parent.bounds().m_min[2]).abs() > range)
 }
 
 // StructureTFStrongholdComponent.placeDoorwayAt
-pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, _random: &Random, x: i32, y: i32, z: i32, sbb: StructureBox)
+pub(crate) fn placeDoorwayAt(
+    this: &Piece,
+    world: &GenWorld,
+    _random: &Random,
+    x: i32,
+    y: i32,
+    z: i32,
+    sbb: StructureBox,
+)
 {
     if (x != 0) && (x != stronghold_component::getXSize(this))
     {
@@ -172,25 +168,18 @@ pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, _random: &Random, x: i32, 
 }
 
 // StructureTFStrongholdComponent.getXSize
-pub fn getXSize(this: &Piece) -> i32
+pub(crate) fn getXSize(this: &Piece) -> i32
 {
-    let var10000: i32;
-    match this.mode()
+    let var10000: i32 = match this.mode()
     {
-        1 | 3 =>
-        {
-            var10000 = this.m_box.get().zSize() - 1;
-        }
-        _ =>
-        {
-            var10000 = this.m_box.get().xSize() - 1;
-        }
-    }
-    return var10000;
+        1 | 3 => this.m_box.get().zSize() - 1,
+        _ => this.m_box.get().xSize() - 1,
+    };
+    var10000
 }
 
 // StructureTFStrongholdComponent.placeSmallDoorwayAt
-pub fn placeSmallDoorwayAt(
+pub(crate) fn placeSmallDoorwayAt(
     this: &Piece,
     world: &GenWorld,
     _random: &Random,
@@ -214,12 +203,13 @@ pub fn placeSmallDoorwayAt(
 }
 
 // StructureTFStrongholdComponent.placeCornerStatue
-pub fn placeCornerStatue(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32, facing: i32, sbb: StructureBox)
+pub(crate) fn placeCornerStatue(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32, facing: i32, sbb: StructureBox)
 {
     let mut ox: i32 = 1;
     let mut oz: i32 = 1;
     let mut smx: i32 = 2;
     let mut smz: i32 = 3;
+
     match facing
     {
         0 =>
@@ -229,11 +219,13 @@ pub fn placeCornerStatue(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32,
             oz = -1;
             smz = 1;
         }
+
         2 =>
         {
             ox = -1;
             smx = 0;
         }
+
         3 =>
         {
             ox = -1;
@@ -241,13 +233,16 @@ pub fn placeCornerStatue(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32,
             smx = 0;
             smz = 1;
         }
+
         _ =>
         {}
     }
+
     for sy in 0..5
     {
         this.placeBlock(world, this.m_deco.get().m_pillarID, this.m_deco.get().m_pillarMeta, x, y + sy, z, sbb);
     }
+
     this.placeBlock(world, blk("fence"), 0, x + 0, y + 4, z + oz, sbb);
     this.placeBlock(world, blk("fence"), 0, x + ox, y + 4, z + 0, sbb);
     this.placeBlock(world, this.m_deco.get().m_stairID, this.stairMeta(smz), x + 0, y + 3, z + oz, sbb);
@@ -262,14 +257,16 @@ pub fn placeCornerStatue(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32,
 }
 
 // StructureTFStrongholdComponent.placeWallStatue
-pub fn placeWallStatue(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32, facing: i32, sbb: StructureBox)
+pub(crate) fn placeWallStatue(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32, facing: i32, sbb: StructureBox)
 {
     let mut ox: i32 = 1;
     let mut oz: i32 = 1;
+
     for sy in 0..5
     {
         this.placeBlock(world, this.m_deco.get().m_pillarID, this.m_deco.get().m_pillarMeta, x, y + sy, z, sbb);
     }
+
     if (facing != 0) && (facing != 2)
     {
         if facing == 3
@@ -277,6 +274,7 @@ pub fn placeWallStatue(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32, f
             oz = -oz;
             ox = -ox;
         }
+
         this.placeBlock(world, blk("fence"), 0, x, y + 4, z - oz, sbb);
         this.placeBlock(world, blk("fence"), 0, x, y + 4, z + oz, sbb);
         this.placeBlock(world, this.m_deco.get().m_stairID, this.stairMeta(0 + facing), x, y + 3, z - oz, sbb);
@@ -300,6 +298,7 @@ pub fn placeWallStatue(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32, f
             ox = -ox;
             oz = -oz;
         }
+
         this.placeBlock(world, blk("fence"), 0, x - ox, y + 4, z, sbb);
         this.placeBlock(world, blk("fence"), 0, x + ox, y + 4, z, sbb);
         this.placeBlock(world, this.m_deco.get().m_stairID, this.stairMeta(0 + facing), x - ox, y + 3, z, sbb);
@@ -319,21 +318,22 @@ pub fn placeWallStatue(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32, f
 }
 
 // StructureTFStrongholdComponent.attemptToBreakIn
-pub fn attemptToBreakIn(this: &Piece, wx: i32, wy: i32, wz: i32) -> bool
+pub(crate) fn attemptToBreakIn(this: &Piece, wx: i32, wy: i32, wz: i32) -> bool
 {
     if !this.isValidBreakInPoint(wx, wy, wz)
     {
         return false;
     }
-    let dx: i32 = stronghold_component::getRelativeX(this, wx, wz);
-    let dy: i32 = stronghold_component::getRelativeY(this, wy);
-    let dz: i32 = stronghold_component::getRelativeZ(this, wx, wz);
+
+    let dx: i32 = stronghold_component::relativeX(this, wx, wz);
+    let dy: i32 = stronghold_component::relativeY(this, wy);
+    let dz: i32 = stronghold_component::relativeZ(this, wx, wz);
     stronghold_component::addDoor(this, dx, dy, dz);
-    return true;
+    true
 }
 
 // StructureTFStrongholdComponent.addDoorwayTo
-pub fn addDoorwayTo(this: &Piece, dx: i32, dy: i32, dz: i32, facing: i32)
+pub(crate) fn addDoorwayTo(this: &Piece, dx: i32, dy: i32, dz: i32, facing: i32)
 {
     match facing
     {
@@ -341,115 +341,87 @@ pub fn addDoorwayTo(this: &Piece, dx: i32, dy: i32, dz: i32, facing: i32)
         {
             stronghold_component::addDoor(this, dx, dy, dz - 1);
         }
+
         1 =>
         {
             stronghold_component::addDoor(this, dx + 1, dy, dz);
         }
+
         2 =>
         {
             stronghold_component::addDoor(this, dx, dy, dz + 1);
         }
+
         3 =>
         {
             stronghold_component::addDoor(this, dx - 1, dy, dz);
         }
+
         _ =>
         {}
     }
 }
 
 // StructureTFStrongholdComponent.addDoor
-pub fn addDoor(this: &Piece, dx: i32, dy: i32, dz: i32) { this.m_doors.borrow_mut().push([dx, dy, dz]); }
+pub(crate) fn addDoor(this: &Piece, dx: i32, dy: i32, dz: i32) { this.m_doors.borrow_mut().push([dx, dy, dz]); }
 
 // StructureTFStrongholdComponent.isValidBreakInPoint
-pub fn isValidBreakInPoint(this: &Piece, wx: i32, wy: i32, wz: i32) -> bool
+pub(crate) fn isValidBreakInPoint(this: &Piece, wx: i32, wy: i32, wz: i32) -> bool
 {
     if (wy < this.m_box.get().m_min[1]) || (wy > this.m_box.get().m_max[1])
     {
-        return false;
+        false
     }
     else if (wx == this.m_box.get().m_min[0]) || (wx == this.m_box.get().m_max[0])
     {
-        return (wz > this.m_box.get().m_min[2]) && (wz < this.m_box.get().m_max[2]);
+        (wz > this.m_box.get().m_min[2]) && (wz < this.m_box.get().m_max[2])
     }
     else
     {
-        return if (wz != this.m_box.get().m_min[2]) && (wz != this.m_box.get().m_max[2])
+        if (wz != this.m_box.get().m_min[2]) && (wz != this.m_box.get().m_max[2])
         {
             false
         }
         else
         {
             (wx > this.m_box.get().m_min[0]) && (wx < this.m_box.get().m_max[0])
-        };
+        }
     }
 }
 
 // StructureTFStrongholdComponent.getRelativeX
-pub fn getRelativeX(this: &Piece, x: i32, z: i32) -> i32
+pub(crate) fn relativeX(this: &Piece, x: i32, z: i32) -> i32
 {
-    let var10000: i32;
-    match this.mode()
+    let var10000: i32 = match this.mode()
     {
-        0 =>
-        {
-            var10000 = x - this.m_box.get().m_min[0];
-        }
-        1 =>
-        {
-            var10000 = z - this.m_box.get().m_min[2];
-        }
-        2 =>
-        {
-            var10000 = this.m_box.get().m_max[0] - x;
-        }
-        3 =>
-        {
-            var10000 = this.m_box.get().m_max[2] - z;
-        }
-        _ =>
-        {
-            var10000 = x;
-        }
-    }
-    return var10000;
+        0 => x - this.m_box.get().m_min[0],
+        1 => z - this.m_box.get().m_min[2],
+        2 => this.m_box.get().m_max[0] - x,
+        3 => this.m_box.get().m_max[2] - z,
+        _ => x,
+    };
+    var10000
 }
 
 // StructureTFStrongholdComponent.getRelativeY
-pub fn getRelativeY(this: &Piece, par1: i32) -> i32 { return par1 - this.m_box.get().m_min[1]; }
+pub(crate) fn relativeY(this: &Piece, par1: i32) -> i32 { par1 - this.m_box.get().m_min[1] }
 
 // StructureTFStrongholdComponent.getRelativeZ
-pub fn getRelativeZ(this: &Piece, x: i32, z: i32) -> i32
+pub(crate) fn relativeZ(this: &Piece, x: i32, z: i32) -> i32
 {
-    let var10000: i32;
-    match this.mode()
+    let var10000: i32 = match this.mode()
     {
-        0 =>
-        {
-            var10000 = z - this.m_box.get().m_min[2];
-        }
-        1 =>
-        {
-            var10000 = this.m_box.get().m_max[0] - x;
-        }
-        2 =>
-        {
-            var10000 = this.m_box.get().m_max[2] - z;
-        }
-        3 =>
-        {
-            var10000 = x - this.m_box.get().m_min[0];
-        }
-        _ =>
-        {
-            var10000 = z;
-        }
-    }
-    return var10000;
+        0 => z - this.m_box.get().m_min[2],
+        1 => this.m_box.get().m_max[0] - x,
+        2 => this.m_box.get().m_max[2] - z,
+        3 => x - this.m_box.get().m_min[0],
+        _ => z,
+    };
+    var10000
 }
 
 // StructureTFStrongholdComponent.placeDoors
-pub fn placeDoors(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
+pub(crate) fn placeDoors(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
 {
     for doorCoords in this.m_doors.borrow().clone()
     {
@@ -458,7 +430,7 @@ pub fn placeDoors(this: &Piece, world: &GenWorld, random: &Random, sbb: Structur
 }
 
 // StructureTFStrongholdComponent.placeStrongholdWalls
-pub fn placeStrongholdWalls(
+pub(crate) fn placeStrongholdWalls(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,
@@ -504,7 +476,7 @@ pub fn placeStrongholdWalls(
 }
 
 // StructureTFStrongholdComponent.placeUpperStrongholdWalls
-pub fn placeUpperStrongholdWalls(
+pub(crate) fn placeUpperStrongholdWalls(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,

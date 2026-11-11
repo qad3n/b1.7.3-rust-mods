@@ -62,6 +62,7 @@ fn along(meta: i32) -> [i32; 3]
 fn playerNear(world: World, pos: BlockPos) -> bool
 {
     let center: [f64; 3] = ids::center(pos);
+
     world.players().into_iter().any(|player|
     {
         player.info().is_some_and(|info| crate::entities::ai::distance(info.pos, center) <= slider::RANGE)
@@ -78,6 +79,7 @@ fn awake(world: World, pos: BlockPos, meta: i32) -> bool
 
     let [dx, dy, dz] = along(meta);
     let me: i32 = world.block(pos);
+
     [1, -1].into_iter().any(|sign|
     {
         let mut at: BlockPos = pos.offset(dx * sign, dy * sign, dz * sign);
@@ -90,6 +92,7 @@ fn awake(world: World, pos: BlockPos, meta: i32) -> bool
 
             at = at.offset(dx * sign, dy * sign, dz * sign);
         }
+
         false
     })
 }
@@ -109,6 +112,7 @@ fn hurt(world: World, target: &EntityInfo, from: [f64; 3], source: Option<i32>)
 {
     let entity: Entity = Entity { world, id: target.id };
     entity.damage(slider::DAMAGE, source);
+
     if source.is_some()
     {
         return;
@@ -157,6 +161,7 @@ impl BlockBehavior for Slider
         {
             launch(world, pos, meta);
         }
+
         schedule(world, pos, meta);
     }
 
@@ -199,6 +204,7 @@ fn way(world: World, pos: BlockPos, meta: i32) -> [i32; 3]
 {
     let ways: &[[i32; 3]; 4] = &WAYS[axis(meta)];
     let open = |step: [i32; 3]| world.isAir(pos.offset(step[0], step[1], step[2]));
+
     for pair in ways.chunks(2)
     {
         let [first, second] = [pair[0], pair[1]];
@@ -212,15 +218,18 @@ fn way(world: World, pos: BlockPos, meta: i32) -> [i32; 3]
             return second;
         }
     }
+
     ways.iter().copied().find(|step| open(*step)).unwrap_or([0; 3])
 }
 
 fn launch(world: World, pos: BlockPos, meta: i32)
 {
     let state: Slide = Slide { m_block: world.block(pos), m_meta: meta, m_ticks: 0, m_way: way(world, pos, meta) };
+
     let entity: Entity = match world.spawnEntity(&format!("twilightforest:{}", slide::NAME), ids::center(pos))
     {
         Ok(entity) => entity,
+
         Err(error) =>
         {
             warn(&format!("slider at {pos:?} could not launch: {}", error.0));
@@ -230,6 +239,7 @@ fn launch(world: World, pos: BlockPos, meta: i32)
 
     entity.setField(EntityField::Block, f64::from(state.m_block));
     entity.setField(EntityField::BlockMeta, f64::from(state.m_meta));
+
     if let Err(error) = entity.setData(&state)
     {
         warn(&format!("slide block state: {}", error.0));
@@ -270,7 +280,9 @@ impl EntityBehavior for SlideBlock
 
         let mut state: Slide = entity.data();
         state.m_ticks += 1;
+
         let here: BlockPos = cell(info.pos);
+
         if state.m_ticks == 1
         {
             if world.block(here) != state.m_block
@@ -283,15 +295,18 @@ impl EntityBehavior for SlideBlock
         }
 
         let mut motion: [f64; 3] = info.motion;
+
         if state.m_ticks > slide::WARMUP
         {
             motion = std::array::from_fn(|axis| motion[axis] + f64::from(state.m_way[axis]) * slide::PUSH);
         }
+
         if state.m_ticks % slide::SOUND_EVERY == 0
         {
             let pitch: f32 = 0.9 + ids::fraction(world) * 0.4;
             world.playSound(info.pos, slide::SOUND, 1.0, pitch);
         }
+
         if state.m_ticks == slide::TURN
         {
             motion = [0.0; 3];
@@ -314,7 +329,9 @@ impl EntityBehavior for SlideBlock
         }
 
         let _ = entity.setMotion(motion.map(|value| value * slide::DRAG));
+
         strike(world, entity.id, info.pos);
+
         let _ = entity.setData(&state);
     }
 }
@@ -323,6 +340,7 @@ impl EntityBehavior for SlideBlock
 fn settle(world: World, entity: Entity, here: BlockPos, state: Slide)
 {
     entity.kill();
+
     let placed: bool = world.isAir(here) && world.setBlock(here, state.m_block, state.m_meta).unwrap_or(false);
     if !placed
     {
@@ -348,12 +366,14 @@ fn strike(world: World, me: i32, at: [f64; 3])
 fn pillar(axis: usize) -> Cuboid
 {
     let (low, high): (f32, f32) = (slider::INSET, 16.0 - slider::INSET);
+
     let (from, to): ([f32; 3], [f32; 3]) = match axis
     {
         1 => ([0.0, low, low], [16.0, high, high]),
         2 => ([low, low, 0.0], [high, high, 16.0]),
         _ => ([low, 0.0, low], [high, 16.0, high]),
     };
+
     let first: i32 = axis as i32 * AXIS_STEP;
     Cuboid { from, to, metas: (first..first + slider::DELAYS).collect(), ..Cuboid::default() }
 }
@@ -369,7 +389,7 @@ fn lying() -> FaceTextures
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     super::put(
         ctx,
@@ -381,6 +401,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             .model(BlockModelSpec { cuboids: (0..AXES.len()).map(pillar).collect(), ..BlockModelSpec::default() })
             .behavior(Slider),
     )?;
+
     let variants: Vec<StateVariantSpec> = ["x", "z"]
         .into_iter()
         .map(|value| StateVariantSpec { when: when("axis", value), texture: None, textures: Some(lying()) })

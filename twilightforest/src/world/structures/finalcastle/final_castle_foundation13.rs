@@ -1,7 +1,7 @@
 // draft from ComponentTFFinalCastleFoundation13.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(random: &Random, i: i32, sideTower: &Piece) -> Rc<Piece>
+pub(crate) fn new(random: &Random, i: i32, sideTower: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::FinalCastleFoundation13);
     init(&this, random, i, sideTower);
@@ -9,7 +9,7 @@ pub fn new(random: &Random, i: i32, sideTower: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFFinalCastleFoundation13 constructor
-pub fn init(this: &Piece, _random: &Random, i: i32, sideTower: &Piece)
+pub(crate) fn init(this: &Piece, _random: &Random, i: i32, sideTower: &Piece)
 {
     this.m_depth.set(i);
     this.m_groundLevel.set(-1);
@@ -21,25 +21,28 @@ pub fn init(this: &Piece, _random: &Random, i: i32, sideTower: &Piece)
 }
 
 // ComponentTFFinalCastleFoundation13.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFFinalCastleFoundation13.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     if this.m_groundLevel.get() < 0
     {
-        this.m_groundLevel.set(final_castle_foundation13::getDeadrockLevel(this, world, sbb));
+        this.m_groundLevel.set(final_castle_foundation13::deadrockLevel(this, world, sbb));
+
         if this.m_groundLevel.get() < 0
         {
             return true;
         }
     }
+
     let height: i32 = this.m_box.get().m_max[1] - this.m_groundLevel.get();
     let mid: i32 = height / 2;
     let size: i32 = this.m_box.get().m_max[0] - this.m_box.get().m_min[0];
+
     for rotation in 0..4
     {
         this.fillDownTurned(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, 1, -1, 1, rotation, sbb);
@@ -65,6 +68,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             rotation,
             sbb,
         );
+
         for x in (6..(size - 3)).step_by(4)
         {
             this.fillDownTurned(
@@ -89,13 +93,15 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             );
         }
     }
-    return true;
+
+    true
 }
 
 // ComponentTFFinalCastleFoundation13.getDeadrockLevel
-pub fn getDeadrockLevel(_this: &Piece, world: &GenWorld, sbb: StructureBox) -> i32
+pub(crate) fn deadrockLevel(_this: &Piece, world: &GenWorld, sbb: StructureBox) -> i32
 {
     let mut groundLevel: i32 = 256;
+
     for y in (0 + 1..=150).rev()
     {
         let cx: i32 = sbb.centerX();
@@ -107,5 +113,6 @@ pub fn getDeadrockLevel(_this: &Piece, world: &GenWorld, sbb: StructureBox) -> i
             break;
         }
     }
-    return groundLevel;
+
+    groundLevel
 }

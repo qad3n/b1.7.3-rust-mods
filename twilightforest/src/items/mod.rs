@@ -1,18 +1,18 @@
 mod bows;
 mod gear;
-pub mod magic;
+pub(crate) mod magic;
 mod maps;
-pub mod moonworm;
+pub(crate) mod moonworm;
 mod powder;
 mod scepters;
 mod thrown;
 
 use crate::ids::item;
 use b173_api::prelude::*;
-pub use gear::{armorName, armorWorn};
+pub(crate) use gear::{armorName, armorWorn};
 
 // InventoryPlayer keeps boots, leggings, chestplate and helmet after the 36 main slots
-pub const ARMOR_FIRST_SLOT: i32 = 36;
+pub(crate) const ARMOR_FIRST_SLOT: i32 = 36;
 
 // a plain item with an icon and a name, ItemTF and ItemTFMeta
 struct Plain
@@ -84,9 +84,9 @@ const FOODS: [Food; 8] = [
     Food { m_name: item::EXPERIMENT_115, m_label: "Experiment 115", m_texture: "experiment115", m_heal: 4 },
 ];
 
-pub fn texture(name: &str) -> String { format!("twilightforest:item/{name}") }
+pub(crate) fn texture(name: &str) -> String { format!("twilightforest:item/{name}") }
 
-pub fn put(ctx: &mut RegisterCtx, name: &str, spec: ItemSpecBuilder) -> Result<()>
+pub(crate) fn put(ctx: &mut RegisterCtx, name: &str, spec: ItemSpecBuilder) -> Result<()>
 {
     ctx.items().register(name, spec)?;
     Ok(())
@@ -102,6 +102,7 @@ fn registerPlain(ctx: &mut RegisterCtx, rows: &[Plain], stack: Option<i32>) -> R
             .maxStack(stack.unwrap_or(row.m_stack));
         put(ctx, row.m_name, spec)?;
     }
+
     Ok(())
 }
 
@@ -116,10 +117,11 @@ fn registerFood(ctx: &mut RegisterCtx) -> Result<()>
             ItemSpecBuilder::new().name(row.m_label).texture(&texture(row.m_texture)).food(row.m_heal),
         )?;
     }
+
     Ok(())
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerPlain(ctx, &MATERIALS, None)?;
     // charms of keeping beyond the first never stack in the source either
@@ -136,7 +138,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 }
 
 // wears the held tool down by this many uses unless it is one of the exempt items
-pub fn wear(player: Player, uses: i32, exempt: &[&str])
+pub(crate) fn wear(player: Player, uses: i32, exempt: &[&str])
 {
     let Some(stack) = player.held()
     else
@@ -147,6 +149,7 @@ pub fn wear(player: Player, uses: i32, exempt: &[&str])
     {
         return;
     }
+
     if let Err(error) = player.damageHeld(uses)
     {
         b173_api::warn(&format!("wearing a held tool failed: {}", error.0));

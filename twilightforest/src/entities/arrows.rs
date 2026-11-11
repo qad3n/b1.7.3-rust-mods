@@ -4,10 +4,10 @@ use b173_api::prelude::*;
 use std::rc::Rc;
 
 // the twilight bows fire EntityArrow and its EntityIceArrow and EntitySeekerArrow subclasses, all drawn by RenderArrow
-pub const PLAIN: &str = "minecraft:arrow";
-pub const ICE: &str = "twilightforest:ice_arrow";
-pub const SEEKER: &str = "twilightforest:seeker_arrow";
-pub const SIDE: &str = "twilightforest:side_arrow";
+pub(crate) const PLAIN: &str = "minecraft:arrow";
+pub(crate) const ICE: &str = "twilightforest:ice_arrow";
+pub(crate) const SEEKER: &str = "twilightforest:seeker_arrow";
+pub(crate) const SIDE: &str = "twilightforest:side_arrow";
 const KINDS: [&str; 4] = [PLAIN, ICE, SEEKER, SIDE];
 
 mod launch
@@ -57,7 +57,8 @@ fn fromEyes(world: World, arrow: [f64; 3], target: &EntityInfo) -> [f64; 3]
 }
 
 // EntityArrow(world, player, velocity) with setArrowHeading, the triple bow's side arrows lift and rise a little
-pub fn shoot(world: World, kind: &str, shooter: &EntityInfo, speed: f64, lift: f64, rise: f64) -> Option<Entity>
+pub(crate) fn shoot(world: World, kind: &str, shooter: &EntityInfo, speed: f64, lift: f64, rise: f64)
+-> Option<Entity>
 {
     let yaw: f64 = f64::from(shooter.yaw).to_radians();
     let from: [f64; 3] = [
@@ -65,9 +66,11 @@ pub fn shoot(world: World, kind: &str, shooter: &EntityInfo, speed: f64, lift: f
         shooter.pos[1] + launch::EYE - launch::DROP + rise,
         shooter.pos[2] - yaw.sin() * launch::SIDE,
     ];
+
     let entity: Entity = match world.spawnEntity(kind, from)
     {
         Ok(entity) => entity,
+
         Err(error) =>
         {
             warn(&format!("cannot shoot {kind}: {}", error.0));
@@ -115,10 +118,12 @@ impl EntityBehavior for Side
 
         state.m_stuck = state.m_last == Some(info.pos);
         state.m_last = Some(info.pos);
+
         if state.m_stuck
         {
             entity.setField(EntityField::Shooter, -1.0);
         }
+
         if let Err(error) = entity.setData(&state)
         {
             warn(&format!("side arrow rest: {}", error.0));
@@ -183,6 +188,7 @@ impl EntityBehavior for Seeker
 
         let mut state: Homing = entity.data();
         let mut motion: [f64; 3] = info.motion;
+
         match state.m_target
         {
             None => state.m_target = Self::find(entity, info),
@@ -192,12 +198,14 @@ impl EntityBehavior for Seeker
                 None => state.m_target = None,
             },
         }
+
         motion[1] += seek::LIFT;
 
         if let Err(error) = entity.setMotion(motion)
         {
             warn(&format!("seeker arrow motion: {}", error.0));
         }
+
         if let Err(error) = entity.setData(&state)
         {
             warn(&format!("seeker arrow target: {}", error.0));
@@ -237,6 +245,7 @@ fn hurt(event: &mut Event)
         let (level, ticks): (i32, i32) = (2, 200);
         crate::effects::give(Entity { world, id: target.id }, crate::effects::Effect::Slowness, level, ticks);
     }
+
     let holding: bool = player.held().is_some_and(|stack| stack.item.is(item::ENDER_BOW));
     let Some(shooter) = world.entity(source).filter(|shooter| shooter.player.is_some() && holding)
     else
@@ -258,13 +267,14 @@ fn hurt(event: &mut Event)
         {
             warn(&format!("ender bow swap: {}", error.0));
         }
+
         entity.setField(EntityField::Yaw, f64::from(yaw));
         entity.setField(EntityField::Pitch, f64::from(pitch));
         world.playSound(to.pos, "mob.endermen.portal", 1.0, 1.0);
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let rows: [(&str, Option<Rc<dyn EntityBehavior>>, i32, i32, bool); 3] = [
         // EntityIceArrow has no entity registration upstream, it tracks as a vanilla arrow
@@ -272,6 +282,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         ("side_arrow", Some(Rc::new(Side)), tracking::RANGE, tracking::PERIOD, false),
         ("seeker_arrow", Some(Rc::new(Seeker)), seek::TRACKING, 1, true),
     ];
+
     for (name, behavior, range, frequency, velocity) in rows
     {
         ctx.entities().register(
@@ -287,6 +298,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             behavior,
         )?;
     }
+
     ctx.events().on::<LivingHurt>(Priority::Normal, hurt)?;
     Ok(())
 }

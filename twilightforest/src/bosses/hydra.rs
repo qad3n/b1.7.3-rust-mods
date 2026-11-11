@@ -5,13 +5,13 @@ use crate::math::look;
 use crate::models::{Program, tf_hydra, tf_hydra_head, tf_hydra_mortar, tf_hydra_neck};
 use crate::progress::{self, Gate};
 use b173_api::prelude::*;
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
 // EntityTFHydra and HydraHeadContainer: a body that only turns, seven heads on necks that bite, breathe fire and
 // lob mortars, each head knocked out after enough damage and grown back with a second one
-pub const NAME: &str = "hydra";
+pub(crate) const NAME: &str = "hydra";
 const LABEL: &str = "Hydra";
 const HEAD: &str = "hydra_head";
 const NECK: &str = "hydra_neck";
@@ -337,10 +337,12 @@ fn wrap(angle: f32) -> f32
     {
         angle -= 360.0;
     }
+
     if angle < -180.0
     {
         angle += 360.0;
     }
+
     angle
 }
 
@@ -367,11 +369,11 @@ fn add(a: [f64; 3], b: [f64; 3]) -> [f64; 3] { [a[0] + b[0], a[1] + b[1], a[2] +
 
 impl Head
 {
-    fn start(active: bool) -> Head
+    fn start(active: bool) -> Self
     {
         let state: State = if active { State::Idle } else { State::Dead };
         let ticks: i32 = if active { 60 } else { 20 };
-        Head { m_prev: state, m_state: state, m_needed: ticks, m_progress: ticks, m_respawn: -1, ..Head::default() }
+        Self { m_prev: state, m_state: state, m_needed: ticks, m_progress: ticks, m_respawn: -1, ..Self::default() }
     }
 
     fn active(&self) -> bool { !matches!(self.m_state, State::Dying | State::Dead) }
@@ -420,6 +422,7 @@ impl Head
         let next: State = match self.m_next.take()
         {
             Some(next) => next,
+
             None =>
             {
                 let flowing: State = FLOW[self.m_state as usize].0;
@@ -447,6 +450,7 @@ fn part(world: World, id: Option<i32>) -> Option<Entity> { id.map(|id| Entity { 
 fn spawnParts(entity: Entity, info: &EntityInfo, brain: &mut Brain)
 {
     let world: World = entity.world;
+
     for (number, head) in brain.m_heads.iter_mut().enumerate()
     {
         if head.m_id.is_none()
@@ -454,6 +458,7 @@ fn spawnParts(entity: Entity, info: &EntityInfo, brain: &mut Brain)
             *head = Head::start(number < START_ACTIVE);
             head.m_id = spawnPart(world, HEAD, info.pos, entity.id, Some(number));
         }
+
         for neck in &mut head.m_necks
         {
             if neck.is_none()
@@ -473,6 +478,7 @@ fn spawnPart(world: World, kind: &str, at: [f64; 3], hydra: i32, head: Option<us
             PARTS.with(|parts| parts.borrow_mut().insert((world.dimension, spawned.id), (hydra, head)));
             Some(spawned.id)
         }
+
         Err(error) =>
         {
             warn(&format!("cannot spawn {kind}: {}", error.0));
@@ -485,6 +491,7 @@ fn spawnPart(world: World, kind: &str, at: [f64; 3], hydra: i32, head: Option<us
 fn placeHead(info: &EntityInfo, ticks: i32, number: usize, head: &Head) -> [f64; 3]
 {
     let (periodX, periodY): (f32, f32) = SWAY[number];
+
     let (swingX, swingY): (f32, f32) = if head.active()
     {
         ((ticks as f32 / periodX).sin() * 3.0, (ticks as f32 / periodY).sin() * 5.0)
@@ -524,6 +531,7 @@ fn eyesOf(world: World, id: i32) -> Option<[f64; 3]>
 fn faceHead(world: World, info: &EntityInfo, at: [f64; 3], number: usize, head: &mut Head)
 {
     let target: Option<[f64; 3]> = head.m_target.and_then(|id| eyesOf(world, id));
+
     match head.m_state
     {
         State::BiteReady =>
@@ -532,6 +540,7 @@ fn faceHead(world: World, info: &EntityInfo, at: [f64; 3], number: usize, head: 
             {
                 faceToward(head, at, target, hydra::HEAD_TURN);
             }
+
             let (high, low): (f32, f32) = if number == 2
             {
                 (60.0, 90.0)
@@ -545,10 +554,12 @@ fn faceHead(world: World, info: &EntityInfo, at: [f64; 3], number: usize, head: 
             {
                 head.m_yaw = info.yaw + high;
             }
+
             if offset < low
             {
                 head.m_yaw = info.yaw + low;
             }
+
             let aim: [f64; 3] = look(head.m_yaw, head.m_pitch);
             head.m_aim = [
                 at[0] + aim[0] * hydra::BITE_AIM,
@@ -556,15 +567,19 @@ fn faceHead(world: World, info: &EntityInfo, at: [f64; 3], number: usize, head: 
                 at[2] + aim[2] * hydra::BITE_AIM,
             ];
         }
+
         State::BiteBiting | State::BiteEnding =>
         {
             if let Some(target) = target
             {
                 faceToward(head, at, target, hydra::HEAD_TURN);
             }
+
             head.m_pitch += 45.0;
         }
+
         State::RoarRawr => faceToward(head, at, head.m_aim, hydra::TURN),
+
         State::FlameBeginning | State::FlameBreathing =>
         {
             if let Some(goal) = head.m_target.and_then(|id| Entity { world, id }.info())
@@ -573,9 +588,11 @@ fn faceHead(world: World, info: &EntityInfo, at: [f64; 3], number: usize, head: 
                 let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
                 head.m_aim = [0, 1, 2].map(|axis| head.m_aim[axis] + delta[axis] / length * hydra::FLAME_TRACKING);
             }
+
             let aim: [f64; 3] = head.m_aim;
             faceToward(head, at, aim, hydra::HEAD_TURN);
         }
+
         _ if head.active() => match (target, head.m_target.and_then(|id| Entity { world, id }.info()))
         {
             (Some(eyes), Some(goal)) =>
@@ -583,6 +600,7 @@ fn faceHead(world: World, info: &EntityInfo, at: [f64; 3], number: usize, head: 
                 faceToward(head, at, eyes, hydra::HEAD_TURN);
                 head.m_aim = goal.pos;
             }
+
             _ =>
             {
                 let angle: f64 = f64::from(info.yaw).to_radians();
@@ -623,6 +641,7 @@ fn lookTarget(world: World, at: [f64; 3], head: &Head) -> Option<EntityInfo>
 fn attack(entity: Entity, at: [f64; 3], head: &mut Head)
 {
     let world: World = entity.world;
+
     let mouth: [f64; 3] =
     {
         let aim: [f64; 3] = look(head.m_yaw, head.m_pitch);
@@ -632,6 +651,7 @@ fn attack(entity: Entity, at: [f64; 3], head: &mut Head)
             at[2] + aim[2] * hydra::MOUTH_REACH,
         ]
     };
+
     match head.m_state
     {
         State::MortarLaunch if head.m_progress % hydra::MORTAR_PERIOD == 0 =>
@@ -649,6 +669,7 @@ fn attack(entity: Entity, at: [f64; 3], head: &mut Head)
             launchMortar(world, mouth, head.m_yaw, head.m_pitch, blind, Some(entity.id));
             world.playSound(at, "mob.ghast.fireball", 1.0, 1.0);
         }
+
         State::BiteBiting =>
         {
             let half: f64 = hydra::HEAD_SIZE / 2.0;
@@ -665,6 +686,7 @@ fn attack(entity: Entity, at: [f64; 3], head: &mut Head)
                 }
             }
         }
+
         State::FlameBreathing =>
         {
             let Some(hit) = lookTarget(world, at, head)
@@ -678,12 +700,14 @@ fn attack(entity: Entity, at: [f64; 3], head: &mut Head)
                 head.end();
                 return;
             }
+
             let victim: Entity = Entity { world, id: hit.id };
             if crate::combat::hit(victim, hydra::FLAME_DAMAGE, None, crate::combat::kind::IN_FIRE)
             {
                 victim.setField(EntityField::FireTicks, hydra::FLAME_BURN);
             }
         }
+
         _ =>
         {}
     }
@@ -713,7 +737,9 @@ fn mouthParticles(world: World, info: &EntityInfo, shown: HeadShown)
         info.pos[1] + 1.0 + aim[1] * hydra::MOUTH_REACH,
         info.pos[2] + aim[2] * hydra::MOUTH_REACH,
     ];
+
     let jitter = || [0, 1, 2].map(|axis| mouth[axis] + f64::from(ids::fraction(world)) - 0.5);
+
     match shown.m_state
     {
         State::FlameBeginning =>
@@ -721,6 +747,7 @@ fn mouthParticles(world: World, info: &EntityInfo, shown: HeadShown)
             world.particle("flame", jitter(), [0.0; 3]);
             world.particle("smoke", jitter(), [0.0; 3]);
         }
+
         State::FlameBreathing =>
         {
             for _ in 0..5
@@ -732,6 +759,7 @@ fn mouthParticles(world: World, info: &EntityInfo, shown: HeadShown)
                 world.particle("flame", mouth, motion);
             }
         }
+
         State::BiteBeginning | State::BiteReady => world.particle("splash", jitter(), [0.0; 3]),
         State::MortarBeginning => world.particle("largesmoke", jitter(), [0.0; 3]),
         _ =>
@@ -744,6 +772,7 @@ fn placeNecks(world: World, info: &EntityInfo, number: usize, at: [f64; 3], head
 {
     let (root, turn): ([f64; 3], f32) = NECK_ROOTS[number];
     let start: [f64; 3] = add(info.pos, turnY(root, f64::from(-(info.yaw + turn)).to_radians()));
+
     let behind: [f64; 3] = if head.m_pitch > 0.0
     {
         turnY([0.0, 0.0, -1.0], f64::from(-head.m_yaw).to_radians())
@@ -754,6 +783,7 @@ fn placeNecks(world: World, info: &EntityInfo, number: usize, at: [f64; 3], head
     };
     let end: [f64; 3] = add(at, behind);
     let visible: bool = head.m_state != State::Dead;
+
     for (index, neck) in head.m_necks.iter().enumerate()
     {
         let Some(neck) = part(world, *neck)
@@ -775,6 +805,7 @@ fn placeNecks(world: World, info: &EntityInfo, number: usize, at: [f64; 3], head
         };
         let _ = neck.setPosition(spot);
         let _ = neck.setMotion([0.0; 3]);
+
         neck.setField(EntityField::Yaw, f64::from(head.m_yaw + (info.yaw - head.m_yaw) * factor as f32));
         neck.setField(EntityField::Pitch, f64::from(head.m_pitch - head.m_pitch * factor as f32));
     }
@@ -801,7 +832,9 @@ fn updateHead(entity: Entity, info: &EntityInfo, ticks: i32, number: usize, head
             head.m_respawn = -1;
         }
     }
+
     head.advance();
+
     let at: [f64; 3] = placeHead(info, ticks, number, head);
     let at: [f64; 3] = if head.m_state == State::Dead
     {
@@ -813,29 +846,37 @@ fn updateHead(entity: Entity, info: &EntityInfo, ticks: i32, number: usize, head
     };
     faceHead(world, info, at, number, head);
     attack(entity, at, head);
+
     let _ = headEntity.setPosition(at);
     let _ = headEntity.setMotion([0.0; 3]);
+
     headEntity.setField(EntityField::Yaw, f64::from(head.m_yaw));
     headEntity.setField(EntityField::Pitch, f64::from(head.m_pitch));
+
     let shown: HeadShown = HeadShown { m_state: head.m_state, m_mouth: head.pose(number, 3) };
     let old: HeadShown = headEntity.synced();
     if old.m_state != shown.m_state || (old.m_mouth - shown.m_mouth).abs() > 0.05
     {
         let _ = headEntity.setSynced(&shown);
     }
+
     if head.active()
     {
         destroyAround(world, at, hydra::HEAD_SIZE / 2.0, hydra::HEAD_SIZE);
     }
+
     placeNecks(world, info, number, at, head);
+
     if head.m_state == State::RoarRawr && head.m_progress == 1
     {
         world.playSound(at, "twilightforest.mob.hydra.roar", 1.25, 0.7 + ids::fraction(world) * 0.3);
     }
+
     if head.m_state == State::BiteReady && head.m_progress == hydra::WARN_TICK
     {
         world.playSound(at, "twilightforest.mob.hydra.warn", 2.0, 0.7 + ids::fraction(world) * 0.3);
     }
+
     if head.m_state == State::FlameBreathing && ticks % 5 == 0
     {
         world.playSound(at, "mob.ghast.fireball", 0.5 + ids::fraction(world), 0.3 + ids::fraction(world) * 0.7);
@@ -850,6 +891,7 @@ fn destroyAround(world: World, center: [f64; 3], half: f64, height: f64)
         [(center[0] - half).floor() as i32, center[1].floor() as i32, (center[2] - half).floor() as i32];
     let high: [i32; 3] =
         [(center[0] + half).floor() as i32, (center[1] + height).floor() as i32, (center[2] + half).floor() as i32];
+
     for x in low[0]..=high[0]
     {
         for y in low[1]..=high[1]
@@ -888,6 +930,7 @@ fn choose(world: World, info: &EntityInfo, target: &EntityInfo, brain: &mut Brai
 {
     let range: f64 = distance(info.pos, target.pos);
     let above: bool = target.pos[1] > info.pos[1] + Entity { world, id: info.id }.field(EntityField::Height);
+
     for number in 0..HEADS
     {
         if brain.m_heads[number].m_state != State::Idle || crowded(brain, number)
@@ -918,6 +961,7 @@ fn choose(world: World, info: &EntityInfo, target: &EntityInfo, brain: &mut Brai
         {
             None
         };
+
         if next.is_some()
         {
             brain.m_heads[number].m_next = next;
@@ -948,6 +992,7 @@ fn secondary(world: World, info: &EntityInfo, brain: &mut Brain)
     };
 
     let range: f64 = distance(other.pos, info.pos);
+
     for number in 1..HEADS
     {
         let head: &Head = &brain.m_heads[number];
@@ -975,6 +1020,7 @@ fn secondary(world: World, info: &EntityInfo, brain: &mut Brain)
         {
             None
         };
+
         if next.is_some()
         {
             let head: &mut Head = &mut brain.m_heads[number];
@@ -989,6 +1035,7 @@ fn secondary(world: World, info: &EntityInfo, brain: &mut Brain)
 fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
 {
     let world: World = entity.world;
+
     for number in 0..HEADS
     {
         if !brain.m_heads[number].active() || brain.m_heads[number].m_damage <= hydra::HEAD_MAX_DAMAGE
@@ -1015,12 +1062,14 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
                 brain.m_target = Some(player.id);
                 brain.m_targetTime = hydra::TARGET_TIME + world.random(hydra::TARGET_SPREAD);
             }
+
             None => brain.m_spin = (ids::fraction(world) - 0.5) * hydra::SPIN,
         }
     }
 
     let target: Option<EntityInfo> =
         brain.m_target.and_then(|id| Entity { world, id }.info()).filter(|target| target.alive);
+
     match &target
     {
         Some(target) =>
@@ -1028,6 +1077,7 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
             let yaw: f32 =
                 ((target.pos[2] - info.pos[2]).atan2(target.pos[0] - info.pos[0]).to_degrees() - 90.0) as f32;
             entity.setField(EntityField::Yaw, f64::from(approach(info.yaw, yaw, hydra::TURN)));
+
             for head in brain.m_heads.iter_mut()
             {
                 if !head.attacking() && !head.m_secondary
@@ -1035,32 +1085,40 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
                     head.m_target = Some(target.id);
                 }
             }
+
             let seen: bool =
                 world.rayTrace([info.pos[0], info.pos[1] + hydra::HEAD_RISE, info.pos[2]], target.pos, false).is_none();
+
             if seen
             {
                 choose(world, info, target, brain);
             }
+
             brain.m_targetTime -= 1;
             if brain.m_targetTime <= 0 || distance(target.pos, info.pos) > hydra::SEARCH
             {
                 brain.m_target = None;
             }
         }
+
         None =>
         {
             brain.m_target = None;
+
             if ids::fraction(world) < hydra::SPIN_CHANCE
             {
                 brain.m_spin = (ids::fraction(world) - 0.5) * hydra::SPIN;
             }
+
             entity.setField(EntityField::Yaw, f64::from(wrap(info.yaw + brain.m_spin)));
+
             for head in brain.m_heads.iter_mut().filter(|head| head.m_state == State::Idle)
             {
                 head.m_target = None;
             }
         }
     }
+
     secondary(world, info, brain);
 }
 
@@ -1088,6 +1146,7 @@ fn shove(world: World, center: [f64; 3], half: f64)
 fn body(entity: Entity, info: &EntityInfo, brain: &mut Brain)
 {
     let world: World = entity.world;
+
     brain.m_ticks += 1;
     spawnParts(entity, info, brain);
     brain.m_quiet += 1;
@@ -1096,9 +1155,12 @@ fn body(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         let health: f64 = entity.field(EntityField::Health);
         entity.setField(EntityField::Health, (health + 1.0).min(f64::from(hydra::HEALTH)));
     }
+
     think(entity, info, brain);
+
     let _ = entity.setMotion([0.0, info.motion[1], 0.0]);
     let ticks: i32 = brain.m_ticks;
+
     for number in 0..HEADS
     {
         updateHead(entity, info, ticks, number, &mut brain.m_heads[number]);
@@ -1136,6 +1198,7 @@ fn dying(entity: Entity, info: &EntityInfo, brain: &mut Brain) -> bool
         for head in &mut brain.m_heads
         {
             head.m_respawn = -1;
+
             if head.active()
             {
                 head.m_next = Some(State::Idle);
@@ -1143,6 +1206,7 @@ fn dying(entity: Entity, info: &EntityInfo, brain: &mut Brain) -> bool
             }
         }
     }
+
     if time <= death::LAST_HEAD && time % death::HEAD_EVERY == 0
     {
         let head: &mut Head = &mut brain.m_heads[(time / death::HEAD_EVERY - 1) as usize];
@@ -1152,8 +1216,10 @@ fn dying(entity: Entity, info: &EntityInfo, brain: &mut Brain) -> bool
             head.end();
         }
     }
+
     brain.m_ticks += 1;
     let ticks: i32 = brain.m_ticks;
+
     for number in 0..HEADS
     {
         updateHead(entity, info, ticks, number, &mut brain.m_heads[number]);
@@ -1178,6 +1244,7 @@ fn deathPuffs(world: World, info: &EntityInfo)
     let size: f64 = hydra::BODY_SIZE;
     let jitter =
         || crate::math::gaussian(f64::from(ids::fraction(world)), f64::from(ids::fraction(world))) * death::SPREAD;
+
     for _ in 0..death::PUFFS
     {
         let name: &str = if world.random(2) == 0
@@ -1208,6 +1275,7 @@ fn removeParts(world: World, brain: Brain)
             {
                 crate::particles::spawn(world, "largeexplode", info.pos, [0.0; 3]);
             }
+
             Entity { world, id }.kill();
             PARTS.with(|parts| parts.borrow_mut().remove(&(world.dimension, id)));
         }
@@ -1230,6 +1298,7 @@ impl EntityBehavior for Hydra
         {
             body(entity, info, brains.borrow_mut().entry((entity.world.dimension, entity.id)).or_default())
         });
+
         showBar(entity, LABEL, info);
     }
 
@@ -1252,12 +1321,14 @@ impl EntityBehavior for Hydra
                 brain.m_quiet = 0;
             }
         });
+
         Some((amount as f32 / hydra::ARMOR).round() as i32)
     }
 
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
         let world: World = entity.world;
+
         if info.health.is_none_or(|health| health > 0)
         {
             return;
@@ -1272,6 +1343,7 @@ impl EntityBehavior for Hydra
         let key: (i32, i32) = (world.dimension, entity.id);
         let done: bool =
             BRAINS.with(|brains| brains.borrow_mut().get_mut(&key).is_some_and(|brain| dying(entity, info, brain)));
+
         if done && let Some(brain) = BRAINS.with(|brains| brains.borrow_mut().remove(&key))
         {
             removeParts(world, brain);
@@ -1281,6 +1353,7 @@ impl EntityBehavior for Hydra
     fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
         let world: World = entity.world;
+
         let Some(info) = entity.info()
         else
         {
@@ -1293,10 +1366,12 @@ impl EntityBehavior for Hydra
             {
                 dropAt(world, info.pos, item::HYDRA_CHOP, 5);
             }
+
             dropAt(world, info.pos, item::FIERY_BLOOD, world.random(4) + 7);
             dropAt(world, info.pos, item::HYDRA_TROPHY, 1);
             super::conquer(world, info.pos);
         }
+
         if let Some(player) = killer(world, source)
         {
             progress::grant(player, Gate::Hunter);
@@ -1308,6 +1383,7 @@ impl EntityBehavior for Hydra
     fn pose(&self, _input: &PoseInput) -> Pose
     {
         let mut program: Program = Program::new();
+
         for part in [
             tf_hydra::BODY,
             tf_hydra::LEG1,
@@ -1361,27 +1437,32 @@ fn hurtFromPart(entity: Entity, source: Option<i32>, amount: i32)
     }
 
     let isHead: bool = entity.info().is_some_and(|info| info.kind.as_ref().is_some_and(|kind| kind.path() == HEAD));
+
     let dealt: Option<i32> = BRAINS.with(|brains|
     {
-        let mut brains = brains.borrow_mut();
+        let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
         let brain: &mut Brain = brains.get_mut(&(world.dimension, hydraId))?;
         let head: Option<&mut Head> = number.filter(|_| isHead).map(|number| &mut brain.m_heads[number]);
         let dealt: i32 = match head
         {
             Some(head) if !head.active() => return None,
+
             Some(head) if head.pose(number.unwrap_or(0), 3) > 0.5 =>
             {
                 head.m_damage += amount;
                 amount
             }
+
             Some(head) =>
             {
                 let armored: i32 = (amount as f32 / hydra::ARMOR).round() as i32;
                 head.m_damage += armored;
                 armored
             }
+
             None => (amount as f32 / hydra::ARMOR).round() as i32,
         };
+
         brain.m_quiet = 0;
         Some(dealt)
     });
@@ -1425,12 +1506,14 @@ impl EntityBehavior for Part
         {
             hurtFromPart(entity, source, amount);
         }
+
         None
     }
 
     fn pose(&self, input: &PoseInput) -> Pose
     {
         let mut program: Program = Program::new();
+
         if !self.m_head
         {
             program.part(
@@ -1446,6 +1529,7 @@ impl EntityBehavior for Part
         {
             return Pose { pre: Vec::new(), model: Vec::new() };
         }
+
         let quarter: f32 = std::f32::consts::PI / 12.0;
         let third: f32 = std::f32::consts::PI / 3.0;
         let pitch: f32 = input.head_pitch.to_radians() - shown.m_mouth * quarter;
@@ -1469,6 +1553,7 @@ struct Shell
 fn detonate(entity: Entity, at: [f64; 3], state: &Shell)
 {
     let world: World = entity.world;
+
     let power: f32 = if state.m_mega
     {
         mortar::MEGA
@@ -1477,10 +1562,12 @@ fn detonate(entity: Entity, at: [f64; 3], state: &Shell)
     {
         mortar::SMALL
     };
+
     if let Err(error) = world.explode(at, power)
     {
         warn(&format!("hydra mortar blast: {}", error.0));
     }
+
     for near in world.entitiesNear(at, 1.5)
     {
         if near.health.is_some() && !hydraPart(&near)
@@ -1492,6 +1579,7 @@ fn detonate(entity: Entity, at: [f64; 3], state: &Shell)
             }
         }
     }
+
     entity.kill();
 }
 
@@ -1514,13 +1602,16 @@ impl EntityBehavior for Mortar
         if state.m_landed
         {
             let _ = entity.setMotion([info.motion[0] * 0.9, 0.0, info.motion[2] * 0.9]);
+
             state.m_fuse -= 1;
             if state.m_fuse <= 0
             {
                 detonate(entity, info.pos, &state);
                 return;
             }
+
             let _ = entity.setData(&state);
+
             return;
         }
 
@@ -1530,11 +1621,13 @@ impl EntityBehavior for Mortar
             .entitiesAlong(from, to, mortar::HIT_RADIUS, state.m_owner)
             .iter()
             .any(|hit| hit.health.is_some() && !hydraPart(hit));
+
         if struck
         {
             detonate(entity, to, &state);
             return;
         }
+
         if let Some(block) = world.rayTrace(from, to, false)
         {
             if state.m_mega
@@ -1542,12 +1635,16 @@ impl EntityBehavior for Mortar
                 detonate(entity, block.point, &state);
                 return;
             }
+
             state.m_landed = true;
+
             let _ = entity.setPosition(block.point);
             let _ = entity.setMotion([info.motion[0], 0.0, info.motion[2]]);
             let _ = entity.setData(&state);
+
             return;
         }
+
         let _ = entity.setMotion([
             info.motion[0] * mortar::DRAG,
             info.motion[1] * mortar::DRAG - mortar::GRAVITY,
@@ -1563,7 +1660,7 @@ impl EntityBehavior for Mortar
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,

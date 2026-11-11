@@ -1,9 +1,9 @@
 // draft from ComponentTFTrollCaveMain.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub const UBEROUS_GEN: Gen = Gen::Blob { block: blk("tf:uberousSoil"), size: 4 };
+pub(crate) const UBEROUS_GEN: Gen = Gen::Blob { block: blk("tf:uberousSoil"), size: 4 };
 
-pub fn new6(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new6(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::TrollCaveMain);
     init6(&this, world, random, i, x, y, z);
@@ -11,15 +11,16 @@ pub fn new6(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) -
 }
 
 // ComponentTFTrollCaveMain constructor
-pub fn init(this: &Piece, index: i32) { this.m_depth.set(index); }
+pub(crate) fn init(this: &Piece, index: i32) { this.m_depth.set(index); }
 
 // ComponentTFTrollCaveMain constructor
-pub fn init6(this: &Piece, _world: &GenWorld, _random: &Random, _i: i32, x: i32, mut y: i32, z: i32)
+pub(crate) fn init6(this: &Piece, _world: &GenWorld, _random: &Random, _i: i32, x: i32, mut y: i32, z: i32)
 {
     this.setMode(0);
     y += 10;
     this.m_size.set(30);
     this.m_height.set(20);
+
     let radius: i32 = this.m_size.get() / 2;
     this.m_box.set(boxFor(
         x,
@@ -36,11 +37,11 @@ pub fn init6(this: &Piece, _world: &GenWorld, _random: &Random, _i: i32, x: i32,
 }
 
 // ComponentTFTrollCaveMain.func_74861_a
-pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     for i in 0..4
     {
-        let dest: Option<[i32; 3]> = troll_cave_main::getValidOpening3(this, random, 5, i);
+        let dest: Option<[i32; 3]> = troll_cave_main::validOpening3(this, random, 5, i);
         this.makeSmallerCave(
             list,
             random,
@@ -53,6 +54,7 @@ pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
             i,
         );
     }
+
     let castle: Rc<Piece> = cloud_castle::new(
         this.depth() + 1,
         this.m_box.get().m_min[0] + ((this.m_box.get().m_max[0] - this.m_box.get().m_min[0]) / 2),
@@ -61,6 +63,7 @@ pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
     );
     list.push(Rc::clone(&castle));
     castle.build(this, list, random);
+
     let vault: Rc<Piece> = troll_vault::new(
         this.depth() + 1,
         this.m_box.get().m_min[0] + ((this.m_box.get().m_max[0] - this.m_box.get().m_min[0]) / 2),
@@ -72,7 +75,7 @@ pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFTrollCaveMain.makeSmallerCave
-pub fn makeSmallerCave(
+pub(crate) fn makeSmallerCave(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -93,13 +96,14 @@ pub fn makeSmallerCave(
     {
         return false;
     }
+
     list.push(Rc::clone(&cave));
-    cave.build(&Rc::clone(&list[(0) as usize]), list, random);
-    return true;
+    cave.build(&Rc::clone(&list[0usize]), list, random);
+    true
 }
 
 // ComponentTFTrollCaveMain.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     let decoRNG: Random = Random::withSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
@@ -117,9 +121,10 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         this.m_height.get() - 1,
         this.m_size.get() - 1,
     );
+
     for _i in 0..128
     {
-        let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
+        let dest: [i32; 3] = troll_cave_main::coordsInCave(this, &decoRNG);
         troll_cave_main::generateBlockStalactite9(
             this,
             world,
@@ -133,9 +138,10 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             sbb,
         );
     }
+
     for _i in 0..32
     {
-        let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
+        let dest: [i32; 3] = troll_cave_main::coordsInCave(this, &decoRNG);
         troll_cave_main::generateBlockStalactite9(
             this,
             world,
@@ -149,26 +155,28 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             sbb,
         );
     }
+
     for _i in 0..32
     {
-        let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
+        let dest: [i32; 3] = troll_cave_main::coordsInCave(this, &decoRNG);
         troll_cave_main::generateAtSurface(this, world, UBEROUS_GEN, &decoRNG, dest[0], 60, dest[2], sbb);
     }
-    return true;
+
+    true
 }
 
 // ComponentTFTrollCaveMain.getCoordsInCave
-pub fn getCoordsInCave(this: &Piece, random: &Random) -> [i32; 3]
+pub(crate) fn coordsInCave(this: &Piece, random: &Random) -> [i32; 3]
 {
-    return [
+    [
         random.nextIntBounded(this.m_size.get() - 1),
         random.nextIntBounded(this.m_height.get() - 1),
         random.nextIntBounded(this.m_size.get() - 1),
-    ];
+    ]
 }
 
 // ComponentTFTrollCaveMain.hollowCaveMiddle
-pub fn hollowCaveMiddle(
+pub(crate) fn hollowCaveMiddle(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,
@@ -182,6 +190,7 @@ pub fn hollowCaveMiddle(
 )
 {
     let threshold: i32 = this.m_size.get() / 5;
+
     for y in minY..=maxY
     {
         for x in minX..=maxX
@@ -207,17 +216,20 @@ pub fn hollowCaveMiddle(
 }
 
 // ComponentTFTrollCaveMain.getValidOpening
-pub fn getValidOpening3(this: &Piece, random: &Random, _caveHeight: i32, direction: i32) -> Option<[i32; 3]>
+pub(crate) fn validOpening3(this: &Piece, random: &Random, _caveHeight: i32, direction: i32) -> Option<[i32; 3]>
 {
     let offset: i32 = this.m_size.get() / 4;
     let wLength: i32 = this.m_size.get() - (offset * 2);
+
     if (direction != 0) && (direction != 2)
     {
         if (direction != 1) && (direction != 3)
         {
             return None;
         }
+
         let rx: i32 = offset + random.nextIntBounded(wLength);
+
         let rz: i32 = if direction == 1
         {
             this.m_size.get() - 1
@@ -227,7 +239,7 @@ pub fn getValidOpening3(this: &Piece, random: &Random, _caveHeight: i32, directi
             0
         };
         let ry: i32 = random.nextIntBounded(offset) - random.nextIntBounded(offset);
-        return Some([rx, ry, rz]);
+        Some([rx, ry, rz])
     }
     else
     {
@@ -241,50 +253,36 @@ pub fn getValidOpening3(this: &Piece, random: &Random, _caveHeight: i32, directi
         };
         let rz: i32 = offset + random.nextIntBounded(wLength);
         let ry: i32 = random.nextIntBounded(offset) - random.nextIntBounded(offset);
-        return Some([rx, ry, rz]);
+        Some([rx, ry, rz])
     }
 }
 
 // ComponentTFTrollCaveMain.offsetTowerCCoords
-pub fn offsetTowerCCoords(this: &Piece, x: i32, y: i32, z: i32, towerSize: i32, direction: i32) -> [i32; 3]
+pub(crate) fn offsetTowerCCoords(this: &Piece, x: i32, y: i32, z: i32, towerSize: i32, direction: i32) -> [i32; 3]
 {
     let dx: i32 = this.xAt(x, z);
     let dy: i32 = this.yAt(y);
     let dz: i32 = this.zAt(x, z);
-    let var10000: [i32; 3];
-    match direction
+
+    let var10000: [i32; 3] = match direction
     {
-        0 =>
-        {
-            var10000 = [dx - 1, dy - 1, dz - (towerSize / 2)];
-        }
-        1 =>
-        {
-            var10000 = [dx + (towerSize / 2), dy - 1, dz - 1];
-        }
-        2 =>
-        {
-            var10000 = [dx + 1, dy - 1, dz + (towerSize / 2)];
-        }
-        3 =>
-        {
-            var10000 = [dx - (towerSize / 2), dy - 1, dz + 1];
-        }
-        _ =>
-        {
-            var10000 = [x, y, z];
-        }
-    }
-    return var10000;
+        0 => [dx - 1, dy - 1, dz - (towerSize / 2)],
+        1 => [dx + (towerSize / 2), dy - 1, dz - 1],
+        2 => [dx + 1, dy - 1, dz + (towerSize / 2)],
+        3 => [dx - (towerSize / 2), dy - 1, dz + 1],
+        _ => [x, y, z],
+    };
+    var10000
 }
 
 // ComponentTFTrollCaveMain.isBoundingBoxOutOfHighlands
-pub fn isBoundingBoxOutOfHighlands(this: &Piece, world: &GenWorld, _sbb: StructureBox) -> bool
+pub(crate) fn boundingBoxOutOfHighlands(this: &Piece, world: &GenWorld, _sbb: StructureBox) -> bool
 {
     let minX: i32 = this.m_box.get().m_min[0] - 1;
     let minZ: i32 = this.m_box.get().m_min[2] - 1;
     let maxX: i32 = this.m_box.get().m_max[0] + 1;
     let maxZ: i32 = this.m_box.get().m_max[2] + 1;
+
     for x in minX..=maxX
     {
         for z in minZ..=maxZ
@@ -295,11 +293,12 @@ pub fn isBoundingBoxOutOfHighlands(this: &Piece, world: &GenWorld, _sbb: Structu
             }
         }
     }
-    return false;
+
+    false
 }
 
 // ComponentTFTrollCaveMain.generateBlockStalactite
-pub fn generateBlockStalactite9(
+pub(crate) fn generateBlockStalactite9(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -322,7 +321,7 @@ pub fn generateBlockStalactite9(
 }
 
 // ComponentTFTrollCaveMain.generateAtSurface
-pub fn generateAtSurface(
+pub(crate) fn generateAtSurface(
     this: &Piece,
     world: &GenWorld,
     generator: Gen,
@@ -343,12 +342,13 @@ pub fn generateAtSurface(
         {
             dy += 1;
         }
+
         generator.generate(world, random, dx, dy, dz);
     }
 }
 
 // ComponentTFTrollCaveMain.makeTreasureCrate
-pub fn makeTreasureCrate(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
+pub(crate) fn makeTreasureCrate(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
 {
     let mid: i32 = this.m_size.get() / 2;
     this.fill(world, sbb, mid - 2, 0, mid - 2, mid + 1, 3, mid + 1, blk("obsidian"), blk("obsidian"), false);

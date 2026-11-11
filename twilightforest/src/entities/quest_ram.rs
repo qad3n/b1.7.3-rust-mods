@@ -100,6 +100,7 @@ impl Fleece
 fn sparkle(world: World, info: &EntityInfo, color: usize, count: i32)
 {
     let [red, green, blue]: [f32; 3] = FLEECE[color];
+
     for _ in 0..count
     {
         let width: f64 = f64::from(SIZE[0]) * tuning::SPREAD;
@@ -126,12 +127,15 @@ fn feed(entity: Entity, info: &EntityInfo, color: usize) -> bool
     {
         return false;
     }
+
     fleece.m_colors |= 1 << color;
+
     if let Err(error) = entity.setSynced(&fleece)
     {
         warn(&format!("quest ram colors: {}", error.0));
         return false;
     }
+
     sparkle(entity.world, info, color, tuning::FED_SPARKS);
     bleat(entity.world, info);
     true
@@ -140,6 +144,7 @@ fn feed(entity: Entity, info: &EntityInfo, color: usize) -> bool
 fn reward(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
+
     for name in REWARDS
     {
         if let Err(error) = world.spawnItem(info.pos, ItemStack::of(name, 1))
@@ -147,10 +152,12 @@ fn reward(entity: Entity, info: &EntityInfo)
             warn(&format!("quest ram reward {name}: {}", error.0));
         }
     }
+
     for player in world.players()
     {
         let near: bool =
             player.info().is_some_and(|other| super::ai::distance(other.pos, info.pos) <= tuning::REWARD_REACH);
+
         if near
         {
             progress::grant(player, Gate::QuestRam);
@@ -181,6 +188,7 @@ fn eatLoose(entity: Entity, info: &EntityInfo, fleece: Fleece) -> bool
             (!fleece.has(color)).then_some((other, color))
         })
         .min_by(|a, b| super::ai::distance(a.0.pos, info.pos).total_cmp(&super::ai::distance(b.0.pos, info.pos)));
+
     let Some((wool, color)) = loose
     else
     {
@@ -192,10 +200,12 @@ fn eatLoose(entity: Entity, info: &EntityInfo, fleece: Fleece) -> bool
         entity.walkTo(block(wool.pos), tuning::SPEED);
         return true;
     }
+
     if feed(entity, info, color)
     {
         Entity { world, id: wool.id }.kill();
     }
+
     true
 }
 
@@ -213,6 +223,7 @@ fn tempted(entity: Entity, info: &EntityInfo) -> bool
     {
         return false;
     };
+
     entity.walkTo(block(tempter.pos), tuning::SPEED);
     true
 }
@@ -225,6 +236,7 @@ fn goHome(entity: Entity, info: &EntityInfo)
     {
         return;
     };
+
     let home: [f64; 3] = [f64::from(x), f64::from(y), f64::from(z)];
     if super::ai::distance(home, info.pos) > tuning::HOME_RANGE
     {
@@ -242,6 +254,7 @@ impl EntityBehavior for Ram
         let world: World = entity.world;
         let fleece: Fleece = entity.synced();
         let done: bool = fleece.m_colors == ALL_COLORS && !fleece.m_rewarded;
+
         // checkAndAnimateColors runs on the client, the reward on the server
         if !world.isAuthority()
         {
@@ -249,23 +262,28 @@ impl EntityBehavior for Ram
             {
                 sparkle(world, info, world.random(COLORS as i32) as usize, tuning::DONE_SPARKS);
             }
+
             return;
         }
 
         if done
         {
             reward(entity, info);
+
             if let Err(error) = entity.setSynced(&Fleece { m_rewarded: true, ..fleece })
             {
                 warn(&format!("quest ram reward flag: {}", error.0));
             }
+
             return;
         }
+
         let searching: bool = world.random(tuning::SEARCH_CHANCE) == 0;
         if searching && (tempted(entity, info) || eatLoose(entity, info, fleece))
         {
             return;
         }
+
         if world.random(tuning::HOME_CHANCE) == 0
         {
             goHome(entity, info);
@@ -295,6 +313,7 @@ impl EntityBehavior for Ram
         {
             warn(&format!("quest ram wool: {}", error.0));
         }
+
         true
     }
 
@@ -316,6 +335,7 @@ impl EntityBehavior for Ram
             * input.walk_speed
             * body::LEG_DAMPING;
         let legsZ: f32 = body::LEGS_BASE + body::SEGMENT_STEP * count;
+
         body.rest(tf_quest_ram::FRONTBODY);
         body.part(
             tf_quest_ram::REARBODY,
@@ -337,6 +357,7 @@ impl EntityBehavior for Ram
             {
                 pivot(leg)
             };
+
             let haunchPivot: [f32; 3] = if moved
             {
                 shifted(haunch, legsZ)
@@ -352,6 +373,7 @@ impl EntityBehavior for Ram
         body.part(tf_quest_ram::HEAD, [input.head_pitch / DEGREES_PER_RADIAN, yaw, 0.0], pivot(tf_quest_ram::HEAD));
 
         let mut offset: f32 = body::SEGMENT_BASE;
+
         for color in ORDER.into_iter().filter(|color| fleece.has(*color))
         {
             let [red, green, blue]: [f32; 3] = FLEECE[color];
@@ -359,12 +381,13 @@ impl EntityBehavior for Ram
             body.color(red, green, blue, 1.0).part(part, [0.0; 3], shifted(part, offset));
             offset += body::SEGMENT_STEP;
         }
+
         body.color(1.0, 1.0, 1.0, 1.0);
         Pose { pre: Vec::new(), model: body.take() }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,

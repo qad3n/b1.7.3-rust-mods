@@ -1,7 +1,7 @@
 // draft from ComponentTFStrongholdBossRoom.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::StrongholdBossRoom);
     init(&this, i, facing, x, y, z);
@@ -9,27 +9,27 @@ pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFStrongholdBossRoom constructor
-pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 {
     stronghold_component::init(this, i, facing, x, y, z);
     this.m_spawnListIndex.set(i32::MAX);
 }
 
 // ComponentTFStrongholdBossRoom.generateBoundingBox
-pub fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub(crate) fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
-    return Some(boxFor(x, y, z, -13, -1, 0, 27, 7, 27, facing));
+    Some(boxFor(x, y, z, -13, -1, 0, 27, 7, 27, facing))
 }
 
 // ComponentTFStrongholdBossRoom.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
-    stronghold_component::build(this, &parent, list, random);
+    stronghold_component::build(this, parent, list, random);
     stronghold_component::addDoor(this, 13, 1, 0);
 }
 
 // ComponentTFStrongholdBossRoom.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     stronghold_component::placeStrongholdWalls(
         this,
@@ -76,16 +76,18 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     stronghold_boss_room::placeSarcophagus(this, world, sbb, 18, 1, 15, 0);
     this.fillAir(world, sbb, 12, 1, 1, 14, 4, 2);
     this.fill(world, sbb, 12, 1, 3, 14, 4, 3, blk("iron_bars"), blk("iron_bars"), false);
+
     let _var8: i32 = this.xAt(0, 0);
     let _var9: i32 = this.yAt(0);
     let _var10: i32 = this.zAt(0, 0);
+
     this.placeBlock(world, blk("tf:bossSpawner"), 4, 13, 2, 13, sbb);
     stronghold_component::placeDoors(this, world, random, sbb);
-    return true;
+    true
 }
 
 // ComponentTFStrongholdBossRoom.placeSarcophagus
-pub fn placeSarcophagus(this: &Piece, world: &GenWorld, sbb: StructureBox, x: i32, y: i32, z: i32, rotation: i32)
+pub(crate) fn placeSarcophagus(this: &Piece, world: &GenWorld, sbb: StructureBox, x: i32, y: i32, z: i32, rotation: i32)
 {
     this.placeTurned(
         world,
@@ -127,6 +129,7 @@ pub fn placeSarcophagus(this: &Piece, world: &GenWorld, sbb: StructureBox, x: i3
         rotation,
         sbb,
     );
+
     if world.rand().nextIntBounded(7) == 0
     {
         this.placeTurned(world, blk("torch"), 0, x + 1, y + 1, z + 0, rotation, sbb);
@@ -144,6 +147,7 @@ pub fn placeSarcophagus(this: &Piece, world: &GenWorld, sbb: StructureBox, x: i3
             sbb,
         );
     }
+
     if world.rand().nextIntBounded(7) == 0
     {
         this.placeTurned(world, blk("torch"), 0, x - 1, y + 1, z + 0, rotation, sbb);
@@ -161,6 +165,7 @@ pub fn placeSarcophagus(this: &Piece, world: &GenWorld, sbb: StructureBox, x: i3
             sbb,
         );
     }
+
     if world.rand().nextIntBounded(7) == 0
     {
         this.placeTurned(world, blk("torch"), 0, x + 1, y + 1, z + 3, rotation, sbb);
@@ -178,6 +183,7 @@ pub fn placeSarcophagus(this: &Piece, world: &GenWorld, sbb: StructureBox, x: i3
             sbb,
         );
     }
+
     if world.rand().nextIntBounded(7) == 0
     {
         this.placeTurned(world, blk("torch"), 0, x - 1, y + 1, z + 3, rotation, sbb);
@@ -206,7 +212,7 @@ pub fn placeSarcophagus(this: &Piece, world: &GenWorld, sbb: StructureBox, x: i3
 }
 
 // ComponentTFStrongholdBossRoom.placePillarDecorations
-pub fn placePillarDecorations(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32)
+pub(crate) fn placePillarDecorations(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32)
 {
     this.placeTurned(world, this.m_deco.get().m_stairID, this.stairMeta(3 + rotation), 4, 1, 8, rotation, sbb);
     this.placeTurned(world, this.m_deco.get().m_stairID, this.stairMeta(2 + rotation), 8, 1, 4, rotation, sbb);
@@ -221,7 +227,15 @@ pub fn placePillarDecorations(this: &Piece, world: &GenWorld, sbb: StructureBox,
 }
 
 // ComponentTFStrongholdBossRoom.placeDoorwayAt
-pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, _random: &Random, x: i32, y: i32, z: i32, sbb: StructureBox)
+pub(crate) fn placeDoorwayAt(
+    this: &Piece,
+    world: &GenWorld,
+    _random: &Random,
+    x: i32,
+    y: i32,
+    z: i32,
+    sbb: StructureBox,
+)
 {
     if (x != 0) && (x != stronghold_component::getXSize(this))
     {
@@ -234,4 +248,4 @@ pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, _random: &Random, x: i32, 
 }
 
 // ComponentTFStrongholdBossRoom.isValidBreakInPoint
-pub fn isValidBreakInPoint(_this: &Piece, _wx: i32, _wy: i32, _wz: i32) -> bool { return false; }
+pub(crate) fn isValidBreakInPoint(_this: &Piece, _wx: i32, _wy: i32, _wz: i32) -> bool { false }

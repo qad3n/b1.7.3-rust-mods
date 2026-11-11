@@ -4,7 +4,7 @@ use crate::world::structures::prelude::*;
 // a single chest holds this many stacks
 const CHEST_SLOTS: i32 = 27;
 
-pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::DarkTowerWing);
     init(&this, i, x, y, z, pSize, pHeight, direction);
@@ -12,7 +12,7 @@ pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: 
 }
 
 // ComponentTFDarkTowerWing constructor
-pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
+pub(crate) fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
 {
     tower_wing::init7(this, i, x, y, z, pSize, pHeight, direction);
     this.m_keyTower.set(false);
@@ -20,12 +20,13 @@ pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i
 }
 
 // ComponentTFDarkTowerWing.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
     this.addOpening(0, 1, this.m_size.get() / 2, 2);
-    this.makeARoof(&parent, list, random);
-    this.makeABeard(&parent, list, random);
+    this.makeARoof(parent, list, random);
+    this.makeABeard(parent, list, random);
+
     if this.m_size.get() > 10
     {
         for direction in 0..4
@@ -37,6 +38,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
                 ((this.m_height.get() - 4) + random.nextIntBounded(10)) - random.nextIntBounded(10),
                 childSize,
             );
+
             let madeWing: bool = this.makeTowerWing(
                 list,
                 random,
@@ -48,6 +50,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
                 childHeight,
                 direction,
             );
+
             if (!madeWing) && ((direction == 2) || random.nextBoolean())
             {
                 dark_tower_wing::makeTowerBalcony(
@@ -72,35 +75,23 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFDarkTowerWing.validateChildHeight
-pub fn validateChildHeight(_this: &Piece, childHeight: i32, _childSize: i32) -> i32
+pub(crate) fn validateChildHeight(_this: &Piece, childHeight: i32, _childSize: i32) -> i32
 {
-    return ((childHeight / 4) * 4) + 1;
+    ((childHeight / 4) * 4) + 1
 }
 
 // ComponentTFDarkTowerWing.makeARoof
-pub fn makeARoof(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn makeARoof(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let index: i32 = this.depth();
-    let var10000: Rc<Piece>;
-    match random.nextIntBounded(5)
+
+    let var10000: Rc<Piece> = match random.nextIntBounded(5)
     {
-        2 =>
-        {
-            var10000 = dark_tower_roof_cactus::new(index, this);
-        }
-        3 =>
-        {
-            var10000 = dark_tower_roof_rings::new(index, this);
-        }
-        4 =>
-        {
-            var10000 = dark_tower_roof_four_post::new(index, this);
-        }
-        _ =>
-        {
-            var10000 = dark_tower_roof_antenna::new(index, this);
-        }
-    }
+        2 => dark_tower_roof_cactus::new(index, this),
+        3 => dark_tower_roof_rings::new(index, this),
+        4 => dark_tower_roof_four_post::new(index, this),
+        _ => dark_tower_roof_antenna::new(index, this),
+    };
     let roof: Rc<Piece> = Rc::clone(&var10000);
     list.push(Rc::clone(&roof));
     roof.build(this, list, random);
@@ -108,22 +99,26 @@ pub fn makeARoof(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Rand
 }
 
 // ComponentTFDarkTowerWing.makeAttachedRoof
-pub fn makeAttachedRoof(this: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn makeAttachedRoof(this: &Piece, list: &mut Pieces, random: &Random)
 {
     let index: i32 = this.depth();
+
     if this.m_roofType.get().is_none() && (random.nextIntBounded(32) != 0)
     {
         tower_wing::tryToFitRoof(this, list, random, &tower_roof_gable_forwards::new(index + 1, this));
     }
+
     if this.m_roofType.get().is_none() && (random.nextIntBounded(8) != 0)
     {
         tower_wing::tryToFitRoof(this, list, random, &tower_roof_slab_forwards::new(index + 1, this));
     }
+
     if this.m_roofType.get().is_none() && (random.nextIntBounded(32) != 0)
     {
         let roof: Rc<Piece> = tower_roof_attached_slab::new(index + 1, this);
         tower_wing::tryToFitRoof(this, list, random, &roof);
     }
+
     if this.m_roofType.get().is_none()
     {
         let roof: Rc<Piece> = tower_roof_fence::new(index + 1, this);
@@ -132,7 +127,7 @@ pub fn makeAttachedRoof(this: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFDarkTowerWing.makeABeard
-pub fn makeABeard(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn makeABeard(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let beard: Rc<Piece> = dark_tower_beard::new(this.depth() + 1, this);
     list.push(Rc::clone(&beard));
@@ -140,7 +135,7 @@ pub fn makeABeard(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Ran
 }
 
 // ComponentTFDarkTowerWing.makeTowerWing
-pub fn makeTowerWing(
+pub(crate) fn makeTowerWing(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -169,19 +164,21 @@ pub fn makeTowerWing(
     {
         return false;
     }
+
     intersect = intersecting(list, bridge.getWingBB());
     if (intersect.is_some()) && (!same(&intersect, &this))
     {
         return false;
     }
+
     list.push(Rc::clone(&bridge));
     bridge.build(this, list, random);
     this.addOpening(x, y, z, rotation);
-    return true;
+    true
 }
 
 // ComponentTFDarkTowerWing.makeTowerBalcony
-pub fn makeTowerBalcony(
+pub(crate) fn makeTowerBalcony(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -200,14 +197,15 @@ pub fn makeTowerBalcony(
     {
         return false;
     }
+
     list.push(Rc::clone(&balcony));
     balcony.build(this, list, random);
     dark_tower_wing::addOpening5(this, x, y, z, rotation, Door::Reappearing);
-    return true;
+    true
 }
 
 // ComponentTFDarkTowerWing.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     let decoRNG: Random = Random::withSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
@@ -227,6 +225,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     );
     this.fillAir(world, sbb, 1, 1, 1, this.m_size.get() - 2, this.m_height.get() - 2, this.m_size.get() - 2);
     this.darken(world);
+
     if this.m_size.get() > 9
     {
         dark_tower_wing::addHalfFloors(this, world, &decoRNG, sbb, 4, this.m_height.get() - 1);
@@ -240,13 +239,16 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         dark_tower_wing::addHalfFloors(this, world, &decoRNG, sbb, 4, this.m_height.get() - 1);
     }
     this.makeOpenings(world, sbb);
+
     if (decoRNG.nextBoolean() && (!dark_tower_wing::isKeyTower(this))) && (this.m_height.get() > 8)
     {
         let mut blobs: i32 = 1;
+
         if (this.m_size.get() > 9) && decoRNG.nextBoolean()
         {
             blobs += 1;
         }
+
         for _i in 0..blobs
         {
             let x: i32 = decoRNG.nextIntBounded(this.m_size.get());
@@ -255,11 +257,12 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             dark_tower_wing::destroyTower7(this, world, &decoRNG, x, y, z, 3, sbb);
         }
     }
-    return true;
+
+    true
 }
 
 // ComponentTFDarkTowerWing.destroyTower
-pub fn destroyTower7(
+pub(crate) fn destroyTower7(
     this: &Piece,
     world: &GenWorld,
     decoRNG: &Random,
@@ -272,6 +275,7 @@ pub fn destroyTower7(
 {
     let initialRadius: i32 = decoRNG.nextIntBounded(amount) + amount;
     dark_tower_wing::drawBlob(this, world, x, y, z, initialRadius, blk("air"), 0, sbb);
+
     for _i in 0..3
     {
         let dx: i32 = x + ((initialRadius - 1) * (if decoRNG.nextBoolean() { 1 } else { -1 }));
@@ -283,7 +287,7 @@ pub fn destroyTower7(
 }
 
 // ComponentTFDarkTowerWing.netherTransformBlob
-pub fn netherTransformBlob(
+pub(crate) fn netherTransformBlob(
     this: &Piece,
     world: &GenWorld,
     inRand: &Random,
@@ -295,6 +299,7 @@ pub fn netherTransformBlob(
 )
 {
     let rand: Random = Random::withSeed(inRand.nextLong());
+
     for dx in 0..=rad
     {
         for dy in 0..=rad
@@ -313,6 +318,7 @@ pub fn netherTransformBlob(
                 {
                     dz + ((((dx.max(dy)) as f64 * 0.5) + ((dx.min(dy)) as f64 * 0.25)) as i32)
                 };
+
                 if dist <= rad
                 {
                     dark_tower_wing::testAndChangeToNetherrack(this, world, &rand, sx + dx, sy + dy, sz + dz, sbb);
@@ -331,7 +337,7 @@ pub fn netherTransformBlob(
 }
 
 // ComponentTFDarkTowerWing.testAndChangeToNetherrack
-pub fn testAndChangeToNetherrack(
+pub(crate) fn testAndChangeToNetherrack(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -344,6 +350,7 @@ pub fn testAndChangeToNetherrack(
     if this.getBlock(world, x, y, z, sbb) != blk("air")
     {
         this.placeBlock(world, blk("netherrack"), 0, x, y, z, sbb);
+
         if (this.getBlock(world, x, y + 1, z, sbb) == blk("air")) && random.nextBoolean()
         {
             this.placeBlock(world, blk("fire"), 0, x, y + 1, z, sbb);
@@ -352,7 +359,7 @@ pub fn testAndChangeToNetherrack(
 }
 
 // ComponentTFDarkTowerWing.drawBlob
-pub fn drawBlob(
+pub(crate) fn drawBlob(
     this: &Piece,
     world: &GenWorld,
     sx: i32,
@@ -382,6 +389,7 @@ pub fn drawBlob(
                 {
                     dz + ((((dx.max(dy)) as f64 * 0.5) + ((dx.min(dy)) as f64 * 0.25)) as i32)
                 };
+
                 if dist <= rad
                 {
                     this.placeBlock(world, blockValue, metaValue, sx + dx, sy + dy, sz + dz, sbb);
@@ -399,23 +407,34 @@ pub fn drawBlob(
 }
 
 // ComponentTFDarkTowerWing.addHalfFloors
-pub fn addHalfFloors(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox, mut bottom: i32, top: i32)
+pub(crate) fn addHalfFloors(
+    this: &Piece,
+    world: &GenWorld,
+    random: &Random,
+    sbb: StructureBox,
+    mut bottom: i32,
+    top: i32,
+)
 {
     let spacing: i32 = 4;
     let mut rotation: i32 = (this.m_box.get().m_min[1] + bottom) % 3;
+
     if bottom == 0
     {
         bottom += spacing;
     }
+
     {
         let mut y: i32 = bottom;
         while y < top
         {
             rotation += 2;
             rotation %= 4;
+
             if y >= (top - spacing)
             {
                 dark_tower_wing::makeFullFloor(this, world, sbb, rotation, y, spacing);
+
                 if this.isDeadEnd()
                 {
                     dark_tower_wing::decorateTreasureRoom(this, world, sbb, rotation, y, 4, this.m_deco.get());
@@ -424,6 +443,7 @@ pub fn addHalfFloors(this: &Piece, world: &GenWorld, random: &Random, sbb: Struc
             else
             {
                 dark_tower_wing::makeHalfFloor(this, world, sbb, rotation, y, spacing);
+
                 'case4:
                 {
                     match random.nextIntBounded(8)
@@ -437,40 +457,49 @@ pub fn addHalfFloors(this: &Piece, world: &GenWorld, random: &Random, sbb: Struc
                                 break 'case4;
                             }
                         }
+
                         1 =>
                         {
                             dark_tower_wing::decorateSpawner(this, world, random, sbb, rotation, y);
                         }
+
                         2 =>
                         {
                             this.decorateLounge(world, random, sbb, rotation, y);
                         }
+
                         3 =>
                         {
                             dark_tower_wing::decorateLibrary(this, world, random, sbb, rotation, y);
                         }
+
                         4 =>
                         {
                             dark_tower_wing::decorateExperimentPulser(this, world, random, sbb, rotation, y);
                         }
+
                         5 =>
                         {
                             dark_tower_wing::decorateExperimentLamp(this, world, random, sbb, rotation, y);
                         }
+
                         6 =>
                         {
                             dark_tower_wing::decoratePuzzleChest(this, world, random, sbb, rotation, y);
                         }
+
                         _ =>
                         {}
                     }
                 }
             }
             dark_tower_wing::addStairsDown6(this, world, sbb, rotation, y, this.m_size.get() - 2, spacing);
+
             if this.m_size.get() > 9
             {
                 dark_tower_wing::addStairsDown6(this, world, sbb, rotation, y, this.m_size.get() - 3, spacing);
             }
+
             y += spacing;
         }
     }
@@ -488,7 +517,7 @@ pub fn addHalfFloors(this: &Piece, world: &GenWorld, random: &Random, sbb: Struc
 }
 
 // ComponentTFDarkTowerWing.makeHalfFloor
-pub fn makeHalfFloor(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32, y: i32, _spacing: i32)
+pub(crate) fn makeHalfFloor(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32, y: i32, _spacing: i32)
 {
     this.fillTurned(
         world,
@@ -519,7 +548,7 @@ pub fn makeHalfFloor(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation
 }
 
 // ComponentTFDarkTowerWing.makeFullFloor
-pub fn makeFullFloor(this: &Piece, world: &GenWorld, sbb: StructureBox, _rotation: i32, y: i32, _spacing: i32)
+pub(crate) fn makeFullFloor(this: &Piece, world: &GenWorld, sbb: StructureBox, _rotation: i32, y: i32, _spacing: i32)
 {
     this.fillMeta(
         world,
@@ -554,7 +583,7 @@ pub fn makeFullFloor(this: &Piece, world: &GenWorld, sbb: StructureBox, _rotatio
 }
 
 // ComponentTFDarkTowerWing.decorateTreasureRoom
-pub fn decorateTreasureRoom(
+pub(crate) fn decorateTreasureRoom(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,
@@ -566,6 +595,7 @@ pub fn decorateTreasureRoom(
 {
     let x: i32 = this.m_size.get() / 2;
     let z: i32 = this.m_size.get() / 2;
+
     for dy in 1..spacing
     {
         this.placeTurned(world, myDeco.m_pillarID, myDeco.m_pillarMeta, x - 1, y + dy, z - 1, rotation, sbb);
@@ -573,10 +603,12 @@ pub fn decorateTreasureRoom(
         this.placeTurned(world, myDeco.m_pillarID, myDeco.m_pillarMeta, x - 1, y + dy, z + 1, rotation, sbb);
         this.placeTurned(world, myDeco.m_pillarID, myDeco.m_pillarMeta, x + 1, y + dy, z + 1, rotation, sbb);
     }
+
     this.placeTurned(world, myDeco.m_stairID, this.stairMeta(1 + rotation), x + 0, y + 1, z - 1, rotation, sbb);
     this.placeTurned(world, myDeco.m_stairID, this.stairMeta(0 + rotation), x - 1, y + 1, z + 0, rotation, sbb);
     this.placeTurned(world, myDeco.m_stairID, this.stairMeta(2 + rotation), x + 1, y + 1, z + 0, rotation, sbb);
     this.placeTurned(world, myDeco.m_stairID, this.stairMeta(3 + rotation), x + 0, y + 1, z + 1, rotation, sbb);
+
     for dy in 2..(spacing - 1)
     {
         this.placeTurned(world, myDeco.m_fenceID, myDeco.m_fenceMeta, x + 0, y + dy, z - 1, rotation, sbb);
@@ -584,6 +616,7 @@ pub fn decorateTreasureRoom(
         this.placeTurned(world, myDeco.m_fenceID, myDeco.m_fenceMeta, x + 1, y + dy, z + 0, rotation, sbb);
         this.placeTurned(world, myDeco.m_fenceID, myDeco.m_fenceMeta, x + 0, y + dy, z + 1, rotation, sbb);
     }
+
     this.placeTurned(
         world,
         myDeco.m_stairID,
@@ -641,6 +674,7 @@ pub fn decorateTreasureRoom(
         },
         sbb,
     );
+
     if dark_tower_wing::isKeyTower(this)
     {
         dark_tower_wing::putItemInTreasure(this, world, x, y + 2, z, crate::ids::item::TOWER_KEY, sbb);
@@ -648,32 +682,32 @@ pub fn decorateTreasureRoom(
 }
 
 // ComponentTFDarkTowerWing.decorateSpawner
-pub fn decorateSpawner(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox, rotation: i32, y: i32)
+pub(crate) fn decorateSpawner(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox, rotation: i32, y: i32)
 {
     let x: i32 = if this.m_size.get() > 9 { 4 } else { 3 };
     let z: i32 = if this.m_size.get() > 9 { 5 } else { 4 };
-    let mobID: &'static str;
-    if this.m_size.get() > 9
+
+    let mobID: &'static str = if this.m_size.get() > 9
     {
-        mobID = if random.nextBoolean()
+        if random.nextBoolean()
         {
             mob("Tower Golem")
         }
         else
         {
             mob("Redscale Broodling")
-        };
+        }
     }
     else
     {
-        mobID = mob("Redscale Broodling");
-    }
+        mob("Redscale Broodling")
+    };
     dark_tower_wing::makePillarFrame(this, world, sbb, this.m_deco.get(), rotation, x, y, z, true);
     this.placeSpawnerRotated(world, x + 1, y + 2, z + 1, rotation, mobID, sbb);
 }
 
 // ComponentTFDarkTowerWing.decorateLounge
-pub fn decorateLounge(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox, rotation: i32, y: i32)
+pub(crate) fn decorateLounge(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox, rotation: i32, y: i32)
 {
     let mut cx: i32 = if this.m_size.get() > 9 { 9 } else { 7 };
     let cz: i32 = if this.m_size.get() > 9 { 4 } else { 3 };
@@ -732,7 +766,7 @@ pub fn decorateLounge(this: &Piece, world: &GenWorld, _random: &Random, sbb: Str
 }
 
 // ComponentTFDarkTowerWing.decorateReappearingFloor
-pub fn decorateReappearingFloor(
+pub(crate) fn decorateReappearingFloor(
     this: &Piece,
     world: &GenWorld,
     _random: &Random,
@@ -747,7 +781,7 @@ pub fn decorateReappearingFloor(
 }
 
 // ComponentTFDarkTowerWing.decorateExperimentLamp
-pub fn decorateExperimentLamp(
+pub(crate) fn decorateExperimentLamp(
     this: &Piece,
     world: &GenWorld,
     _random: &Random,
@@ -773,7 +807,7 @@ pub fn decorateExperimentLamp(
     this.placeTurned(
         world,
         blk("lever"),
-        dark_tower_wing::getLeverMeta(this, rotation, 3),
+        dark_tower_wing::leverMeta(this, rotation, 3),
         cx,
         y + 1,
         cz + 2,
@@ -793,7 +827,7 @@ pub fn decorateExperimentLamp(
     this.placeTurned(
         world,
         blk("lever"),
-        dark_tower_wing::getLeverMeta(this, rotation, 2) + 8,
+        dark_tower_wing::leverMeta(this, rotation, 2) + 8,
         cx,
         y + 3,
         cz - 2,
@@ -803,7 +837,7 @@ pub fn decorateExperimentLamp(
 }
 
 // ComponentTFDarkTowerWing.decorateExperimentPulser
-pub fn decorateExperimentPulser(
+pub(crate) fn decorateExperimentPulser(
     this: &Piece,
     world: &GenWorld,
     _random: &Random,
@@ -825,7 +859,14 @@ pub fn decorateExperimentPulser(
 }
 
 // ComponentTFDarkTowerWing.decorateLibrary
-pub fn decorateLibrary(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox, rotation: i32, y: i32)
+pub(crate) fn decorateLibrary(
+    this: &Piece,
+    world: &GenWorld,
+    _random: &Random,
+    sbb: StructureBox,
+    rotation: i32,
+    y: i32,
+)
 {
     let mut bx: i32 = if this.m_size.get() > 9 { 4 } else { 3 };
     let mut bz: i32 = if this.m_size.get() > 9 { 3 } else { 2 };
@@ -836,7 +877,15 @@ pub fn decorateLibrary(this: &Piece, world: &GenWorld, _random: &Random, sbb: St
 }
 
 // ComponentTFDarkTowerWing.makeSmallBookshelf
-pub fn makeSmallBookshelf(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32, y: i32, bx: i32, bz: i32)
+pub(crate) fn makeSmallBookshelf(
+    this: &Piece,
+    world: &GenWorld,
+    sbb: StructureBox,
+    rotation: i32,
+    y: i32,
+    bx: i32,
+    bz: i32,
+)
 {
     this.placeTurned(
         world,
@@ -885,7 +934,14 @@ pub fn makeSmallBookshelf(this: &Piece, world: &GenWorld, sbb: StructureBox, rot
 }
 
 // ComponentTFDarkTowerWing.decoratePuzzleChest
-pub fn decoratePuzzleChest(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox, rotation: i32, y: i32)
+pub(crate) fn decoratePuzzleChest(
+    this: &Piece,
+    world: &GenWorld,
+    _random: &Random,
+    sbb: StructureBox,
+    rotation: i32,
+    y: i32,
+)
 {
     let x: i32 = if this.m_size.get() > 9 { 4 } else { 3 };
     let z: i32 = if this.m_size.get() > 9 { 5 } else { 4 };
@@ -995,7 +1051,7 @@ pub fn decoratePuzzleChest(this: &Piece, world: &GenWorld, _random: &Random, sbb
     this.placeTurned(
         world,
         blk("lever"),
-        dark_tower_wing::getLeverMeta(this, rotation, 5),
+        dark_tower_wing::leverMeta(this, rotation, 5),
         x + 2,
         y + 3,
         z - 2,
@@ -1006,7 +1062,7 @@ pub fn decoratePuzzleChest(this: &Piece, world: &GenWorld, _random: &Random, sbb
 }
 
 // ComponentTFDarkTowerWing.makePillarFrame
-pub fn makePillarFrame(
+pub(crate) fn makePillarFrame(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,
@@ -1022,7 +1078,7 @@ pub fn makePillarFrame(
 }
 
 // ComponentTFDarkTowerWing.makePillarFrame
-pub fn makePillarFrame11(
+pub(crate) fn makePillarFrame11(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,
@@ -1151,6 +1207,7 @@ pub fn makePillarFrame11(
                         sbb,
                     );
                 }
+
                 if fenced && ((((dx == 0) || (dx == (width - 1))) || (dz == 0)) || (dz == (length - 1)))
                 {
                     for fy in 2..=(height - 1)
@@ -1173,7 +1230,15 @@ pub fn makePillarFrame11(
 }
 
 // ComponentTFDarkTowerWing.putItemInTreasure, into a random empty slot of the chest unless it already holds one
-pub fn putItemInTreasure(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32, item: &'static str, sbb: StructureBox)
+pub(crate) fn putItemInTreasure(
+    this: &Piece,
+    world: &GenWorld,
+    x: i32,
+    y: i32,
+    z: i32,
+    item: &'static str,
+    sbb: StructureBox,
+)
 {
     let (dx, dy, dz): (i32, i32, i32) = (this.xAt(x, z), this.yAt(y), this.zAt(x, z));
     if !sbb.contains(dx, dy, dz)
@@ -1184,6 +1249,7 @@ pub fn putItemInTreasure(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32,
     let pos: b173_api::BlockPos = b173_api::BlockPos::new(dx, dy, dz);
     let slots: Vec<Option<b173_api::ItemStack>> =
         (0..CHEST_SLOTS).map(|slot| world.m_world.tileSlot(pos, slot)).collect();
+
     if slots.iter().flatten().any(|stack| stack.item.is(item))
     {
         return;
@@ -1203,7 +1269,15 @@ pub fn putItemInTreasure(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32,
 }
 
 // ComponentTFDarkTowerWing.addStairsDown
-pub fn addStairsDown6(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32, y: i32, sz: i32, spacing: i32)
+pub(crate) fn addStairsDown6(
+    this: &Piece,
+    world: &GenWorld,
+    sbb: StructureBox,
+    rotation: i32,
+    y: i32,
+    sz: i32,
+    spacing: i32,
+)
 {
     for i in 0..spacing
     {
@@ -1237,7 +1311,7 @@ pub fn addStairsDown6(this: &Piece, world: &GenWorld, sbb: StructureBox, rotatio
 }
 
 // ComponentTFDarkTowerWing.addSmallTimberBeams
-pub fn addSmallTimberBeams(
+pub(crate) fn addSmallTimberBeams(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -1248,10 +1322,12 @@ pub fn addSmallTimberBeams(
 {
     let spacing: i32 = 4;
     let mut rotation: i32 = 0;
+
     if bottom == 0
     {
         bottom += spacing;
     }
+
     {
         let mut y: i32 = bottom;
         while y < top
@@ -1261,9 +1337,11 @@ pub fn addSmallTimberBeams(
                 rotation += 1;
                 rotation
             } % 4;
+
             if (y >= (top - spacing)) && this.isDeadEnd()
             {
                 dark_tower_wing::makeTimberFloor(this, world, random, sbb, rotation, y, spacing);
+
                 let mut logDeco: Deco = Deco::dark_tower();
                 logDeco.m_pillarID = blk("tf:log");
                 logDeco.m_pillarMeta = 3;
@@ -1290,7 +1368,7 @@ pub fn addSmallTimberBeams(
 }
 
 // ComponentTFDarkTowerWing.makeTimberFloor
-pub fn makeTimberFloor(
+pub(crate) fn makeTimberFloor(
     this: &Piece,
     world: &GenWorld,
     _random: &Random,
@@ -1302,6 +1380,7 @@ pub fn makeTimberFloor(
 {
     let beamID: Blk = blk("tf:log");
     let beamMetaBase: i32 = 3;
+
     let beamMetaNS: i32 = if ((this.m_mode.get() + rotation) % 2) == 0
     {
         4
@@ -1312,6 +1391,7 @@ pub fn makeTimberFloor(
     };
     let beamMetaEW: i32 = if beamMetaNS == 4 { 8 } else { 4 };
     let beamMetaUD: i32 = 0;
+
     for z in 1..(this.m_size.get() - 1)
     {
         for x in 1..(this.m_size.get() - 1)
@@ -1326,6 +1406,7 @@ pub fn makeTimberFloor(
             }
         }
     }
+
     for by in 1..4
     {
         this.placeTurned(world, beamID, beamMetaBase + beamMetaUD, 2, y - by, 2, rotation, sbb);
@@ -1333,12 +1414,13 @@ pub fn makeTimberFloor(
         this.placeTurned(world, beamID, beamMetaBase + beamMetaUD, 6, y - by, 6, rotation, sbb);
         this.placeTurned(world, blk("ladder"), this.ladderMeta(4 + rotation), 5, y - by, 6, rotation, sbb);
     }
+
     this.placeTurned(world, blk("air"), 0, 3, y, 2, rotation, sbb);
     this.placeTurned(world, blk("air"), 0, 5, y, 6, rotation, sbb);
 }
 
 // ComponentTFDarkTowerWing.makeSmallTimberBeams
-pub fn makeSmallTimberBeams(
+pub(crate) fn makeSmallTimberBeams(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -1351,6 +1433,7 @@ pub fn makeSmallTimberBeams(
 {
     let beamID: Blk = blk("tf:log");
     let beamMetaBase: i32 = 3;
+
     let beamMetaNS: i32 = if ((this.m_mode.get() + rotation) % 2) == 0
     {
         4
@@ -1361,20 +1444,25 @@ pub fn makeSmallTimberBeams(
     };
     let beamMetaEW: i32 = if beamMetaNS == 4 { 8 } else { 4 };
     let beamMetaUD: i32 = 0;
+
     for z in 1..(this.m_size.get() - 1)
     {
         this.placeTurned(world, beamID, beamMetaBase + beamMetaEW, 2, y, z, rotation, sbb);
         this.placeTurned(world, beamID, beamMetaBase + beamMetaEW, 6, y, z, rotation, sbb);
     }
+
     let z: i32 = dark_tower_wing::pickBetweenExcluding(this, 3, this.m_size.get() - 3, random, 2, 2, 6);
+
     for x in 3..6
     {
         this.placeTurned(world, beamID, beamMetaBase + beamMetaNS, x, y, z, rotation, sbb);
     }
+
     let x1: i32 = 2;
     let z1: i32 = if random.nextBoolean() { 2 } else { 6 };
     let x3: i32 = 6;
     let z3: i32 = if random.nextBoolean() { 2 } else { 6 };
+
     for by in 1..4
     {
         if (!bottom) || dark_tower_wing::checkPost(this, world, x1, y - 4, z1, rotation, sbb)
@@ -1382,6 +1470,7 @@ pub fn makeSmallTimberBeams(
             this.placeTurned(world, beamID, beamMetaBase + beamMetaUD, x1, y - by, z1, rotation, sbb);
             this.placeTurned(world, blk("ladder"), this.ladderMeta(2 + rotation), x1 + 1, y - by, z1, rotation, sbb);
         }
+
         if (!bottom) || dark_tower_wing::checkPost(this, world, x3, y - 4, z3, rotation, sbb)
         {
             this.placeTurned(world, beamID, beamMetaBase + beamMetaUD, x3, y - by, z3, rotation, sbb);
@@ -1391,9 +1480,10 @@ pub fn makeSmallTimberBeams(
 }
 
 // ComponentTFDarkTowerWing.pickBetweenExcluding
-pub fn pickBetweenExcluding(_this: &Piece, low: i32, high: i32, random: &Random, k: i32, l: i32, m: i32) -> i32
+pub(crate) fn pickBetweenExcluding(_this: &Piece, low: i32, high: i32, random: &Random, k: i32, l: i32, m: i32) -> i32
 {
     let mut result: i32;
+
     loop
     {
         result = random.nextIntBounded(high - low) + low;
@@ -1402,33 +1492,32 @@ pub fn pickBetweenExcluding(_this: &Piece, low: i32, high: i32, random: &Random,
             break;
         }
     }
-    return result;
+
+    result
 }
 
 // ComponentTFDarkTowerWing.pickFrom
-pub fn pickFrom(_this: &Piece, random: &Random, i: i32, j: i32, k: i32) -> i32
+pub(crate) fn pickFrom(_this: &Piece, random: &Random, i: i32, j: i32, k: i32) -> i32
 {
-    let var10000: i32;
-    match random.nextIntBounded(3)
+    let var10000: i32 = match random.nextIntBounded(3)
     {
-        1 =>
-        {
-            var10000 = j;
-        }
-        2 =>
-        {
-            var10000 = k;
-        }
-        _ =>
-        {
-            var10000 = i;
-        }
-    }
-    return var10000;
+        1 => j,
+        2 => k,
+        _ => i,
+    };
+    var10000
 }
 
 // ComponentTFDarkTowerWing.checkPost
-pub fn checkPost(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32, rotation: i32, sbb: StructureBox) -> bool
+pub(crate) fn checkPost(
+    this: &Piece,
+    world: &GenWorld,
+    x: i32,
+    y: i32,
+    z: i32,
+    rotation: i32,
+    sbb: StructureBox,
+) -> bool
 {
     let worldX: i32 = this.xTurned(x, z, rotation);
     let worldY: i32 = this.yAt(y);
@@ -1441,13 +1530,13 @@ pub fn checkPost(this: &Piece, world: &GenWorld, x: i32, y: i32, z: i32, rotatio
     {
         blk("air")
     };
-    return (blockID != blk("air"))
+    (blockID != blk("air"))
         && ((blockID != this.m_deco.get().m_accentID)
-            || (world.meta(worldX, worldY, worldZ) != this.m_deco.get().m_accentMeta));
+            || (world.meta(worldX, worldY, worldZ) != this.m_deco.get().m_accentMeta))
 }
 
 // ComponentTFDarkTowerWing.makeEncasedWalls
-pub fn makeEncasedWalls(
+pub(crate) fn makeEncasedWalls(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -1495,6 +1584,7 @@ pub fn makeEncasedWalls(
             }
         }
     }
+
     this.placeBlock(world, this.m_deco.get().m_accentID, this.m_deco.get().m_accentMeta, minX + 1, minY + 1, minZ, sbb);
     this.placeBlock(world, this.m_deco.get().m_accentID, this.m_deco.get().m_accentMeta, minX + 1, minY + 1, maxZ, sbb);
     this.placeBlock(world, this.m_deco.get().m_accentID, this.m_deco.get().m_accentMeta, maxX - 1, minY + 1, minZ, sbb);
@@ -1522,16 +1612,19 @@ pub fn makeEncasedWalls(
 }
 
 // ComponentTFDarkTowerWing.getValidOpening
-pub fn getValidOpening(this: &Piece, _random: &Random, direction: i32) -> Vec<i32>
+pub(crate) fn getValidOpening(this: &Piece, _random: &Random, direction: i32) -> Vec<i32>
 {
     let verticalOffset: i32 = if this.m_size.get() == 19 { 5 } else { 4 };
+
     if (direction != 0) && (direction != 2)
     {
         if (direction != 1) && (direction != 3)
         {
             return vec![0, 0, 0];
         }
+
         let rx: i32 = this.m_size.get() / 2;
+
         let rz: i32 = if direction == 1
         {
             this.m_size.get() - 1
@@ -1541,7 +1634,7 @@ pub fn getValidOpening(this: &Piece, _random: &Random, direction: i32) -> Vec<i3
             0
         };
         let ry: i32 = this.m_height.get() - verticalOffset;
-        return vec![rx, ry, rz];
+        vec![rx, ry, rz]
     }
     else
     {
@@ -1555,18 +1648,18 @@ pub fn getValidOpening(this: &Piece, _random: &Random, direction: i32) -> Vec<i3
         };
         let rz: i32 = this.m_size.get() / 2;
         let ry: i32 = this.m_height.get() - verticalOffset;
-        return vec![rx, ry, rz];
+        vec![rx, ry, rz]
     }
 }
 
 // ComponentTFDarkTowerWing.addOpening
-pub fn addOpening(this: &Piece, dx: i32, dy: i32, dz: i32, direction: i32)
+pub(crate) fn addOpening(this: &Piece, dx: i32, dy: i32, dz: i32, direction: i32)
 {
     dark_tower_wing::addOpening5(this, dx, dy, dz, direction, Door::Vanishing);
 }
 
 // ComponentTFDarkTowerWing.addOpening
-pub fn addOpening5(this: &Piece, dx: i32, dy: i32, dz: i32, direction: i32, r#type: Door)
+pub(crate) fn addOpening5(this: &Piece, dx: i32, dy: i32, dz: i32, direction: i32, r#type: Door)
 {
     tower_wing::addOpening(this, dx, dy, dz, direction);
     this.m_openingTypes.borrow_mut().insert(
@@ -1577,20 +1670,21 @@ pub fn addOpening5(this: &Piece, dx: i32, dy: i32, dz: i32, direction: i32, r#ty
 }
 
 // ComponentTFDarkTowerWing.makeOpenings
-pub fn makeOpenings(this: &Piece, world: &GenWorld, sbb: StructureBox)
+pub(crate) fn makeOpenings(this: &Piece, world: &GenWorld, sbb: StructureBox)
 {
     for i in 0..(this.m_openings.borrow().len() as i32)
     {
         let doorCoords: [i32; 3] = this.m_openings.borrow()[(i) as usize];
-        let doorType: Door;
-        if (this.m_openingTypes.borrow().len() as i32) > i
+
+        let doorType: Door = if (this.m_openingTypes.borrow().len() as i32) > i
         {
-            doorType = this.m_openingTypes.borrow()[(i) as usize];
+            this.m_openingTypes.borrow()[(i) as usize]
         }
         else
         {
-            doorType = Door::Vanishing;
-        }
+            Door::Vanishing
+        };
+
         match doorType
         {
             Door::Reappearing =>
@@ -1604,10 +1698,12 @@ pub fn makeOpenings(this: &Piece, world: &GenWorld, sbb: StructureBox)
                     sbb,
                 );
             }
+
             Door::Locked =>
             {
                 dark_tower_wing::makeLockedDoorOpening(this, world, doorCoords[0], doorCoords[1], doorCoords[2], sbb);
             }
+
             _ =>
             {
                 this.makeDoorOpening(world, doorCoords[0], doorCoords[1], doorCoords[2], sbb);
@@ -1617,9 +1713,10 @@ pub fn makeOpenings(this: &Piece, world: &GenWorld, sbb: StructureBox)
 }
 
 // ComponentTFDarkTowerWing.makeDoorOpening
-pub fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
+pub(crate) fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
 {
     this.darkenAt(world, dx - 3, dy - 1, dz - 3, dx + 3, dy + 3, dz + 3);
+
     if (dx == 0) || (dx == (this.m_size.get() - 1))
     {
         this.fillMeta(
@@ -1639,6 +1736,7 @@ pub fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32
         );
         this.fillMeta(world, sbb, dx, dy, dz - 1, dx, dy + 2, dz + 1, blk("tf:towerDevice"), 2, blk("air"), 0, false);
     }
+
     if (dz == 0) || (dz == (this.m_size.get() - 1))
     {
         this.fillMeta(
@@ -1661,9 +1759,10 @@ pub fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32
 }
 
 // ComponentTFDarkTowerWing.makeReappearingDoorOpening
-pub fn makeReappearingDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
+pub(crate) fn makeReappearingDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
 {
     this.darkenAt(world, dx - 3, dy - 1, dz - 3, dx + 3, dy + 3, dz + 3);
+
     if (dx == 0) || (dx == (this.m_size.get() - 1))
     {
         this.fillMeta(
@@ -1683,6 +1782,7 @@ pub fn makeReappearingDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i
         );
         this.fillMeta(world, sbb, dx, dy, dz - 1, dx, dy + 2, dz + 1, blk("tf:towerDevice"), 0, blk("air"), 0, false);
     }
+
     if (dz == 0) || (dz == (this.m_size.get() - 1))
     {
         this.fillMeta(
@@ -1705,9 +1805,10 @@ pub fn makeReappearingDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i
 }
 
 // ComponentTFDarkTowerWing.makeLockedDoorOpening
-pub fn makeLockedDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
+pub(crate) fn makeLockedDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
 {
     this.darkenAt(world, dx - 3, dy - 1, dz - 3, dx + 3, dy + 3, dz + 3);
+
     if (dx == 0) || (dx == (this.m_size.get() - 1))
     {
         this.fillMeta(
@@ -1731,6 +1832,7 @@ pub fn makeLockedDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, d
         this.placeBlock(world, blk("tf:towerDevice"), 4, dx, dy + 2, dz + 1, sbb);
         this.placeBlock(world, blk("tf:towerDevice"), 4, dx, dy + 2, dz - 1, sbb);
     }
+
     if (dz == 0) || (dz == (this.m_size.get() - 1))
     {
         this.fillMeta(
@@ -1757,9 +1859,10 @@ pub fn makeLockedDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, d
 }
 
 // ComponentTFDarkTowerWing.isDeadEnd
-pub fn isDeadEnd(this: &Piece) -> bool
+pub(crate) fn isDeadEnd(this: &Piece) -> bool
 {
     let mut nonBalconies: i32 = 0;
+
     for r#type in this.m_openingTypes.borrow().clone()
     {
         if r#type != Door::Reappearing
@@ -1767,17 +1870,18 @@ pub fn isDeadEnd(this: &Piece) -> bool
             nonBalconies += 1;
         }
     }
-    return nonBalconies <= 1;
+
+    nonBalconies <= 1
 }
 
 // ComponentTFDarkTowerWing.isKeyTower
-pub fn isKeyTower(this: &Piece) -> bool { return this.m_keyTower.get(); }
+pub(crate) fn isKeyTower(this: &Piece) -> bool { this.m_keyTower.get() }
 
 // ComponentTFDarkTowerWing.setKeyTower
-pub fn setKeyTower(this: &Piece, keyTower: bool) { this.m_keyTower.set(keyTower); }
+pub(crate) fn setKeyTower(this: &Piece, keyTower: bool) { this.m_keyTower.set(keyTower); }
 
 // ComponentTFDarkTowerWing.getLeverMeta
-pub fn getLeverMeta(this: &Piece, mut rotation: i32, direction: i32) -> i32
+pub(crate) fn leverMeta(this: &Piece, mut rotation: i32, direction: i32) -> i32
 {
     if direction == 0
     {
@@ -1787,6 +1891,7 @@ pub fn getLeverMeta(this: &Piece, mut rotation: i32, direction: i32) -> i32
     {
         return 5;
     }
+
     rotation += this.mode();
     rotation %= 4;
     if rotation == 0
@@ -1797,18 +1902,22 @@ pub fn getLeverMeta(this: &Piece, mut rotation: i32, direction: i32) -> i32
             {
                 return 4;
             }
+
             3 =>
             {
                 return 3;
             }
+
             4 =>
             {
                 return 2;
             }
+
             5 =>
             {
                 return 1;
             }
+
             _ =>
             {}
         }
@@ -1821,18 +1930,22 @@ pub fn getLeverMeta(this: &Piece, mut rotation: i32, direction: i32) -> i32
             {
                 return 1;
             }
+
             3 =>
             {
                 return 2;
             }
+
             4 =>
             {
                 return 4;
             }
+
             5 =>
             {
                 return 3;
             }
+
             _ =>
             {}
         }
@@ -1845,18 +1958,22 @@ pub fn getLeverMeta(this: &Piece, mut rotation: i32, direction: i32) -> i32
             {
                 return 3;
             }
+
             3 =>
             {
                 return 4;
             }
+
             4 =>
             {
                 return 1;
             }
+
             5 =>
             {
                 return 2;
             }
+
             _ =>
             {}
         }
@@ -1869,21 +1986,25 @@ pub fn getLeverMeta(this: &Piece, mut rotation: i32, direction: i32) -> i32
             {
                 return 2;
             }
+
             3 =>
             {
                 return 1;
             }
+
             4 =>
             {
                 return 3;
             }
+
             5 =>
             {
                 return 4;
             }
+
             _ =>
             {}
         }
     }
-    return -1;
+    -1
 }

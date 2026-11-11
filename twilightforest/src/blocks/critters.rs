@@ -2,12 +2,12 @@ use super::{PIXELS, texture};
 use crate::ids::{self, block};
 use crate::models::{Program, tf_cicada, tf_firefly, tf_moonworm};
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 // BlockTFCritter: tiny bugs that cling to a wall floor or ceiling like a torch
 #[derive(Clone, Copy, PartialEq)]
-pub enum Critter
+pub(crate) enum Critter
 {
     Firefly,
     Cicada,
@@ -124,6 +124,7 @@ impl Anim
             self.m_yawDelay = critter::TURN_WAIT + world.random(critter::TURN_SPREAD);
             self.m_desiredYaw = world.random(critter::TURN_RANGE) - world.random(critter::TURN_RANGE);
         }
+
         self.m_yaw += (self.m_desiredYaw - self.m_yaw).signum();
         if self.m_yaw == self.m_desiredYaw
         {
@@ -139,6 +140,7 @@ impl Anim
             self.m_placed = true;
             self.m_yaw = world.random(critter::QUARTERS) * critter::QUARTER;
         }
+
         if self.m_yawDelay > 0
         {
             self.m_yawDelay -= 1;
@@ -150,11 +152,13 @@ impl Anim
             self.m_yawDelay = critter::TURN_WAIT + world.random(critter::TURN_SPREAD);
             self.m_desiredYaw = world.random(critter::QUARTERS) * critter::QUARTER;
         }
+
         self.m_yaw += 1;
         if self.m_yaw > critter::FULL_TURN
         {
             self.m_yaw = 0;
         }
+
         if self.m_yaw == self.m_desiredYaw
         {
             self.m_desiredYaw = 0;
@@ -174,14 +178,17 @@ impl Anim
         {
             self.m_glowing = false;
         }
+
         if self.m_glowing && self.m_glow < 1.0
         {
             self.m_glow += critter::GLOW_STEP;
         }
+
         if !self.m_glowing && self.m_glow > 0.0
         {
             self.m_glow -= critter::GLOW_STEP;
         }
+
         if !self.m_glowing && self.m_glow <= 0.0
         {
             self.m_glowing = true;
@@ -203,20 +210,24 @@ impl Anim
             let pitch: f32 = (ids::fraction(world) - ids::fraction(world)) * critter::PITCH_SPREAD + 1.0;
             world.playSound(ids::center(pos), critter::SOUND, 1.0, pitch);
         }
+
         if self.m_singing && self.m_singTicks >= critter::SONG_TICKS
         {
             self.m_singing = false;
             self.m_singTicks = 0;
         }
+
         if self.m_singing && self.m_singTicks < critter::SONG_TICKS
         {
             self.m_singTicks += 1;
+
             if world.random(critter::NOTE_ODDS) == 0
             {
                 let at: [f64; 3] = [pos.x, pos.y, pos.z].map(|axis| f64::from(axis) + f64::from(ids::fraction(world)));
                 world.particle("note", at, [0.0; 3]);
             }
         }
+
         if !self.m_singing && self.m_singTicks <= 0
         {
             self.m_singing = true;
@@ -266,10 +277,12 @@ impl TileBehavior for CritterTile
 
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
+
         ANIMS.with(|anims|
         {
-            let mut anims = anims.borrow_mut();
+            let mut anims: RefMut<HashMap<(i32, b173_api::BlockPos), Anim>> = anims.borrow_mut();
             let anim: &mut Anim = anims.entry((world.dimension, pos)).or_default();
+
             match self.m_critter
             {
                 Critter::Firefly =>
@@ -280,14 +293,17 @@ impl TileBehavior for CritterTile
                             [pos.x, pos.y, pos.z].map(|axis| f64::from(axis) + f64::from(ids::fraction(world)));
                         crate::particles::tinyFirefly(world, at);
                     }
+
                     anim.twitch(world);
                     anim.pulse(world);
                 }
+
                 Critter::Cicada =>
                 {
                     anim.twitch(world);
                     anim.sing(world, pos);
                 }
+
                 Critter::Moonworm => anim.crawl(world),
             }
         });
@@ -313,6 +329,7 @@ impl TileBehavior for CritterTile
             .rotate(anim.m_yaw as f32, 0.0, 1.0, 0.0)
             .texture(row.m_skin)
             .scale(1.0, -1.0, -1.0);
+
         match self.m_critter
         {
             Critter::Firefly =>
@@ -321,6 +338,7 @@ impl TileBehavior for CritterTile
                 body.blend(true).lighting(false).color(1.0, 1.0, 1.0, anim.m_glow).rest(tf_firefly::GLOW);
                 body.color(1.0, 1.0, 1.0, 1.0).lighting(true).blend(false);
             }
+
             Critter::Cicada =>
             {
                 for part in [
@@ -335,24 +353,29 @@ impl TileBehavior for CritterTile
                     body.rest(part);
                 }
             }
+
             Critter::Moonworm =>
             {
                 // ModelTFMoonworm.setLivingAnimations, each piece dips in turn while the worm crawls
                 let crawling: bool = anim.m_yawDelay == 0;
                 let time: f32 = (anim.m_desiredYaw - anim.m_yaw) as f32 - partial;
+
                 for (offset, part) in [tf_moonworm::HEAD, tf_moonworm::SHAPE1, tf_moonworm::SHAPE2, tf_moonworm::SHAPE3]
                     .into_iter()
                     .enumerate()
                 {
                     let mut pivot: [f32; 3] = tf_moonworm::PIVOTS[usize::from(part)];
+
                     if crawling
                     {
                         pivot[1] += (time / 2.0 + offset as f32).sin().min(0.0);
                     }
+
                     body.part(part, tf_moonworm::ROTATIONS[usize::from(part)], pivot);
                 }
             }
         }
+
         Pose { pre: Vec::new(), model: body.take() }
     }
 }
@@ -371,6 +394,7 @@ impl BlockBehavior for Jar
     fn onRandomDisplayTick(&self, ctx: &mut BlockCtx)
     {
         let pos: [f64; 3] = ids::center(ctx.pos());
+
         for _ in 0..2
         {
             crate::particles::tinyFirefly(ctx.world(), [pos[0], pos[1] - 0.6, pos[2]]);
@@ -380,7 +404,7 @@ impl BlockBehavior for Jar
 
 fn tileName(row: &CritterRow) -> String { format!("{}_tile", row.m_name) }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &CRITTERS
     {
@@ -398,12 +422,15 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             .sound("cloth")
             .model(BlockModelSpec { cuboids: vec![hidden], translucent: true, ..BlockModelSpec::default() })
             .tileEntity(&tile);
+
         if !row.m_drops
         {
             spec = spec.drops(Vec::new());
         }
+
         super::put(ctx, row.m_name, spec)?;
     }
+
     let inset: f32 = 3.0;
     let hardness: f32 = 0.3;
     let jar: Cuboid =

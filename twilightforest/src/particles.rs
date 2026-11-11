@@ -52,7 +52,7 @@ const KINDS: [Kind; 19] = [
     Kind { m_color: Some(0xCCCCCC), ..kind("townaura", "smoke") },
 ];
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &KINDS
     {
@@ -66,11 +66,12 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
         ctx.particles().register(row.m_name, spec)?;
     }
+
     Ok(())
 }
 
 // the source's particle names spawn as this mod's particles, beta's own pass through
-pub fn spawn(world: World, name: &str, at: [f64; 3], motion: [f64; 3])
+pub(crate) fn spawn(world: World, name: &str, at: [f64; 3], motion: [f64; 3])
 {
     match KINDS.iter().find(|row| row.m_name == name)
     {
@@ -80,13 +81,13 @@ pub fn spawn(world: World, name: &str, at: [f64; 3], motion: [f64; 3])
 }
 
 // BlockTFTowerDevice.sparkle, a speck just outside every face that is not covered
-pub fn sparkle(world: World, pos: BlockPos, name: &str)
+pub(crate) fn sparkle(world: World, pos: BlockPos, name: &str)
 {
     glint(world, pos, name, [0.0; 3], |at| !World::blockInfo(world.block(at)).opaque);
 }
 
 // a speck just outside every face whose neighbor passes the check
-pub fn glint(world: World, pos: BlockPos, name: &str, motion: [f64; 3], open: impl Fn(BlockPos) -> bool)
+pub(crate) fn glint(world: World, pos: BlockPos, name: &str, motion: [f64; 3], open: impl Fn(BlockPos) -> bool)
 {
     for [dx, dy, dz] in NEIGHBORS
     {
@@ -100,7 +101,7 @@ pub fn glint(world: World, pos: BlockPos, name: &str, motion: [f64; 3], open: im
 }
 
 // a random spot on the face of a block that looks along the step
-pub fn outside(world: World, pos: BlockPos, step: [i32; 3]) -> [f64; 3]
+pub(crate) fn outside(world: World, pos: BlockPos, step: [i32; 3]) -> [f64; 3]
 {
     let offset: f64 = 0.0625;
     let mut at: [f64; 3] = [
@@ -108,9 +109,11 @@ pub fn outside(world: World, pos: BlockPos, step: [i32; 3]) -> [f64; 3]
         f64::from(pos.y) + f64::from(ids::fraction(world)),
         f64::from(pos.z) + f64::from(ids::fraction(world)),
     ];
+
     for (axis, step) in step.into_iter().enumerate()
     {
         let base: f64 = f64::from([pos.x, pos.y, pos.z][axis]);
+
         match step
         {
             1 => at[axis] = base + 1.0 + offset,
@@ -119,15 +122,18 @@ pub fn outside(world: World, pos: BlockPos, step: [i32; 3]) -> [f64; 3]
             {}
         }
     }
+
     at
 }
 
-pub fn line(world: World, name: &str, from: [f64; 3], to: [f64; 3], count: i32)
+pub(crate) fn line(world: World, name: &str, from: [f64; 3], to: [f64; 3], count: i32)
 {
     let jitter: f64 = 0.005;
+
     for step in 0..count
     {
         let along: f64 = f64::from(step) / (f64::from(count) - 1.0);
+
         let at: [f64; 3] = std::array::from_fn(|axis|
         {
             from[axis] + (to[axis] - from[axis]) * along + f64::from(ids::fraction(world)) * jitter
@@ -137,7 +143,7 @@ pub fn line(world: World, name: &str, from: [f64; 3], to: [f64; 3], count: i32)
 }
 
 // EntityTFTinyFirefly, a glowing speck drifting near a firefly jar
-pub fn tinyFirefly(world: World, at: [f64; 3])
+pub(crate) fn tinyFirefly(world: World, at: [f64; 3])
 {
     let spread: f64 = 0.3;
     let rise: f64 = 0.4;

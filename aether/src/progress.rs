@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 // AchievementsAether, the Aether I page on the loader's mod achievements
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Award
+pub(crate) enum Award
 {
     EnterAether,
     Bronze,
@@ -38,7 +38,8 @@ mod sound
 
 // rows in Award order, enter_aether is every other row's parent
 const ROWS: [Row; 10] = [
-    Row {
+    Row
+    {
         m_award: Award::EnterAether,
         m_name: "enter_aether",
         m_title: "Hostile Paradise",
@@ -46,7 +47,8 @@ const ROWS: [Row; 10] = [
         m_icon: "minecraft:glowstone",
         m_sound: sound::GENERAL,
     },
-    Row {
+    Row
+    {
         m_award: Award::Bronze,
         m_name: "bronze_dungeon",
         m_title: "Like a Bossaru!",
@@ -54,7 +56,8 @@ const ROWS: [Row; 10] = [
         m_icon: "aether:bronze_key",
         m_sound: sound::BRONZE,
     },
-    Row {
+    Row
+    {
         m_award: Award::Silver,
         m_name: "silver_dungeon",
         m_title: "Dethroned",
@@ -62,7 +65,8 @@ const ROWS: [Row; 10] = [
         m_icon: "aether:silver_key",
         m_sound: sound::SILVER,
     },
-    Row {
+    Row
+    {
         m_award: Award::Gold,
         m_name: "gold_dungeon",
         m_title: "Extinguished",
@@ -70,7 +74,8 @@ const ROWS: [Row; 10] = [
         m_icon: "aether:golden_key",
         m_sound: sound::GENERAL,
     },
-    Row {
+    Row
+    {
         m_award: Award::Enchanter,
         m_name: "enchanter",
         m_title: "Do you believe in magic?",
@@ -78,7 +83,8 @@ const ROWS: [Row; 10] = [
         m_icon: "aether:enchanter",
         m_sound: sound::GENERAL,
     },
-    Row {
+    Row
+    {
         m_award: Award::Incubator,
         m_name: "incubator",
         m_title: "Now you're family",
@@ -86,7 +92,8 @@ const ROWS: [Row; 10] = [
         m_icon: "aether:incubator",
         m_sound: sound::GENERAL,
     },
-    Row {
+    Row
+    {
         m_award: Award::BlueCloud,
         m_name: "blue_aercloud",
         m_title: "To infinity and beyond!",
@@ -94,7 +101,8 @@ const ROWS: [Row; 10] = [
         m_icon: "aether:blue_aercloud",
         m_sound: sound::GENERAL,
     },
-    Row {
+    Row
+    {
         m_award: Award::FlyingPig,
         m_name: "mount_phyg",
         m_title: "When Phygs fly",
@@ -102,7 +110,8 @@ const ROWS: [Row; 10] = [
         m_icon: "minecraft:saddle",
         m_sound: sound::GENERAL,
     },
-    Row {
+    Row
+    {
         m_award: Award::GravTools,
         m_name: "gravitite_tools",
         m_title: "Pink is the new blue",
@@ -110,7 +119,8 @@ const ROWS: [Row; 10] = [
         m_icon: "aether:gravitite_pickaxe",
         m_sound: sound::GENERAL,
     },
-    Row {
+    Row
+    {
         m_award: Award::Loreception,
         m_name: "loreception",
         m_title: "Lore-ception!",
@@ -126,7 +136,8 @@ const LORE_BOOK: &str = "aether:lore_book";
 const PLAYER_HALF_WIDTH: f64 = 0.3;
 const PLAYER_HEIGHT: f64 = 1.8;
 
-thread_local! {
+thread_local!
+{
     // TileEntityIncubator.owner, the last player to use an incubator, kept only in memory as in the source
     static OWNERS: RefCell<HashMap<(i32, i32, i32, i32), i32>> = RefCell::new(HashMap::new());
     // players who opened a book of lore and have not put one inside it yet
@@ -141,7 +152,7 @@ fn identifier(text: &str) -> Result<Identifier>
 }
 
 // EntityPlayer.triggerAchievement, a first unlock plays the Aether's own jingle as PacketAchievement does
-pub fn grant(player: Player, award: Award)
+pub(crate) fn grant(player: Player, award: Award)
 {
     match player.unlockAchievement(&id(award))
     {
@@ -152,6 +163,7 @@ pub fn grant(player: Player, award: Award)
                 (World { dimension: info.world }).playSound(info.pos, ROWS[award as usize].m_sound, 1.0, 1.0);
             }
         }
+
         Ok(false) =>
         {}
         Err(error) => warn(&format!("achievement {award:?}: {}", error.0)),
@@ -159,7 +171,7 @@ pub fn grant(player: Player, award: Award)
 }
 
 // getPlayersInDungeon: every player whose box touches the dungeon point grown by reach
-pub fn grantInside(world: World, center: [i32; 3], reach: [f64; 3], award: Award)
+pub(crate) fn grantInside(world: World, center: [i32; 3], reach: [f64; 3], award: Award)
 {
     for player in world.players()
     {
@@ -168,12 +180,14 @@ pub fn grantInside(world: World, center: [i32; 3], reach: [f64; 3], award: Award
         {
             continue;
         };
+
         let [x, y, z] = info.pos;
         let [cx, cy, cz] = center.map(f64::from);
         let inside: bool = (x - cx).abs() < reach[0] + PLAYER_HALF_WIDTH
             && y < cy + reach[1]
             && y + PLAYER_HEIGHT > cy - reach[1]
             && (z - cz).abs() < reach[2] + PLAYER_HALF_WIDTH;
+
         if inside
         {
             grant(player, award);
@@ -182,19 +196,20 @@ pub fn grantInside(world: World, center: [i32; 3], reach: [f64; 3], award: Award
 }
 
 // SlotIncubator.putStack names the player who fed the incubator as its owner
-pub fn setOwner(world: World, pos: BlockPos, player: Player)
+pub(crate) fn setOwner(world: World, pos: BlockPos, player: Player)
 {
     OWNERS.with(|owners| owners.borrow_mut().insert((world.dimension, pos.x, pos.y, pos.z), player.id));
 }
 
-pub fn owner(world: World, pos: BlockPos) -> Option<Player>
+pub(crate) fn owner(world: World, pos: BlockPos) -> Option<Player>
 {
     OWNERS.with(|owners| owners.borrow().get(&(world.dimension, pos.x, pos.y, pos.z)).map(|id| Player { id: *id }))
 }
 
-pub fn read(player: Player)
+pub(crate) fn read(player: Player)
 {
-    READERS.with(|readers| {
+    READERS.with(|readers|
+    {
         let mut readers: RefMut<Vec<i32>> = readers.borrow_mut();
         if !readers.contains(&player.id)
         {
@@ -216,10 +231,12 @@ fn checkReaders()
         {
             continue;
         }
+
         if inside
         {
             grant(player, Award::Loreception);
         }
+
         READERS.with(|readers| readers.borrow_mut().retain(|reader| *reader != id));
     }
 }
@@ -236,6 +253,7 @@ fn crafted(event: &mut Event)
     {
         return;
     }
+
     if GRAVITITE_TOOLS.iter().any(|tool| stack.item.is(tool))
     {
         grant(player, Award::GravTools);
@@ -246,13 +264,15 @@ fn crafted(event: &mut Event)
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &ROWS
     {
         let parent: Option<Identifier> =
             (row.m_award != Award::EnterAether).then(|| identifier(&id(Award::EnterAether))).transpose()?;
-        let spec: AchievementSpec = AchievementSpec {
+
+        let spec: AchievementSpec = AchievementSpec
+        {
             title: row.m_title.to_owned(),
             description: row.m_description.to_owned(),
             icon: identifier(row.m_icon)?,
@@ -260,6 +280,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
         ctx.achievements().register(row.m_name, spec)?;
     }
+
     ctx.events().on::<ItemCrafted>(Priority::Normal, crafted)?;
     ctx.events().on::<TickPost>(Priority::Normal, |_| checkReaders())?;
     Ok(())

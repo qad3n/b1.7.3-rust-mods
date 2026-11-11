@@ -1,4 +1,5 @@
 use super::gen_world::GenWorld;
+use crate::ids::Palette;
 use b173_api::terrain::Random;
 
 mod skyroot
@@ -25,7 +26,7 @@ mod oak
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Tree
+pub(crate) enum Tree
 {
     Skyroot,
     GoldenOak,
@@ -33,12 +34,12 @@ pub enum Tree
 
 impl Tree
 {
-    pub fn generate(self, world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+    pub(crate) fn generate(self, world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
     {
         match self
         {
-            Tree::Skyroot => skyrootTree(world, random, x, y, z),
-            Tree::GoldenOak => goldenOakTree(world, random, x, y, z),
+            Self::Skyroot => skyrootTree(world, random, x, y, z),
+            Self::GoldenOak => goldenOakTree(world, random, x, y, z),
         }
     }
 }
@@ -50,15 +51,18 @@ fn onSoil(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 }
 
 // AetherGenSkyrootTree.generate
-pub fn skyrootTree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn skyrootTree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
-    let palette = &world.m_palette;
+    let palette: &Palette = &world.m_palette;
     let height: i32 = random.nextIntBounded(skyroot::HEIGHT_SPREAD) + skyroot::MIN_HEIGHT;
+
     if !onSoil(world, x, y, z)
     {
         return false;
     }
+
     world.set(x, y - 1, z, palette.m_dirt);
+
     for leafY in y - skyroot::CANOPY_LAYERS + height..=y + height
     {
         let fromTop: i32 = leafY - (y + height);
@@ -77,6 +81,7 @@ pub fn skyrootTree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) ->
             }
         }
     }
+
     for trunk in 0..height
     {
         let block: i32 = world.block(x, y + trunk, z);
@@ -85,13 +90,14 @@ pub fn skyrootTree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) ->
             world.set(x, y + trunk, z, palette.m_skyrootLog);
         }
     }
+
     true
 }
 
 // AetherGenOakTree.branch, a short diagonal arm mirrored on the far side of the trunk
 fn branch(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, slant: i32)
 {
-    let palette = &world.m_palette;
+    let palette: &Palette = &world.m_palette;
     let directionX: i32 = random.nextIntBounded(3) - 1;
     let directionZ: i32 = random.nextIntBounded(3) - 1;
     let (mut x, mut y, mut z): (i32, i32, i32) = (x, y, z);
@@ -105,11 +111,13 @@ fn branch(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, slant: i32)
         z += directionZ;
         mirrorX -= directionX;
         mirrorZ -= directionZ;
+
         if world.block(x, y, z) == palette.m_goldenOakLeaves
         {
             world.set(x, y, z, palette.m_goldenOakLog);
             world.set(mirrorX, y, mirrorZ, palette.m_goldenOakLog);
         }
+
         n += 1;
     }
 }
@@ -117,7 +125,8 @@ fn branch(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, slant: i32)
 // AetherGenOakTree.generate body, shared with the dungeon variant
 fn oakBody(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
-    let palette = &world.m_palette;
+    let palette: &Palette = &world.m_palette;
+
     for leafX in x - oak::RADIUS..x + oak::RADIUS + 1
     {
         for leafY in y + oak::CANOPY_LOW..y + oak::CANOPY_HIGH
@@ -135,34 +144,38 @@ fn oakBody(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
             }
         }
     }
+
     for n in 0..oak::HEIGHT
     {
         if n > oak::BRANCH_START && random.nextIntBounded(oak::BRANCH_CHANCE) > 0
         {
             branch(world, random, x, y + n, z, n / oak::BRANCH_SLANT - 1);
         }
+
         world.set(x, y + n, z, palette.m_goldenOakLog);
     }
 }
 
 // AetherGenOakTree.generate
-pub fn goldenOakTree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn goldenOakTree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     if !onSoil(world, x, y, z)
     {
         return false;
     }
+
     oakBody(world, random, x, y, z);
     true
 }
 
 // AetherGenDungeonOakTree.generate, grows only where the golden dungeon marked its grass
-pub fn dungeonOakTree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn dungeonOakTree(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     if world.block(x, y - 1, z) != world.m_palette.m_grass || world.meta(x, y - 1, z) != oak::DUNGEON_GRASS_META
     {
         return false;
     }
+
     oakBody(world, random, x, y, z);
     true
 }

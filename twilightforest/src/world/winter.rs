@@ -27,6 +27,7 @@ fn branches(builder: &Builder, x: i32, y: i32, z: i32, radius: i32, wood: Placed
         {
             [[x - i, z + 1], [x + 1, z + 1 + i], [x + 1 + i, z], [x, z - i]]
         };
+
         for [bx, bz] in cells
         {
             builder.set(bx, y, bz, wood);
@@ -34,17 +35,20 @@ fn branches(builder: &Builder, x: i32, y: i32, z: i32, radius: i32, wood: Placed
     }
 }
 
-pub fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let mut height: i32 = winter::HEIGHT;
+
     if random.nextIntBounded(3) == 0
     {
         height += random.nextIntBounded(winter::EXTRA);
+
         if random.nextIntBounded(8) == 0
         {
             height += random.nextIntBounded(winter::EXTRA);
         }
     }
+
     let world: &super::generate::GenWorld = builder.m_world;
     let below: i32 = world.block(x, y - 1, z);
     let grounded: bool = below == world.id("minecraft:grass") || below == world.id("minecraft:dirt");
@@ -52,7 +56,9 @@ pub fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
     {
         return false;
     }
+
     let log: Placed = (world.id("minecraft:log"), winter::SPRUCE);
+
     let woods: Woods = Woods
     {
         m_trunk: log,
@@ -60,6 +66,7 @@ pub fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
         m_leaf: (world.id("minecraft:leaves"), winter::SPRUCE),
         m_root: super::trees::root(),
     };
+
     for dy in 0..height
     {
         for [dx, dz] in [[0, 0], [1, 0], [0, 1], [1, 1]]
@@ -67,6 +74,7 @@ pub fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
             builder.set(x + dx, y + dy, z + dz, log);
         }
     }
+
     for dy in 0..height
     {
         let radius: i32 = leafRadius(height, dy);
@@ -74,11 +82,14 @@ pub fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -> bool
         builder.leafCircle2(x, layer, z, radius, woods.m_leaf);
         branches(builder, x, layer, z, radius, log);
     }
+
     let roots: i32 = 4 + random.nextIntBounded(3);
     let offset: f32 = random.nextFloat();
+
     for index in 0..roots
     {
         builder.buildRoot(x, y, z, f64::from(offset), index, &woods);
     }
+
     true
 }

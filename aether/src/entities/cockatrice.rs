@@ -21,7 +21,8 @@ mod aim
     pub const SLOW_FALL: f64 = 0.6;
 }
 
-thread_local! {
+thread_local!
+{
     static TIMERS: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
 }
 
@@ -38,10 +39,12 @@ impl EntityBehavior for Cockatrice
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
         entity.setField(EntityField::FallDistance, 0.0);
+
         if !entity.flag(EntityField::OnGround) && info.motion[1] < 0.0
         {
             let _ = entity.setMotion([info.motion[0], info.motion[1] * aim::SLOW_FALL, info.motion[2]]);
         }
+
         if !entity.world.isAuthority()
         {
             return;
@@ -52,8 +55,10 @@ impl EntityBehavior for Cockatrice
         {
             return;
         };
+
         let (dx, dz): (f64, f64) = (goal.pos[0] - info.pos[0], goal.pos[2] - info.pos[2]);
         entity.setField(EntityField::Yaw, dz.atan2(dx).to_degrees() - 90.0);
+
         let timer: i32 = TIMERS.with(|timers| timers.borrow().get(&entity.id).copied()).unwrap_or(0);
         let seen: bool = entity.world.rayTrace(eyes(info), eyes(&goal), false).is_none();
         let next: i32 = if timer >= aim::READY && seen
@@ -90,6 +95,7 @@ impl EntityBehavior for Cockatrice
         {
             entity.setField(EntityField::TargetId, attacker as f64);
         }
+
         Some(amount)
     }
 
@@ -101,11 +107,12 @@ impl EntityBehavior for Cockatrice
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:monster").ok(),
             texture: Some(TEXTURE.to_owned()),
             size: Some([1.0, 2.0]),

@@ -19,7 +19,8 @@ struct Stone
 
 const fn stone(name: &'static str, texture: &'static str, hardness: f32, resistance: f32, slab: (f32, f32)) -> Stone
 {
-    Stone {
+    Stone
+    {
         m_name: name,
         m_texture: texture,
         m_material: "rock",
@@ -38,7 +39,8 @@ const STONES: [Stone; 8] = [
     stone("carved", "carved_stone", 0.5, 2.5, (2.0, 10.0)),
     stone("angelic", "angelic_stone", 0.5, 2.5, (2.0, 10.0)),
     stone("hellfire", "hellfire_stone", 0.5, 2.5, (2.0, 10.0)),
-    Stone {
+    Stone
+    {
         m_name: "skyroot",
         m_texture: "skyroot_planks",
         m_material: "wood",
@@ -93,7 +95,8 @@ fn texture(name: &str) -> String { format!("aether:block/{name}") }
 
 fn cuboid(bounds: [f32; 6], metas: Vec<i32>, connect: Option<i32>) -> Cuboid
 {
-    Cuboid {
+    Cuboid
+    {
         from: [bounds[0], bounds[1], bounds[2]],
         to: [bounds[3], bounds[4], bounds[5]],
         texture: None,
@@ -155,6 +158,7 @@ impl BlockBehavior for Gate
         {
             let meta: u8 = ctx.meta() ^ shape::OPEN as u8;
             ctx.setMeta(meta);
+
             let pos: BlockPos = ctx.pos();
             ctx.world().playSound(
                 [pos.x as f64 + 0.5, pos.y as f64 + 0.5, pos.z as f64 + 0.5],
@@ -163,6 +167,7 @@ impl BlockBehavior for Gate
                 1.0,
             );
         }
+
         true
     }
 }
@@ -202,7 +207,9 @@ fn wall(row: &Stone) -> BlockSpecBuilder
 {
     let mut cuboids: Vec<Cuboid> = vec![cuboid(shape::POST, Vec::new(), None)];
     cuboids.extend(shape::ARMS.iter().map(|(face, bounds)| cuboid(*bounds, Vec::new(), Some(*face))));
-    shaped(row, row.m_hardness, row.m_resistance).model(BlockModelSpec {
+
+    shaped(row, row.m_hardness, row.m_resistance).model(BlockModelSpec
+    {
         cuboids,
         connects_to: walls(),
         ..BlockModelSpec::default()
@@ -213,6 +220,7 @@ fn wall(row: &Stone) -> BlockSpecBuilder
 fn gate() -> BlockSpecBuilder
 {
     let mut cuboids: Vec<Cuboid> = Vec::new();
+
     for facing in 0..4
     {
         for (index, bounds) in shape::GATE_ALONG_X.iter().enumerate()
@@ -237,6 +245,7 @@ fn gate() -> BlockSpecBuilder
             cuboids.push(cuboid(turned, metas, None));
         }
     }
+
     shaped(&STONES[3], STONES[3].m_hardness, STONES[3].m_resistance)
         .model(BlockModelSpec { cuboids, ..BlockModelSpec::default() })
         .behavior(Gate)
@@ -251,6 +260,7 @@ impl BlockBehavior for Bed
     fn onHarvest(&self, ctx: &mut BlockCtx, _player: Player)
     {
         let pos: BlockPos = ctx.pos();
+
         if ctx.isAuthority() && ctx.meta() & BED_HEAD == 0
         {
             let _ = ctx.world().spawnItem(
@@ -275,6 +285,7 @@ impl ItemBehavior for BedItem
     fn onUseOnBlock(&self, world: World, player: Player, stack: ItemStack, pos: BlockPos, face: i32) -> Use
     {
         const TOP: i32 = 1;
+
         if face != TOP
         {
             return Use::Pass;
@@ -287,12 +298,14 @@ impl ItemBehavior for BedItem
         {
             return Use::Pass;
         }
+
         if world.isAuthority()
         {
             let id: i32 = blockId(BED);
             let _ = world.setBlock(foot, id, facing as i32);
             let _ = world.setBlock(head, id, facing as i32 | BED_HEAD as i32);
         }
+
         Use::Done((stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }))
     }
 }
@@ -318,10 +331,12 @@ impl BlockBehavior for Present
         {
             return;
         }
+
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let at: [f64; 3] = [pos.x as f64 + 0.5, pos.y as f64 + 0.5, pos.z as f64 + 0.5];
         let amount: i32 = present::MIN + world.random(present::SPREAD);
+
         match world.random(present::CRATES)
         {
             // b1.7.3 has no experience orbs, the orb crate gives gingerbread men instead
@@ -329,13 +344,16 @@ impl BlockBehavior for Present
             {
                 let _ = world.spawnItem(at, ItemStack::of("candy_cane_sword", 1));
             }
+
             0 | 1 =>
             {
                 let _ = world.spawnItem(at, ItemStack::of("gingerbread_man", amount));
             }
+
             _ =>
             {
                 world.playSound(at, "random.fuse", 1.0, 1.0);
+
                 let _ = world.explode(at, present::BANG);
             }
         }
@@ -370,16 +388,20 @@ impl BlockBehavior for Stem
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    let blocks = ctx.blocks();
+    let blocks: Blocks = ctx.blocks();
+
     for row in &STONES
     {
         blocks.register(&format!("{}_stairs", row.m_name), stairs(row))?;
+
         let double: String = format!("{}_double_slab", row.m_name);
         let slabDrop: DropSpec = crate::entities::drop(&format!("{}_slab", row.m_name), [2, 2]);
         blocks.register(&double, shaped(row, row.m_slabHardness, row.m_slabResistance).drops(vec![slabDrop]))?;
-        let half: BlockModelSpec = BlockModelSpec {
+
+        let half: BlockModelSpec = BlockModelSpec
+        {
             cuboids: vec![cuboid([0.0, 0.0, 0.0, shape::FULL, shape::HALF, shape::FULL], Vec::new(), None)],
             ..BlockModelSpec::default()
         };
@@ -387,14 +409,19 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             &format!("{}_slab", row.m_name),
             shaped(row, row.m_slabHardness, row.m_slabResistance).model(half).behavior(Slab { m_double: double }),
         )?;
+
         if row.m_walls
         {
             blocks.register(&format!("{}_wall", row.m_name), wall(row))?;
         }
     }
+
     blocks.register("skyroot_fence_gate", gate())?;
+
     let sheet = |name: &str| texture(&format!("skyroot_bed_{name}"));
-    let faces: BedFaces = BedFaces {
+
+    let faces: BedFaces = BedFaces
+    {
         top_head: sheet("head_top"),
         top_foot: sheet("feet_top"),
         side_head: sheet("head_side"),
@@ -416,7 +443,8 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         "present",
         BlockSpecBuilder::template("minecraft:block")
             .material("grass")
-            .faces(FaceTextures {
+            .faces(FaceTextures
+            {
                 top: Some(texture("present_top")),
                 bottom: Some(texture("present_top")),
                 side: Some(texture("present_side")),
@@ -427,6 +455,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             .drops(Vec::new())
             .behavior(Present),
     )?;
+
     for name in ["holiday_leaves", "decorated_holiday_leaves"]
     {
         blocks.register(
@@ -440,6 +469,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .behavior(crate::sparkle::HOLIDAY),
         )?;
     }
+
     blocks.register(
         "berry_bush_stem",
         BlockSpecBuilder::template("minecraft:red_flower")

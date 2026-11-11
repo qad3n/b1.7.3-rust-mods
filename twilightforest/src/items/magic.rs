@@ -2,6 +2,7 @@ use super::{put, texture};
 use crate::ids::{self, block, item};
 use crate::math::look;
 use b173_api::prelude::*;
+use b173_api::terrain::math::{cos, sin};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -59,6 +60,7 @@ pub(crate) fn wearHeld(player: Player, amount: i32)
     {
         return;
     }
+
     if let Err(error) = player.damageHeld(amount)
     {
         warn(&format!("held item wear: {}", error.0));
@@ -68,11 +70,13 @@ pub(crate) fn wearHeld(player: Player, amount: i32)
 fn swap(world: World, pos: BlockPos, block: i32, meta: i32)
 {
     let was: i32 = world.block(pos);
+
     if let Err(error) = world.setBlock(pos, block, meta)
     {
         warn(&format!("block change at {pos:?}: {}", error.0));
         return;
     }
+
     if let Err(error) = world.breakEffect(pos, was, world.meta(pos))
     {
         warn(&format!("break effect at {pos:?}: {}", error.0));
@@ -88,7 +92,9 @@ fn crumble(world: World, pos: BlockPos) -> i32
         (block::MAZESTONE_BRICK, block::CRACKED_MAZESTONE),
         ("minecraft:cobblestone", "minecraft:gravel"),
     ];
+
     let mut cost: i32 = 0;
+
     for (from, to) in rolls
     {
         if here == ids::blockId(from) && world.random(odds::CRUMBLE) == 0
@@ -97,53 +103,60 @@ fn crumble(world: World, pos: BlockPos) -> i32
             cost += 1;
         }
     }
+
     let soft: bool = here == ids::blockId("minecraft:gravel") || here == ids::blockId("minecraft:dirt");
     if soft && world.random(odds::HARVEST) == 0
     {
         let meta: i32 = world.meta(pos);
+
         if let Err(error) = world.setBlock(pos, 0, 0)
         {
             warn(&format!("crumble at {pos:?}: {}", error.0));
             return cost;
         }
+
         if let Err(error) = world.dropBlockItems(pos, here, meta)
         {
             warn(&format!("crumble drops at {pos:?}: {}", error.0));
         }
+
         if let Err(error) = world.breakEffect(pos, here, meta)
         {
             warn(&format!("break effect at {pos:?}: {}", error.0));
         }
+
         cost += 1;
     }
+
     cost
 }
 
 // the held items used by holding the use key, ItemTFCrumbleHorn, ItemTFLampOfCinders, ItemTFOreMagnet and the rest
-pub mod held
+pub(crate) mod held
 {
-    pub const LONGEST: i32 = 72000;
+    pub(crate) const LONGEST: i32 = 72000;
     // ItemTFPeacockFan stays raised for a second after each fan
-    pub const FAN: i32 = 20;
+    pub(crate) const FAN: i32 = 20;
     // the horn crumbles every fifth tick once ten have passed, the lamp and magnet act on release past a short hold
-    pub const HORN_EVERY: i32 = 5;
-    pub const HORN_WARMUP: i32 = 10;
-    pub const LAMP_HOLD: i32 = 12;
-    pub const MAGNET_HOLD: i32 = 10;
+    pub(crate) const HORN_EVERY: i32 = 5;
+    pub(crate) const HORN_WARMUP: i32 = 10;
+    pub(crate) const LAMP_HOLD: i32 = 12;
+    pub(crate) const MAGNET_HOLD: i32 = 10;
 }
 
 // starts holding the item in use for ticks and keeps the stack in hand
-pub fn holdInUse(player: Player, ticks: i32) -> Use
+pub(crate) fn holdInUse(player: Player, ticks: i32) -> Use
 {
     if let Err(error) = player.setItemInUse(ticks)
     {
         warn(&format!("hold item in use: {}", error.0));
     }
+
     Use::Done(player.held())
 }
 
 // EntityPlayer.stopUsingItem, as when a charged out item lets go by itself
-pub fn letGo(player: Player)
+pub(crate) fn letGo(player: Player)
 {
     if let Err(error) = player.stopUsingItem()
     {
@@ -168,6 +181,7 @@ impl ItemBehavior for CrumbleHorn
         {
             bleat(world, &info);
         }
+
         holdInUse(player, held::LONGEST)
     }
 
@@ -195,6 +209,7 @@ impl ItemBehavior for CrumbleHorn
         {
             wearHeld(player, crumbled);
         }
+
         bleat(world, &info);
     }
 }
@@ -222,9 +237,12 @@ impl PeacockFan
         {
             return;
         }
+
         GUSTED.with(|gusted| gusted.borrow_mut().insert(player.id, now + GUST_TICKS));
+
         let (push, lift): (f64, f64) = (3.0, 1.5);
         let _ = entity.setMotion([info.motion[0] * push, lift, info.motion[2] * push]);
+
         entity.setField(EntityField::FallDistance, 0.0);
     }
 
@@ -240,9 +258,11 @@ impl PeacockFan
                 {
                     warn(&format!("flower drops at {pos:?}: {}", error.0));
                 }
+
                 swap(world, pos, 0, 0);
             }
         }
+
         let force: f64 = 2.0;
         let aim: [f64; 3] = look(info.yaw, info.pitch);
         let span: f64 = reach::RADIUS * 2.0;
@@ -253,6 +273,7 @@ impl PeacockFan
             {
                 continue;
             }
+
             let _ = Entity { world, id: other.id }.setMotion(aim.map(|axis| axis * force));
         }
     }
@@ -268,6 +289,7 @@ impl ItemBehavior for PeacockFan
         {
             return Use::Pass;
         };
+
         let grounded: bool = Entity { world, id: player.id }.flag(EntityField::OnGround);
         if !grounded
         {
@@ -316,10 +338,12 @@ fn burn(world: World, pos: BlockPos) -> bool
     {
         return false;
     }
+
     if let Err(error) = world.setBlock(pos, ids::blockId(block::BURNT_THORNS), world.meta(pos))
     {
         warn(&format!("burn thorns at {pos:?}: {}", error.0));
     }
+
     true
 }
 
@@ -337,6 +361,7 @@ impl ItemBehavior for LampOfCinders
         {
             return Use::Done(player.held());
         }
+
         holdInUse(player, held::LONGEST)
     }
 
@@ -349,22 +374,28 @@ impl ItemBehavior for LampOfCinders
     {
         let charged: bool =
             held::LONGEST - left > held::LAMP_HOLD && stack.damage + 1 < b173_api::maxDamage(&stack.item);
+
         let Some(info) = player.info().filter(|_| charged)
         else
         {
             return Use::Pass;
         };
+
         let center: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
+
         if world.isAuthority()
         {
             let (volume, pitch): (f32, f32) = (1.5, 0.8);
             world.playSound(info.pos, LAMP_SOUND, volume, pitch);
+
             for pos in cells(center.map(|axis| axis - reach::LAMP), center.map(|axis| axis + reach::LAMP))
             {
                 burn(world, pos);
             }
+
             crate::progress::grant(player, crate::progress::Gate::Troll);
         }
+
         let puffs: i32 = 6;
         for _ in 0..puffs
         {
@@ -376,6 +407,7 @@ impl ItemBehavior for LampOfCinders
             world.particle("flame", at, [0.0; 3]);
             world.particle("smoke", at, [0.0; 3]);
         }
+
         Use::Done(player.held())
     }
 
@@ -385,9 +417,12 @@ impl ItemBehavior for LampOfCinders
         {
             return Use::Pass;
         }
+
         let (volume, pitch): (f32, f32) = (0.5, 1.5);
         world.playSound(ids::center(pos), LAMP_SOUND, volume, pitch);
+
         let spread: f32 = 0.75;
+
         for _ in 0..10
         {
             let at: [f64; 3] = [pos.x, pos.y, pos.z]
@@ -395,6 +430,7 @@ impl ItemBehavior for LampOfCinders
             world.particle("smoke", at, [0.0; 3]);
             world.particle("flame", at, [0.0; 3]);
         }
+
         Use::Done(player.held())
     }
 }
@@ -422,7 +458,9 @@ impl MagicBeans
         {
             return false;
         }
+
         let _ = world.setBlock(pos, ids::blockId(block::HUGE_STALK), 0);
+
         true
     }
 
@@ -438,6 +476,7 @@ impl MagicBeans
     fn leaves(world: World, pos: BlockPos)
     {
         let _ = world.setBlock(pos, ids::blockId(block::HUGE_STALK), 0);
+
         for dx in -1..=1
         {
             for dz in -1..=1
@@ -446,9 +485,10 @@ impl MagicBeans
                 Self::leaf(world, pos.offset(dx, 1, dz));
             }
         }
-        for dx in -2..=2_i32
+
+        for dx in -2..=2i32
         {
-            for dz in -2..=2_i32
+            for dz in -2..=2i32
             {
                 if dx.abs() != 2 || dz.abs() != 2
                 {
@@ -461,7 +501,6 @@ impl MagicBeans
     // ItemTFMagicBeans.makeHugeStalk
     fn grow(world: World, x: i32, z: i32, low: i32, high: i32)
     {
-        use b173_api::terrain::math::{cos, sin};
         let offset: i32 = world.random(100);
         let curl: f32 = ids::fraction(world) * 0.25 + 0.125;
         let swell: f32 = ids::fraction(world) * 0.25 + 0.125;
@@ -477,6 +516,7 @@ impl MagicBeans
             let radius: f32 = 5.0 + sin(phase(y, swell)) * 2.5;
             let cx: f32 = x as f32 + sin(phase(y, curl)) * radius;
             let cz: f32 = z as f32 + cos(phase(y, curl)) * radius;
+
             let thickness: f32 = if high - y < stalk::TAPER
             {
                 stalk::THICKNESS * (high - y) as f32 / stalk::TAPER as f32
@@ -497,6 +537,7 @@ impl MagicBeans
                     }
                 }
             }
+
             if y == nextLeaf
             {
                 let lx: i32 = (x as f32 + sin(phase(y, curl)) * reach) as i32;
@@ -504,6 +545,7 @@ impl MagicBeans
                 Self::leaves(world, BlockPos::new(lx, y, lz));
                 nextLeaf = y + 5 + world.random(10);
             }
+
             y += 1;
         }
     }
@@ -520,10 +562,12 @@ impl ItemBehavior for MagicBeans
         {
             return Use::Pass;
         }
+
         if world.isAuthority()
         {
             Self::grow(world, pos.x, pos.z, pos.y + 1, high);
         }
+
         Use::Done(None)
     }
 }
@@ -540,6 +584,7 @@ impl ItemBehavior for TowerKey
         {
             return Use::Pass;
         }
+
         let left: ItemStack = ItemStack { count: stack.count - 1, ..stack };
         Use::Done((left.count > 0).then_some(left))
     }
@@ -552,6 +597,7 @@ fn ore(block: i32) -> bool
     {
         return false;
     }
+
     block == ids::blockId(block::LIVEROOT)
         || nameOf(RegistryKind::Block, block).is_some_and(|name| name.path().contains("ore"))
 }
@@ -570,7 +616,9 @@ fn vein(world: World, pos: BlockPos, kind: (i32, i32), found: &mut Vec<BlockPos>
     {
         return;
     }
+
     found.push(pos);
+
     for [dx, dy, dz] in ids::NEIGHBORS
     {
         vein(world, pos.offset(dx, dy, dz), kind, found);
@@ -584,10 +632,11 @@ fn magnet(world: World, from: [f64; 3], aim: [f64; 3]) -> i32
 }
 
 // ItemTFOreMagnet.doMagnet, the first ore on the line comes to the first ground the line passed
-pub fn pull(world: World, from: [i32; 3], to: [i32; 3]) -> i32
+pub(crate) fn pull(world: World, from: [i32; 3], to: [i32; 3]) -> i32
 {
     let mut base: Option<BlockPos> = None;
     let mut found: Option<BlockPos> = None;
+
     for [x, y, z] in crate::world::trees::line(from, to)
     {
         let pos: BlockPos = BlockPos::new(x, y, z);
@@ -596,23 +645,28 @@ pub fn pull(world: World, from: [i32; 3], to: [i32; 3]) -> i32
         {
             base = Some(pos);
         }
+
         if ore(here)
         {
             found = Some(pos);
             break;
         }
     }
+
     let (Some(base), Some(found)) = (base, found)
     else
     {
         return 0;
     };
+
     let kind: (i32, i32) = (world.block(found), world.meta(found));
     let mut blocks: Vec<BlockPos> = Vec::new();
     vein(world, found, kind, &mut blocks);
+
     let offset: [i32; 3] = [base.x - found.x, base.y - found.y, base.z - found.z];
     let stone: i32 = ids::blockId("minecraft:stone");
     let mut moved: i32 = 0;
+
     for pos in blocks
     {
         let target: BlockPos = pos.offset(offset[0], offset[1], offset[2]);
@@ -621,12 +675,17 @@ pub fn pull(world: World, from: [i32; 3], to: [i32; 3]) -> i32
         {
             continue;
         }
+
         let _ = world.setBlockQuiet(pos, stone, 0);
+
         world.markBlockForRender(pos);
+
         let _ = world.setBlockQuiet(target, kind.0, kind.1);
+
         world.markBlockForRender(target);
         moved += 1;
     }
+
     moved
 }
 
@@ -682,16 +741,19 @@ impl ItemBehavior for OreMagnet
         {
             return Use::Pass;
         };
+
         let moved: i32 = AIMS
             .iter()
             .map(|[yaw, pitch]| magnet(world, info.pos, look(info.yaw + yaw, info.pitch + pitch)))
             .find(|moved| *moved > 0)
             .unwrap_or(0);
+
         if moved > 0
         {
             wearHeld(player, moved);
             world.playSound(info.pos, "mob.endermen.portal", 1.0, 1.0);
         }
+
         Use::Done(player.held())
     }
 }
@@ -723,10 +785,12 @@ impl ItemBehavior for OreMeter
         {
             return Use::Pass;
         };
+
         let ids: Vec<i32> = METERED.iter().map(|(name, _)| ids::blockId(name)).collect();
         let mut counts: Vec<i32> = vec![0; ids.len()];
         let (chunkX, chunkZ): (i32, i32) = (info.pos[0].floor() as i32 >> 4, info.pos[2].floor() as i32 >> 4);
         let top: i32 = crate::world::terrain::height();
+
         for cx in chunkX - reach::METER..=chunkX + reach::METER
         {
             for cz in chunkZ - reach::METER..=chunkZ + reach::METER
@@ -747,33 +811,40 @@ impl ItemBehavior for OreMeter
                 }
             }
         }
+
         let total: i32 = counts.iter().sum::<i32>().max(1);
+
         player.chat(&format!("Ore Meter! Radius {}", reach::METER));
+
         for ((_, label), count) in METERED.iter().zip(&counts).skip(3)
         {
             let percent: f32 = *count as f32 / total as f32 * 100.0;
             player.chat(&format!("{label} - {count} ({percent:.2}%)"));
         }
+
         Use::Done(player.held())
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let worn = |label: &str, look: &str, durability: i32|
     {
         ItemSpecBuilder::new().name(label).texture(&texture(look)).maxStack(1).maxDamage(durability)
     };
+
     put(
         ctx,
         item::ORE_METER,
         ItemSpecBuilder::new().name("Ore Meter [WIP]").texture(&texture("oremeter")).maxStack(1).behavior(OreMeter),
     )?;
+
     // no item spec names the glowing magnet icons, asking for their slots now gives them room on the item sheet
     for glow in [magnet::GLOW, magnet::BRIGHT]
     {
         let _ = b173_api::world::itemSlot(glow);
     }
+
     put(ctx, item::ORE_MAGNET, worn("Ore Magnet", "oremagnet", wear::MAGNET).behavior(OreMagnet))?;
     put(ctx, item::CRUMBLE_HORN, worn("Crumble Horn", "crumblehorn", wear::HORN).behavior(CrumbleHorn))?;
     put(ctx, item::PEACOCK_FAN, worn("Peacock Feather Fan", "peacockfan", wear::FAN).behavior(PeacockFan))?;

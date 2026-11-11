@@ -1,7 +1,7 @@
 // draft from ComponentTFHollowTreeTrunk.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::HollowTreeTrunk);
     init(&this, world, random, index, x, y, z);
@@ -9,7 +9,7 @@ pub fn new(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32
 }
 
 // ComponentTFHollowTreeTrunk constructor
-pub fn init(this: &Piece, _world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, _world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32)
 {
     this.m_depth.set(index);
     this.m_groundLevel.set(-1);
@@ -23,7 +23,7 @@ pub fn init(this: &Piece, _world: &GenWorld, random: &Random, index: i32, x: i32
 }
 
 // ComponentTFHollowTreeTrunk.func_74861_a
-pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
 {
     let index: i32 = this.depth();
     let numBranches: i32 = random.nextIntBounded(3) + 3;
@@ -44,13 +44,14 @@ pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, rando
             true,
         );
     }
+
     hollow_tree_trunk::buildFullCrown(this, list, random, (index + numBranches) + 1);
     hollow_tree_trunk::buildBranchRing(this, list, random, index, 3, 2, 6, 0, 0.75, 0.0, 3, 5, 3, false);
     hollow_tree_trunk::buildBranchRing(this, list, random, index, 1, 2, 8, 0, 0.9, 0.0, 3, 5, 3, false);
 }
 
 // ComponentTFHollowTreeTrunk.buildFullCrown
-pub fn buildFullCrown(this: &Piece, list: &mut Pieces, random: &Random, mut index: i32)
+pub(crate) fn buildFullCrown(this: &Piece, list: &mut Pieces, random: &Random, mut index: i32)
 {
     let crownRadius: i32 = (this.m_radius.get() * 4) + 4;
     let bvar: i32 = this.m_radius.get() + 2;
@@ -121,7 +122,7 @@ pub fn buildFullCrown(this: &Piece, list: &mut Pieces, random: &Random, mut inde
 }
 
 // ComponentTFHollowTreeTrunk.buildBranchRing
-pub fn buildBranchRing(
+pub(crate) fn buildBranchRing(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -141,17 +142,18 @@ pub fn buildBranchRing(
     let numBranches: i32 = random.nextIntBounded((maxBranches - minBranches) + 1) + minBranches;
     let branchRotation: f64 = 1.0 / (numBranches) as f64;
     let branchOffset: f64 = random.nextDouble();
+
     for i in 0..=numBranches
     {
-        let dHeight: i32;
-        if heightVar > 0
+        let dHeight: i32 = if heightVar > 0
         {
-            dHeight = (branchHeight - heightVar) + random.nextIntBounded(2 * heightVar);
+            (branchHeight - heightVar) + random.nextIntBounded(2 * heightVar)
         }
         else
         {
-            dHeight = branchHeight;
-        }
+            branchHeight
+        };
+
         if size == 2
         {
             hollow_tree_trunk::makeLargeBranch(
@@ -208,11 +210,12 @@ pub fn buildBranchRing(
             );
         }
     }
-    return numBranches;
+
+    numBranches
 }
 
 // ComponentTFHollowTreeTrunk.makeSmallBranch
-pub fn makeSmallBranch(
+pub(crate) fn makeSmallBranch(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -240,7 +243,7 @@ pub fn makeSmallBranch(
 }
 
 // ComponentTFHollowTreeTrunk.makeMedBranch
-pub fn makeMedBranch(
+pub(crate) fn makeMedBranch(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -268,7 +271,7 @@ pub fn makeMedBranch(
 }
 
 // ComponentTFHollowTreeTrunk.makeLargeBranch
-pub fn makeLargeBranch(
+pub(crate) fn makeLargeBranch(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -296,7 +299,7 @@ pub fn makeLargeBranch(
 }
 
 // ComponentTFHollowTreeTrunk.makeRoot
-pub fn makeRoot(
+pub(crate) fn makeRoot(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -323,32 +326,36 @@ pub fn makeRoot(
 }
 
 // ComponentTFHollowTreeTrunk.getBranchSrc
-pub fn getBranchSrc(this: &Piece, branchHeight: i32, branchRotation: f64) -> [i32; 3]
+pub(crate) fn getBranchSrc(this: &Piece, branchHeight: i32, branchRotation: f64) -> [i32; 3]
 {
-    return translateCoords(
+    translateCoords(
         (this.m_box.get().m_min[0] + this.m_radius.get()) + 1,
         this.m_box.get().m_min[1] + branchHeight,
         (this.m_box.get().m_min[2] + this.m_radius.get()) + 1,
         this.m_radius.get(),
         branchRotation,
         0.5,
-    );
+    )
 }
 
 // ComponentTFHollowTreeTrunk.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     if this.m_groundLevel.get() < 0
     {
         this.m_groundLevel.set(this.groundLevel(world, sbb));
+
         if this.m_groundLevel.get() < 0
         {
             return true;
         }
+
         this.m_height.set(this.m_box.get().m_max[1] - this.m_groundLevel.get());
         this.boxed(|bounds| bounds.m_min[1] = this.m_groundLevel.get());
     }
+
     let hollow: i32 = this.m_radius.get() / 2;
+
     for dx in 0..=(2 * this.m_radius.get())
     {
         for dz in 0..=(2 * this.m_radius.get())
@@ -356,6 +363,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             let ax: i32 = (dx - this.m_radius.get()).abs();
             let az: i32 = (dz - this.m_radius.get()).abs();
             let dist: i32 = ((ax.max(az)) as f64 + ((ax.min(az)) as f64 * 0.5)) as i32;
+
             for dy in 0..=this.m_height.get()
             {
                 if (dist <= this.m_radius.get()) && (dist > hollow)
@@ -363,18 +371,22 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
                     this.placeBlock(world, blk("tf:log"), 0, dx + 1, dy, dz + 1, sbb);
                 }
             }
+
             if dist <= this.m_radius.get()
             {
                 this.fillDown(world, blk("tf:log"), 0, dx + 1, -1, dz + 1, sbb);
             }
+
             if (dist == hollow) && (dx == (hollow + this.m_radius.get()))
             {
                 this.fillDown(world, blk("vine"), 8, dx + 1, this.m_height.get(), dz + 1, sbb);
             }
         }
     }
+
     let numInsects: i32 =
         (random.nextIntBounded(3 * this.m_radius.get()) + random.nextIntBounded(3 * this.m_radius.get())) + 10;
+
     for _i in 0..=numInsects
     {
         let fHeight: i32 =
@@ -382,11 +394,19 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         let fAngle: f64 = random.nextDouble();
         hollow_tree_trunk::addInsect(this, world, fHeight, fAngle, random, sbb);
     }
-    return true;
+
+    true
 }
 
 // ComponentTFHollowTreeTrunk.addInsect
-pub fn addInsect(this: &Piece, world: &GenWorld, fHeight: i32, mut fAngle: f64, random: &Random, sbb: StructureBox)
+pub(crate) fn addInsect(
+    this: &Piece,
+    world: &GenWorld,
+    fHeight: i32,
+    mut fAngle: f64,
+    random: &Random,
+    sbb: StructureBox,
+)
 {
     let bugSpot: [i32; 3] = translateCoords(
         this.m_radius.get() + 1,
@@ -397,7 +417,9 @@ pub fn addInsect(this: &Piece, world: &GenWorld, fHeight: i32, mut fAngle: f64, 
         0.5,
     );
     fAngle %= 1.0;
+
     let mut insectMeta: i32 = 0;
+
     if (fAngle > 0.875) || (fAngle <= 0.125)
     {
         insectMeta = 3;
@@ -414,27 +436,20 @@ pub fn addInsect(this: &Piece, world: &GenWorld, fHeight: i32, mut fAngle: f64, 
     {
         insectMeta = 2;
     }
-    hollow_tree_trunk::addInsect7(
-        this,
-        world,
-        if random.nextBoolean()
-        {
-            blk("tf:firefly")
-        }
-        else
-        {
-            blk("tf:cicada")
-        },
-        insectMeta,
-        bugSpot[0],
-        bugSpot[1],
-        bugSpot[2],
-        sbb,
-    );
+
+    let blockID: Blk = if random.nextBoolean()
+    {
+        blk("tf:firefly")
+    }
+    else
+    {
+        blk("tf:cicada")
+    };
+    hollow_tree_trunk::addInsect7(this, world, blockID, insectMeta, bugSpot[0], bugSpot[1], bugSpot[2], sbb);
 }
 
 // ComponentTFHollowTreeTrunk.addInsect
-pub fn addInsect7(
+pub(crate) fn addInsect7(
     this: &Piece,
     world: &GenWorld,
     blockID: Blk,

@@ -1,7 +1,7 @@
 // draft from ComponentTFDarkTowerEntranceBridge.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::DarkTowerEntranceBridge);
     init(&this, i, x, y, z, pSize, pHeight, direction);
@@ -9,13 +9,13 @@ pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: 
 }
 
 // ComponentTFDarkTowerEntranceBridge constructor
-pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
+pub(crate) fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
 {
     dark_tower_bridge::init(this, i, x, y, z, pSize, pHeight, direction);
 }
 
 // ComponentTFDarkTowerEntranceBridge.makeTowerWing
-pub fn makeTowerWing(
+pub(crate) fn makeTowerWing(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -34,5 +34,5 @@ pub fn makeTowerWing(
     list.push(Rc::clone(&wing));
     wing.build(this, list, random);
     this.addOpening(x, y, z, rotation);
-    return true;
+    true
 }

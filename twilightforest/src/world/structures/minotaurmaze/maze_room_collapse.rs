@@ -1,7 +1,7 @@
 // draft from ComponentTFMazeRoomCollapse.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MazeRoomCollapse);
     init(&this, i, random, x, y, z);
@@ -9,15 +9,16 @@ pub fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFMazeRoomCollapse constructor
-pub fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
 {
     maze_room::init(this, i, random, x, y, z);
 }
 
 // ComponentTFMazeRoomCollapse.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     maze_room::add(this, world, random, sbb);
+
     for x in 1..14
     {
         for z in 1..14
@@ -25,8 +26,10 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             let dist: i32 = (7.0
                 / (((7.5 - (x) as f64) * (7.5 - (x) as f64)) + ((7.5 - (z) as f64) * (7.5 - (z) as f64))).sqrt())
             .round() as i32;
+
             let mut gravel: i32 = random.nextIntBounded(dist);
             let root: i32 = random.nextIntBounded(dist);
+
             if gravel > 0
             {
                 this.fill(
@@ -72,5 +75,6 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             }
         }
     }
-    return true;
+
+    true
 }

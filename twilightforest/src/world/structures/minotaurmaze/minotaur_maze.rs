@@ -1,14 +1,14 @@
 // draft from ComponentTFMinotaurMaze.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new7(index: i32, x: i32, y: i32, z: i32, entranceX: i32, entranceZ: i32, level: i32) -> Rc<Piece>
+pub(crate) fn new7(index: i32, x: i32, y: i32, z: i32, entranceX: i32, entranceZ: i32, level: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MinotaurMaze);
     init7(&this, index, x, y, z, entranceX, entranceZ, level);
     Rc::new(this)
 }
 
-pub fn new(index: i32, x: i32, y: i32, z: i32, level: i32) -> Rc<Piece>
+pub(crate) fn new(index: i32, x: i32, y: i32, z: i32, level: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MinotaurMaze);
     init(&this, index, x, y, z, level);
@@ -16,7 +16,7 @@ pub fn new(index: i32, x: i32, y: i32, z: i32, level: i32) -> Rc<Piece>
 }
 
 // ComponentTFMinotaurMaze constructor
-pub fn init7(this: &Piece, index: i32, x: i32, y: i32, z: i32, entranceX: i32, entranceZ: i32, level: i32)
+pub(crate) fn init7(this: &Piece, index: i32, x: i32, y: i32, z: i32, entranceX: i32, entranceZ: i32, level: i32)
 {
     this.m_depth.set(index);
     this.setMode(0);
@@ -35,6 +35,7 @@ pub fn init7(this: &Piece, index: i32, x: i32, y: i32, z: i32, entranceX: i32, e
     ));
     *this.m_maze.borrow_mut() = Rc::new(Maze::new(this.getMazeSize(), this.getMazeSize()));
     minotaur_maze::setFixedMazeSeed(this);
+
     let nrooms: i32 = 7;
     *this.m_rcoords.borrow_mut() = vec![0; (nrooms * 2) as usize];
     minotaur_maze::addRoomsToMaze(this, entranceX, entranceZ, nrooms);
@@ -42,30 +43,33 @@ pub fn init7(this: &Piece, index: i32, x: i32, y: i32, z: i32, entranceX: i32, e
 }
 
 // ComponentTFMinotaurMaze constructor
-pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, level: i32)
+pub(crate) fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, level: i32)
 {
     init7(this, index, x, y, z, 11, 11, level);
 }
 
 // ComponentTFMinotaurMaze.addRoomsToMaze
-pub fn addRoomsToMaze(this: &Piece, entranceX: i32, entranceZ: i32, nrooms: i32)
+pub(crate) fn addRoomsToMaze(this: &Piece, entranceX: i32, entranceZ: i32, nrooms: i32)
 {
     this.m_rcoords.borrow_mut()[0] = entranceX;
     this.m_rcoords.borrow_mut()[1] = entranceZ;
     this.m_maze.borrow().clone().carveRoom1(entranceX, entranceZ);
+
     for i in 1..nrooms
     {
         let mut rx: i32;
         let mut rz: i32;
+
         loop
         {
             rx = this.m_maze.borrow().clone().m_rand.nextIntBounded(this.getMazeSize() - 2) + 1;
             rz = this.m_maze.borrow().clone().m_rand.nextIntBounded(this.getMazeSize() - 2) + 1;
-            if !(minotaur_maze::isNearRoom4(this, rx, rz, &this.m_rcoords.borrow(), if i == 1 { 7 } else { 4 }))
+            if !(minotaur_maze::nearRoom4(this, rx, rz, &this.m_rcoords.borrow(), if i == 1 { 7 } else { 4 }))
             {
                 break;
             }
         }
+
         this.m_maze.borrow().clone().carveRoom1(rx, rz);
         this.m_rcoords.borrow_mut()[(i * 2) as usize] = rx;
         this.m_rcoords.borrow_mut()[((i * 2) + 1) as usize] = rz;
@@ -73,7 +77,7 @@ pub fn addRoomsToMaze(this: &Piece, entranceX: i32, entranceZ: i32, nrooms: i32)
 }
 
 // ComponentTFMinotaurMaze.setFixedMazeSeed
-pub fn setFixedMazeSeed(this: &Piece)
+pub(crate) fn setFixedMazeSeed(this: &Piece)
 {
     this.m_maze.borrow().clone().setSeed(
         (((this.m_box.get().m_min[0] * 90342903) + (this.m_box.get().m_min[1] * 90342903)) ^ this.m_box.get().m_min[2])
@@ -82,12 +86,13 @@ pub fn setFixedMazeSeed(this: &Piece)
 }
 
 // ComponentTFMinotaurMaze.makeRoom
-pub fn makeRoom(this: &Piece, random: &Random, i: i32, dx: i32, dz: i32) -> Rc<Piece>
+pub(crate) fn makeRoom(this: &Piece, random: &Random, i: i32, dx: i32, dz: i32) -> Rc<Piece>
 {
     let room: Option<Rc<Piece>>;
     let worldX: i32 = (this.m_box.get().m_min[0] + (dx * 5)) - 4;
     let worldY: i32 = this.m_box.get().m_min[1];
     let worldZ: i32 = (this.m_box.get().m_min[2] + (dz * 5)) - 4;
+
     if i == 0
     {
         room = Some(maze_room::new(3 + i, random, worldX, worldY, worldZ));
@@ -129,17 +134,18 @@ pub fn makeRoom(this: &Piece, random: &Random, i: i32, dx: i32, dz: i32) -> Rc<P
     {
         room = Some(maze_mush_room::new(3 + i, random, worldX, worldY, worldZ));
     }
-    return Rc::clone(room.piece());
+    Rc::clone(room.piece())
 }
 
 // ComponentTFMinotaurMaze.decorateDeadEndsCorridors
-pub fn decorateDeadEndsCorridors(this: &Piece, random: &Random, list: &mut Pieces)
+pub(crate) fn decorateDeadEndsCorridors(this: &Piece, random: &Random, list: &mut Pieces)
 {
     for x in 0..this.m_maze.borrow().clone().m_width.get()
     {
         for z in 0..this.m_maze.borrow().clone().m_depth.get()
         {
             let mut component: Option<Rc<Piece>> = None;
+
             if (((!this.m_maze.borrow().clone().isWall(x, z, x - 1, z))
                 && this.m_maze.borrow().clone().isWall(x, z, x + 1, z))
                 && this.m_maze.borrow().clone().isWall(x, z, x, z - 1))
@@ -147,6 +153,7 @@ pub fn decorateDeadEndsCorridors(this: &Piece, random: &Random, list: &mut Piece
             {
                 component = Some(minotaur_maze::makeDeadEnd(this, random, x, z, 3));
             }
+
             if ((this.m_maze.borrow().clone().isWall(x, z, x - 1, z)
                 && (!this.m_maze.borrow().clone().isWall(x, z, x + 1, z)))
                 && this.m_maze.borrow().clone().isWall(x, z, x, z - 1))
@@ -154,6 +161,7 @@ pub fn decorateDeadEndsCorridors(this: &Piece, random: &Random, list: &mut Piece
             {
                 component = Some(minotaur_maze::makeDeadEnd(this, random, x, z, 1));
             }
+
             if ((this.m_maze.borrow().clone().isWall(x, z, x - 1, z)
                 && this.m_maze.borrow().clone().isWall(x, z, x + 1, z))
                 && (!this.m_maze.borrow().clone().isWall(x, z, x, z - 1)))
@@ -161,6 +169,7 @@ pub fn decorateDeadEndsCorridors(this: &Piece, random: &Random, list: &mut Piece
             {
                 component = Some(minotaur_maze::makeDeadEnd(this, random, x, z, 0));
             }
+
             if ((this.m_maze.borrow().clone().isWall(x, z, x - 1, z)
                 && this.m_maze.borrow().clone().isWall(x, z, x + 1, z))
                 && this.m_maze.borrow().clone().isWall(x, z, x, z - 1))
@@ -168,6 +177,7 @@ pub fn decorateDeadEndsCorridors(this: &Piece, random: &Random, list: &mut Piece
             {
                 component = Some(minotaur_maze::makeDeadEnd(this, random, x, z, 2));
             }
+
             if (((((((!this.m_maze.borrow().clone().isWall(x, z, x - 1, z))
                 && (!this.m_maze.borrow().clone().isWall(x, z, x + 1, z)))
                 && this.m_maze.borrow().clone().isWall(x, z, x, z - 1))
@@ -179,6 +189,7 @@ pub fn decorateDeadEndsCorridors(this: &Piece, random: &Random, list: &mut Piece
             {
                 component = minotaur_maze::makeCorridor(this, random, x, z, 1);
             }
+
             if (((((((!this.m_maze.borrow().clone().isWall(x, z, x, z - 1))
                 && (!this.m_maze.borrow().clone().isWall(x, z, x, z + 1)))
                 && this.m_maze.borrow().clone().isWall(x, z, x - 1, z))
@@ -190,6 +201,7 @@ pub fn decorateDeadEndsCorridors(this: &Piece, random: &Random, list: &mut Piece
             {
                 component = minotaur_maze::makeCorridor(this, random, x, z, 0);
             }
+
             if component.is_some()
             {
                 list.push(Rc::clone(component.piece()));
@@ -200,103 +212,69 @@ pub fn decorateDeadEndsCorridors(this: &Piece, random: &Random, list: &mut Piece
 }
 
 // ComponentTFMinotaurMaze.makeDeadEnd
-pub fn makeDeadEnd(this: &Piece, random: &Random, dx: i32, dz: i32, rotation: i32) -> Rc<Piece>
+pub(crate) fn makeDeadEnd(this: &Piece, random: &Random, dx: i32, dz: i32, rotation: i32) -> Rc<Piece>
 {
     let worldX: i32 = (this.m_box.get().m_min[0] + (dx * 5)) + 1;
     let worldY: i32 = this.m_box.get().m_min[1];
     let worldZ: i32 = (this.m_box.get().m_min[2] + (dz * 5)) + 1;
     let decorationType: i32 = random.nextIntBounded(8);
-    let var10000: Rc<Piece>;
-    match decorationType
+
+    let var10000: Rc<Piece> = match decorationType
     {
-        1 =>
-        {
-            var10000 = maze_dead_end_chest::new(4, worldX, worldY, worldZ, rotation);
-        }
-        2 =>
-        {
-            var10000 = maze_dead_end_trapped_chest::new(4, worldX, worldY, worldZ, rotation);
-        }
-        3 =>
-        {
-            var10000 = maze_dead_end_torches::new(4, worldX, worldY, worldZ, rotation);
-        }
-        4 =>
-        {
-            var10000 = maze_dead_end_fountain::new(4, worldX, worldY, worldZ, rotation);
-        }
-        5 =>
-        {
-            var10000 = maze_dead_end_fountain_lava::new(4, worldX, worldY, worldZ, rotation);
-        }
-        6 =>
-        {
-            var10000 = maze_dead_end_painting::new(4, worldX, worldY, worldZ, rotation);
-        }
+        1 => maze_dead_end_chest::new(4, worldX, worldY, worldZ, rotation),
+        2 => maze_dead_end_trapped_chest::new(4, worldX, worldY, worldZ, rotation),
+        3 => maze_dead_end_torches::new(4, worldX, worldY, worldZ, rotation),
+        4 => maze_dead_end_fountain::new(4, worldX, worldY, worldZ, rotation),
+        5 => maze_dead_end_fountain_lava::new(4, worldX, worldY, worldZ, rotation),
+        6 => maze_dead_end_painting::new(4, worldX, worldY, worldZ, rotation),
+
         7 =>
         {
-            var10000 = if this.m_level.get() == 1
+            if this.m_level.get() == 1
             {
                 maze_dead_end_roots::new(4, worldX, worldY, worldZ, rotation)
             }
             else
             {
                 maze_dead_end_shrooms::new(4, worldX, worldY, worldZ, rotation)
-            };
+            }
         }
-        _ =>
-        {
-            var10000 = maze_dead_end::new(4, worldX, worldY, worldZ, rotation);
-        }
-    }
-    return Rc::clone(&var10000);
+
+        _ => maze_dead_end::new(4, worldX, worldY, worldZ, rotation),
+    };
+    Rc::clone(&var10000)
 }
 
 // ComponentTFMinotaurMaze.makeCorridor
-pub fn makeCorridor(this: &Piece, random: &Random, dx: i32, dz: i32, rotation: i32) -> Option<Rc<Piece>>
+pub(crate) fn makeCorridor(this: &Piece, random: &Random, dx: i32, dz: i32, rotation: i32) -> Option<Rc<Piece>>
 {
     let worldX: i32 = (this.m_box.get().m_min[0] + (dx * 5)) + 1;
     let worldY: i32 = this.m_box.get().m_min[1];
     let worldZ: i32 = (this.m_box.get().m_min[2] + (dz * 5)) + 1;
     let decorationType: i32 = random.nextIntBounded(5);
-    let var10000: Option<Rc<Piece>>;
-    match decorationType
+
+    let var10000: Option<Rc<Piece>> = match decorationType
     {
-        1 =>
-        {
-            var10000 = Some(maze_corridor::new(4, worldX, worldY, worldZ, rotation));
-        }
-        2 =>
-        {
-            var10000 = Some(maze_corridor_iron_fence::new(4, worldX, worldY, worldZ, rotation));
-        }
-        3 =>
-        {
-            var10000 = None;
-        }
-        4 =>
-        {
-            var10000 = Some(
-                if this.m_level.get() == 1
-                {
-                    maze_corridor_roots::new(4, worldX, worldY, worldZ, rotation)
-                }
-                else
-                {
-                    maze_corridor_shrooms::new(4, worldX, worldY, worldZ, rotation)
-                },
-            );
-        }
-        _ =>
-        {
-            var10000 = None;
-        }
-    }
-    return var10000;
+        1 => Some(maze_corridor::new(4, worldX, worldY, worldZ, rotation)),
+        2 => Some(maze_corridor_iron_fence::new(4, worldX, worldY, worldZ, rotation)),
+        3 => None,
+        4 => Some(
+            if this.m_level.get() == 1
+            {
+                maze_corridor_roots::new(4, worldX, worldY, worldZ, rotation)
+            }
+            else
+            {
+                maze_corridor_shrooms::new(4, worldX, worldY, worldZ, rotation)
+            },
+        ),
+        _ => None,
+    };
+    var10000
 }
 
 // ComponentTFMinotaurMaze.func_74861_a
-pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
 {
     if this.m_level.get() == 1
     {
@@ -314,6 +292,7 @@ pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, rando
         list.push(Rc::clone(&maze));
         maze.build(this, list, random);
     }
+
     for i in 0..((this.m_rcoords.borrow().len() as i32) / 2)
     {
         let dx: i32 = this.m_rcoords.borrow()[(i * 2) as usize];
@@ -322,11 +301,12 @@ pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, rando
         list.push(Rc::clone(&room));
         room.build(this, list, random);
     }
+
     minotaur_maze::decorateDeadEndsCorridors(this, random, list);
 }
 
 // ComponentTFMinotaurMaze.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     if this.m_level.get() == 2
     {
@@ -344,6 +324,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             false,
         );
     }
+
     this.fillAir(world, sbb, 1, 1, 1, this.getDiameter(), 4, this.getDiameter());
     this.fillMeta(
         world,
@@ -392,25 +373,26 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
     this.m_maze.borrow().clone().m_roots.set(1);
     this.m_maze.borrow().clone().m_oddBias.set(4);
     this.m_maze.borrow().clone().copyToStructure(world, 1, 2, 1, this, sbb);
-    return true;
+    true
 }
 
 // ComponentTFMinotaurMaze.getMazeSize
-pub fn getMazeSize(_this: &Piece) -> i32 { return 22; }
+pub(crate) fn getMazeSize(_this: &Piece) -> i32 { 22 }
 
 // ComponentTFMinotaurMaze.getRadius
-pub fn getRadius(this: &Piece) -> i32 { return ((this.getMazeSize()) as f64 * 2.5) as i32; }
+pub(crate) fn getRadius(this: &Piece) -> i32 { ((this.getMazeSize()) as f64 * 2.5) as i32 }
 
 // ComponentTFMinotaurMaze.getDiameter
-pub fn getDiameter(this: &Piece) -> i32 { return this.getMazeSize() * 5; }
+pub(crate) fn getDiameter(this: &Piece) -> i32 { this.getMazeSize() * 5 }
 
 // ComponentTFMinotaurMaze.isNearRoom
-pub fn isNearRoom4(_this: &Piece, dx: i32, dz: i32, rcoords: &[i32], range: i32) -> bool
+pub(crate) fn nearRoom4(_this: &Piece, dx: i32, dz: i32, rcoords: &[i32], range: i32) -> bool
 {
     if (dx == 1) && (dz == 1)
     {
         return true;
     }
+
     for i in 0..((rcoords.len() as i32) / 2)
     {
         let rx: i32 = rcoords[(i * 2) as usize];
@@ -420,5 +402,6 @@ pub fn isNearRoom4(_this: &Piece, dx: i32, dz: i32, rcoords: &[i32], range: i32)
             return true;
         }
     }
-    return false;
+
+    false
 }

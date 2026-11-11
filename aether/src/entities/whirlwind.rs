@@ -69,7 +69,8 @@ struct Course
     m_speed: f64,
 }
 
-thread_local! {
+thread_local!
+{
     static COURSES: RefCell<HashMap<i32, Course>> = RefCell::new(HashMap::new());
 }
 
@@ -81,16 +82,21 @@ fn wind(entity: Entity) -> Wind
         state = Wind { m_ready: true, m_evil: entity.world.random(wind::EVIL_ODDS) == 0 };
         let _ = entity.setSynced(&state);
     }
+
     state
 }
 
 fn course(entity: Entity, evil: bool) -> Course
 {
-    COURSES.with(|courses| {
-        *courses.borrow_mut().entry(entity.id).or_insert_with(|| {
+    COURSES.with(|courses|
+    {
+        *courses.borrow_mut().entry(entity.id).or_insert_with(||
+        {
             let world: World = entity.world;
             let life: i32 = wind::LIFE_MIN + world.random(wind::LIFE_SPREAD);
-            Course {
+
+            Course
+            {
                 m_life: if evil { life / 2 } else { life },
                 m_timer: 0,
                 m_angle: fraction(world) * wind::FULL_TURN,
@@ -117,9 +123,11 @@ fn pull(world: World, info: &EntityInfo, entity: Entity)
         let height: f64 = other.pos[1] - info.pos[1];
         let mut distance: f64 = ((0..3).map(|axis| (other.pos[axis] - info.pos[axis]).powi(2)).sum::<f64>()).sqrt();
         let angle: f64 = dx.atan2(dz).to_degrees();
+
         if distance <= wind::CATCH + height
         {
             caught.setField(EntityField::FallDistance, 0.0);
+
             let lift: f64 = if height > wind::CATCH
             {
                 distance += height * wind::CATCH;
@@ -132,6 +140,7 @@ fn pull(world: World, info: &EntityInfo, entity: Entity)
             let spin: f64 = (angle + wind::SPIN).to_radians();
             let pullBy: f64 = (distance + wind::PULL_OFFSET) * wind::SPIN_PULL;
             let _ = caught.setMotion([-spin.cos() * pullBy, lift, spin.sin() * pullBy]);
+
             if other.kind.as_ref().is_some_and(|kind| kind.path() == NAME)
             {
                 caught.kill();
@@ -171,6 +180,7 @@ impl EntityBehavior for Whirlwind
                 let chase: f64 = current.m_speed * wind::CHASE / length;
                 let _ = entity.setMotion([dx * chase, info.motion[1], dz * chase]);
             }
+
             None =>
             {
                 let angle: f64 = current.m_angle.to_radians();
@@ -179,13 +189,17 @@ impl EntityBehavior for Whirlwind
                 current.m_angle += current.m_curve;
             }
         }
+
         current.m_life -= 1;
+
         let below: BlockPos =
             BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32, info.pos[2].floor() as i32);
+
         if !world.isAir(below)
         {
             current.m_life -= wind::BLOCKED_COST;
         }
+
         if world.isAuthority()
         {
             if current.m_life <= 0 || entity.flag(EntityField::InWater)
@@ -193,10 +207,12 @@ impl EntityBehavior for Whirlwind
                 entity.kill();
                 return;
             }
+
             if player.is_some()
             {
                 current.m_timer += 1;
             }
+
             if current.m_timer >= wind::ACTION_TICKS
             {
                 if state.m_evil
@@ -209,11 +225,13 @@ impl EntityBehavior for Whirlwind
                 else if world.random(wind::DROP_ODDS) == 0
                 {
                     let _ = world.spawnItem(info.pos, ItemStack::of(randomDrop(world), 1));
+
                     world.playSound(info.pos, "random.pop", wind::POP_VOLUME, 1.0);
                     current.m_timer = 0;
                 }
             }
         }
+
         pull(world, info, entity);
         COURSES.with(|courses| courses.borrow_mut().insert(entity.id, current));
     }
@@ -225,6 +243,7 @@ impl EntityBehavior for Whirlwind
         {
             return;
         }
+
         let state: Wind = entity.synced();
         let name: &str = if state.m_evil
         {
@@ -234,6 +253,7 @@ impl EntityBehavior for Whirlwind
         {
             crate::particles::WHIRLY
         };
+
         for _ in 0..wind::PARTICLES
         {
             let angle: f64 = (fraction(entity.world) * wind::FULL_TURN).to_radians();
@@ -257,17 +277,19 @@ impl EntityBehavior for Whirlwind
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:monster").ok(),
             size: Some([0.6, 0.8]),
             health: Some(10),
             spawn: monster(10),
             drops: Some(Vec::new()),
-            sounds: Some(EntitySounds {
+            sounds: Some(EntitySounds
+            {
                 living: Some(String::new()),
                 hurt: Some(String::new()),
                 death: Some(String::new()),

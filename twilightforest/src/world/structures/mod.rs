@@ -24,7 +24,7 @@ use b173_api::terrain::structure::{self, StructureBox};
 use component::{BoxExt, Pieces};
 use piece::Piece;
 use prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -49,9 +49,11 @@ mod range
     pub const CACHED: usize = 256;
 }
 
+type StartCache = HashMap<(Family, i64, i32, i32), Option<Rc<Start>>>;
+
 thread_local!
 {
-    static STARTS: RefCell<HashMap<(Family, i64, i32, i32), Option<Rc<Start>>>> = RefCell::new(HashMap::new());
+    static STARTS: RefCell<StartCache> = RefCell::new(HashMap::new());
     // starts already handed to the loader's structure registry this session, it drops repeats by origin anyway
     static RECORDED: RefCell<HashSet<(Family, i64, i32, i32)>> = RefCell::new(HashSet::new());
 }
@@ -94,16 +96,19 @@ fn start(world: &GenWorld, seed: i64, chunkX: i32, chunkZ: i32, random: &Random)
     let root: Rc<Piece> = first(world, feature, random, at)?;
     let mut pieces: Pieces = vec![Rc::clone(&root)];
     root.build(&root, &mut pieces, random);
+
     if matches!(root.m_kind, Kind::TowerMain | Kind::DarkTowerMain)
     {
         lift(&pieces, seed, at);
     }
 
     let mut bounds: StructureBox = root.m_box.get();
+
     for piece in &pieces
     {
         bounds.include(&piece.m_box.get());
     }
+
     Some(Rc::new(Start { m_feature: feature, m_chunk: [chunkX, chunkZ], m_box: bounds, m_pieces: pieces }))
 }
 
@@ -139,7 +144,9 @@ fn starts(world: &GenWorld, family: Family, seed: i64, chunkX: i32, chunkZ: i32)
         Family::Major => start,
         Family::HollowTree => hollowStart,
     };
+
     let mut found: Vec<Rc<Start>> = Vec::new();
+
     structure::candidates(seed, chunkX, chunkZ, range::STARTS, |startX, startZ, random|
     {
         let key: (Family, i64, i32, i32) = (family, seed, startX, startZ);
@@ -147,23 +154,28 @@ fn starts(world: &GenWorld, family: Family, seed: i64, chunkX: i32, chunkZ: i32)
         let made: Option<Rc<Start>> = match cached
         {
             Some(made) => made,
+
             None =>
             {
                 let made: Option<Rc<Start>> = maker(world, seed, startX, startZ, random);
+
                 STARTS.with(|starts|
                 {
-                    let mut starts = starts.borrow_mut();
+                    let mut starts: RefMut<StartCache> = starts.borrow_mut();
                     if starts.len() > range::CACHED
                     {
                         starts.clear();
                     }
+
                     starts.insert(key, made.clone());
                 });
+
                 made
             }
         };
         found.extend(made);
     });
+
     found
 }
 
@@ -196,20 +208,24 @@ fn hollowStart(world: &GenWorld, seed: i64, chunkX: i32, chunkZ: i32, random: &R
     let trunk: Rc<Piece> = hollow_tree_trunk::new(world, random, 0, x, super::terrain::SEA_LEVEL + 1, z);
     let mut pieces: Pieces = vec![Rc::clone(&trunk)];
     trunk.build(&trunk, &mut pieces, random);
+
     let mut bounds: StructureBox = trunk.m_box.get();
+
     for piece in &pieces
     {
         bounds.include(&piece.m_box.get());
     }
+
     Some(Rc::new(Start { m_feature: Feature::Nothing, m_chunk: [chunkX, chunkZ], m_box: bounds, m_pieces: pieces }))
 }
 
 // MapGenTFHollowTree.generateStructuresInChunk, the oaks crossing the chunk built into it
-pub fn hollowTrees(world: &GenWorld, random: &Random, seed: i64, chunkX: i32, chunkZ: i32)
+pub(crate) fn hollowTrees(world: &GenWorld, random: &Random, seed: i64, chunkX: i32, chunkZ: i32)
 {
     let (mapX, mapZ): (i32, i32) = ((chunkX << 4) + 8, (chunkZ << 4) + 8);
     let reach: i32 = 15;
     let clip: StructureBox = StructureBox::flat(mapX, mapZ, mapX + reach, mapZ + reach);
+
     for start in starts(world, Family::HollowTree, seed, chunkX, chunkZ)
     {
         if !start.m_box.intersectsXZ(mapX, mapZ, mapX + reach, mapZ + reach)
@@ -218,6 +234,7 @@ pub fn hollowTrees(world: &GenWorld, random: &Random, seed: i64, chunkX: i32, ch
         }
 
         record(world, Family::HollowTree, seed, &start);
+
         for piece in &start.m_pieces
         {
             if piece.m_box.get().intersects(&clip)
@@ -229,10 +246,11 @@ pub fn hollowTrees(world: &GenWorld, random: &Random, seed: i64, chunkX: i32, ch
 }
 
 // MapGenStructure.generateStructuresInChunk with the populate random, true when a structure crosses the chunk
-pub fn generate(world: &GenWorld, random: &Random, seed: i64, chunkX: i32, chunkZ: i32) -> bool
+pub(crate) fn generate(world: &GenWorld, random: &Random, seed: i64, chunkX: i32, chunkZ: i32) -> bool
 {
     let clip: StructureBox = StructureBox::populated(chunkX, chunkZ);
     let mut built: bool = false;
+
     for start in starts(world, Family::Major, seed, chunkX, chunkZ)
     {
         if !start.m_box.intersects(&clip)
@@ -242,6 +260,7 @@ pub fn generate(world: &GenWorld, random: &Random, seed: i64, chunkX: i32, chunk
 
         built = true;
         record(world, Family::Major, seed, &start);
+
         for piece in &start.m_pieces
         {
             if piece.m_box.get().intersects(&clip)
@@ -250,21 +269,25 @@ pub fn generate(world: &GenWorld, random: &Random, seed: i64, chunkX: i32, chunk
             }
         }
     }
+
     built
 }
 
 // the structure kinds this mod builds, the major features can be located before any chunk builds them
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let structures: Structures = ctx.structures();
+
     for row in features::FEATURES.iter().filter(|row| row.m_structure)
     {
         let feature: Feature = row.m_feature;
+
         structures.withFinder(row.m_name, row.m_label, super::DIMENSION, move |seed, chunkX, chunkZ|
         {
             features::directlyAt(seed, chunkX, chunkZ) == feature
         })?;
     }
+
     structures.register(HOLLOW_TREE, HOLLOW_TREE_LABEL, super::DIMENSION)?;
     Ok(())
 }
@@ -301,10 +324,11 @@ fn record(world: &GenWorld, family: Family, seed: i64, start: &Start)
 }
 
 // MapGenTFMajorFeature.isBlockProtectedAt and getSBBAt: the box of the protected piece around a block, if any
-pub fn protectedAt(world: World, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub(crate) fn protectedAt(world: World, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
     let generation: GenWorld = GenWorld::new(world);
     let mut found: Option<(StructureBox, bool)> = None;
+
     for start in starts(&generation, Family::Major, world.seed(), x >> 4, z >> 4)
     {
         if !start.m_box.intersectsXZ(x, z, x, z)
@@ -321,18 +345,20 @@ pub fn protectedAt(world: World, x: i32, y: i32, z: i32) -> Option<StructureBox>
             }
         }
     }
+
     found.filter(|(_, protected)| *protected).map(|(bounds, _)| bounds)
 }
 
 // Facing.offsetsForSide, the step from a block toward the face clicked
-pub fn facing(face: i32) -> [i32; 3] { component::FACING.get(face as usize).copied().unwrap_or([0, 1, 0]) }
+pub(crate) fn facing(face: i32) -> [i32; 3] { component::FACING.get(face as usize).copied().unwrap_or([0, 1, 0]) }
 
 // MapGenTFMajorFeature.getSpawnListIndexAt, the feature whose footprint holds the spot and the highest spawn list of
 // its pieces there, -1 outside them
-pub fn spawnListAt(world: World, x: i32, y: i32, z: i32) -> Option<(Feature, i32)>
+pub(crate) fn spawnListAt(world: World, x: i32, y: i32, z: i32) -> Option<(Feature, i32)>
 {
     let generation: GenWorld = GenWorld::new(world);
     let mut found: Option<(Feature, i32)> = None;
+
     for start in starts(&generation, Family::Major, world.seed(), x >> 4, z >> 4)
     {
         if !start.m_box.intersectsXZ(x, z, x, z)
@@ -341,6 +367,7 @@ pub fn spawnListAt(world: World, x: i32, y: i32, z: i32) -> Option<(Feature, i32
         }
 
         found = found.or(Some((start.m_feature, -1)));
+
         for piece in start.m_pieces.iter().filter(|piece| piece.m_box.get().contains(x, y, z))
         {
             let index: i32 = piece.m_spawnListIndex.get();
@@ -350,5 +377,6 @@ pub fn spawnListAt(world: World, x: i32, y: i32, z: i32) -> Option<(Feature, i32
             }
         }
     }
+
     found
 }

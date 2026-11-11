@@ -1,7 +1,7 @@
 // draft from ComponentTFTrollCaveConnect.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(index: i32, x: i32, y: i32, z: i32, caveSize: i32, caveHeight: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(index: i32, x: i32, y: i32, z: i32, caveSize: i32, caveHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::TrollCaveConnect);
     init(&this, index, x, y, z, caveSize, caveHeight, direction);
@@ -9,7 +9,7 @@ pub fn new(index: i32, x: i32, y: i32, z: i32, caveSize: i32, caveHeight: i32, d
 }
 
 // ComponentTFTrollCaveConnect constructor
-pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, caveSize: i32, caveHeight: i32, direction: i32)
+pub(crate) fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, caveSize: i32, caveHeight: i32, direction: i32)
 {
     troll_cave_main::init(this, index);
     *this.m_openingTowards.borrow_mut() = vec![false, false, true, false];
@@ -31,13 +31,13 @@ pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, caveSize: i32, cav
 }
 
 // ComponentTFTrollCaveConnect.func_74861_a
-pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     if this.depth() < 3
     {
         for i in 0..4
         {
-            let dest: Option<[i32; 3]> = troll_cave_main::getValidOpening3(this, random, 2, i);
+            let dest: Option<[i32; 3]> = troll_cave_main::validOpening3(this, random, 2, i);
             if random.nextBoolean()
                 || (!troll_cave_connect::makeGardenCave(
                     this,
@@ -69,12 +69,13 @@ pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFTrollCaveConnect.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
-    if troll_cave_main::isBoundingBoxOutOfHighlands(this, world, sbb)
+    if troll_cave_main::boundingBoxOutOfHighlands(this, world, sbb)
     {
         return false;
     }
+
     troll_cave_main::hollowCaveMiddle(
         this,
         world,
@@ -87,10 +88,12 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         this.m_height.get() - 1,
         this.m_size.get() - 1,
     );
+
     let decoRNG: Random = Random::withSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
             ^ ((this.m_box.get().m_min[2] * 756839) as i64),
     );
+
     for i in 0..4
     {
         if !this.m_openingTowards.borrow()[(i) as usize]
@@ -98,13 +101,15 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             troll_cave_connect::decorateWall(this, world, sbb, &decoRNG, i);
         }
     }
+
     decoRNG.setSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
             ^ ((this.m_box.get().m_min[2] * 756839) as i64),
     );
+
     for _i in 0..32
     {
-        let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
+        let dest: [i32; 3] = troll_cave_main::coordsInCave(this, &decoRNG);
         troll_cave_main::generateBlockStalactite9(
             this,
             world,
@@ -118,9 +123,10 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             sbb,
         );
     }
+
     for _i in 0..8
     {
-        let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
+        let dest: [i32; 3] = troll_cave_main::coordsInCave(this, &decoRNG);
         troll_cave_main::generateBlockStalactite9(
             this,
             world,
@@ -134,10 +140,12 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             sbb,
         );
     }
+
     decoRNG.setSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
             ^ ((this.m_box.get().m_min[2] * 756839) as i64),
     );
+
     if (troll_cave_connect::countExits(this) == 1) && (decoRNG.nextIntBounded(3) == 0)
     {
         troll_cave_main::makeTreasureCrate(this, world, &decoRNG, sbb);
@@ -146,11 +154,11 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     {
         troll_cave_connect::makeMonolith(this, world, &decoRNG, sbb);
     }
-    return true;
+    true
 }
 
 // ComponentTFTrollCaveConnect.makeMonolith
-pub fn makeMonolith(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
+pub(crate) fn makeMonolith(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
 {
     let mid: i32 = this.m_size.get() / 2;
     let height: i32 = 7 + random.nextIntBounded(8);
@@ -162,9 +170,10 @@ pub fn makeMonolith(this: &Piece, world: &GenWorld, random: &Random, sbb: Struct
 }
 
 // ComponentTFTrollCaveConnect.countExits
-pub fn countExits(this: &Piece) -> i32
+pub(crate) fn countExits(this: &Piece) -> i32
 {
     let mut count: i32 = 0;
+
     for openingToward in this.m_openingTowards.borrow().clone()
     {
         if openingToward
@@ -172,11 +181,12 @@ pub fn countExits(this: &Piece) -> i32
             count += 1;
         }
     }
-    return count;
+
+    count
 }
 
 // ComponentTFTrollCaveConnect.decorateWall
-pub fn decorateWall(this: &Piece, world: &GenWorld, sbb: StructureBox, decoRNG: &Random, rotation: i32)
+pub(crate) fn decorateWall(this: &Piece, world: &GenWorld, sbb: StructureBox, decoRNG: &Random, rotation: i32)
 {
     if decoRNG.nextBoolean()
     {
@@ -194,7 +204,7 @@ pub fn decorateWall(this: &Piece, world: &GenWorld, sbb: StructureBox, decoRNG: 
 }
 
 // ComponentTFTrollCaveConnect.decorateStoneFormation
-pub fn decorateStoneFormation(this: &Piece, world: &GenWorld, sbb: StructureBox, decoRNG: &Random, rotation: i32)
+pub(crate) fn decorateStoneFormation(this: &Piece, world: &GenWorld, sbb: StructureBox, decoRNG: &Random, rotation: i32)
 {
     let mut z: i32 = 5 + decoRNG.nextIntBounded(7);
     let startY: i32 = 1 + decoRNG.nextIntBounded(2);
@@ -212,7 +222,7 @@ pub fn decorateStoneFormation(this: &Piece, world: &GenWorld, sbb: StructureBox,
 }
 
 // ComponentTFTrollCaveConnect.makeSingleStoneFormation
-pub fn makeSingleStoneFormation(
+pub(crate) fn makeSingleStoneFormation(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,
@@ -275,7 +285,13 @@ pub fn makeSingleStoneFormation(
 }
 
 // ComponentTFTrollCaveConnect.decorateStoneProjection
-pub fn decorateStoneProjection(this: &Piece, world: &GenWorld, sbb: StructureBox, decoRNG: &Random, rotation: i32)
+pub(crate) fn decorateStoneProjection(
+    this: &Piece,
+    world: &GenWorld,
+    sbb: StructureBox,
+    decoRNG: &Random,
+    rotation: i32,
+)
 {
     let z: i32 = (7 + decoRNG.nextIntBounded(3)) - decoRNG.nextIntBounded(3);
     let y: i32 = (7 + decoRNG.nextIntBounded(3)) - decoRNG.nextIntBounded(3);
@@ -296,6 +312,7 @@ pub fn decorateStoneProjection(this: &Piece, world: &GenWorld, sbb: StructureBox
         0,
         rotation,
     );
+
     if decoRNG.nextBoolean()
     {
         this.fillRandomlyTurned(
@@ -339,7 +356,13 @@ pub fn decorateStoneProjection(this: &Piece, world: &GenWorld, sbb: StructureBox
 }
 
 // ComponentTFTrollCaveConnect.decorateBracketMushrooms
-pub fn decorateBracketMushrooms(this: &Piece, world: &GenWorld, sbb: StructureBox, decoRNG: &Random, rotation: i32)
+pub(crate) fn decorateBracketMushrooms(
+    this: &Piece,
+    world: &GenWorld,
+    sbb: StructureBox,
+    decoRNG: &Random,
+    rotation: i32,
+)
 {
     let mut z: i32 = 5 + decoRNG.nextIntBounded(7);
     let startY: i32 = 1 + decoRNG.nextIntBounded(4);
@@ -347,6 +370,7 @@ pub fn decorateBracketMushrooms(this: &Piece, world: &GenWorld, sbb: StructureBo
     {
         let width: i32 = (1 + decoRNG.nextIntBounded(2)) + decoRNG.nextIntBounded(2);
         let depth: i32 = (1 + decoRNG.nextIntBounded(2)) + decoRNG.nextIntBounded(2);
+
         let mushBlock: Blk = if decoRNG.nextIntBounded(3) == 0
         {
             blk("tf:hugeGloomBlock")
@@ -372,7 +396,7 @@ pub fn decorateBracketMushrooms(this: &Piece, world: &GenWorld, sbb: StructureBo
 }
 
 // ComponentTFTrollCaveConnect.makeSingleBracketMushroom
-pub fn makeSingleBracketMushroom(
+pub(crate) fn makeSingleBracketMushroom(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,
@@ -407,15 +431,16 @@ pub fn makeSingleBracketMushroom(
         y,
         z + (width - 1),
         mushBlock,
-        troll_cave_connect::getMushroomMetaFor(this, 4, rotation),
+        troll_cave_connect::mushroomMetaFor(this, 4, rotation),
         rotation,
     );
+
     for d in 0..(depth - 1)
     {
         this.placeTurned(
             world,
             mushBlock,
-            troll_cave_connect::getMushroomMetaFor(this, 2, rotation),
+            troll_cave_connect::mushroomMetaFor(this, 2, rotation),
             this.m_size.get() - (2 + d),
             y,
             z - width,
@@ -423,22 +448,24 @@ pub fn makeSingleBracketMushroom(
             sbb,
         );
     }
+
     this.placeTurned(
         world,
         mushBlock,
-        troll_cave_connect::getMushroomMetaFor(this, 1, rotation),
+        troll_cave_connect::mushroomMetaFor(this, 1, rotation),
         this.m_size.get() - (depth + 1),
         y,
         z - width,
         rotation,
         sbb,
     );
+
     for d in 0..(depth - 1)
     {
         this.placeTurned(
             world,
             mushBlock,
-            troll_cave_connect::getMushroomMetaFor(this, 8, rotation),
+            troll_cave_connect::mushroomMetaFor(this, 8, rotation),
             this.m_size.get() - (2 + d),
             y,
             z + width,
@@ -446,10 +473,11 @@ pub fn makeSingleBracketMushroom(
             sbb,
         );
     }
+
     this.placeTurned(
         world,
         mushBlock,
-        troll_cave_connect::getMushroomMetaFor(this, 7, rotation),
+        troll_cave_connect::mushroomMetaFor(this, 7, rotation),
         this.m_size.get() - (depth + 1),
         y,
         z + width,
@@ -459,7 +487,7 @@ pub fn makeSingleBracketMushroom(
 }
 
 // ComponentTFTrollCaveConnect.getMushroomMetaFor, huge mushroom sides turned with the piece
-pub fn getMushroomMetaFor(this: &Piece, meta: i32, rotation: i32) -> i32
+pub(crate) fn mushroomMetaFor(this: &Piece, meta: i32, rotation: i32) -> i32
 {
     if meta <= 0 || meta >= 10
     {
@@ -476,6 +504,7 @@ pub fn getMushroomMetaFor(this: &Piece, meta: i32, rotation: i32) -> i32
         8 => Some(4),
         _ => None,
     };
+
     let threeQuarters: Option<i32> = match meta
     {
         1 => Some(7),
@@ -485,6 +514,7 @@ pub fn getMushroomMetaFor(this: &Piece, meta: i32, rotation: i32) -> i32
         8 => Some(6),
         _ => None,
     };
+
     match (this.mode() + rotation) % 4
     {
         0 => meta,
@@ -496,7 +526,7 @@ pub fn getMushroomMetaFor(this: &Piece, meta: i32, rotation: i32) -> i32
 }
 
 // ComponentTFTrollCaveConnect.makeGardenCave
-pub fn makeGardenCave(
+pub(crate) fn makeGardenCave(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -517,18 +547,18 @@ pub fn makeGardenCave(
     if ((intersect.is_none()) || (same(&intersect, &this))) && (otherGarden.is_none())
     {
         list.push(Rc::clone(&cave));
-        cave.build(&Rc::clone(&list[(0) as usize]), list, random);
+        cave.build(&Rc::clone(&list[0usize]), list, random);
         this.m_openingTowards.borrow_mut()[(rotation) as usize] = true;
-        return true;
+        true
     }
     else
     {
-        return false;
+        false
     }
 }
 
 // ComponentTFTrollCaveConnect.findNearbyGarden
-pub fn findNearbyGarden(_this: &Piece, list: &mut Pieces, boundingBox: StructureBox) -> Option<Rc<Piece>>
+pub(crate) fn findNearbyGarden(_this: &Piece, list: &mut Pieces, boundingBox: StructureBox) -> Option<Rc<Piece>>
 {
     let mut largeBox: StructureBox = boundingBox;
     largeBox.m_min[0] -= 30;
@@ -537,6 +567,7 @@ pub fn findNearbyGarden(_this: &Piece, list: &mut Pieces, boundingBox: Structure
     largeBox.m_max[0] += 30;
     largeBox.m_max[1] += 30;
     largeBox.m_max[2] += 30;
+
     for component in list.clone()
     {
         if (matches!(component.m_kind, Kind::TrollCaveGarden)) && component.bounds().intersects(&largeBox)
@@ -544,11 +575,12 @@ pub fn findNearbyGarden(_this: &Piece, list: &mut Pieces, boundingBox: Structure
             return Some(Rc::clone(&component));
         }
     }
-    return None;
+
+    None
 }
 
 // ComponentTFTrollCaveConnect.makeSmallerCave
-pub fn makeSmallerCave(
+pub(crate) fn makeSmallerCave(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -564,10 +596,10 @@ pub fn makeSmallerCave(
     if troll_cave_main::makeSmallerCave(this, list, random, index, x, y, z, caveSize, caveHeight, rotation)
     {
         this.m_openingTowards.borrow_mut()[(rotation) as usize] = true;
-        return true;
+        true
     }
     else
     {
-        return false;
+        false
     }
 }

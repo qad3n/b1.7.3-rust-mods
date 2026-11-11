@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 // AccessoryType, the slot an accessory goes in
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Slot
+pub(crate) enum Slot
 {
     Gloves,
     Ring,
@@ -17,7 +17,7 @@ pub enum Slot
 }
 
 // one ItemAccessory: its slot, icon, tint and uses when it wears out
-pub struct Accessory
+pub(crate) struct Accessory
 {
     pub m_name: &'static str,
     pub m_slot: Slot,
@@ -27,7 +27,7 @@ pub struct Accessory
 }
 
 // ItemAccessory.colorHex default
-pub const PLAIN: u32 = 14540253;
+pub(crate) const PLAIN: u32 = 14540253;
 
 const fn accessory(name: &'static str, slot: Slot, icon: &'static str, color: u32, uses: Option<i32>) -> Accessory
 {
@@ -35,7 +35,7 @@ const fn accessory(name: &'static str, slot: Slot, icon: &'static str, color: u3
 }
 
 // ItemsAether accessories in registration order
-pub const ACCESSORIES: [Accessory; 31] = [
+pub(crate) const ACCESSORIES: [Accessory; 31] = [
     accessory("leather_gloves", Slot::Gloves, "leather_gloves", PLAIN, None),
     accessory("iron_gloves", Slot::Gloves, "solid_gloves", PLAIN, None),
     accessory("golden_gloves", Slot::Gloves, "solid_gloves", 16512036, None),
@@ -85,7 +85,7 @@ const CLICK: &str = "accessory_click";
 
 // what a player wears and the life shards it used, kept in the player's synced data so every client can draw it
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
-pub struct Worn
+pub(crate) struct Worn
 {
     pub m_slots: [Option<StackData>; SLOTS],
     pub m_lifeShards: i32,
@@ -95,9 +95,10 @@ pub struct Worn
 
 impl Worn
 {
-    pub fn of(player: Player) -> Worn
+    pub(crate) fn of(player: Player) -> Self
     {
-        player.info().map_or_else(Worn::default, |info| {
+        player.info().map_or_else(Self::default, |info|
+        {
             Entity { world: World { dimension: info.world }, id: player.id }.synced()
         })
     }
@@ -110,18 +111,21 @@ impl Worn
         }
     }
 
-    pub fn stack(&self, index: usize) -> Option<ItemStack> { self.m_slots[index].clone().map(ItemStack::fromRaw) }
+    pub(crate) fn stack(&self, index: usize) -> Option<ItemStack>
+    {
+        self.m_slots[index].clone().map(ItemStack::fromRaw)
+    }
 
     fn shardHealth(&self) -> f64 { f64::from(self.m_lifeShards * crate::player::SHARD_HEALTH) }
 
     // InventoryAccessories.wearingAccessory
-    pub fn wearing(&self, name: &str) -> bool
+    pub(crate) fn wearing(&self, name: &str) -> bool
     {
         (0..SLOTS).any(|index| self.stack(index).is_some_and(|stack| stack.item.is(name)))
     }
 
     // InventoryAccessories.damageWornStack: each worn copy loses a use and breaks at the end
-    pub fn wear(&mut self, name: &str, amount: i32)
+    pub(crate) fn wear(&mut self, name: &str, amount: i32)
     {
         for index in 0..SLOTS
         {
@@ -130,6 +134,7 @@ impl Worn
             {
                 continue;
             };
+
             let limit: i32 =
                 ACCESSORIES.iter().find(|row| row.m_name == name).and_then(|row| row.m_uses).unwrap_or(i32::MAX);
             let damage: i32 = stack.damage + amount;
@@ -164,18 +169,24 @@ fn click(message: Click, player: Player)
     {
         return;
     }
+
     let mut worn: Worn = Worn::of(player);
     let cursor: Option<ItemStack> = player.cursor();
     let fits: bool = cursor
         .as_ref()
         .is_none_or(|stack| accessoryOf(stack).is_some_and(|row| row.m_slot == WORN[index].0) && stack.count == 1);
+
     if !fits
     {
         return;
     }
+
     let taken: Option<ItemStack> = worn.stack(index);
+
     worn.m_slots[index] = cursor.and_then(|stack| stack.toRaw().ok());
+
     let _ = player.setCursor(taken);
+
     worn.save(player);
 }
 
@@ -203,7 +214,8 @@ mod panel
     pub const ICON: i32 = 16;
 }
 
-thread_local! {
+thread_local!
+{
     static SHOWN: Cell<bool> = const { Cell::new(false) };
 }
 
@@ -227,35 +239,37 @@ impl Overlay for Equipment
     fn draw(&mut self, draw: &mut Draw, _size: [i32; 2], mouse: [i32; 2])
     {
         let [x, y, w, h] = panel::TOGGLE_ART;
-        draw.image(
-            if inside(mouse, panel::TOGGLE)
-            {
-                panel::TOGGLE_HOVER
-            }
-            else
-            {
-                panel::TOGGLE_ICON
-            },
-            x,
-            y,
-            w,
-            h,
-        );
+
+        let texture: &str = if inside(mouse, panel::TOGGLE)
+        {
+            panel::TOGGLE_HOVER
+        }
+        else
+        {
+            panel::TOGGLE_ICON
+        };
+        draw.image(texture, x, y, w, h);
+
         if !SHOWN.with(Cell::get)
         {
             return;
         }
+
         draw.panel(panel::LEFT, panel::TOP, panel::WIDTH, panel::HEIGHT);
+
         let worn: Worn = localPlayer().map_or_else(Worn::default, Worn::of);
+
         for (index, (_, icon)) in WORN.iter().enumerate()
         {
             let [sx, sy] = slotAt(index);
             draw.texture(panel::SHEET, sx - 1, sy - 1, panel::SLOT_UV[0], panel::SLOT_UV[1], panel::SLOT, panel::SLOT);
+
             match worn.stack(index)
             {
                 Some(stack) => draw.item(sx, sy, &stack),
                 None => draw.image(&format!("aether:item/slots/{icon}"), sx, sy, panel::ICON, panel::ICON),
             };
+
             if inside(mouse, [sx, sy, panel::ICON, panel::ICON])
             {
                 draw.rect(sx, sy, panel::ICON, panel::ICON, panel::HOVER);
@@ -270,11 +284,14 @@ impl Overlay for Equipment
             SHOWN.with(|shown| shown.set(!shown.get()));
             return true;
         }
+
         if !SHOWN.with(Cell::get) || button != 0
         {
             return false;
         }
-        match (0..SLOTS).find(|index| {
+
+        match (0..SLOTS).find(|index|
+        {
             let [sx, sy] = slotAt(*index);
             inside([x, y], [sx, sy, panel::ICON, panel::ICON])
         })
@@ -282,8 +299,10 @@ impl Overlay for Equipment
             Some(index) =>
             {
                 let _ = send(CLICK, Target::Server, &Click { m_slot: index as u8 });
+
                 true
             }
+
             None => inside([x, y], [panel::LEFT, panel::TOP, panel::WIDTH, panel::HEIGHT]),
         }
     }
@@ -303,7 +322,8 @@ mod ability
     pub const FREEZE_REACH: i32 = 1;
 }
 
-thread_local! {
+thread_local!
+{
     // players whose step height the agility cape raised, and players whose worn list reached their own client
     static STEPPING: RefCell<HashMap<i32, bool>> = RefCell::new(HashMap::new());
     static ANNOUNCED: RefCell<HashMap<i32, bool>> = RefCell::new(HashMap::new());
@@ -322,6 +342,7 @@ fn shardHealth(entity: Entity, worn: &Worn)
 
     // older saves raised the base health itself
     entity.setField(EntityField::MaxHealth, f64::from(crate::player::BASE_HEALTH));
+
     let modifier: &str = "aether:life_shards";
     if let Err(error) = entity.setModifier("minecraft:max_health", modifier, worn.shardHealth(), ModifierOperation::Add)
     {
@@ -340,6 +361,7 @@ fn freeze(world: World, entity: Entity, worn: &mut Worn) -> bool
     {
         return false;
     };
+
     let water: [i32; 2] = [crate::ids::blockId("minecraft:water"), crate::ids::blockId("minecraft:flowing_water")];
     let lava: [i32; 2] = [crate::ids::blockId("minecraft:lava"), crate::ids::blockId("minecraft:flowing_lava")];
     let feet: [i32; 3] =
@@ -366,9 +388,11 @@ fn freeze(world: World, entity: Entity, worn: &mut Worn) -> bool
                 {
                     None
                 };
+
                 if let Some(name) = into
                 {
                     let _ = world.setBlock(pos, crate::ids::blockId(name), 0);
+
                     worn.wear("ice_ring", 1);
                     worn.wear("ice_pendant", 1);
                     changed = true;
@@ -376,6 +400,7 @@ fn freeze(world: World, entity: Entity, worn: &mut Worn) -> bool
             }
         }
     }
+
     changed
 }
 
@@ -387,48 +412,59 @@ fn serverTick(player: Player)
     {
         return;
     };
+
     let world: World = World { dimension: info.world };
     let entity: Entity = Entity { world, id: player.id };
     let before: Worn = Worn::of(player);
     let mut worn: Worn = before.clone();
     let age: f64 = entity.field(EntityField::TicksExisted);
+
     shardHealth(entity, &worn);
     worn.m_valkyrieSet = crate::player::wearingSet(player, "valkyrie");
     crate::abilities::repel(player, &mut worn);
+
     if !ANNOUNCED.with(|announced| announced.borrow().contains_key(&player.id)) && player.canSend(CLICK)
     {
         // the worn list loaded with the player reaches its client once the mod handshake is done
         worn.save(player);
         ANNOUNCED.with(|announced| announced.borrow_mut().insert(player.id, true));
     }
+
     if age % ability::WEAR_EVERY == 0.0
     {
         worn.wear("zanite_ring", 1);
         worn.wear("zanite_pendant", 1);
     }
+
     if worn.wearing("ice_ring") || worn.wearing("ice_pendant")
     {
         freeze(world, entity, &mut worn);
     }
+
     if worn.wearing("iron_bubble")
     {
         entity.setField(EntityField::Air, ability::FULL_AIR);
     }
+
     let health: i32 = info.health.unwrap_or(0);
     let hurt: bool = health > 0 && health < entity.field(EntityField::MaxHealth) as i32;
     if worn.wearing("regeneration_stone") && hurt && !crate::effects::has(entity, Effect::Regeneration)
     {
         crate::effects::give(entity, Effect::Regeneration, ability::REGEN_TICKS);
     }
+
     if worn.wearing("phoenix_gloves") && entity.flag(EntityField::InWater) && age % ability::BURN_EVERY == 0.0
     {
         let gloves: usize = 6;
+
         worn.wear("phoenix_gloves", 1);
+
         if worn.m_slots[gloves].is_none()
         {
             worn.m_slots[gloves] = ItemStack::of("obsidian_gloves", 1).toRaw().ok();
         }
     }
+
     if worn != before
     {
         worn.save(player);
@@ -436,7 +472,7 @@ fn serverTick(player: Player)
 }
 
 // ItemLifeShard.onItemRightClick: each shard adds a heart until the configured limit
-pub struct LifeShard;
+pub(crate) struct LifeShard;
 
 #[item_behavior]
 impl ItemBehavior for LifeShard
@@ -447,6 +483,7 @@ impl ItemBehavior for LifeShard
         {
             return Use::Pass;
         }
+
         let mut worn: Worn = Worn::of(player);
         let limit: i32 = crate::config::maxLifeShards();
         if worn.m_lifeShards >= limit
@@ -454,14 +491,16 @@ impl ItemBehavior for LifeShard
             player.chat(&translate("aether.gui.item.life_shard.maxshards").replace("%s", &limit.to_string()));
             return Use::Pass;
         }
+
         worn.m_lifeShards += 1;
         worn.save(player);
+
         let remaining: i32 = stack.count - 1;
         Use::Done((remaining > 0).then_some(ItemStack { count: remaining, ..stack }))
     }
 }
 
-pub fn lifeShard() -> LifeShard { LifeShard }
+pub(crate) fn lifeShard() -> LifeShard { LifeShard }
 
 // the movement half of AbilityAccessories runs where the player moves, on its own client
 fn localTick()
@@ -476,6 +515,7 @@ fn localTick()
     {
         return;
     };
+
     let entity: Entity = Entity { world: World { dimension: info.world }, id: player.id };
     let worn: Worn = Worn::of(player);
     let sneaking: bool = entity.flag(EntityField::Sneaking);
@@ -483,19 +523,18 @@ fn localTick()
     let wasAgile: bool = STEPPING.with(|stepping| stepping.borrow().get(&player.id).copied().unwrap_or(false));
     if agile || wasAgile
     {
-        entity.setField(
-            EntityField::StepHeight,
-            if agile
-            {
-                ability::AGILE_STEP
-            }
-            else
-            {
-                ability::NORMAL_STEP
-            },
-        );
+        let value: f64 = if agile
+        {
+            ability::AGILE_STEP
+        }
+        else
+        {
+            ability::NORMAL_STEP
+        };
+        entity.setField(EntityField::StepHeight, value);
         STEPPING.with(|stepping| stepping.borrow_mut().insert(player.id, agile));
     }
+
     if worn.wearing("golden_feather") || worn.wearing("valkyrie_cape")
     {
         if !entity.flag(EntityField::OnGround)
@@ -505,6 +544,7 @@ fn localTick()
         {
             let _ = entity.setMotion([info.motion[0], info.motion[1] * ability::FEATHER_FALL, info.motion[2]]);
         }
+
         entity.setField(EntityField::FallDistance, -1.0);
     }
 }
@@ -517,8 +557,10 @@ fn breakSpeed(event: &mut Event)
     {
         return;
     };
+
     let worn: Worn = Worn::of(player);
     let mut factor: f32 = 1.0;
+
     for index in 0..SLOTS
     {
         let Some(stack) =
@@ -527,9 +569,11 @@ fn breakSpeed(event: &mut Event)
         {
             continue;
         };
+
         let uses: f32 = accessoryOf(&stack).and_then(|row| row.m_uses).unwrap_or(1) as f32;
         factor *= 1.0 + stack.damage as f32 / (uses * 3.0);
     }
+
     if let EventData::BreakSpeed { speed, .. } = event.dataMut()
     {
         *speed *= factor;
@@ -590,6 +634,7 @@ fn layers(player: &EntityInfo, synced: &[u8]) -> Vec<PlayerLayer>
     let worn: Worn = b173_api::fromBytes(synced).unwrap_or_default();
     let mut out: Vec<PlayerLayer> = crate::abilities::wings(player, &worn).into_iter().collect();
     let invisible: bool = worn.wearing("invisibility_cape");
+
     for index in 0..SLOTS
     {
         let Some(row) = worn.stack(index).as_ref().and_then(accessoryOf)
@@ -597,6 +642,7 @@ fn layers(player: &EntityInfo, synced: &[u8]) -> Vec<PlayerLayer>
         {
             continue;
         };
+
         match row.m_slot
         {
             Slot::Pendant => out.push(layer(row, vec![BipedPart::Body], look::MISC, 1.0, false)),
@@ -608,6 +654,7 @@ fn layers(player: &EntityInfo, synced: &[u8]) -> Vec<PlayerLayer>
                 look::GLOVE_SCALE,
                 false,
             )),
+
             Slot::Shield =>
             {
                 let parts: Vec<BipedPart> = vec![
@@ -620,37 +667,47 @@ fn layers(player: &EntityInfo, synced: &[u8]) -> Vec<PlayerLayer>
                 ];
                 out.push(layer(row, parts, look::SHIELD, look::SHIELD_SCALE, true));
             }
+
             _ =>
             {}
         }
     }
+
     out
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.screens().playerLayer(layers)?;
+
     for row in &ACCESSORIES
     {
         let mut spec: ItemSpecBuilder =
             ItemSpecBuilder::new().texture(&format!("aether:item/accessories/{}", row.m_icon)).maxStack(1);
+
         if row.m_color != PLAIN
         {
             spec = spec.color(row.m_color);
         }
+
         if let Some(uses) = row.m_uses
         {
             spec = spec.maxDamage(uses);
         }
+
         ctx.items().register(row.m_name, spec)?;
     }
+
     ctx.channels().register::<Click>(CLICK, Direction::ToServer, click)?;
     ctx.screens().overlay("GuiInventory", Equipment)?;
-    ctx.events().on::<TickPost>(Priority::Normal, |_| {
+
+    ctx.events().on::<TickPost>(Priority::Normal, |_|
+    {
         if isClient()
         {
             localTick();
         }
+
         for player in allPlayers()
         {
             if player.info().is_some_and(|info| World { dimension: info.world }.isAuthority())
@@ -659,6 +716,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             }
         }
     })?;
+
     ctx.events().on::<PlayerBreakSpeed>(Priority::Normal, breakSpeed)?;
     Ok(())
 }

@@ -89,6 +89,7 @@ fn give(args: &[String], player: Player) -> Result<String>
         Err(_) => ItemRef::Named(vanillaId(name)?),
     };
     item.id().map_err(|_| Error(format!("unknown item {name}")))?;
+
     let count: i32 = number(args, 1, 1)?.clamp(1, limits::GIVE);
     let damage: i32 = number(args, 2, 0)?;
     let mut left: i32 = count;
@@ -98,6 +99,7 @@ fn give(args: &[String], player: Player) -> Result<String>
         player.give(ItemStack::of(&item, size).withDamage(damage))?;
         left -= size;
     }
+
     let label: String = item.name().map_or_else(|| name.to_owned(), |id| id.to_string());
     Ok(format!("gave {count} {label}"))
 }
@@ -106,13 +108,15 @@ fn toggle(player: Player, label: &str, flip: fn(&mut Abilities) -> bool) -> Resu
 {
     let mut state: Abilities = abilities::of(player);
     let enabled: bool = flip(&mut state);
+
     abilities::set(player, state)?;
     Ok(format!("{label} {}", if enabled { "on" } else { "off" }))
 }
 
 fn fly(_: &[String], player: Player) -> Result<String>
 {
-    toggle(player, "flight", |state| {
+    toggle(player, "flight", |state|
+    {
         state.m_fly = !state.m_fly;
         state.m_fly
     })
@@ -120,7 +124,8 @@ fn fly(_: &[String], player: Player) -> Result<String>
 
 fn god(_: &[String], player: Player) -> Result<String>
 {
-    toggle(player, "god mode", |state| {
+    toggle(player, "god mode", |state|
+    {
         state.m_god = !state.m_god;
         state.m_god
     })
@@ -147,6 +152,7 @@ fn clear(_: &[String], player: Player) -> Result<String>
     {
         player.setSlot(slot, None)?;
     }
+
     Ok("inventory cleared".to_owned())
 }
 
@@ -160,6 +166,7 @@ fn time(args: &[String], player: Player) -> Result<String>
         "midnight" => clock::MIDNIGHT,
         _ => number(args, 0, 0)?,
     };
+
     let (entity, _): (Entity, EntityInfo) = entityOf(player)?;
     let now: i64 = entity.world.time();
     let dayStart: i64 = now - now.rem_euclid(clock::DAY_LENGTH);
@@ -206,10 +213,12 @@ fn summon(args: &[String], player: Player) -> Result<String>
     let kind: String = vanillaId(name)?.to_string();
     let count: i32 = number(args, 1, 1)?.clamp(1, limits::SUMMON);
     let (entity, info): (Entity, EntityInfo) = entityOf(player)?;
+
     for _ in 0..count
     {
         entity.world.spawnEntity(&kind, info.pos).map_err(|_| Error(format!("unknown entity {name}")))?;
     }
+
     Ok(format!("summoned {count} {kind}"))
 }
 
@@ -221,6 +230,7 @@ fn locate(args: &[String], player: Player) -> Result<String>
     let (entity, info): (Entity, EntityInfo) = entityOf(player)?;
     let from: BlockPos =
         BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32, info.pos[2].floor() as i32);
+
     let Some(found) = entity.world.locate(&kind, from, radius)?
     else
     {
@@ -243,6 +253,7 @@ fn effect(args: &[String], player: Player) -> Result<String>
 {
     let usage: &str = "usage: /effect <mod:effect> [level] [seconds] or /effect remove <mod:effect>";
     let (entity, _): (Entity, EntityInfo) = entityOf(player)?;
+
     if arg(args, 0) == Some("remove")
     {
         let name: &str = arg(args, 1).ok_or(usage)?;
@@ -257,17 +268,20 @@ fn effect(args: &[String], player: Player) -> Result<String>
     Ok(format!("{name} {level} for {seconds} seconds"))
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for spec in available()
     {
         let run: fn(&[String], Player) -> Result<String> = spec.m_run;
-        ctx.commands().registerWithUsage(spec.m_name, Permission::Op, spec.m_usage, move |command| {
+
+        ctx.commands().registerWithUsage(spec.m_name, Permission::Op, spec.m_usage, move |command|
+        {
             let player: Player = command.player().ok_or("players only")?;
             let reply: String = run(&command.args, player)?;
             command.reply(&reply);
             Ok(())
         })?;
     }
+
     Ok(())
 }

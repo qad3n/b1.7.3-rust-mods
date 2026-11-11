@@ -1,7 +1,7 @@
 use crate::world::features::Feature;
 
 // TFFeature.createHintBook, the explorer's notes a hint kobold carries, one per feature that guards its pieces
-pub struct Hint
+pub(crate) struct Hint
 {
     pub m_feature: Option<Feature>,
     pub m_item: &'static str,
@@ -9,9 +9,9 @@ pub struct Hint
     pub m_pages: &'static [&'static str],
 }
 
-pub const AUTHOR: &str = "A Forgotten Explorer";
+pub(crate) const AUTHOR: &str = "A Forgotten Explorer";
 
-pub const HINTS: [Hint; 9] = [
+pub(crate) const HINTS: [Hint; 9] = [
     Hint
     {
         m_feature: Some(Feature::LichTower),

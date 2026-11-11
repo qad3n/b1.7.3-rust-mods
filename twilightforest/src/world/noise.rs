@@ -29,7 +29,7 @@ fn fastFloor(value: f64) -> i32
     }
 }
 
-pub struct Simplex
+pub(crate) struct Simplex
 {
     m_table: [i32; simplex::TABLE * 2],
     m_offset: [f64; 3],
@@ -37,7 +37,7 @@ pub struct Simplex
 
 impl Simplex
 {
-    pub fn new(random: &Random) -> Simplex
+    pub(crate) fn new(random: &Random) -> Self
     {
         let span: f64 = simplex::TABLE as f64;
         let offset: [f64; 3] = [random.nextDouble() * span, random.nextDouble() * span, random.nextDouble() * span];
@@ -46,13 +46,15 @@ impl Simplex
         {
             *slot = index as i32;
         }
+
         for index in 0..simplex::TABLE
         {
             let other: usize = (random.nextIntBounded((simplex::TABLE - index) as i32) as usize) + index;
             table.swap(index, other);
             table[index + simplex::TABLE] = table[index];
         }
-        Simplex { m_table: table, m_offset: offset }
+
+        Self { m_table: table, m_offset: offset }
     }
 
     fn corner(gradient: usize, x: f64, y: f64) -> f64
@@ -62,13 +64,14 @@ impl Simplex
         {
             return 0.0;
         }
+
         let squared: f64 = falloff * falloff;
         let [gx, gy] = GRADIENTS[gradient];
         squared * squared * (f64::from(gx) * x + f64::from(gy) * y)
     }
 
     // NoiseGeneratorSimplex.func_151605_a
-    pub fn value(&self, x: f64, y: f64) -> f64
+    pub(crate) fn value(&self, x: f64, y: f64) -> f64
     {
         let (skewIn, skewOut): (f64, f64) = skew();
         let stretch: f64 = (x + y) * skewIn;
@@ -92,12 +95,23 @@ impl Simplex
     }
 
     // NoiseGeneratorSimplex.func_151606_a adds a scaled grid of noise into the buffer
-    pub fn add(&self, buffer: &mut [f64], x: f64, z: f64, width: usize, depth: usize, scale: [f64; 2], amplitude: f64)
+    pub(crate) fn add(
+        &self,
+        buffer: &mut [f64],
+        x: f64,
+        z: f64,
+        width: usize,
+        depth: usize,
+        scale: [f64; 2],
+        amplitude: f64,
+    )
     {
         let mut index: usize = 0;
+
         for dz in 0..depth
         {
             let atZ: f64 = (z + dz as f64) * scale[1] + self.m_offset[1];
+
             for dx in 0..width
             {
                 let atX: f64 = (x + dx as f64) * scale[0] + self.m_offset[0];
@@ -109,45 +123,57 @@ impl Simplex
 }
 
 // NoiseGeneratorPerlin from 1.7, octaves of simplex noise
-pub struct Octaves
+pub(crate) struct Octaves
 {
     m_levels: Vec<Simplex>,
 }
 
 impl Octaves
 {
-    pub fn new(random: &Random, levels: usize) -> Octaves
+    pub(crate) fn new(random: &Random, levels: usize) -> Self
     {
-        Octaves { m_levels: (0..levels).map(|_| Simplex::new(random)).collect() }
+        Self { m_levels: (0..levels).map(|_| Simplex::new(random)).collect() }
     }
 
     // NoiseGeneratorPerlin.func_151601_a
-    pub fn value(&self, x: f64, z: f64) -> f64
+    pub(crate) fn value(&self, x: f64, z: f64) -> f64
     {
         let mut total: f64 = 0.0;
         let mut frequency: f64 = 1.0;
+
         for level in &self.m_levels
         {
             total += level.value(x * frequency, z * frequency) / frequency;
             frequency /= 2.0;
         }
+
         total
     }
 
     // NoiseGeneratorPerlin.func_151599_a with the default half persistence
-    pub fn region(&self, x: f64, z: f64, width: usize, depth: usize, scale: [f64; 2], lacunarity: f64) -> Vec<f64>
+    pub(crate) fn region(
+        &self,
+        x: f64,
+        z: f64,
+        width: usize,
+        depth: usize,
+        scale: [f64; 2],
+        lacunarity: f64,
+    ) -> Vec<f64>
     {
         let persistence: f64 = 0.5;
         let base: f64 = 0.55;
         let mut buffer: Vec<f64> = vec![0.0; width * depth];
         let mut amplitude: f64 = 1.0;
         let mut frequency: f64 = 1.0;
+
         for level in &self.m_levels
         {
             level.add(&mut buffer, x, z, width, depth, [scale[0] * frequency, scale[1] * frequency], base / amplitude);
             frequency *= lacunarity;
             amplitude *= persistence;
         }
+
         buffer
     }
 }
@@ -158,4 +184,4 @@ thread_local!
     static PLANT: Octaves = Octaves::new(&Random::withSeed(2345), 1);
 }
 
-pub fn plant(x: f64, z: f64) -> f64 { PLANT.with(|noise| noise.value(x, z)) }
+pub(crate) fn plant(x: f64, z: f64) -> f64 { PLANT.with(|noise| noise.value(x, z)) }

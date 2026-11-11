@@ -60,9 +60,10 @@ impl BlockBehavior for Runes
     }
 }
 
-pub fn runeColor(meta: u8) -> u32
+pub(crate) fn runeColor(meta: u8) -> u32
 {
     let color: u32 = rune::COLORS[usize::from(meta & rune::COLOR_MASK)];
+
     if meta & rune::INVERTED != 0
     {
         color ^ rune::WHITE
@@ -90,7 +91,9 @@ fn activateDoor(world: World, pos: BlockPos)
 {
     let meta: i32 = world.meta(pos);
     let _ = world.setMeta(pos, meta | i32::from(door::ACTIVE));
+
     fizz(world, pos, 1.75);
+
     let _ = world.scheduleTick(pos, world.block(pos), door::VANISH_BASE + world.random(door::VANISH_SPREAD));
 }
 
@@ -109,6 +112,7 @@ impl BlockBehavior for CastleDoor
         {
             return true;
         }
+
         if crate::progress::doorLocked(ctx.world(), ctx.pos())
         {
             ctx.world().playSound(ids::center(ctx.pos()), "random.click", 1.0, 0.3);
@@ -126,15 +130,18 @@ impl BlockBehavior for CastleDoor
         {
             return;
         }
+
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let meta: u8 = ctx.meta();
         let color: i32 = i32::from(meta & door::COLOR_MASK);
+
         if self.m_vanished
         {
             if meta & door::ACTIVE != 0
             {
                 let _ = world.setBlock(pos, ids::blockId(block::CASTLE_DOOR), color);
+
                 fizz(world, pos, 1.25);
             }
             else
@@ -143,15 +150,20 @@ impl BlockBehavior for CastleDoor
             }
             return;
         }
+
         if meta & door::ACTIVE == 0
         {
             return;
         }
+
         let vanished: i32 = ids::blockId(block::CASTLE_DOOR_VANISHED);
         let _ = world.setBlock(pos, vanished, color);
         let _ = world.scheduleTick(pos, vanished, door::RETURN_DELAY);
+
         fizz(world, pos, 1.25);
+
         let solid: i32 = ids::blockId(block::CASTLE_DOOR);
+
         for [dx, dy, dz] in NEIGHBORS
         {
             let at: BlockPos = pos.offset(dx, dy, dz);
@@ -179,11 +191,13 @@ fn registerRunes(ctx: &mut RegisterCtx) -> Result<()>
             .texture(&texture("castleblock_brick"))
             .behavior(Runes),
     )?;
+
     // no block spec names the rune sprites, asking for their slots now gives them room in the atlas
     for index in 0..RUNE_SPRITES
     {
         let _ = b173_api::world::terrainSlot(&runeTexture(index));
     }
+
     let colors: Vec<String> = colorValues(4);
     let values: Vec<&str> = colors.iter().map(String::as_str).collect();
     ctx.blocks().states(
@@ -198,9 +212,11 @@ fn registerRunes(ctx: &mut RegisterCtx) -> Result<()>
             ..BlockStatesSpec::default()
         },
     )?;
+
     let doors: [(&str, &str, bool); 2] =
         [(block::CASTLE_DOOR, "Castle Door", false), (block::CASTLE_DOOR_VANISHED, "Vanished Castle Door", true)];
     let unbreakable: f32 = -1.0;
+
     for (name, label, vanished) in doors
     {
         let look: &str = if vanished
@@ -216,6 +232,7 @@ fn registerRunes(ctx: &mut RegisterCtx) -> Result<()>
             .texture(&texture(look))
             .drops(Vec::new())
             .behavior(CastleDoor { m_vanished: vanished });
+
         if vanished
         {
             spec = spec
@@ -224,7 +241,9 @@ fn registerRunes(ctx: &mut RegisterCtx) -> Result<()>
                 .collision(Vec::new())
                 .model(BlockModelSpec { translucent: true, ..BlockModelSpec::default() });
         }
+
         super::put(ctx, name, spec)?;
+
         let shades: Vec<String> = colorValues(8);
         let shadeValues: Vec<&str> = shades.iter().map(String::as_str).collect();
         let active: String = texture(&format!("{look}_active"));
@@ -243,6 +262,7 @@ fn registerRunes(ctx: &mut RegisterCtx) -> Result<()>
             },
         )?;
     }
+
     Ok(())
 }
 
@@ -256,6 +276,7 @@ fn paneModel() -> BlockModelSpec
     let high: f32 = 9.0;
     let full: f32 = PIXELS;
     let arm = |from: [f32; 3], to: [f32; 3], face: i32| Cuboid { from, to, connect: Some(face), ..Cuboid::default() };
+
     BlockModelSpec
     {
         cuboids: vec![
@@ -275,6 +296,7 @@ fn registerFields(ctx: &mut RegisterCtx) -> Result<()>
 {
     let unbreakable: f32 = -1.0;
     let resistance: f32 = 6000000.0;
+
     for (color, label) in FIELDS
     {
         let name: String = format!("{color}_force_field");
@@ -294,13 +316,15 @@ fn registerFields(ctx: &mut RegisterCtx) -> Result<()>
                 .model(paneModel()),
         )?;
     }
+
     Ok(())
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerRunes(ctx)?;
     registerFields(ctx)?;
+
     let cinderHardness: f32 = 1.0;
     super::put(
         ctx,
@@ -310,6 +334,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             .sustainsLeaves()
             .behavior(super::wood::Log),
     )?;
+
     let axis: PropertySpec = super::property("axis", &super::wood::LOG_AXES);
     ctx.blocks().states(block::CINDER_LOG, BlockStatesSpec { properties: vec![axis], ..BlockStatesSpec::default() })
 }

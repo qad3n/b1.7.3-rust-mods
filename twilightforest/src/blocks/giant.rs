@@ -38,6 +38,7 @@ impl BlockBehavior for Giant
         {
             return;
         }
+
         for at in cells(ctx.pos())
         {
             let _ = ctx.world().setBlockQuiet(at, ctx.block(), 0);
@@ -50,6 +51,7 @@ impl BlockBehavior for Giant
         {
             return;
         }
+
         let world: World = ctx.world();
         for at in cells(ctx.pos()).filter(|at| *at != ctx.pos() && world.block(*at) == ctx.block())
         {
@@ -127,6 +129,7 @@ fn tile(pos: BlockPos, face: i32) -> (i32, i32)
 {
     let last: i32 = cell::SIZE - 1;
     let [x, y, z] = [pos.x & last, pos.y & last, pos.z & last];
+
     match face
     {
         2 => (last - x, last - y),
@@ -141,7 +144,7 @@ fn faceSprite(row: &GiantRow, face: i32) -> String { vanillaTexture(if face < 2 
 
 fn rowOf(block: i32) -> Option<&'static GiantRow> { GIANTS.iter().find(|row| ids::blockId(row.m_name) == block) }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &GIANTS
     {
@@ -149,6 +152,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         {
             b173_api::world::terrainTiles(&texture, cell::SIZE, cell::SIZE)?;
         }
+
         let mut spec: BlockSpecBuilder = base("minecraft:block", row.m_label, row.m_kind, row.m_hardness)
             .faces(FaceTextures
             {
@@ -158,15 +162,19 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
                 front: None,
             })
             .behavior(Giant);
+
         if let Some(resistance) = row.m_resistance
         {
             spec = spec.resistance(resistance);
         }
+
         if row.m_name == block::GIANT_LEAVES
         {
             spec = spec.material("leaves").opacity(1);
         }
+
         put(ctx, row.m_name, spec)?;
     }
+
     Ok(())
 }

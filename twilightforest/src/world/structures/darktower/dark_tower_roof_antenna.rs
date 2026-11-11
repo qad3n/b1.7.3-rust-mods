@@ -1,7 +1,7 @@
 // draft from ComponentTFDarkTowerRoofAntenna.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
+pub(crate) fn new(i: i32, wing: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::DarkTowerRoofAntenna);
     init(&this, i, wing);
@@ -9,12 +9,13 @@ pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFDarkTowerRoofAntenna constructor
-pub fn init(this: &Piece, i: i32, wing: &Piece) { dark_tower_roof::init(this, i, &wing); }
+pub(crate) fn init(this: &Piece, i: i32, wing: &Piece) { dark_tower_roof::init(this, i, wing); }
 
 // ComponentTFDarkTowerRoofAntenna.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     dark_tower_roof::add(this, world, random, sbb);
+
     for y in 1..10
     {
         this.placeBlock(
@@ -27,6 +28,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             sbb,
         );
     }
+
     this.placeBlock(
         world,
         this.m_deco.get().m_accentID,
@@ -63,6 +65,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         (this.m_size.get() / 2) + 1,
         sbb,
     );
+
     for y in 7..10
     {
         this.placeBlock(
@@ -102,6 +105,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             sbb,
         );
     }
+
     this.placeBlock(
         world,
         this.m_deco.get().m_accentID,
@@ -138,5 +142,5 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         (this.m_size.get() / 2) + 1,
         sbb,
     );
-    return true;
+    true
 }

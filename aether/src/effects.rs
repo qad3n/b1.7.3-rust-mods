@@ -2,7 +2,7 @@ use b173_api::prelude::*;
 
 // the potions the source hands out, on the loader's status effects
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Effect
+pub(crate) enum Effect
 {
     Inebriation,
     Regeneration,
@@ -43,7 +43,8 @@ struct EffectRow
 
 // PotionInebriation and Potion.regeneration and weakness with their 1.7 colours
 const EFFECTS: [EffectRow; 3] = [
-    EffectRow {
+    EffectRow
+    {
         m_effect: Effect::Inebriation,
         m_id: "aether:inebriation",
         m_color: colour::INEBRIATION,
@@ -53,7 +54,8 @@ const EFFECTS: [EffectRow; 3] = [
         m_interval: pulse::INEBRIATION_TICKS,
         m_amount: pulse::INEBRIATION_HURT,
     },
-    EffectRow {
+    EffectRow
+    {
         m_effect: Effect::Regeneration,
         m_id: "aether:regeneration",
         m_color: colour::REGENERATION,
@@ -63,7 +65,8 @@ const EFFECTS: [EffectRow; 3] = [
         m_interval: pulse::REGENERATION_TICKS,
         m_amount: pulse::REGENERATION_HEAL,
     },
-    EffectRow {
+    EffectRow
+    {
         m_effect: Effect::Weakness,
         m_id: "aether:weakness",
         m_color: colour::WEAKNESS,
@@ -80,7 +83,7 @@ fn row(effect: Effect) -> &'static EffectRow
     EFFECTS.iter().find(|row| row.m_effect == effect).expect("every effect has a row")
 }
 
-pub fn give(target: Entity, effect: Effect, ticks: i32)
+pub(crate) fn give(target: Entity, effect: Effect, ticks: i32)
 {
     let id: &str = row(effect).m_id;
     if let Err(error) = target.addEffect(id, 0, ticks)
@@ -89,7 +92,7 @@ pub fn give(target: Entity, effect: Effect, ticks: i32)
     }
 }
 
-pub fn remove(target: Entity, effect: Effect)
+pub(crate) fn remove(target: Entity, effect: Effect)
 {
     let id: &str = row(effect).m_id;
     if let Err(error) = target.removeEffect(id)
@@ -98,22 +101,25 @@ pub fn remove(target: Entity, effect: Effect)
     }
 }
 
-pub fn has(target: Entity, effect: Effect) -> bool { target.effectLevel(row(effect).m_id).is_some() }
+pub(crate) fn has(target: Entity, effect: Effect) -> bool { target.effectLevel(row(effect).m_id).is_some() }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &EFFECTS
     {
         let modifiers: Vec<EffectModifierSpec> = match row.m_modifier
         {
-            Some((attribute, amount, operation)) => vec![EffectModifierSpec {
+            Some((attribute, amount, operation)) => vec![EffectModifierSpec
+            {
                 attribute: Identifier::parse(attribute).map_err(|error| Error(error.to_string()))?,
                 amount,
                 operation,
             }],
             None => Vec::new(),
         };
-        let spec: EffectSpec = EffectSpec {
+
+        let spec: EffectSpec = EffectSpec
+        {
             color: row.m_color,
             beneficial: row.m_beneficial,
             icon: row.m_icon.map(str::to_owned),
@@ -123,5 +129,6 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
         ctx.effects().register(row.m_id.trim_start_matches("aether:"), spec)?;
     }
+
     Ok(())
 }

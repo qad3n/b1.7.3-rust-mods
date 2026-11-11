@@ -3,7 +3,7 @@ use crate::models::Program;
 use b173_api::prelude::*;
 
 // the twilight forest's EntityThrowable shots: how they fall, what they do on a hit and the icon they show
-pub struct Shot
+pub(crate) struct Shot
 {
     pub m_name: &'static str,
     // EntityThrowable.getGravityVelocity
@@ -19,7 +19,7 @@ pub struct Shot
 }
 
 #[derive(Clone, Copy, PartialEq)]
-pub enum Impact
+pub(crate) enum Impact
 {
     Plain,
     // EntityTFNatureBolt, poisons what it hits, leaves where it lands
@@ -36,7 +36,7 @@ pub enum Impact
 
 // RenderSnowball's icon, a cell of the beta item sheet or a twilight item texture
 #[derive(Clone, Copy, PartialEq)]
-pub enum Icon
+pub(crate) enum Icon
 {
     Sheet(i32),
     Texture(&'static str),
@@ -69,20 +69,20 @@ mod effect
 
 const TWILIGHT_ORB: &str = "twilightforest:item/twilightorb";
 
-pub const NATURE_BOLT: &str = "nature_bolt";
-pub const TOME_BOLT: &str = "tome_bolt";
-pub const WAND_BOLT: &str = "twilight_wand_bolt";
-pub const SLIME_BLOB: &str = "slime_blob";
-pub const ICE_SNOWBALL: &str = "ice_snowball";
-pub const LICH_BOLT: &str = "lich_bolt";
-pub const LICH_BOMB: &str = "lich_bomb";
-pub const THROWN_AXE: &str = "thrown_axe";
-pub const THROWN_PICK: &str = "thrown_pick";
-pub const UR_FIREBALL: &str = "ur_ghast_fireball";
-pub const MOONWORM_SHOT: &str = "moonworm_shot";
+pub(crate) const NATURE_BOLT: &str = "nature_bolt";
+pub(crate) const TOME_BOLT: &str = "tome_bolt";
+pub(crate) const WAND_BOLT: &str = "twilight_wand_bolt";
+pub(crate) const SLIME_BLOB: &str = "slime_blob";
+pub(crate) const ICE_SNOWBALL: &str = "ice_snowball";
+pub(crate) const LICH_BOLT: &str = "lich_bolt";
+pub(crate) const LICH_BOMB: &str = "lich_bomb";
+pub(crate) const THROWN_AXE: &str = "thrown_axe";
+pub(crate) const THROWN_PICK: &str = "thrown_pick";
+pub(crate) const UR_FIREBALL: &str = "ur_ghast_fireball";
+pub(crate) const MOONWORM_SHOT: &str = "moonworm_shot";
 const KNIGHT_PHANTOM: &str = "knight_phantom";
 
-pub const SHOTS: [Shot; 11] = [
+pub(crate) const SHOTS: [Shot; 11] = [
     Shot
     {
         m_name: NATURE_BOLT,
@@ -215,7 +215,7 @@ struct Flight
 }
 
 // EntityThrowable.setThrowableHeading toward a point at this speed with its inaccuracy
-pub fn fire(
+pub(crate) fn fire(
     world: World,
     name: &str,
     from: [f64; 3],
@@ -228,26 +228,30 @@ pub fn fire(
     let entity: Entity = match world.spawnEntity(&format!("twilightforest:{name}"), from)
     {
         Ok(entity) => entity,
+
         Err(error) =>
         {
             warn(&format!("cannot fire {name}: {}", error.0));
             return None;
         }
     };
+
     let delta: [f64; 3] = [0, 1, 2].map(|axis| toward[axis] - from[axis]);
     let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
     let motion: [f64; 3] = delta.map(|axis| (axis / length + wobble(world, spread)) * speed);
     let _ = entity.setMotion(motion);
     let _ = entity.setData(&Flight { m_owner: owner, m_age: 0 });
+
     if let Some(owner) = owner
     {
         entity.setField(EntityField::Shooter, f64::from(owner));
     }
+
     Some(entity)
 }
 
 // EntityThrowable.setThrowableHeading's inaccuracy on one axis, uniform where upstream draws a gaussian
-pub fn wobble(world: World, spread: f64) -> f64
+pub(crate) fn wobble(world: World, spread: f64) -> f64
 {
     let (steps, scale, inaccuracy): (i32, f64, f64) = (2001, 1000.0, 0.0075);
     (f64::from(world.random(steps)) / scale - 1.0) * inaccuracy * spread
@@ -269,11 +273,13 @@ mod bolt
 fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, owner: Option<i32>)
 {
     let world: World = entity.world;
+
     if let Some(target) = target
         && shot.m_damage > 0
     {
         let victim: Entity = Entity { world, id: target.id };
         crate::combat::hit(victim, shot.m_damage, owner, shot.m_kind);
+
         // the source's normal difficulty lengths, beta keeps no difficulty a mod can read
         match shot.m_impact
         {
@@ -283,6 +289,7 @@ fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, 
             {}
         }
     }
+
     if shot.m_impact == Impact::Nature && target.is_none()
     {
         let pos: BlockPos = BlockPos::new(at[0].floor() as i32, at[1].floor() as i32, at[2].floor() as i32);
@@ -290,6 +297,7 @@ fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, 
         let info: BlockInfo = World::blockInfo(here);
         // birch leaves grow where the bolt hits stone or wood, grass gets bone meal
         let birch: i32 = 2;
+
         if here == crate::ids::blockId("minecraft:grass")
         {
             let _ = world.fertilize(pos);
@@ -299,19 +307,23 @@ fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, 
             let _ = world.setBlock(pos, crate::ids::blockId("minecraft:leaves"), birch);
         }
     }
+
     if shot.m_impact == Impact::Bomb
     {
         blast(world, at, effect::BOMB_POWER, owner);
     }
+
     if shot.m_impact == Impact::Fireball
         && let Err(error) = world.explode(at, effect::FIREBALL_POWER)
     {
         warn(&format!("ur-ghast fireball: {}", error.0));
     }
+
     for _ in 0..flight::PUFFS
     {
         crate::particles::spawn(world, shot.m_puff, at, [0.0; 3]);
     }
+
     entity.kill();
 }
 
@@ -325,6 +337,7 @@ impl EntityBehavior for Thrown
         {
             return;
         }
+
         let mut state: Flight = entity.data();
         state.m_age += 1;
         if state.m_age > flight::LIFETIME
@@ -332,6 +345,7 @@ impl EntityBehavior for Thrown
             entity.kill();
             return;
         }
+
         let to: [f64; 3] = info.pos;
         let from: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - info.motion[axis]);
         let hit: Option<EntityInfo> =
@@ -341,26 +355,31 @@ impl EntityBehavior for Thrown
                     self.m_shot.m_passes.is_some_and(|kind| hit.kind.as_ref().is_some_and(|hit| hit.path() == kind));
                 hit.id != entity.id && hit.health.is_some() && !passed
             });
+
         if let Some(target) = hit
         {
             land(self.m_shot, entity, to, Some(&target), state.m_owner);
             return;
         }
+
         if let Some(block) = entity.world.rayTrace(from, to, false)
         {
             if self.m_shot.m_impact == Impact::Moonworm
             {
                 crate::items::moonworm::attach(entity.world, block.pos, block.face);
             }
+
             land(self.m_shot, entity, block.point, None, state.m_owner);
             return;
         }
+
         let drag: f64 = flight::DRAG;
         let _ = entity.setMotion([
             info.motion[0] * drag,
             info.motion[1] * drag - self.m_shot.m_gravity,
             info.motion[2] * drag,
         ]);
+
         let _ = entity.setData(&state);
     }
 
@@ -368,14 +387,17 @@ impl EntityBehavior for Thrown
     fn pose(&self, _input: &PoseInput) -> Pose
     {
         let mut program: Program = Program::new();
+
         let [u0, v0, u1, v1]: [f32; 4] = match self.m_shot.m_icon
         {
             Icon::Sheet(cell) =>
             {
                 program.texture("minecraft:gui/items");
+
                 let (column, row): (f32, f32) = ((cell % 16) as f32, (cell / 16) as f32);
                 [column / sheet::CELLS, row / sheet::CELLS, (column + 1.0) / sheet::CELLS, (row + 1.0) / sheet::CELLS]
             }
+
             Icon::Texture(texture) =>
             {
                 program.texture(texture);
@@ -392,7 +414,7 @@ impl EntityBehavior for Thrown
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for shot in &SHOTS
     {
@@ -412,15 +434,18 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             Some(std::rc::Rc::new(Thrown { m_shot: shot })),
         )?;
     }
+
     Ok(())
 }
 
 // World.newExplosion with neither fire nor broken blocks, Explosion.doExplosionA's damage to what stands near
-pub fn blast(world: World, at: [f64; 3], power: f32, source: Option<i32>)
+pub(crate) fn blast(world: World, at: [f64; 3], power: f32, source: Option<i32>)
 {
     let reach: f64 = f64::from(power) * 2.0;
+
     world.playSound(at, "random.explode", 4.0, 0.7 + crate::ids::fraction(world) * 0.2);
     crate::particles::spawn(world, "hugeexplosion", at, [0.0; 3]);
+
     for other in world.entitiesNear(at, reach)
     {
         let gap: f64 = crate::entities::ai::distance(at, other.pos) / reach;
@@ -428,6 +453,7 @@ pub fn blast(world: World, at: [f64; 3], power: f32, source: Option<i32>)
         {
             continue;
         }
+
         let impact: f64 = 1.0 - gap;
         let damage: i32 = ((impact * impact + impact) / 2.0 * 8.0 * reach + 1.0) as i32;
         crate::combat::hit(Entity { world, id: other.id }, damage, source, kind::EXPLOSION);

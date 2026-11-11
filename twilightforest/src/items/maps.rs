@@ -4,7 +4,7 @@ use crate::progress::{self, Gate};
 use crate::world::biomes::{self, Biome};
 use crate::world::features::{self, Feature};
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 // ItemTFMagicMap, ItemTFMazeMap and their blank maps: the magic map paints the biome under every chunk and marks
@@ -187,9 +187,9 @@ struct Chart
 
 impl Chart
 {
-    fn new(center: [i32; 2], level: i32) -> Chart
+    fn new(center: [i32; 2], level: i32) -> Self
     {
-        Chart
+        Self
         {
             m_center: center,
             m_level: level,
@@ -210,6 +210,7 @@ impl Chart
         {
             return 0;
         }
+
         self.m_palette.push(rgb);
         (self.m_palette.len() - 1) as u8
     }
@@ -244,7 +245,7 @@ fn withOpen<T>(data: &str, id: i32, run: impl FnOnce(&mut Open) -> T) -> T
 {
     SERVER.with(|server|
     {
-        let mut server = server.borrow_mut();
+        let mut server: RefMut<HashMap<String, Open>> = server.borrow_mut();
         let open: &mut Open = server.entry(key(data, id)).or_insert_with(|| Open
         {
             m_chart: worldData(&key(data, id)),
@@ -268,6 +269,7 @@ fn nextId(data: &str) -> i32
 fn store(data: &str, id: i32, chart: Chart)
 {
     setWorldData(&key(data, id), &chart);
+
     withOpen(data, id, |open|
     {
         open.m_chart = chart;
@@ -285,9 +287,11 @@ fn chart(world: World, player: Player, kind: Kind) -> Option<i32>
     let row: &Row = row(kind);
     let step: i32 = SIZE << row.m_scale;
     let [x, y, z]: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
+
     let center: [i32; 2] = match kind
     {
         Kind::Magic => [round(info.pos[0], step), round(info.pos[2], step)],
+
         Kind::Maze | Kind::Ore =>
         {
             let (feature, [centerX, centerZ]): (Feature, [i32; 2]) = features::nearest(world.seed(), x >> 4, z >> 4);
@@ -301,6 +305,7 @@ fn chart(world: World, player: Player, kind: Kind) -> Option<i32>
             }
         }
     };
+
     let id: i32 = nextId(row.m_data);
     store(row.m_data, id, Chart::new(center, y));
     Some(id)
@@ -328,15 +333,19 @@ impl ItemBehavior for Blank
 
         let row: &Row = row(self.m_kind);
         progress::grant(player, row.m_gate);
+
         let map: ItemStack = ItemStack { damage: id, ..ItemStack::of(row.m_item, 1) };
+
         if stack.count <= 1
         {
             return Use::Done(Some(map));
         }
+
         if let Err(error) = player.give(map)
         {
             warn(&format!("cannot hand out map {id}: {}", error.0));
         }
+
         Use::Done(Some(ItemStack { count: stack.count - 1, ..stack }))
     }
 }
@@ -350,12 +359,15 @@ impl ItemBehavior for Filled {}
 fn commonBiome(seed: i64, chunkX: i32, chunkZ: i32) -> u8
 {
     let mut counts: [i32; BIOME_SLOTS] = [0; BIOME_SLOTS];
+
     for column in biomes::chunk(seed, chunkX, chunkZ)
     {
         let water: bool = biomes::fromIndex(i32::from(column)) == Biome::Stream;
         counts[usize::from(column)] += if water { magic::WATER_WEIGHT } else { 1 };
     }
+
     let mut best: (u8, i32) = (0, 0);
+
     for (index, count) in counts.iter().enumerate()
     {
         if *count > best.1
@@ -363,6 +375,7 @@ fn commonBiome(seed: i64, chunkX: i32, chunkZ: i32) -> u8
             best = (index as u8, *count);
         }
     }
+
     best.0
 }
 
@@ -380,6 +393,7 @@ fn addFeature(chart: &mut Chart, feature: Feature, x: i32, z: i32, scale: i32)
     {
         return;
     }
+
     chart.m_features.push([feature as i8, mapX, mapZ]);
 }
 
@@ -399,13 +413,15 @@ fn magicPixel(world: World, chart: &mut Chart, step: [i32; 2], offset: [i32; 2])
     {
         return false;
     }
+
     let chunkX: i32 = (chart.m_center[0] >> row.m_scale) + step[0] - HALF;
     let chunkZ: i32 = (chart.m_center[1] >> row.m_scale) + step[1] - HALF;
-    if features::isFeatureChunk(chunkX, chunkZ)
+    if features::featureChunk(chunkX, chunkZ)
     {
         let (feature, _): (Feature, [i32; 2]) = features::nearest(world.seed(), chunkX, chunkZ);
         addFeature(chart, feature, chunkX << row.m_scale, chunkZ << row.m_scale, row.m_scale);
     }
+
     let biome: u8 = commonBiome(world.seed(), chunkX, chunkZ);
     let rgb: u32 = biomes::rowOf(biomes::fromIndex(i32::from(biome))).m_map;
     chart.m_pixels[index] = chart.slot(rgb) * shade::LEVELS + shade::FLAT;
@@ -416,6 +432,7 @@ fn magicPixel(world: World, chart: &mut Chart, step: [i32; 2], offset: [i32; 2])
 fn underStone(world: World, x: i32, level: i32, z: i32) -> (i32, u8)
 {
     let stone: i32 = ids::blockId("minecraft:stone");
+
     for dy in -maze::LEVELS..=maze::LEVELS
     {
         let block: i32 = world.block(BlockPos::new(x, level + dy, z));
@@ -430,6 +447,7 @@ fn underStone(world: World, x: i32, level: i32, z: i32) -> (i32, u8)
             return (block, tint);
         }
     }
+
     (stone, shade::FLAT)
 }
 
@@ -439,14 +457,17 @@ fn mazePixel(world: World, chart: &mut Chart, step: [i32; 2], offset: [i32; 2], 
     {
         return false;
     }
+
     let x: i32 = chart.m_center[0] + step[0] - HALF;
     let z: i32 = chart.m_center[1] + step[1] - HALF;
     let mut block: i32 = world.block(BlockPos::new(x, chart.m_level, z));
     let mut tint: u8 = shade::FLAT;
+
     if ores && block == ids::blockId("minecraft:stone")
     {
         (block, tint) = underStone(world, x, chart.m_level, z);
     }
+
     let ore: Option<u32> =
         ORE_COLORS.iter().find(|ore| ores && ids::blockId(ore.m_block) == block).map(|ore| ore.m_rgb);
     let rgb: u32 = ore.unwrap_or_else(|| World::mapColor(block));
@@ -457,6 +478,7 @@ fn mazePixel(world: World, chart: &mut Chart, step: [i32; 2], offset: [i32; 2], 
     {
         return false;
     }
+
     chart.m_pixels[index] = pixel;
     true
 }
@@ -477,21 +499,26 @@ fn update(world: World, info: &EntityInfo, row: &Row, chart: &mut Chart, now: i6
     {
         return false;
     }
+
     let draw: [i32; 2] = [
         ((info.pos[0].floor() as i32 - chart.m_center[0]) >> row.m_scale) + HALF,
         ((info.pos[2].floor() as i32 - chart.m_center[1]) >> row.m_scale) + HALF,
     ];
+
     let stripe: i64 = now % STRIPES;
     let mut changed: bool = false;
+
     for x in (draw[0] - reach + 1).max(0)..(draw[0] + reach).min(SIZE)
     {
         if i64::from(x) % STRIPES != stripe
         {
             continue;
         }
+
         for z in (draw[1] - reach - 1).max(0)..(draw[1] + reach).min(SIZE)
         {
             let offset: [i32; 2] = [x - draw[0], z - draw[1]];
+
             changed |= match row.m_kind
             {
                 Kind::Magic => magicPixel(world, chart, [x, z], offset),
@@ -500,6 +527,7 @@ fn update(world: World, info: &EntityInfo, row: &Row, chart: &mut Chart, now: i6
             };
         }
     }
+
     changed
 }
 
@@ -509,14 +537,18 @@ fn sync(player: Player, row: &Row, id: i32, open: &mut Open)
     {
         return;
     }
+
     let message: Sync =
         Sync { m_data: row.m_data.to_owned(), m_id: id, m_version: open.m_version, m_chart: open.m_chart.clone() };
+
     if let Err(error) = send(CHANNEL, Target::Player(player.id), &message)
     {
         warn(&format!("cannot send map {id}: {}", error.0));
         return;
     }
+
     open.m_sent.insert(player.id, open.m_version);
+
     if open.m_saved != open.m_version
     {
         setWorldData(&key(row.m_data, id), &open.m_chart);
@@ -538,6 +570,7 @@ fn tickPlayers()
     }
 
     let now: i64 = world.time();
+
     for player in world.players()
     {
         let (Some(stack), Some(info)) = (player.held(), player.info())
@@ -557,10 +590,12 @@ fn tickPlayers()
             {
                 return;
             }
+
             if update(world, &info, row, &mut open.m_chart, now)
             {
                 open.m_version += 1;
             }
+
             if now % SEND_EVERY == 0
             {
                 sync(player, row, stack.damage, open);
@@ -620,6 +655,7 @@ fn marker(chart: &Chart, row: &Row, info: &EntityInfo) -> Option<[i32; 3]>
     {
         return None;
     }
+
     let turn: i32 = (info.yaw * marker::TURN_STEPS / marker::FULL_TURN + marker::ROUNDING) as i32;
     Some([x.floor() as i32 + HALF, z.floor() as i32 + HALF, turn.rem_euclid(marker::TURN_STEPS as i32)])
 }
@@ -669,20 +705,25 @@ fn refresh(name: &str, version: u32, chart: &Chart, at: Option<[i32; 3]>)
 {
     let stale: bool = SHOWN
         .with(|shown| shown.borrow().get(name).is_none_or(|last| last.m_version != version || last.m_marker != at));
+
     if !stale
     {
         return;
     }
+
     let mut picture: Vec<u32> = pixels(chart);
+
     if let Some(at) = at
     {
         stamp(&mut picture, at);
     }
+
     if let Err(error) = setDynamicTexture(name, SIZE as u32, SIZE as u32, picture)
     {
         warn(&format!("map picture: {}", error.0));
         return;
     }
+
     SHOWN.with(|shown| shown.borrow_mut().insert(name.to_owned(), Shown { m_version: version, m_marker: at }));
 }
 
@@ -713,13 +754,16 @@ fn hud(draw: &mut Draw, _partial: f32, width: i32, _height: i32)
 
     let name: String = textureName(&mapKey);
     refresh(&name, version, &chart, marker(&chart, row, &info));
+
     let left: i32 = width - SIZE - panel::MARGIN - panel::BORDER;
     let top: i32 = panel::MARGIN + panel::BORDER;
     let framed: i32 = SIZE + panel::BORDER * 2;
     draw.image(panel::BACKGROUND, left - panel::BORDER, top - panel::BORDER, framed, framed);
     draw.image(&name, left, top, SIZE, SIZE);
+
     let grid: f32 = f32::from(magic::ICON_GRID);
     let cell: f32 = panel::ICON_SHEET / grid;
+
     for [feature, x, z] in &chart.m_features
     {
         let index: f32 = f32::from(*feature as u8);
@@ -735,7 +779,7 @@ fn received(sync: Sync, _player: Player)
     CLIENT.with(|client| client.borrow_mut().insert(key(&sync.m_data, sync.m_id), (sync.m_version, sync.m_chart)));
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &ROWS
     {
@@ -753,6 +797,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             ItemSpecBuilder::new().name(row.m_label).texture(&texture(row.m_texture)).maxStack(1).behavior(Filled),
         )?;
     }
+
     ctx.channels().register::<Sync>(CHANNEL, Direction::ToClient, received)?;
     ctx.screens().hud(hud)?;
     ctx.events().on::<TickPost>(Priority::Normal, |_| tickPlayers())?;

@@ -3,7 +3,7 @@ use b173_api::{EntityModelSpec, ModelBox, ModelPart, PoseInput};
 
 // RenderBiped's armor passes: two ModelBiped layers drawn over a mob with its own limb swing, whatever its model
 #[derive(Clone, Copy, PartialEq)]
-pub enum Piece
+pub(crate) enum Piece
 {
     Helmet,
     Chestplate,
@@ -12,7 +12,7 @@ pub enum Piece
 }
 
 // one worn piece and the sheet it draws from, as ItemArmor names armor/<sheet>_1 and _2
-pub struct Worn
+pub(crate) struct Worn
 {
     pub m_piece: Piece,
     pub m_sheet: &'static str,
@@ -63,9 +63,10 @@ const BONES: [Bone; 7] = [
 ];
 
 // both armor layers as parts to append after a mob's own, seven per layer
-pub fn model() -> EntityModelSpec
+pub(crate) fn model() -> EntityModelSpec
 {
     let mut parts: Vec<ModelPart> = Vec::new();
+
     for (layer, row) in LAYERS.iter().enumerate()
     {
         for (index, bone) in BONES.iter().enumerate()
@@ -78,6 +79,7 @@ pub fn model() -> EntityModelSpec
             {
                 row.m_inflate
             };
+
             parts.push(ModelPart
             {
                 name: format!("armor_{layer}_{index}"),
@@ -90,6 +92,7 @@ pub fn model() -> EntityModelSpec
             });
         }
     }
+
     EntityModelSpec { texture_size: SHEET, parts, ..EntityModelSpec::default() }
 }
 
@@ -106,14 +109,17 @@ fn shown(piece: Piece) -> (usize, &'static [u16])
 }
 
 // the worn pieces over a mob whose armor parts start at base, swinging with its own walk
-pub fn draw(program: &mut Program, base: u16, worn: &[Worn], input: &PoseInput)
+pub(crate) fn draw(program: &mut Program, base: u16, worn: &[Worn], input: &PoseInput)
 {
     let turns: [(u16, [f32; 3]); 7] = limbRotations(input, false);
+
     for piece in worn
     {
         let (layer, parts): (usize, &[u16]) = shown(piece.m_piece);
         program.texture(&format!("{}_{}", piece.m_sheet, layer + 1));
+
         let first: u16 = base + (layer * BONES.len()) as u16;
+
         for &(part, rotation) in turns.iter().filter(|(part, _)| parts.contains(part))
         {
             program.part(first + part, rotation, BONES[part as usize].m_pivot);

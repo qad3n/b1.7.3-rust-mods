@@ -1,8 +1,8 @@
-pub mod ice_tower_beard;
-pub mod ice_tower_boss_wing;
-pub mod ice_tower_bridge;
-pub mod ice_tower_entrance;
-pub mod ice_tower_main;
-pub mod ice_tower_roof;
-pub mod ice_tower_stairs;
-pub mod ice_tower_wing;
+pub(crate) mod ice_tower_beard;
+pub(crate) mod ice_tower_boss_wing;
+pub(crate) mod ice_tower_bridge;
+pub(crate) mod ice_tower_entrance;
+pub(crate) mod ice_tower_main;
+pub(crate) mod ice_tower_roof;
+pub(crate) mod ice_tower_stairs;
+pub(crate) mod ice_tower_wing;

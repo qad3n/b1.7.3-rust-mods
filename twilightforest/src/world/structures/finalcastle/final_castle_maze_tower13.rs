@@ -1,7 +1,7 @@
 // draft from ComponentTFFinalCastleMazeTower13.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, r#type: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, r#type: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::FinalCastleMazeTower13);
     init(&this, random, i, x, y, z, r#type, direction);
@@ -9,23 +9,27 @@ pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, r#type: i32, directi
 }
 
 // ComponentTFFinalCastleMazeTower13 constructor
-pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, r#type: i32, direction: i32)
+pub(crate) fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, r#type: i32, direction: i32)
 {
     tower_wing::init(this, i);
     this.setMode(direction);
     this.m_type.set(r#type);
     this.m_size.set(13);
+
     let floors: i32 = random.nextIntBounded(3) + 2;
     this.m_height.set((floors * 8) + 1);
+
     let mut entranceFloor: i32 = random.nextIntBounded(floors);
     if (y - (entranceFloor * 8)) < 144
     {
         entranceFloor = 0;
     }
+
     if (y + ((floors - entranceFloor) * 8)) > 222
     {
         entranceFloor = floors - 1;
     }
+
     this.m_box.set(boxFor(
         x,
         y,
@@ -42,7 +46,7 @@ pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, r#typ
 }
 
 // ComponentTFFinalCastleMazeTower13 constructor
-pub fn init9(
+pub(crate) fn init9(
     this: &Piece,
     _random: &Random,
     i: i32,
@@ -76,12 +80,14 @@ pub fn init9(
 }
 
 // ComponentTFFinalCastleMazeTower13.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
+
     let foundation: Rc<Piece> = final_castle_foundation13::new(random, 4, this);
     list.push(Rc::clone(&foundation));
     foundation.build(this, list, random);
+
     let roof: Rc<Piece> = if random.nextBoolean()
     {
         final_castle_roof13_conical::new(random, 4, this)
@@ -95,12 +101,13 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFFinalCastleMazeTower13.buildTowards
-pub fn buildTowards(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random, dest: [i32; 3])
+pub(crate) fn buildTowards(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random, dest: [i32; 3])
 {
-    this.build(&parent, list, random);
+    this.build(parent, list, random);
+
     if this.depth() < 20
     {
-        if final_castle_maze_tower13::isWithinRange(
+        if final_castle_maze_tower13::withinRange(
             this,
             dest[0],
             dest[2],
@@ -159,11 +166,12 @@ pub fn buildTowards(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Ra
             }
         }
     }
-    final_castle_maze_tower13::buildNonCriticalTowers(this, &parent, list, random);
+
+    final_castle_maze_tower13::buildNonCriticalTowers(this, parent, list, random);
 }
 
 // ComponentTFFinalCastleMazeTower13.buildNonCriticalTowers
-pub fn buildNonCriticalTowers(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn buildNonCriticalTowers(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let mut dir: i32 = random.nextIntBounded(4);
     if (!this.m_openingTowards.borrow()[(dir) as usize])
@@ -176,7 +184,7 @@ pub fn buildNonCriticalTowers(this: &Piece, _parent: &Piece, list: &mut Pieces, 
 }
 
 // ComponentTFFinalCastleMazeTower13.findBestDirectionTowards
-pub fn findBestDirectionTowards(this: &Piece, dest: [i32; 3]) -> i32
+pub(crate) fn findBestDirectionTowards(this: &Piece, dest: [i32; 3]) -> i32
 {
     let cx: i32 = this.m_box.get().m_min[0] + 6;
     let cz: i32 = this.m_box.get().m_min[2] + 6;
@@ -190,11 +198,11 @@ pub fn findBestDirectionTowards(this: &Piece, dest: [i32; 3]) -> i32
     {
         if dz >= 0 { 3 } else { 1 }
     };
-    return ((absoluteDir + 4) - this.m_mode.get()) % 4;
+    ((absoluteDir + 4) - this.m_mode.get()) % 4
 }
 
 // ComponentTFFinalCastleMazeTower13.findSecondDirectionTowards
-pub fn findSecondDirectionTowards(this: &Piece, dest: [i32; 3]) -> i32
+pub(crate) fn findSecondDirectionTowards(this: &Piece, dest: [i32; 3]) -> i32
 {
     let cx: i32 = this.m_box.get().m_min[0] + 6;
     let cz: i32 = this.m_box.get().m_min[2] + 6;
@@ -208,26 +216,26 @@ pub fn findSecondDirectionTowards(this: &Piece, dest: [i32; 3]) -> i32
     {
         if dz >= 0 { 3 } else { 1 }
     };
-    return ((absoluteDir + 4) - this.m_mode.get()) % 4;
+    ((absoluteDir + 4) - this.m_mode.get()) % 4
 }
 
 // ComponentTFFinalCastleMazeTower13.findThirdDirectionTowards
-pub fn findThirdDirectionTowards(this: &Piece, dest: [i32; 3]) -> i32
+pub(crate) fn findThirdDirectionTowards(this: &Piece, dest: [i32; 3]) -> i32
 {
     let first: i32 = final_castle_maze_tower13::findBestDirectionTowards(this, dest);
     let second: i32 = final_castle_maze_tower13::findSecondDirectionTowards(this, dest);
     if (first == 0) && (second == 1)
     {
-        return 3;
+        3
     }
     else
     {
-        return if (first == 1) && (second == 3) { 0 } else { 1 };
+        if (first == 1) && (second == 3) { 0 } else { 1 }
     }
 }
 
 // ComponentTFFinalCastleMazeTower13.buildContinueTowerTowards
-pub fn buildContinueTowerTowards(
+pub(crate) fn buildContinueTowerTowards(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -238,7 +246,7 @@ pub fn buildContinueTowerTowards(
 {
     let mut opening: [i32; 3] = this.getValidOpeningCC(random, direction);
     let adjustmentRange: i32 = 60;
-    if final_castle_maze_tower13::isWithinRange(
+    if final_castle_maze_tower13::withinRange(
         this,
         dest[0],
         dest[2],
@@ -252,10 +260,10 @@ pub fn buildContinueTowerTowards(
     direction += this.m_mode.get();
     direction %= 4;
     let tc: [i32; 3] = this.offsetTowerAt(opening[0], opening[1], opening[2], howFar, direction);
-    let start: Rc<Piece> = Rc::clone(&list[(0) as usize]);
+    let start: Rc<Piece> = Rc::clone(&list[0usize]);
     let centerX: i32 = ((start.bounds().m_min[0] + 128) >> 8) << 8;
     let centerZ: i32 = ((start.bounds().m_min[2] + 128) >> 8) << 8;
-    if final_castle_maze_tower13::isWithinRange(this, centerX, centerZ, tc[0], tc[2], 128)
+    if final_castle_maze_tower13::withinRange(this, centerX, centerZ, tc[0], tc[2], 128)
     {
         let sTower: Rc<Piece> =
             final_castle_maze_tower13::new(random, this.depth() + 1, tc[0], tc[1], tc[2], this.m_type.get(), direction);
@@ -266,36 +274,40 @@ pub fn buildContinueTowerTowards(
         largerBB.m_max[2] += 6;
         largerBB.m_min[1] = 0;
         largerBB.m_max[1] = 255;
+
         let intersect: Option<Rc<Piece>> = intersecting(list, largerBB);
         if intersect.is_none()
         {
             list.push(Rc::clone(&sTower));
             final_castle_maze_tower13::buildTowards(&sTower, this, list, random, dest);
+
             let bc: [i32; 3] = this.offsetTowerAt(opening[0], opening[1], opening[2], 1, direction);
             let bridge: Rc<Piece> =
                 final_castle_bridge::new(this.depth() + 1, bc[0], bc[1], bc[2], howFar - 7, direction);
             list.push(Rc::clone(&bridge));
             bridge.build(this, list, random);
             this.addOpening(opening[0], opening[1] + 1, opening[2], direction);
-            return true;
+            true
         }
         else
         {
-            return false;
+            false
         }
     }
     else
     {
-        return false;
+        false
     }
 }
 
 // ComponentTFFinalCastleMazeTower13.buildDamagedTower
-pub fn buildDamagedTower(this: &Piece, list: &mut Pieces, random: &Random, mut direction: i32) -> bool
+pub(crate) fn buildDamagedTower(this: &Piece, list: &mut Pieces, random: &Random, mut direction: i32) -> bool
 {
     let opening: [i32; 3] = this.getValidOpeningCC(random, direction);
+
     direction += this.m_mode.get();
     direction %= 4;
+
     let howFar: i32 = 14 + random.nextIntBounded(24);
     let tc: [i32; 3] = this.offsetTowerAt(opening[0], opening[1], opening[2], howFar, direction);
     let eTower: Rc<Piece> = this.makeNewDamagedTower(random, direction, tc);
@@ -304,32 +316,34 @@ pub fn buildDamagedTower(this: &Piece, list: &mut Pieces, random: &Random, mut d
     largerBB.m_min[2] -= 6;
     largerBB.m_max[0] += 6;
     largerBB.m_max[2] += 6;
+
     let intersect: Option<Rc<Piece>> = intersecting(list, largerBB);
     if intersect.is_none()
     {
         list.push(Rc::clone(&eTower));
         eTower.build(this, list, random);
+
         let bc: [i32; 3] = this.offsetTowerAt(opening[0], opening[1], opening[2], 1, direction);
         let bridge: Rc<Piece> = final_castle_bridge::new(this.depth() + 1, bc[0], bc[1], bc[2], howFar - 7, direction);
         list.push(Rc::clone(&bridge));
         bridge.build(this, list, random);
         this.addOpening(opening[0], opening[1] + 1, opening[2], direction);
-        return true;
+        true
     }
     else
     {
-        return false;
+        false
     }
 }
 
 // ComponentTFFinalCastleMazeTower13.makeNewDamagedTower
-pub fn makeNewDamagedTower(this: &Piece, random: &Random, direction: i32, tc: [i32; 3]) -> Rc<Piece>
+pub(crate) fn makeNewDamagedTower(this: &Piece, random: &Random, direction: i32, tc: [i32; 3]) -> Rc<Piece>
 {
-    return final_castle_damaged_tower::new(random, this.depth() + 1, tc[0], tc[1], tc[2], direction);
+    final_castle_damaged_tower::new(random, this.depth() + 1, tc[0], tc[1], tc[2], direction)
 }
 
 // ComponentTFFinalCastleMazeTower13.adjustOpening
-pub fn adjustOpening(this: &Piece, posY: i32, dest: [i32; 3]) -> i32
+pub(crate) fn adjustOpening(this: &Piece, posY: i32, dest: [i32; 3]) -> i32
 {
     let mut openY: i32 = posY;
     let realOpeningY: i32 = this.yAt(openY);
@@ -341,11 +355,11 @@ pub fn adjustOpening(this: &Piece, posY: i32, dest: [i32; 3]) -> i32
     {
         openY = 0;
     }
-    return openY;
+    openY
 }
 
 // ComponentTFFinalCastleMazeTower13.buildEndTowerTowards
-pub fn buildEndTowerTowards(
+pub(crate) fn buildEndTowerTowards(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -359,51 +373,53 @@ pub fn buildEndTowerTowards(
     direction += this.m_mode.get();
     direction %= 4;
     let tc: [i32; 3] = this.offsetTowerAt(opening[0], opening[1], opening[2], howFar, direction);
-    let eTower: Rc<Piece>;
-    if this.m_type.get() == 0
+
+    let eTower: Rc<Piece> = if this.m_type.get() == 0
     {
-        eTower = final_castle_entrance_tower::new(random, this.depth() + 1, tc[0], tc[1], tc[2], direction);
+        final_castle_entrance_tower::new(random, this.depth() + 1, tc[0], tc[1], tc[2], direction)
     }
     else
     {
-        eTower = final_castle_bell_tower21::new(random, this.depth() + 1, tc[0], tc[1], tc[2], direction);
-    }
+        final_castle_bell_tower21::new(random, this.depth() + 1, tc[0], tc[1], tc[2], direction)
+    };
     let mut largerBB: StructureBox = eTower.bounds();
     largerBB.m_min[0] -= 6;
     largerBB.m_min[2] -= 6;
     largerBB.m_max[0] += 6;
     largerBB.m_max[2] += 6;
+
     let intersect: Option<Rc<Piece>> = intersecting(list, largerBB);
     if intersect.is_none()
     {
         list.push(Rc::clone(&eTower));
         eTower.build(this, list, random);
+
         let bc: [i32; 3] = this.offsetTowerAt(opening[0], opening[1], opening[2], 1, direction);
         let bridge: Rc<Piece> = final_castle_bridge::new(this.depth() + 1, bc[0], bc[1], bc[2], howFar - 7, direction);
         list.push(Rc::clone(&bridge));
         bridge.build(this, list, random);
         this.addOpening(opening[0], opening[1] + 1, opening[2], direction);
-        return true;
+        true
     }
     else
     {
-        return false;
+        false
     }
 }
 
 // ComponentTFFinalCastleMazeTower13.isWithinRange
-pub fn isWithinRange(_this: &Piece, centerX: i32, centerZ: i32, posX: i32, posZ: i32, range: i32) -> bool
+pub(crate) fn withinRange(_this: &Piece, centerX: i32, centerZ: i32, posX: i32, posZ: i32, range: i32) -> bool
 {
     let inRange: bool = ((centerX - posX).abs() < range) && ((centerZ - posZ).abs() < range);
-    if !inRange
-    {}
-    return inRange;
+
+    inRange
 }
 
 // ComponentTFFinalCastleMazeTower13.getValidOpeningCC
-pub fn getValidOpeningCC(this: &Piece, random: &Random, direction: i32) -> [i32; 3]
+pub(crate) fn getValidOpeningCC(this: &Piece, random: &Random, direction: i32) -> [i32; 3]
 {
     let floors: i32 = this.m_height.get() / 8;
+
     if (direction == 0) || (direction == 2)
     {
         let rx: i32 = if direction == 0 { 12 } else { 0 };
@@ -411,48 +427,56 @@ pub fn getValidOpeningCC(this: &Piece, random: &Random, direction: i32) -> [i32;
         let ry: i32 = random.nextIntBounded(floors) * 8;
         return [rx, ry, rz];
     }
+
     if (direction != 1) && (direction != 3)
     {
         return [0, 0, 0];
     }
+
     let rx: i32 = 6;
     let rz: i32 = if direction == 1 { 12 } else { 0 };
     let ry: i32 = random.nextIntBounded(floors) * 8;
-    return [rx, ry, rz];
+    [rx, ry, rz]
 }
 
 // ComponentTFFinalCastleMazeTower13.offsetTowerCCoords
-pub fn offsetTowerCCoords(this: &Piece, x: i32, y: i32, z: i32, howFar: i32, direction: i32) -> [i32; 3]
+pub(crate) fn offsetTowerCCoords(this: &Piece, x: i32, y: i32, z: i32, howFar: i32, direction: i32) -> [i32; 3]
 {
     let mut dx: i32 = this.xAt(x, z);
     let dy: i32 = this.yAt(y);
     let mut dz: i32 = this.zAt(x, z);
+
     match direction
     {
         0 =>
         {
             dx += howFar;
         }
+
         1 =>
         {
             dz += howFar;
         }
+
         2 =>
         {
             dx -= howFar;
         }
+
         3 =>
         {
             dz -= howFar;
         }
+
         _ =>
         {}
     }
-    return [dx, dy, dz];
+
+    [dx, dy, dz]
 }
 
 // ComponentTFFinalCastleMazeTower13.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     let decoRNG: Random = Random::withSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
@@ -471,6 +495,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         random,
         this.m_deco.get().m_randomBlocks,
     );
+
     for x in 0..this.m_size.get()
     {
         for z in 0..this.m_size.get()
@@ -478,21 +503,23 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             this.fillDown(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, x, -1, z, sbb);
         }
     }
+
     let numBranches: i32 = (2 + decoRNG.nextIntBounded(4)) + decoRNG.nextIntBounded(3);
     for _i in 0..numBranches
     {
         tower_wing::makeGlyphBranches(this, world, &decoRNG, this.getGlyphMeta(), sbb);
     }
+
     final_castle_maze_tower13::addFloors(this, world, &decoRNG, sbb);
     this.makeOpenings(world, sbb);
-    return true;
+    true
 }
 
 // ComponentTFFinalCastleMazeTower13.getGlyphMeta
-pub fn getGlyphMeta(this: &Piece) -> i32 { return this.m_type.get(); }
+pub(crate) fn getGlyphMeta(this: &Piece) -> i32 { this.m_type.get() }
 
 // ComponentTFFinalCastleMazeTower13.addFloors
-pub fn addFloors(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox)
+pub(crate) fn addFloors(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox)
 {
     let floors: i32 = (this.m_highestOpening.get() / 8) + 1;
     for i in 1..floors
@@ -514,6 +541,7 @@ pub fn addFloors(this: &Piece, world: &GenWorld, _random: &Random, sbb: Structur
         );
         final_castle_maze_tower13::addStairsDown(this, world, sbb, (i + 2) % 4, i * 8);
     }
+
     if this.hasAccessibleRoof()
     {
         final_castle_maze_tower13::addStairsDown(this, world, sbb, (floors + 2) % 4, this.m_height.get() - 1);
@@ -521,10 +549,10 @@ pub fn addFloors(this: &Piece, world: &GenWorld, _random: &Random, sbb: Structur
 }
 
 // ComponentTFFinalCastleMazeTower13.hasAccessibleRoof
-pub fn hasAccessibleRoof(this: &Piece) -> bool { return (this.m_height.get() - this.m_highestOpening.get()) < 9; }
+pub(crate) fn hasAccessibleRoof(this: &Piece) -> bool { (this.m_height.get() - this.m_highestOpening.get()) < 9 }
 
 // ComponentTFFinalCastleMazeTower13.addStairsDown
-pub fn addStairsDown(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32, y: i32)
+pub(crate) fn addStairsDown(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation: i32, y: i32)
 {
     for i in 0..4
     {
@@ -564,6 +592,7 @@ pub fn addStairsDown(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation
         );
         this.fillAirTurned(world, sbb, sx, sy + 1, sz - 1, sx, sy + 3, sz, rotation);
     }
+
     this.fillTurned(
         world,
         sbb,
@@ -577,6 +606,7 @@ pub fn addStairsDown(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation
         this.m_deco.get().m_blockMeta,
         rotation,
     );
+
     for i in 0..4
     {
         let sx: i32 = 4;
@@ -618,7 +648,7 @@ pub fn addStairsDown(this: &Piece, world: &GenWorld, sbb: StructureBox, rotation
 }
 
 // ComponentTFFinalCastleMazeTower13.makeDoorOpening
-pub fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
+pub(crate) fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
 {
     if (dx == 0) || (dx == (this.m_size.get() - 1))
     {
@@ -653,6 +683,7 @@ pub fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32
             false,
         );
     }
+
     if (dz == 0) || (dz == (this.m_size.get() - 1))
     {
         this.fillMeta(

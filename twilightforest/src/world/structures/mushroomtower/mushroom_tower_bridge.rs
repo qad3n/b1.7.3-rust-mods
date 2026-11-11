@@ -1,7 +1,7 @@
 // draft from ComponentTFMushroomTowerBridge.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MushroomTowerBridge);
     init(&this, i, x, y, z, pSize, pHeight, direction);
@@ -9,7 +9,7 @@ pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: 
 }
 
 // ComponentTFMushroomTowerBridge constructor
-pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
+pub(crate) fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
 {
     mushroom_tower_wing::init(this, i, x, y, z, pSize, pHeight, direction);
     this.m_box.set(boxFor(x, y, z, 0, 0, 0, this.m_size.get() - 1, this.m_height.get() - 1, 3, direction));
@@ -18,9 +18,10 @@ pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i
 }
 
 // ComponentTFMushroomTowerBridge.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
+
     let dest: Vec<i32> = vec![this.m_dSize.get() - 1, 1, 1];
     let madeWing: bool = this.makeTowerWing(
         list,
@@ -33,6 +34,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
         this.m_dHeight.get(),
         0,
     );
+
     if !madeWing
     {
         let _dx: Vec<i32> = this.offsetTower(dest[0], dest[1], dest[2], this.m_dSize.get(), 0);
@@ -40,10 +42,10 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFMushroomTowerBridge.getWingBB
-pub fn getWingBB(this: &Piece) -> StructureBox
+pub(crate) fn getWingBB(this: &Piece) -> StructureBox
 {
     let dest: Vec<i32> = this.offsetTower(this.m_dSize.get() - 1, 1, 1, this.m_dSize.get(), this.mode());
-    return boxFor(
+    boxFor(
         dest[0],
         dest[1],
         dest[2],
@@ -54,11 +56,11 @@ pub fn getWingBB(this: &Piece) -> StructureBox
         this.m_dHeight.get() - 1,
         this.m_dSize.get() - 1,
         this.mode(),
-    );
+    )
 }
 
 // ComponentTFMushroomTowerBridge.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for x in 0..this.m_dSize.get()
     {
@@ -81,6 +83,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             sbb,
         );
     }
+
     this.fillAir(world, sbb, 0, 1, 1, 2, 2, 1);
-    return true;
+    true
 }

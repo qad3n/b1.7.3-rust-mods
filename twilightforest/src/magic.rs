@@ -1,5 +1,6 @@
 use crate::blocks::wood::Effect;
 use crate::ids;
+use crate::world::biomes::{self, Biome};
 use b173_api::prelude::*;
 
 // BlockTFMagicLogSpecial.updateTick, what each running magic tree core does every second
@@ -23,6 +24,7 @@ fn spread(world: World, reach: i32) -> i32 { world.random(reach * 2) - reach }
 fn time(world: World, pos: BlockPos)
 {
     world.playSound(center(pos), "random.click", core::QUIET, 0.5);
+
     for _ in 0..core::TIME_TICKS
     {
         let at: BlockPos = pos.offset(
@@ -30,11 +32,13 @@ fn time(world: World, pos: BlockPos)
             spread(world, core::TIME_REACH),
             spread(world, core::TIME_REACH),
         );
+
         let here: i32 = world.block(at);
         if here == 0
         {
             continue;
         }
+
         if let Err(error) = world.randomTick(at)
         {
             warn(&format!("tree of time at {at:?}: {}", error.0));
@@ -46,10 +50,11 @@ fn time(world: World, pos: BlockPos)
 // doTreeOfTransformationEffect, the heart chimes and turns one column within reach to the enchanted forest
 fn transformation(world: World, pos: BlockPos)
 {
-    use crate::world::biomes::{self, Biome};
     let reach: i32 = 16;
     let (dx, dz): (i32, i32) = (spread(world, reach), spread(world, reach));
+
     world.playSound(center(pos), "note.harp", core::QUIET, ids::fraction(world) * 2.0);
+
     let (x, z): (i32, i32) = (pos.x + dx, pos.z + dz);
     let inside: bool = f64::from(dx).hypot(f64::from(dz)) < f64::from(reach);
     if !inside || biomes::biomeAt(world, BlockPos::new(x, pos.y, z)) == Biome::EnchantedForest
@@ -94,6 +99,7 @@ fn sorting(world: World, pos: BlockPos)
     let reach: i32 = core::SORT_REACH;
     let mut chests: Vec<BlockPos> = Vec::new();
     let mut items: Vec<Held> = Vec::new();
+
     for x in pos.x - reach..pos.x + reach
     {
         for y in pos.y - reach..pos.y + reach
@@ -105,7 +111,9 @@ fn sorting(world: World, pos: BlockPos)
                 {
                     continue;
                 }
+
                 let before: usize = items.len();
+
                 for slot in 0..core::CHEST_SLOTS
                 {
                     if let Some(stack) = world.tileSlot(at, slot)
@@ -113,6 +121,7 @@ fn sorting(world: World, pos: BlockPos)
                         items.push(Held { m_chest: at, m_slot: slot, m_stack: stack });
                     }
                 }
+
                 if items.len() > before
                 {
                     chests.push(at);
@@ -120,10 +129,12 @@ fn sorting(world: World, pos: BlockPos)
             }
         }
     }
+
     if items.is_empty()
     {
         return;
     }
+
     let sorted: Held = items[world.random(items.len() as i32) as usize].clone();
     let best: Option<BlockPos> = chests
         .iter()
@@ -142,13 +153,16 @@ fn sorting(world: World, pos: BlockPos)
         .max_by_key(|(_, count)| *count)
         .map(|(chest, _)| *chest);
     let mut home: (BlockPos, i32) = (sorted.m_chest, sorted.m_slot);
+
     if let Some(target) = best.filter(|target| *target != sorted.m_chest)
         && let Some(free) = (0..core::CHEST_SLOTS).find(|slot| world.tileSlot(target, *slot).is_none())
     {
         let _ = world.setTileSlot(sorted.m_chest, sorted.m_slot, None);
         let _ = world.setTileSlot(target, free, Some(sorted.m_stack.clone()));
+
         home = (target, free);
     }
+
     gather(world, &items, &sorted, home);
 }
 
@@ -157,6 +171,7 @@ fn gather(world: World, items: &[Held], sorted: &Held, home: (BlockPos, i32))
 {
     let most: i32 = 64;
     let mut stack: ItemStack = sorted.m_stack.clone();
+
     for held in items
     {
         let elsewhere: bool = (held.m_chest, held.m_slot) != (sorted.m_chest, sorted.m_slot);
@@ -165,16 +180,18 @@ fn gather(world: World, items: &[Held], sorted: &Held, home: (BlockPos, i32))
         if elsewhere && alike && held.m_stack.count <= most - stack.count
         {
             let _ = world.setTileSlot(held.m_chest, held.m_slot, None);
+
             stack.count += held.m_stack.count;
         }
     }
+
     if stack.count != sorted.m_stack.count
     {
         let _ = world.setTileSlot(home.0, home.1, Some(stack));
     }
 }
 
-pub fn coreEffect(world: World, pos: BlockPos, effect: Effect)
+pub(crate) fn coreEffect(world: World, pos: BlockPos, effect: Effect)
 {
     match effect
     {
@@ -195,16 +212,19 @@ fn anyOf(block: i32, names: &[&str]) -> bool { names.iter().any(|name| block == 
 
 // BlockTFUberousSoil.onNeighborBlockChange, a plant set on it takes root in the right soil and grows four bone meals
 // at once
-pub fn uberous(world: World, pos: BlockPos)
+pub(crate) fn uberous(world: World, pos: BlockPos)
 {
     let above: BlockPos = pos.offset(0, 1, 0);
     let plant: i32 = world.block(above);
     if World::blockInfo(plant).solid
     {
         let _ = world.setBlock(pos, ids::blockId("minecraft:dirt"), 0);
+
         return;
     }
+
     let twilight: bool = crate::blocks::wood::isSapling(plant);
+
     let soil: Option<(&str, i32)> = if anyOf(plant, &CROPS)
     {
         Some(("minecraft:farmland", 2))
@@ -221,11 +241,13 @@ pub fn uberous(world: World, pos: BlockPos)
     {
         None
     };
+
     let Some((ground, meta)) = soil
     else
     {
         return;
     };
+
     let _ = world.setBlock(pos, ids::blockId(ground), meta);
     let meals: i32 = 4;
     for _ in 0..meals

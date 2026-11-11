@@ -1,5 +1,5 @@
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -9,7 +9,7 @@ const ORIGIN_STYLE: &str = "§9§o";
 
 // an item and damage pair, the identity every list, filter and recipe lookup works on
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct Key
+pub(crate) struct Key
 {
     pub m_id: i32,
     pub m_damage: i32,
@@ -17,26 +17,26 @@ pub struct Key
 
 impl Key
 {
-    pub fn of(stack: &StackData) -> Key { Key { m_id: stack.id, m_damage: stack.damage } }
+    pub(crate) fn of(stack: &StackData) -> Self { Self { m_id: stack.id, m_damage: stack.damage } }
 
-    pub fn ofStack(stack: &ItemStack) -> Option<Key>
+    pub(crate) fn ofStack(stack: &ItemStack) -> Option<Self>
     {
-        stack.item.id().ok().map(|id| Key { m_id: id, m_damage: stack.damage })
+        stack.item.id().ok().map(|id| Self { m_id: id, m_damage: stack.damage })
     }
 
     // a recipe ingredient with damage -1 takes every damage of its item
-    pub fn accepts(self, other: Key) -> bool
+    pub(crate) fn accepts(self, other: Self) -> bool
     {
         self.m_id == other.m_id && (self.m_damage == ANY_DAMAGE || self.m_damage == other.m_damage)
     }
 
-    pub fn stack(self, count: i32) -> ItemStack
+    pub(crate) fn stack(self, count: i32) -> ItemStack
     {
         ItemStack::fromRaw(StackData { id: self.m_id, count, damage: self.m_damage.max(0) })
     }
 }
 
-pub struct Entry
+pub(crate) struct Entry
 {
     pub m_key: Key,
     pub m_max: i32,
@@ -45,7 +45,7 @@ pub struct Entry
     pub m_namespace: String,
 }
 
-pub struct Catalog
+pub(crate) struct Catalog
 {
     pub m_entries: Vec<Entry>,
     pub m_recipes: Vec<RecipeView>,
@@ -61,12 +61,13 @@ thread_local!
 
 // built on first use, after every mod registered its items and recipes
 // rebuilt whenever the loader remaps ids or rebuilds recipes, as on joining a server with its own recipe table
-pub fn get() -> Rc<Catalog>
+pub(crate) fn get() -> Rc<Catalog>
 {
     let generation: i32 = contentGeneration();
+
     CATALOG.with(|cached|
     {
-        let mut cached = cached.borrow_mut();
+        let mut cached: RefMut<Option<Rc<Catalog>>> = cached.borrow_mut();
         match cached.as_ref().filter(|catalog| catalog.m_generation == generation)
         {
             Some(catalog) => Rc::clone(catalog),
@@ -75,7 +76,7 @@ pub fn get() -> Rc<Catalog>
     })
 }
 
-pub fn inputs(recipe: &RecipeView) -> Vec<Key>
+pub(crate) fn inputs(recipe: &RecipeView) -> Vec<Key>
 {
     match &recipe.shape
     {
@@ -87,13 +88,14 @@ pub fn inputs(recipe: &RecipeView) -> Vec<Key>
 
 impl Catalog
 {
-    fn build(generation: i32) -> Catalog
+    fn build(generation: i32) -> Self
     {
-        let entries: Vec<Entry> = itemCatalog().into_iter().filter_map(Catalog::listed).collect();
+        let entries: Vec<Entry> = itemCatalog().into_iter().filter_map(Self::listed).collect();
         let byKey: HashMap<Key, usize> =
             entries.iter().enumerate().map(|(index, entry)| (entry.m_key, index)).collect();
         let origins: HashMap<i32, String> = origins(&entries);
-        Catalog
+
+        Self
         {
             m_entries: entries,
             m_recipes: recipeList(),
@@ -109,6 +111,7 @@ impl Catalog
         let name: String = displayName(&key.stack(1));
         let namespace: String =
             nameOf(RegistryKind::Item, key.m_id).map(|id| id.namespace().to_owned()).unwrap_or_default();
+
         Some(Entry
         {
             m_key: key,
@@ -119,18 +122,21 @@ impl Catalog
         })
     }
 
-    pub fn entry(&self, key: Key) -> Option<&Entry> { self.m_byKey.get(&key).map(|index| &self.m_entries[*index]) }
+    pub(crate) fn entry(&self, key: Key) -> Option<&Entry>
+    {
+        self.m_byKey.get(&key).map(|index| &self.m_entries[*index])
+    }
 
     // keyed by id alone so damaged tools find their mod too
-    pub fn origin(&self, id: i32) -> Option<&str> { self.m_origins.get(&id).map(String::as_str) }
+    pub(crate) fn origin(&self, id: i32) -> Option<&str> { self.m_origins.get(&id).map(String::as_str) }
 
-    pub fn name(&self, key: Key) -> String
+    pub(crate) fn name(&self, key: Key) -> String
     {
         self.entry(key).map_or_else(|| displayName(&key.stack(1)), |entry| entry.m_name.clone())
     }
 
     // the damage a wildcard ingredient shows at one step of its cycle through every damage listed for its item
-    pub fn variant(&self, key: Key, step: usize) -> Key
+    pub(crate) fn variant(&self, key: Key, step: usize) -> Key
     {
         if key.m_damage != ANY_DAMAGE
         {
@@ -141,12 +147,12 @@ impl Catalog
         self.damages(key).nth(step % count.max(1)).unwrap_or(Key { m_id: key.m_id, m_damage: 0 })
     }
 
-    pub fn recipesFor(&self, key: Key) -> Vec<usize>
+    pub(crate) fn recipesFor(&self, key: Key) -> Vec<usize>
     {
         (0..self.m_recipes.len()).filter(|index| Key::of(&self.m_recipes[*index].output) == key).collect()
     }
 
-    pub fn usagesOf(&self, key: Key) -> Vec<usize>
+    pub(crate) fn usagesOf(&self, key: Key) -> Vec<usize>
     {
         (0..self.m_recipes.len())
             .filter(|index| inputs(&self.m_recipes[*index]).iter().any(|input| input.accepts(key)))
@@ -154,7 +160,7 @@ impl Catalog
     }
 
     // a search matches every word against the name, @word against the owning mod id
-    pub fn search(&self, query: &str) -> Vec<usize>
+    pub(crate) fn search(&self, query: &str) -> Vec<usize>
     {
         let lowered: String = query.to_lowercase();
         let words: Vec<&str> = lowered.split_whitespace().collect();
@@ -162,6 +168,7 @@ impl Catalog
             .filter(|index|
             {
                 let entry: &Entry = &self.m_entries[*index];
+
                 words.iter().all(|word| match word.strip_prefix('@')
                 {
                     Some(namespace) => entry.m_namespace.contains(namespace),
@@ -172,7 +179,7 @@ impl Catalog
     }
 
     // outputs of crafting recipes the held items cover right now, smelting needs a furnace and is left out
-    pub fn craftable(&self, held: &[(Key, i32)]) -> Vec<Key>
+    pub(crate) fn craftable(&self, held: &[(Key, i32)]) -> Vec<Key>
     {
         let mut outputs: Vec<Key> = self
             .m_recipes
@@ -196,11 +203,13 @@ fn origins(entries: &[Entry]) -> HashMap<i32, String>
 {
     let mut lines: HashMap<&str, String> = HashMap::new();
     let mut origins: HashMap<i32, String> = HashMap::new();
+
     for entry in entries.iter().filter(|entry| !entry.m_namespace.is_empty())
     {
         let line: &String = lines.entry(&entry.m_namespace).or_insert_with(|| origin(&entry.m_namespace));
         origins.insert(entry.m_key.m_id, line.clone());
     }
+
     origins
 }
 
@@ -217,6 +226,7 @@ fn covers(held: &[(Key, i32)], needed: &[Key]) -> bool
     let mut left: Vec<(Key, i32)> = held.to_vec();
     let mut ordered: Vec<Key> = needed.to_vec();
     ordered.sort_by_key(|key| key.m_damage == ANY_DAMAGE);
+
     ordered.iter().all(|ingredient|
     {
         match left.iter_mut().find(|(have, count)| *count > 0 && ingredient.accepts(*have))
@@ -226,6 +236,7 @@ fn covers(held: &[(Key, i32)], needed: &[Key]) -> bool
                 *count -= 1;
                 true
             }
+
             None => false,
         }
     })

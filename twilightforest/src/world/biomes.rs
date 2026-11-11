@@ -1,12 +1,12 @@
 use super::layers::{self, BiomeMaps};
 use crate::colors;
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 // TFBiomeBase biomes in a fixed order, the order is the biome index the loader keeps per column
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum Biome
+pub(crate) enum Biome
 {
     Lake,
     TwilightForest,
@@ -29,7 +29,7 @@ pub enum Biome
     Thornlands,
 }
 
-pub struct BiomeRow
+pub(crate) struct BiomeRow
 {
     pub m_biome: Biome,
     pub m_name: &'static str,
@@ -72,7 +72,7 @@ const fn row(
 }
 
 // TFBiomeBase registrations with each biome constructor's temperature and rainfall
-pub const BIOMES: [BiomeRow; 19] = [
+pub(crate) const BIOMES: [BiomeRow; 19] = [
     row(Biome::Lake, "twilight_lake", "Twilight Lake", 0x0000FF, (0.66, 1.0), height::DEEP_OCEANS),
     row(Biome::TwilightForest, "twilight_forest", "Twilight Forest", 0x005500, (0.5, 0.5), height::DEFAULT),
     row(Biome::DenseForest, "dense_twilight_forest", "Dense Twilight Forest", 0x005522, (0.7, 0.8), height::MID_PLAINS),
@@ -94,15 +94,15 @@ pub const BIOMES: [BiomeRow; 19] = [
     row(Biome::Thornlands, "thornlands", "Thornlands", 0x223322, (0.3, 0.2), (6.0, 0.1)),
 ];
 
-pub fn rowOf(biome: Biome) -> &'static BiomeRow { &BIOMES[biome as usize] }
+pub(crate) fn rowOf(biome: Biome) -> &'static BiomeRow { &BIOMES[biome as usize] }
 
-pub fn fromIndex(index: i32) -> Biome
+pub(crate) fn fromIndex(index: i32) -> Biome
 {
     BIOMES.get(index.max(0) as usize).map_or(Biome::TwilightForest, |row| row.m_biome)
 }
 
 // per chunk biome columns, x fastest, as the loader and the terrain ask for them
-pub type Columns = [u8; 256];
+pub(crate) type Columns = [u8; 256];
 
 const CACHE_LIMIT: usize = 1024;
 
@@ -123,20 +123,22 @@ fn withMaps<T>(seed: i64, run: impl FnOnce(&mut BiomeMaps, &mut HashMap<(i32, i3
 {
     CACHE.with(|cache|
     {
-        let mut cache = cache.borrow_mut();
+        let mut cache: RefMut<Cache> = cache.borrow_mut();
         if cache.m_seed != Some(seed)
         {
             cache.m_seed = Some(seed);
             cache.m_maps = Some(layers::build(seed));
             cache.m_chunks.clear();
         }
+
         let Cache { m_maps: maps, m_chunks: chunks, .. } = &mut *cache;
+
         run(maps.as_mut().expect("maps are built with the seed"), chunks)
     })
 }
 
 // TFWorldChunkManager.loadBlockGeneratorData through its biome cache, one biome per block
-pub fn chunk(seed: i64, chunkX: i32, chunkZ: i32) -> Columns
+pub(crate) fn chunk(seed: i64, chunkX: i32, chunkZ: i32) -> Columns
 {
     withMaps(seed, |maps, chunks|
     {
@@ -144,29 +146,32 @@ pub fn chunk(seed: i64, chunkX: i32, chunkZ: i32) -> Columns
         {
             return *columns;
         }
+
         let ids: Vec<i32> = maps.m_fine.ints(chunkX * 16, chunkZ * 16, 16, 16);
         let mut columns: Columns = [0; 256];
         for (column, id) in columns.iter_mut().zip(ids)
         {
             *column = id.max(0) as u8;
         }
+
         if chunks.len() >= CACHE_LIMIT
         {
             chunks.clear();
         }
+
         chunks.insert((chunkX, chunkZ), columns);
         columns
     })
 }
 
-pub fn at(seed: i64, x: i32, z: i32) -> Biome
+pub(crate) fn at(seed: i64, x: i32, z: i32) -> Biome
 {
     let columns: Columns = chunk(seed, x >> 4, z >> 4);
     fromIndex(i32::from(columns[((z & 15) * 16 + (x & 15)) as usize]))
 }
 
 // TFWorldChunkManager.getBiomesForGeneration, one biome per four blocks for the terrain shape
-pub fn coarse(seed: i64, x: i32, z: i32, width: i32, depth: i32) -> Vec<Biome>
+pub(crate) fn coarse(seed: i64, x: i32, z: i32, width: i32, depth: i32) -> Vec<Biome>
 {
     withMaps(seed, |maps, _| maps.m_coarse.ints(x, z, width, depth).into_iter().map(fromIndex).collect())
 }
@@ -183,6 +188,7 @@ fn climateColors(row: &BiomeRow) -> (u32, u32)
     {
         return colors;
     }
+
     let temperature: f64 = f64::from(row.m_temperature.clamp(0.0, 1.0));
     let rainfall: f64 = f64::from(row.m_rainfall.clamp(0.0, 1.0));
     let colors: (u32, u32) = (grassColor(temperature, rainfall), foliageColor(temperature, rainfall));
@@ -191,6 +197,7 @@ fn climateColors(row: &BiomeRow) -> (u32, u32)
     {
         CLIMATES.with(|climates| climates.borrow_mut().insert(row.m_biome, colors));
     }
+
     colors
 }
 
@@ -201,13 +208,14 @@ fn columnColor(world: World, pos: BlockPos, grass: bool) -> u32
     if grass { baseGrass } else { baseFoliage }
 }
 
-pub fn grass(world: World, pos: BlockPos) -> u32 { columnColor(world, pos, true) }
+pub(crate) fn grass(world: World, pos: BlockPos) -> u32 { columnColor(world, pos, true) }
 
-pub fn foliage(world: World, pos: BlockPos) -> u32 { columnColor(world, pos, false) }
+pub(crate) fn foliage(world: World, pos: BlockPos) -> u32 { columnColor(world, pos, false) }
 
-pub fn grassAround(world: World, pos: BlockPos) -> u32
+pub(crate) fn grassAround(world: World, pos: BlockPos) -> u32
 {
     let mut sums: [u32; 3] = [0; 3];
+
     for dz in -1..=1
     {
         for dx in -1..=1
@@ -218,21 +226,24 @@ pub fn grassAround(world: World, pos: BlockPos) -> u32
             }
         }
     }
+
     let around: u32 = 9;
     colors::rgb((sums[0] / around) as i32, (sums[1] / around) as i32, (sums[2] / around) as i32)
 }
 
-pub fn biomeAt(world: World, pos: BlockPos) -> Biome { at(world.seed(), pos.x, pos.z) }
+pub(crate) fn biomeAt(world: World, pos: BlockPos) -> Biome { at(world.seed(), pos.x, pos.z) }
 
 // StructureTFMajorFeatureStart.moveToAvgGroundLevel, how far a tower rises with the terrain of its biome
-pub fn surfaceRise(seed: i64, x: i32, z: i32) -> i32
+pub(crate) fn surfaceRise(seed: i64, x: i32, z: i32) -> i32
 {
     // the dark forest canopy hides towers built at the plain height
     const DARK_FOREST_RISE: i32 = 4;
     const BLOCKS_PER_HEIGHT: f32 = 8.0;
+
     let biome: Biome = at(seed, x, z);
     let (root, variation): (f32, f32) = rowOf(biome).m_height;
     let rise: i32 = ((root + variation) * BLOCKS_PER_HEIGHT) as i32;
+
     if matches!(biome, Biome::DarkForest)
     {
         rise + DARK_FOREST_RISE

@@ -4,7 +4,7 @@ use b173_api::terrain::Random;
 
 // TFTreasure loot tables, each chest draws four common two uncommon and one rare stack
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Table
+pub(crate) enum Table
 {
     Hill1,
     Hill2,
@@ -489,7 +489,9 @@ fn draw(random: &Random, table: Table, tier: Tier) -> Option<ItemStack>
     {
         return None;
     }
+
     let mut value: i32 = random.nextIntBounded(total);
+
     for row in entries(table, tier)
     {
         if row.m_rarity > value
@@ -497,8 +499,10 @@ fn draw(random: &Random, table: Table, tier: Tier) -> Option<ItemStack>
             let count: i32 = random.nextIntBounded(row.m_quantity) + 1;
             return Some(ItemStack::of(row.m_item, count).withDamage(row.m_damage));
         }
+
         value -= row.m_rarity;
     }
+
     None
 }
 
@@ -518,18 +522,21 @@ fn drawWithSide(random: &Random, table: Table, side: Tier, tier: Tier) -> Option
 }
 
 // TFTreasure.generate, a chest filled from the table with a random seeded by its position
-pub fn place(world: &GenWorld, _random: &Random, table: Table, x: i32, y: i32, z: i32)
+pub(crate) fn place(world: &GenWorld, _random: &Random, table: Table, x: i32, y: i32, z: i32)
 {
     let seed: i64 = world.m_world.seed().wrapping_mul(i64::from(x)).wrapping_add(i64::from(y)) ^ i64::from(z);
     let random: Random = Random::withSeed(seed);
     let pos: BlockPos = BlockPos::new(x, y, z);
+
     world.set(x, y, z, world.id("minecraft:chest"));
+
     let mut filled: [bool; chest::SLOTS as usize] = [false; chest::SLOTS as usize];
     let draws: [(Tier, Tier, i32); 3] = [
         (Tier::Useless, Tier::Common, chest::COMMON),
         (Tier::Uncommon, Tier::Uncommon, chest::UNCOMMON),
         (Tier::UltraRare, Tier::Rare, chest::RARE),
     ];
+
     for (side, tier, count) in draws
     {
         for _ in 0..count
@@ -537,12 +544,15 @@ pub fn place(world: &GenWorld, _random: &Random, table: Table, x: i32, y: i32, z
             let stack: Option<ItemStack> = drawWithSide(&random, table, side, tier);
             let slot: Option<i32> =
                 (0..chest::TRIES).map(|_| random.nextIntBounded(chest::SLOTS)).find(|slot| !filled[*slot as usize]);
+
             let (Some(stack), Some(slot)) = (stack, slot)
             else
             {
                 continue;
             };
+
             filled[slot as usize] = true;
+
             if let Err(error) = world.m_world.setTileSlot(pos, slot, Some(stack))
             {
                 b173_api::warn(&format!("treasure {table:?} at {x} {y} {z}: {}", error.0));

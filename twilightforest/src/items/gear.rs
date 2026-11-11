@@ -37,6 +37,7 @@ enum Class
 fn damage(class: Class, tier: Tier) -> i32
 {
     let bonus: f32 = tier.m_damage;
+
     let value: f32 = match class
     {
         Class::Pickaxe => 2.0 + bonus,
@@ -227,7 +228,7 @@ const SLOTS: [(ArmorSlot, &str); 4] = [
     (ArmorSlot::Feet, "boots"),
 ];
 
-pub fn armorName(set: &str, slot: usize) -> String { format!("{set}_{}", SLOTS[slot].1) }
+pub(crate) fn armorName(set: &str, slot: usize) -> String { format!("{set}_{}", SLOTS[slot].1) }
 
 fn iconTexture(name: &str) -> String
 {
@@ -261,6 +262,7 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
             .name(row.m_label)
             .texture(&iconTexture(row.m_texture))
             .tool(class, row.m_tier.m_level, speed(row), damage(row.m_class, row.m_tier), row.m_tier.m_uses);
+
         spec = match row.m_name
         {
             item::GIANT_PICK => spec.behavior(Giant),
@@ -271,6 +273,7 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
         };
         put(ctx, row.m_name, spec)?;
     }
+
     Ok(())
 }
 
@@ -285,6 +288,7 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
             {
                 continue;
             };
+
             let spec: ArmorSpec = ArmorSpec
             {
                 slot: SLOTS[slot].0,
@@ -300,6 +304,7 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
             )?;
         }
     }
+
     Ok(())
 }
 
@@ -317,6 +322,7 @@ impl ItemBehavior for Giant
     fn strVsBlock(&self, _stack: ItemStack, block: i32) -> f32
     {
         let base: f32 = GIANT.m_speed;
+
         if crate::ids::giantBlock(block)
         {
             let obsidian: bool = block == crate::ids::blockId(crate::ids::block::GIANT_OBSIDIAN);
@@ -338,6 +344,7 @@ impl ItemBehavior for Mazebreaker
     fn strVsBlock(&self, _stack: ItemStack, block: i32) -> f32
     {
         let boost: f32 = 16.0;
+
         if crate::ids::mazestone(block)
         {
             (EMERALD.m_speed + 17.0) * boost
@@ -361,6 +368,7 @@ impl ItemBehavior for Smelting
         {
             crate::combat::markSmelt(World { dimension: info.world }, pos);
         }
+
         true
     }
 }
@@ -375,15 +383,19 @@ impl ItemBehavior for Shatter
     {
         let shards: i32 = 20;
         let world: World = target.world;
+
         if let Some(info) = target.info()
         {
             for _ in 0..shards
             {
                 crate::particles::spawn(world, "iconcrack_20_0", info.pos, [0.0; 3]);
             }
+
             world.playSound(info.pos, "random.glass", 1.0, 0.5);
         }
+
         let _ = Player { id: attacker }.damageHeld(GLASS.m_uses + 1);
+
         false
     }
 }
@@ -394,14 +406,14 @@ fn wornIn(player: Player, slot: usize) -> Option<ItemStack>
     player.slot(super::ARMOR_FIRST_SLOT + (SLOTS.len() - 1 - slot) as i32)
 }
 
-pub fn armorWorn(player: Player, set: &str) -> usize
+pub(crate) fn armorWorn(player: Player, set: &str) -> usize
 {
     (0..SLOTS.len())
         .filter(|slot| wornIn(player, *slot).is_some_and(|stack| stack.item.is(&armorName(set, *slot))))
         .count()
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerTools(ctx)?;
     registerArmor(ctx)?;

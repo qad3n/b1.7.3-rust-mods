@@ -1,7 +1,7 @@
 // draft from ComponentTFFinalCastleRoof48Crenellated.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(random: &Random, i: i32, keep: &Piece) -> Rc<Piece>
+pub(crate) fn new(random: &Random, i: i32, keep: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::FinalCastleRoof48Crenellated);
     init(&this, random, i, keep);
@@ -9,10 +9,12 @@ pub fn new(random: &Random, i: i32, keep: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFFinalCastleRoof48Crenellated constructor
-pub fn init(this: &Piece, _random: &Random, i: i32, keep: &Piece)
+pub(crate) fn init(this: &Piece, _random: &Random, i: i32, keep: &Piece)
 {
     this.m_depth.set(i);
+
     let height: i32 = 5;
+
     this.setMode(keep.mode());
     this.m_box.set(StructureBox::new(
         [keep.bounds().m_min[0] - 2, keep.bounds().m_max[1] - 1, keep.bounds().m_min[2] - 2],
@@ -21,15 +23,16 @@ pub fn init(this: &Piece, _random: &Random, i: i32, keep: &Piece)
 }
 
 // ComponentTFFinalCastleRoof48Crenellated.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFFinalCastleRoof48Crenellated.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fillMeta(world, sbb, 2, 2, 2, 50, 2, 50, blk("tf:castleMagic"), 3, blk("tf:castleMagic"), 3, false);
+
     for rotation in 0..4
     {
         this.fillTurned(
@@ -45,6 +48,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             this.m_deco.get().m_blockMeta,
             rotation,
         );
+
         for i in (10..41).step_by(5)
         {
             this.fillTurned(
@@ -72,5 +76,6 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             );
         }
     }
-    return true;
+
+    true
 }

@@ -17,7 +17,7 @@ const OAK_CHANCE_MOST: i64 = 1000;
 const CANOPY_DEFAULT: f64 = 1.7;
 const CANOPY_MOST: f64 = 10.0;
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.config().options(vec![
         Setting::bool(ENFORCED, true).label("Enforced Progression").comment(
@@ -49,27 +49,27 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
     ])
 }
 
-pub fn enforced() -> bool { Config.getBool(ENFORCED) }
+pub(crate) fn enforced() -> bool { Config.getBool(ENFORCED) }
 
 // WorldProviderTwilightForest.getSeed, the text's Java hash code when one is set
-pub fn seed() -> Option<i64>
+pub(crate) fn seed() -> Option<i64>
 {
     let text: String = Config.get(SEED);
     (!text.is_empty()).then(|| i64::from(crate::math::javaHash(&text)))
 }
 
-pub fn portals() -> bool { !Config.getBool(PORTAL_CREATION) }
+pub(crate) fn portals() -> bool { !Config.getBool(PORTAL_CREATION) }
 
-pub fn adminPortals() -> bool { Config.getBool(ADMIN_PORTALS) }
+pub(crate) fn adminPortals() -> bool { Config.getBool(ADMIN_PORTALS) }
 
-pub fn otherDimensions() -> bool { Config.getBool(OTHER_DIMENSIONS) }
+pub(crate) fn otherDimensions() -> bool { Config.getBool(OTHER_DIMENSIONS) }
 
-pub fn canopy() -> f32 { Config.getFloat(CANOPY) as f32 }
+pub(crate) fn canopy() -> f32 { Config.getFloat(CANOPY) as f32 }
 
-pub fn uncraftingDisabled() -> bool { Config.getBool(UNCRAFTING) }
+pub(crate) fn uncraftingDisabled() -> bool { Config.getBool(UNCRAFTING) }
 
 // the item a tossed stack must be to light a portal, PortalCreationItem with a bare name meaning minecraft's
-pub fn portalItem() -> String
+pub(crate) fn portalItem() -> String
 {
     let name: String = Config.get(PORTAL_ITEM);
     let name: &str = name.trim();
@@ -81,4 +81,4 @@ pub fn portalItem() -> String
     }
 }
 
-pub fn oakChance() -> i32 { Config.getInt(OAK_CHANCE).clamp(1, OAK_CHANCE_MOST) as i32 }
+pub(crate) fn oakChance() -> i32 { Config.getInt(OAK_CHANCE).clamp(1, OAK_CHANCE_MOST) as i32 }

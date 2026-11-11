@@ -28,7 +28,7 @@ mod flight
     pub const SHOT_SPREAD: f64 = 1.0;
     pub const MUZZLE: f64 = 4.0;
     pub const HEIGHT: f64 = 4.0;
-    pub const RANDOM_STEPS: i32 = 1_000_000;
+    pub const RANDOM_STEPS: i32 = 1000000;
 }
 
 #[derive(Default, Clone, Copy)]
@@ -39,7 +39,8 @@ struct Course
     m_attack: i32,
 }
 
-thread_local! {
+thread_local!
+{
     static COURSES: RefCell<HashMap<i32, Course>> = RefCell::new(HashMap::new());
 }
 
@@ -69,11 +70,14 @@ impl EntityBehavior for Zephyr
         {
             course.m_waypoint = [0, 1, 2].map(|axis| info.pos[axis] + unit(world) * flight::WAYPOINT_SPREAD);
         }
+
         course.m_cooldown -= 1;
         if course.m_cooldown <= 0
         {
             course.m_cooldown += world.random(flight::COOLDOWN_SPREAD) + flight::COOLDOWN_MIN;
+
             let distance: f64 = squared.sqrt().max(1.0e-4);
+
             if world.rayTrace(info.pos, course.m_waypoint, false).is_none()
             {
                 for axis in 0..3
@@ -86,13 +90,18 @@ impl EntityBehavior for Zephyr
                 course.m_waypoint = info.pos;
             }
         }
+
         let center: [f64; 3] = [info.pos[0], info.pos[1] + flight::HEIGHT / 2.0, info.pos[2]];
-        let target: Option<EntityInfo> = closestPlayer(world, info, flight::SIGHT).filter(|player| {
+
+        let target: Option<EntityInfo> = closestPlayer(world, info, flight::SIGHT).filter(|player|
+        {
             let gap: f64 = (0..3).map(|axis| (player.pos[axis] - info.pos[axis]).powi(2)).sum();
             gap < flight::RANGE_SQUARED
                 && world.rayTrace(center, [player.pos[0], player.pos[1] + 1.0, player.pos[2]], false).is_none()
         });
+
         let before: i32 = course.m_attack;
+
         match target
         {
             Some(player) =>
@@ -107,12 +116,14 @@ impl EntityBehavior for Zephyr
                 else if course.m_attack == flight::FIRE
                 {
                     world.playSound(info.pos, CALL, 3.0, 1.0);
+
                     let yaw: f64 = (-dx.atan2(dz)).to_radians();
                     let muzzle: [f64; 3] = [
                         info.pos[0] - yaw.sin() * flight::MUZZLE,
                         center[1] + 0.5,
                         info.pos[2] + yaw.cos() * flight::MUZZLE,
                     ];
+
                     let aim: [f64; 3] = [player.pos[0], player.pos[1] + 1.0, player.pos[2]];
                     projectile::fire(
                         world,
@@ -126,15 +137,19 @@ impl EntityBehavior for Zephyr
                     course.m_attack = flight::RELOAD;
                 }
             }
+
             None if course.m_attack > 0 => course.m_attack -= 1,
             None =>
             {}
         }
+
         if course.m_attack != before
         {
             let _ = entity.setSynced(&Charge { m_counter: course.m_attack });
         }
+
         COURSES.with(|courses| courses.borrow_mut().insert(entity.id, course));
+
         let _ = entity.setMotion(motion);
     }
 
@@ -153,14 +168,17 @@ impl EntityBehavior for Zephyr
         let wide: f32 = (8.0 + 1.0 / squash) / 2.0;
         let mut pre: Program = Program::new();
         pre.scale(wide, tall, wide).translate(0.0, 0.5, 0.0).color(1.0, 1.0, 1.0, 1.0);
-        let wave = |rate: f32| (input.walk * rate / 57.295_78).sin() * input.walk_speed;
+
+        let wave = |rate: f32| (input.walk * rate / 57.29578).sin() * input.walk_speed;
         let motion: f32 = wave(20.0) * 0.5;
         let rotation = |part: u16| model::ROTATIONS[part as usize];
         let pivot = |part: u16| model::PIVOTS[part as usize];
         let tailYaw: f32 = wave(0.5) * 0.75;
         let tail2Yaw: f32 = tailYaw + 0.25;
         let mut body: Program = Program::new();
-        let sides = |program: &mut Program| {
+
+        let sides = |program: &mut Program|
+        {
             program.part(
                 model::TAIL3,
                 [rotation(model::TAIL3)[0], tail2Yaw + 0.35, 0.0],
@@ -217,11 +235,12 @@ impl EntityBehavior for Zephyr
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:ghast").ok(),
             texture: Some(TEXTURE.to_owned()),
             size: Some([4.0, 4.0]),

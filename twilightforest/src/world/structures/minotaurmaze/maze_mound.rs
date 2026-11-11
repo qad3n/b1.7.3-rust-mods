@@ -1,7 +1,7 @@
 // draft from ComponentTFMazeMound.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MazeMound);
     init(&this, i, random, x, y, z);
@@ -9,7 +9,7 @@ pub fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFMazeMound constructor
-pub fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
 {
     this.m_depth.set(i);
     this.m_averageGroundLevel.set(-1);
@@ -18,7 +18,7 @@ pub fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
 }
 
 // ComponentTFMazeMound.func_74861_a
-pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
 {
     *this.m_mazeAbove.borrow_mut() = Some(maze_upper_entrance::new(
         3,
@@ -32,22 +32,26 @@ pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, rando
 }
 
 // ComponentTFMazeMound.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     if this.m_averageGroundLevel.get() < 0
     {
         this.m_averageGroundLevel.set(this.groundLevel(world, sbb));
+
         if this.m_averageGroundLevel.get() < 0
         {
             return true;
         }
+
         let offset: i32 = ((this.m_averageGroundLevel.get() - this.m_box.get().m_max[1]) + 8) - 1;
         this.boxed(|bounds| bounds.shift([0, offset, 0]));
+
         if let Some(above) = this.m_mazeAbove.borrow().as_ref()
         {
             above.boxed(|bounds| bounds.shift([0, offset, 0]));
         }
     }
+
     for x in 0..35
     {
         for z in 0..35
@@ -60,6 +64,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
                 && ((((cx > 2) || (cx < (-1))) && ((cz > 2) || (cz < (-1)))) || (hheight > 6))
             {
                 this.placeBlock(world, blk("grass"), 0, x, hheight, z, sbb);
+
                 if ((cx <= 2) && (cx >= (-1))) || ((cz <= 2) && (cz >= (-1)))
                 {
                     if hheight > 6
@@ -74,14 +79,16 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             }
         }
     }
-    return true;
+
+    true
 }
 
 // ComponentTFMazeMound.getAverageGroundLevel
-pub fn getAverageGroundLevel(this: &Piece, world: &GenWorld, sbb: StructureBox) -> i32
+pub(crate) fn getAverageGroundLevel(this: &Piece, world: &GenWorld, sbb: StructureBox) -> i32
 {
     let mut totalHeight: i32 = 0;
     let mut totalMeasures: i32 = 0;
+
     for var5 in this.m_box.get().m_min[2]..=this.m_box.get().m_max[2]
     {
         for var6 in this.m_box.get().m_min[0]..=this.m_box.get().m_max[0]
@@ -93,12 +100,13 @@ pub fn getAverageGroundLevel(this: &Piece, world: &GenWorld, sbb: StructureBox) 
             }
         }
     }
-    return if totalMeasures == 0
+
+    if totalMeasures == 0
     {
         -1
     }
     else
     {
         totalHeight / totalMeasures
-    };
+    }
 }

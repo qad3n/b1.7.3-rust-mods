@@ -4,14 +4,14 @@ use crate::ids::{self, item};
 use crate::models::{Program, tf_naga};
 use crate::progress::{self, Gate};
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::rc::Rc;
 
 // EntityTFNaga, a serpent whose body shortens as it is hurt, circling, charging and crushing the ground under a
 // player who climbs out of reach, kept to its courtyard
-pub const NAME: &str = "naga";
+pub(crate) const NAME: &str = "naga";
 const SEGMENT: &str = "naga_segment";
 const LABEL: &str = "Naga";
 
@@ -74,6 +74,7 @@ fn inHome(home: Option<[i32; 3]>, at: [f64; 3]) -> bool
     {
         return true;
     };
+
     (0..3).all(|axis| (center[axis] - at[axis].floor() as i32).abs() <= naga::LEASH[axis])
 }
 
@@ -93,6 +94,7 @@ fn breakBlock(world: World, pos: BlockPos)
     {
         return;
     }
+
     let _ = world.dropBlockItems(pos, block, meta);
     let _ = world.setBlock(pos, 0, 0);
     let _ = world.breakEffect(pos, block, meta);
@@ -104,15 +106,18 @@ impl Brain
     fn plan(&mut self, entity: Entity, info: &EntityInfo, target: Option<&EntityInfo>)
     {
         let world: World = entity.world;
+
         let Some(target) = target
         else
         {
             self.m_speed = naga::NORMAL;
+
             let center: [f64; 3] = home(entity).map_or(info.pos, |home| home.map(f64::from));
             let spread = |reach: i32| f64::from(world.random(reach) - world.random(reach));
             self.m_goal = Some([center[0] + spread(21), center[1] + spread(7), center[2] + spread(21)]);
             return;
         };
+
         if self.m_intimidate > 0
         {
             self.m_goal = None;
@@ -120,6 +125,7 @@ impl Brain
             if self.m_intimidate == 0
             {
                 self.m_clockwise = !self.m_clockwise;
+
                 let height: f64 = entity.field(EntityField::Height);
                 if target.pos[1] > info.pos[1] + height
                 {
@@ -131,43 +137,53 @@ impl Brain
                     self.charge();
                 }
             }
+
             return;
         }
+
         if self.m_crumble > 0
         {
             self.m_goal = None;
             self.m_crumble -= 1;
             crumbleBelow(world, info, target, 2);
             crumbleBelow(world, info, target, 3);
+
             if self.m_crumble == 0
             {
                 self.charge();
             }
         }
+
         if self.m_charge > 0
         {
             self.m_charge -= 1;
             self.m_goal = Some(circlePoint(info, target, 14.0, PI, self.m_clockwise));
+
             if self.m_charge == 0
             {
                 self.m_circle += 10 + world.random(10);
                 self.m_speed = naga::NORMAL;
             }
         }
+
         if self.m_circle > 0
         {
             self.m_circle -= 1;
             let mut radius: f64 = if self.m_circle % 2 == 0 { 12.0 } else { 14.0 };
             let mut turn: f64 = 1.0;
+
             if self.m_circle > 1 && self.m_circle < 3
             {
                 radius = 16.0;
             }
+
             if self.m_circle == 1
             {
                 turn = 0.1;
             }
+
             self.m_goal = Some(circlePoint(info, target, radius, turn, self.m_clockwise));
+
             if self.m_circle == 0
             {
                 self.m_intimidate += 15 + world.random(10);
@@ -193,6 +209,7 @@ fn crumbleBelow(world: World, info: &EntityInfo, target: &EntityInfo, range: i32
     {
         return;
     }
+
     let x: i32 = target.pos[0] as i32 + world.random(range) - world.random(range);
     let z: i32 = target.pos[2] as i32 + world.random(range) - world.random(range);
     let mut y: i32 = top - world.random(range) + world.random(if range > 1 { range - 1 } else { range });
@@ -200,6 +217,7 @@ fn crumbleBelow(world: World, info: &EntityInfo, target: &EntityInfo, range: i32
     {
         y = top;
     }
+
     let pos: BlockPos = BlockPos::new(x, y, z);
     if world.block(pos) != 0
     {
@@ -231,6 +249,7 @@ fn keepSegments(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         })
     .clamp(0, naga::MAX_SEGMENTS as i32) as usize;
     brain.m_segments.retain(|id| Entity { world, id: *id }.info().is_some_and(|segment| segment.alive));
+
     while brain.m_segments.len() > wanted
     {
         if let Some(id) = brain.m_segments.pop()
@@ -243,9 +262,11 @@ fn keepSegments(entity: Entity, info: &EntityInfo, brain: &mut Brain)
                     world.particle("explode", at, [0.0; 3]);
                 }
             }
+
             segment.kill();
         }
     }
+
     while brain.m_segments.len() < wanted
     {
         let offset: f64 = 0.1 * brain.m_segments.len() as f64;
@@ -255,7 +276,9 @@ fn keepSegments(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         {
             return;
         };
+
         let _ = segment.setData(&Owner { m_naga: entity.id });
+
         brain.m_segments.push(segment.id);
     }
 }
@@ -265,6 +288,7 @@ fn moveSegments(entity: Entity, info: &EntityInfo, brain: &Brain)
 {
     let world: World = entity.world;
     let mut leader: EntityInfo = info.clone();
+
     for (index, id) in brain.m_segments.iter().enumerate()
     {
         let segment: Entity = Entity { world, id: *id };
@@ -273,6 +297,7 @@ fn moveSegments(entity: Entity, info: &EntityInfo, brain: &Brain)
         {
             continue;
         };
+
         let angle: f64 = f64::from(leader.yaw + 180.0).to_radians();
         let straighten: f64 = 0.05 + 1.0 / (index as f64 + 1.0) * 0.5;
         let mut diff: [f64; 3] = [0, 1, 2].map(|axis| mine.pos[axis] - leader.pos[axis]);
@@ -280,14 +305,17 @@ fn moveSegments(entity: Entity, info: &EntityInfo, brain: &Brain)
         diff[0] += -angle.sin() * straighten;
         diff[2] += angle.cos() * straighten;
         normalize(&mut diff);
+
         let dest: [f64; 3] = [0, 1, 2].map(|axis| leader.pos[axis] + naga::SPACING * diff[axis]);
         let _ = segment.setPosition(dest);
         let _ = segment.setMotion(diff.map(|axis| axis * naga::SPACING));
         let flat: f64 = (diff[0] * diff[0] + diff[2] * diff[2]).sqrt();
+
         if index == 0
         {
             diff[1] -= 0.15;
         }
+
         segment.setField(EntityField::Yaw, diff[2].atan2(diff[0]).to_degrees() + 90.0);
         segment.setField(EntityField::Pitch, -diff[1].atan2(flat).to_degrees());
         leader = segment.info().unwrap_or(mine);
@@ -310,6 +338,7 @@ fn normalize(vector: &mut [f64; 3])
 fn segmentBites(entity: Entity, brain: &mut Brain)
 {
     let world: World = entity.world;
+
     for id in &brain.m_segments
     {
         let Some(segment) = Entity { world, id: *id }.info()
@@ -317,6 +346,7 @@ fn segmentBites(entity: Entity, brain: &mut Brain)
         {
             continue;
         };
+
         for other in world.entitiesNear(segment.pos, 1.1)
         {
             let ours: bool = other.id == entity.id || brain.m_segments.contains(&other.id);
@@ -324,11 +354,14 @@ fn segmentBites(entity: Entity, brain: &mut Brain)
             {
                 continue;
             }
+
             brain.m_cooldown = naga::SEGMENT_COOLDOWN;
+
             let animal: bool = other
                 .kind
                 .as_ref()
                 .is_some_and(|kind| ["pig", "cow", "sheep", "chicken", "wolf"].contains(&kind.path()));
+
             let bite: i32 = if animal
             {
                 naga::SEGMENT_BITE * naga::ANIMAL_BITE
@@ -349,6 +382,7 @@ fn steer(entity: Entity, info: &EntityInfo, brain: &mut Brain)
     else
     {
         let _ = entity.setMotion([info.motion[0] * 0.5, info.motion[1], info.motion[2] * 0.5]);
+
         return;
     };
     let (dx, dz): (f64, f64) = (goal[0] - info.pos[0], goal[2] - info.pos[2]);
@@ -358,10 +392,12 @@ fn steer(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         brain.m_goal = None;
         return;
     }
+
     let pace: f64 = brain.m_speed * naga::STRIDE;
     let climb: bool = entity.flag(EntityField::Collided) && entity.flag(EntityField::OnGround);
     let up: f64 = if climb { naga::JUMP } else { info.motion[1] };
     let _ = entity.setMotion([dx / flat * pace, up, dz / flat * pace]);
+
     face(entity, info.pos, goal);
 }
 
@@ -395,15 +431,19 @@ impl EntityBehavior for Naga
         {
             return;
         }
+
         voice(entity.world, info);
+
         let key: (i32, i32) = (entity.world.dimension, entity.id);
+
         BRAINS.with(|brains|
         {
-            let mut brains = brains.borrow_mut();
+            let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
             let brain: &mut Brain =
                 brains.entry(key).or_insert_with(|| Brain { m_circle: 15, m_speed: naga::NORMAL, ..Brain::default() });
             think(entity, info, brain);
         });
+
         showBar(entity, LABEL, info);
     }
 
@@ -415,17 +455,20 @@ impl EntityBehavior for Naga
         {
             return None;
         }
+
         BRAINS.with(|brains|
         {
             if let Some(brain) = brains.borrow_mut().get_mut(&(entity.world.dimension, entity.id))
             {
                 brain.m_quiet = 0;
+
                 if let Some(attacker) = source.filter(|id| *id != entity.id)
                 {
                     brain.m_target = Some(attacker);
                 }
             }
         });
+
         Some(amount)
     }
 
@@ -437,14 +480,17 @@ impl EntityBehavior for Naga
             .with(|brains| brains.borrow_mut().remove(&(world.dimension, entity.id)))
             .map(|brain| brain.m_segments)
             .unwrap_or_default();
+
         for id in segments
         {
             Entity { world, id }.kill();
         }
+
         if !world.isAuthority()
         {
             return;
         }
+
         if let Some(info) = entity.info()
         {
             let scales: i32 = naga::SCALES[0] + world.random(naga::SCALES[1]);
@@ -452,9 +498,11 @@ impl EntityBehavior for Naga
             {
                 dropAt(world, info.pos, item::NAGA_SCALE, 1);
             }
+
             dropAt(world, info.pos, item::NAGA_TROPHY, 1);
             super::conquer(world, info.pos);
         }
+
         if let Some(player) = killer(world, source)
         {
             progress::grant(player, Gate::Hunter);
@@ -474,21 +522,26 @@ impl EntityBehavior for Naga
 fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
 {
     let world: World = entity.world;
+
     brain.m_quiet += 1;
     if brain.m_quiet > naga::HEAL_AFTER && brain.m_quiet % naga::HEAL_EVERY == 0
     {
         let health: f64 = entity.field(EntityField::Health);
         entity.setField(EntityField::Health, (health + 1.0).min(entity.field(EntityField::MaxHealth)));
     }
+
     keepSegments(entity, info, brain);
+
     let mut target: Option<EntityInfo> =
         brain.m_target.and_then(|id| Entity { world, id }.info()).filter(|target| target.alive);
+
     if target
         .as_ref()
         .is_some_and(|target| !inHome(home(entity), target.pos) || distance(info.pos, target.pos) > naga::LOSE)
     {
         target = None;
     }
+
     if target.is_none()
     {
         target = findTarget(entity, info);
@@ -497,25 +550,32 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
             brain.m_goal = None;
         }
     }
+
     brain.m_target = target.as_ref().map(|target| target.id);
+
     if target.is_some() && entity.flag(EntityField::Collided)
     {
         smash(entity, info);
     }
+
     brain.m_cooldown = (brain.m_cooldown - 1).max(0);
+
     if let Some(goal) = target.as_ref()
     {
         bite(entity, info, goal, brain);
     }
+
     if brain.m_goal.is_none()
     {
         brain.plan(entity, info, target.as_ref());
     }
+
     if brain.m_intimidate > 0
         && let Some(goal) = target.as_ref()
     {
         face(entity, info.pos, goal.pos);
     }
+
     steer(entity, info, brain);
     moveSegments(entity, info, brain);
     segmentBites(entity, brain);
@@ -530,9 +590,12 @@ fn bite(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brai
     {
         return;
     }
+
     brain.m_cooldown = naga::ATTACK_COOLDOWN;
+
     let victim: Entity = Entity { world: entity.world, id: target.id };
     crate::combat::hit(victim, naga::BITE, Some(entity.id), crate::combat::kind::MOB);
+
     if brain.m_speed > 0.8
     {
         let yaw: f64 = f64::from(info.yaw).to_radians();
@@ -563,6 +626,7 @@ impl EntityBehavior for Segment
         {
             return;
         }
+
         let owner: Owner = entity.data();
         let alive: bool = Entity { world: entity.world, id: owner.m_naga }.info().is_some_and(|naga| naga.alive);
         if !alive
@@ -581,6 +645,7 @@ impl EntityBehavior for Segment
             let passed: i32 = (f64::from(amount) * 2.0 / 3.0).round() as i32;
             crate::combat::forward(Entity { world: entity.world, id: owner.m_naga }, passed, source);
         }
+
         None
     }
 
@@ -598,10 +663,12 @@ fn voice(world: World, info: &EntityInfo)
 {
     const TALK_ODDS: i32 = 100;
     const RATTLE_ODDS: i32 = 3;
+
     if world.random(TALK_ODDS) != 0
     {
         return;
     }
+
     let sound: &str = if world.random(RATTLE_ODDS) != 0
     {
         "twilightforest.mob.naga.hiss"
@@ -614,7 +681,7 @@ fn voice(world: World, info: &EntityInfo)
     world.playSound(info.pos, sound, 1.0, pitch);
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let model: EntityModelSpec = EntityModelSpec { shadow: 1.0, ..tf_naga::model() };
     let hard: i32 = 200;
@@ -640,6 +707,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         },
         Some(Rc::new(Naga)),
     )?;
+
     let segmentHealth: i32 = 1000;
     ctx.entities().register(
         SEGMENT,

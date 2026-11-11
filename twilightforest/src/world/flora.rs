@@ -2,7 +2,7 @@ use super::biomes::Biome;
 use b173_api::terrain::Random;
 
 // what each twilight biome sets on its TFBiomeDecorator, rows in Biome order
-pub struct Decor
+pub(crate) struct Decor
 {
     pub m_trees: i32,
     pub m_grass: i32,
@@ -24,7 +24,7 @@ pub struct Decor
 }
 
 // TwilightForestMod.canopyCoverage at its config default
-pub const CANOPY: f32 = 1.7;
+pub(crate) const CANOPY: f32 = 1.7;
 // the source turns a decoration off with a large negative count
 const NONE: i32 = -999;
 const NO_CANOPY: f32 = -999.0;
@@ -96,11 +96,11 @@ const DECOR: [Decor; 19] = [
     Decor { m_canopy: NO_CANOPY, m_trees: NONE, m_deadBush: 2, m_springs: false, ..BASE },
 ];
 
-pub fn decor(biome: Biome) -> &'static Decor { &DECOR[biome as usize] }
+pub(crate) fn decor(biome: Biome) -> &'static Decor { &DECOR[biome as usize] }
 
 // the trees a biome's func_150567_a hands out, beta substitutes noted where a kind is missing
 #[derive(Clone, Copy, PartialEq)]
-pub enum Grow
+pub(crate) enum Grow
 {
     Oak,
     Birch,
@@ -127,6 +127,7 @@ fn plainTree(random: &Random) -> Grow
     {
         return Grow::Birch;
     }
+
     if chance(random, 10)
     {
         Grow::BigOak
@@ -137,11 +138,12 @@ fn plainTree(random: &Random) -> Grow
     }
 }
 
-pub fn tree(biome: Biome, random: &Random) -> Grow
+pub(crate) fn tree(biome: Biome, random: &Random) -> Grow
 {
     match biome
     {
         Biome::DenseForest if chance(random, 5) => Grow::Shrub,
+
         Biome::DenseForest | Biome::OakSavanna =>
         {
             if chance(random, 10)
@@ -153,8 +155,10 @@ pub fn tree(biome: Biome, random: &Random) -> Grow
                 Grow::Oak
             }
         }
+
         Biome::EnchantedForest if chance(random, 15) => Grow::SmallRainbow,
         Biome::EnchantedForest if chance(random, 50) => Grow::LargeRainbow,
+
         Biome::Swamp | Biome::FireSwamp =>
         {
             if chance(random, 3)
@@ -166,7 +170,9 @@ pub fn tree(biome: Biome, random: &Random) -> Grow
                 Grow::Swamp
             }
         }
+
         Biome::SnowyForest if chance(random, 3) => Grow::Taiga1,
+
         Biome::SnowyForest =>
         {
             if chance(random, 8)
@@ -178,6 +184,7 @@ pub fn tree(biome: Biome, random: &Random) -> Grow
                 Grow::Taiga2
             }
         }
+
         Biome::Glacier =>
         {
             if chance(random, 3)
@@ -189,9 +196,11 @@ pub fn tree(biome: Biome, random: &Random) -> Grow
                 Grow::Taiga2
             }
         }
+
         Biome::Highlands if chance(random, 4) => Grow::Taiga1,
         Biome::Highlands if chance(random, 10) => Grow::Taiga2,
         Biome::Highlands if chance(random, 3) => Grow::MegaPine,
+
         Biome::Highlands =>
         {
             if chance(random, 13)
@@ -203,7 +212,9 @@ pub fn tree(biome: Biome, random: &Random) -> Grow
                 Grow::Birch
             }
         }
+
         Biome::DarkForest | Biome::DarkForestCenter if chance(random, 5) => Grow::Shrub,
+
         Biome::DarkForest | Biome::DarkForestCenter =>
         {
             if chance(random, 8)
@@ -215,13 +226,14 @@ pub fn tree(biome: Biome, random: &Random) -> Grow
                 Grow::Oak
             }
         }
+
         _ => plainTree(random),
     }
 }
 
 // the plant a biome's func_76730_b hands to WorldGenTallGrass
 #[derive(Clone, Copy, PartialEq)]
-pub enum Grass
+pub(crate) enum Grass
 {
     Grass,
     Fern,
@@ -231,11 +243,12 @@ pub enum Grass
 const MAYAPPLE: Grass = Grass::Twilight("mayapple");
 const FIDDLEHEAD: Grass = Grass::Twilight(crate::ids::block::FIDDLEHEAD);
 
-pub fn grass(biome: Biome, random: &Random) -> Grass
+pub(crate) fn grass(biome: Biome, random: &Random) -> Grass
 {
     match biome
     {
         Biome::DenseForest if random.nextIntBounded(4) != 0 => Grass::Fern,
+
         Biome::DenseForest =>
         {
             if random.nextBoolean()
@@ -247,7 +260,9 @@ pub fn grass(biome: Biome, random: &Random) -> Grass
                 Grass::Grass
             }
         }
+
         Biome::EnchantedForest if random.nextIntBounded(3) > 0 => Grass::Fern,
+
         Biome::EnchantedForest =>
         {
             if chance(random, 3)
@@ -259,8 +274,10 @@ pub fn grass(biome: Biome, random: &Random) -> Grass
                 Grass::Grass
             }
         }
+
         Biome::Clearing => Grass::Grass,
         Biome::OakSavanna if chance(random, 10) => Grass::Fern,
+
         Biome::OakSavanna =>
         {
             if chance(random, 10)
@@ -272,7 +289,9 @@ pub fn grass(biome: Biome, random: &Random) -> Grass
                 Grass::Grass
             }
         }
+
         Biome::Swamp if chance(random, 4) => Grass::Fern,
+
         Biome::Swamp =>
         {
             if chance(random, 4)
@@ -284,6 +303,7 @@ pub fn grass(biome: Biome, random: &Random) -> Grass
                 Grass::Grass
             }
         }
+
         Biome::Highlands =>
         {
             if random.nextIntBounded(5) > 0
@@ -295,6 +315,7 @@ pub fn grass(biome: Biome, random: &Random) -> Grass
                 Grass::Grass
             }
         }
+
         _ =>
         {
             if chance(random, 4)
@@ -311,7 +332,7 @@ pub fn grass(biome: Biome, random: &Random) -> Grass
 
 // the 1.7 BlockFlower kinds, beta keeps only the rose and the dandelion so each takes the nearer colour
 #[derive(Clone, Copy, PartialEq)]
-pub enum Flower
+pub(crate) enum Flower
 {
     Rose,
     Dandelion,
@@ -336,7 +357,7 @@ const TULIPS: usize = 4;
 const OXEYE: usize = 8;
 
 // func_150572_a of each biome, the flower picked for one flower patch
-pub fn flower(biome: Biome, random: &Random, x: i32, z: i32) -> Flower
+pub(crate) fn flower(biome: Biome, random: &Random, x: i32, z: i32) -> Flower
 {
     match biome
     {
@@ -356,6 +377,7 @@ pub fn flower(biome: Biome, random: &Random, x: i32, z: i32) -> Flower
             };
             KINDS[kind]
         }
+
         Biome::OakSavanna =>
         {
             let scale: f64 = 200.0;
@@ -368,8 +390,10 @@ pub fn flower(biome: Biome, random: &Random, x: i32, z: i32) -> Flower
             {
                 return Flower::Dandelion;
             }
+
             KINDS[[POPPY, HOUSTONIA, OXEYE][random.nextIntBounded(3) as usize]]
         }
+
         Biome::FireflyForest =>
         {
             let scale: f64 = 48.0;
@@ -379,6 +403,7 @@ pub fn flower(biome: Biome, random: &Random, x: i32, z: i32) -> Flower
             // the source skips the blue orchid
             KINDS[if kind == 1 { 0 } else { kind }]
         }
+
         Biome::Highlands =>
         {
             if random.nextBoolean()
@@ -390,6 +415,7 @@ pub fn flower(biome: Biome, random: &Random, x: i32, z: i32) -> Flower
                 KINDS[OXEYE]
             }
         }
+
         _ =>
         {
             if random.nextIntBounded(3) > 0

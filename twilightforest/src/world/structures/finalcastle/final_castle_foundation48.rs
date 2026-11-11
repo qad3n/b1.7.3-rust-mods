@@ -1,7 +1,7 @@
 // draft from ComponentTFFinalCastleFoundation48.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(random: &Random, i: i32, sideTower: &Piece) -> Rc<Piece>
+pub(crate) fn new(random: &Random, i: i32, sideTower: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::FinalCastleFoundation48);
     init(&this, random, i, sideTower);
@@ -9,7 +9,7 @@ pub fn new(random: &Random, i: i32, sideTower: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFFinalCastleFoundation48 constructor
-pub fn init(this: &Piece, _random: &Random, i: i32, sideTower: &Piece)
+pub(crate) fn init(this: &Piece, _random: &Random, i: i32, sideTower: &Piece)
 {
     this.m_depth.set(i);
     this.m_groundLevel.set(-1);
@@ -21,13 +21,13 @@ pub fn init(this: &Piece, _random: &Random, i: i32, sideTower: &Piece)
 }
 
 // ComponentTFFinalCastleFoundation48.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFFinalCastleFoundation48.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for x in 4..45
     {
@@ -36,7 +36,9 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             this.fillDown(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, x, -1, z, sbb);
         }
     }
+
     let mid: i32 = 16;
+
     for rotation in 0..4
     {
         this.fillDownTurned(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, 3, -2, 3, rotation, sbb);
@@ -79,24 +81,27 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             this.m_deco.get().m_blockMeta,
             rotation,
         );
+
         for i in (9..45).step_by(6)
         {
             final_castle_foundation48::makePiling(this, world, sbb, mid, rotation, i);
         }
+
         final_castle_foundation48::makePiling(this, world, sbb, mid, rotation, 4);
         final_castle_foundation48::makePiling(this, world, sbb, mid, rotation, 44);
     }
+
     this.fillDownTurned(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, 21, -2, 0, 1, sbb);
     this.fillDownTurned(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, 21, -4, 1, 1, sbb);
     this.fillDownTurned(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, 21, -6, 2, 1, sbb);
     this.fillDownTurned(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, 27, -2, 0, 1, sbb);
     this.fillDownTurned(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, 27, -4, 1, 1, sbb);
     this.fillDownTurned(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, 27, -6, 2, 1, sbb);
-    return true;
+    true
 }
 
 // ComponentTFFinalCastleFoundation48.makePiling
-pub fn makePiling(this: &Piece, world: &GenWorld, sbb: StructureBox, mid: i32, rotation: i32, i: i32)
+pub(crate) fn makePiling(this: &Piece, world: &GenWorld, sbb: StructureBox, mid: i32, rotation: i32, i: i32)
 {
     this.fillDownTurned(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, i, -7, 3, rotation, sbb);
     this.fillDownTurned(world, this.m_deco.get().m_blockID, this.m_deco.get().m_blockMeta, i, -mid, 2, rotation, sbb);

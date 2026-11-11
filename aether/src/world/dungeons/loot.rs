@@ -2,7 +2,7 @@ use crate::config;
 use b173_api::terrain::Random;
 
 // an item by registry name and how many
-pub type Loot = (&'static str, i32);
+pub(crate) type Loot = (&'static str, i32);
 
 fn one(name: &'static str) -> Loot { (name, 1) }
 
@@ -15,7 +15,7 @@ fn firstFlip(random: &Random, pieces: &[&'static str]) -> Option<Loot>
 }
 
 // BronzeDungeon.getNormalLoot
-pub fn bronzeRoom(random: &Random) -> Loot
+pub(crate) fn bronzeRoom(random: &Random) -> Loot
 {
     let found: Option<Loot> = match random.nextIntBounded(15)
     {
@@ -39,7 +39,7 @@ pub fn bronzeRoom(random: &Random) -> Loot
 }
 
 // BronzeDungeon.getBronzeLoot
-pub fn bronzeTreasure(random: &Random) -> Loot
+pub(crate) fn bronzeTreasure(random: &Random) -> Loot
 {
     match random.nextIntBounded(10)
     {
@@ -74,7 +74,7 @@ fn gummy(random: &Random, spread: i32) -> Loot
 }
 
 // ComponentSilverDungeon.getNormalLoot, the last three cases fall through like the Java switch
-pub fn silverRoom(random: &Random) -> Loot
+pub(crate) fn silverRoom(random: &Random) -> Loot
 {
     let roll: i32 = random.nextIntBounded(16);
     let found: Option<Loot> = match roll
@@ -109,7 +109,7 @@ fn fallThrough(random: &Random, from: i32) -> Option<Loot>
 }
 
 // ComponentSilverDungeon.getSilverLoot, the cape and feather cases fall through when their config is off
-pub fn silverTreasure(random: &Random) -> Loot
+pub(crate) fn silverTreasure(random: &Random) -> Loot
 {
     let found: Option<Loot> = match random.nextIntBounded(14)
     {
@@ -141,7 +141,8 @@ pub fn silverTreasure(random: &Random) -> Loot
             },
         )),
         9 => Some(one("valkyrie_leggings")),
-        10 => Some(firstFlip(random, &["valkyrie_chestplate"]).unwrap_or_else(|| {
+        10 => Some(firstFlip(random, &["valkyrie_chestplate"]).unwrap_or_else(||
+        {
             one(
                 if random.nextBoolean()
                 {
@@ -161,7 +162,7 @@ pub fn silverTreasure(random: &Random) -> Loot
 }
 
 // ComponentGoldenDungeon.getGoldLoot
-pub fn goldTreasure(random: &Random) -> Loot
+pub(crate) fn goldTreasure(random: &Random) -> Loot
 {
     let found: Option<Loot> = match random.nextIntBounded(10)
     {

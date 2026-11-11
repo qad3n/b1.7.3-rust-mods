@@ -3,7 +3,7 @@ use crate::models::Program;
 use b173_api::prelude::*;
 
 // a shot the Aether fires: how it flies, what it does on a hit and how it looks
-pub struct Shot
+pub(crate) struct Shot
 {
     pub m_name: &'static str,
     pub m_texture: &'static str,
@@ -24,7 +24,7 @@ pub struct Shot
 
 // what happens where a shot lands besides its damage
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Impact
+pub(crate) enum Impact
 {
     Stick,
     Vanish,
@@ -35,7 +35,7 @@ pub enum Impact
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Look
+pub(crate) enum Look
 {
     Dart,
     Sprite,
@@ -52,17 +52,18 @@ mod arrow
     pub const STUCK_TICKS: i32 = 1200;
 }
 
-pub const GOLDEN_DART: &str = "golden_dart";
-pub const POISON_DART: &str = "poison_dart";
-pub const ENCHANTED_DART: &str = "enchanted_dart";
-pub const POISON_NEEDLE: &str = "poison_needle";
-pub const ZEPHYR_SNOWBALL: &str = "zephyr_snowball";
-pub const HAMMER: &str = "hammer_projectile";
-pub const LIGHTNING_KNIFE: &str = "lightning_knife";
-pub const FLAMING_ARROW: &str = "flaming_arrow";
+pub(crate) const GOLDEN_DART: &str = "golden_dart";
+pub(crate) const POISON_DART: &str = "poison_dart";
+pub(crate) const ENCHANTED_DART: &str = "enchanted_dart";
+pub(crate) const POISON_NEEDLE: &str = "poison_needle";
+pub(crate) const ZEPHYR_SNOWBALL: &str = "zephyr_snowball";
+pub(crate) const HAMMER: &str = "hammer_projectile";
+pub(crate) const LIGHTNING_KNIFE: &str = "lightning_knife";
+pub(crate) const FLAMING_ARROW: &str = "flaming_arrow";
 
-pub const SHOTS: [Shot; 8] = [
-    Shot {
+pub(crate) const SHOTS: [Shot; 8] = [
+    Shot
+    {
         m_name: GOLDEN_DART,
         m_texture: "aether:entity/projectile/dart/golden_dart",
         m_gravity: arrow::GRAVITY,
@@ -76,7 +77,8 @@ pub const SHOTS: [Shot; 8] = [
         m_impact: Impact::Stick,
         m_burn: 0.0,
     },
-    Shot {
+    Shot
+    {
         m_name: POISON_DART,
         m_texture: "aether:entity/projectile/dart/poison_dart",
         m_gravity: arrow::GRAVITY,
@@ -90,7 +92,8 @@ pub const SHOTS: [Shot; 8] = [
         m_impact: Impact::Stick,
         m_burn: 0.0,
     },
-    Shot {
+    Shot
+    {
         m_name: ENCHANTED_DART,
         m_texture: "aether:entity/projectile/dart/enchanted_dart",
         m_gravity: arrow::GRAVITY,
@@ -104,7 +107,8 @@ pub const SHOTS: [Shot; 8] = [
         m_impact: Impact::Stick,
         m_burn: 0.0,
     },
-    Shot {
+    Shot
+    {
         m_name: POISON_NEEDLE,
         m_texture: "aether:entity/projectile/dart/poison_needle",
         m_gravity: arrow::GRAVITY,
@@ -119,7 +123,8 @@ pub const SHOTS: [Shot; 8] = [
         m_burn: 0.0,
     },
     // EntityZephyrSnowball: no gravity, flings what it hits, gone after 150 ticks
-    Shot {
+    Shot
+    {
         m_name: ZEPHYR_SNOWBALL,
         m_texture: "minecraft:gui/items",
         m_gravity: 0.0,
@@ -134,7 +139,8 @@ pub const SHOTS: [Shot; 8] = [
         m_burn: 0.0,
     },
     // EntityHammerProjectile: straight and fast, hurts what it hits and knocks it up
-    Shot {
+    Shot
+    {
         m_name: HAMMER,
         m_texture: "aether:item/misc/hammer_projectile",
         m_gravity: 0.0,
@@ -149,7 +155,8 @@ pub const SHOTS: [Shot; 8] = [
         m_burn: 0.0,
     },
     // EntityLightningKnife: thrown, calls lightning where it lands
-    Shot {
+    Shot
+    {
         m_name: LIGHTNING_KNIFE,
         m_texture: "aether:item/weapons/lightning_knife",
         m_gravity: throwable::GRAVITY,
@@ -164,7 +171,8 @@ pub const SHOTS: [Shot; 8] = [
         m_burn: 0.0,
     },
     // EntityPhoenixArrow: an arrow that sets what it hits alight
-    Shot {
+    Shot
+    {
         m_name: FLAMING_ARROW,
         m_texture: "aether:entity/projectile/flaming_arrow",
         m_gravity: arrow::GRAVITY,
@@ -197,7 +205,7 @@ struct Flight
 }
 
 // fires a shot from a point toward a target point with a speed and EntityArrow.setThrowableHeading's spread
-pub fn fire(
+pub(crate) fn fire(
     world: World,
     name: &str,
     from: [f64; 3],
@@ -215,10 +223,12 @@ pub fn fire(
         [(dx / length + jitter()) * speed, (dy / length + jitter()) * speed, (dz / length + jitter()) * speed];
     let _ = entity.setMotion(motion);
     let _ = entity.setData(&Flight { m_owner: owner, ..Flight::default() });
+
     if let Some(owner) = owner
     {
         entity.setField(EntityField::Shooter, owner as f64);
     }
+
     Some(entity)
 }
 
@@ -231,12 +241,14 @@ struct Projectile
 fn land(shot: &Shot, entity: Entity, at: [f64; 3])
 {
     let world: World = entity.world;
+
     match shot.m_impact
     {
         Impact::Lightning =>
         {
             let _ = world.lightning(at);
         }
+
         Impact::Blast =>
         {
             for _ in 0..throwable::BLAST_PUFFS
@@ -247,9 +259,11 @@ fn land(shot: &Shot, entity: Entity, at: [f64; 3])
                 }
             }
         }
+
         Impact::Stick | Impact::Vanish =>
         {}
     }
+
     entity.kill();
 }
 
@@ -258,18 +272,22 @@ fn strike(shot: &Shot, world: World, target: &EntityInfo, motion: [f64; 3], owne
 {
     let victim: Entity = Entity { world, id: target.id };
     let speed: f64 = (motion[0] * motion[0] + motion[1] * motion[1] + motion[2] * motion[2]).sqrt();
+
     if shot.m_damage > 0.0
     {
         crate::damage::hit(victim, (speed * shot.m_damage).ceil() as i32, owner, shot.m_kind);
     }
+
     if shot.m_poison
     {
         crate::player::poison(victim);
     }
+
     if shot.m_burn > 0.0
     {
         victim.setField(EntityField::FireTicks, shot.m_burn);
     }
+
     if let Some((push, lift)) = shot.m_knockback
         && let Some(info) = victim.info()
     {
@@ -291,6 +309,7 @@ impl EntityBehavior for Projectile
         {
             return;
         }
+
         let mut flight: Flight = entity.data();
         flight.m_age += 1;
         if flight.m_age > self.m_shot.m_lifetime
@@ -298,19 +317,24 @@ impl EntityBehavior for Projectile
             entity.kill();
             return;
         }
+
         if flight.m_stuck
         {
             let _ = entity.setMotion([0.0; 3]);
             let _ = entity.setData(&flight);
+
             return;
         }
+
         let motion: [f64; 3] = info.motion;
         let to: [f64; 3] = info.pos;
         let from: [f64; 3] = [to[0] - motion[0], to[1] - motion[1], to[2] - motion[2]];
+
         if self.m_shot.m_impact == Impact::Blast
         {
             entity.world.particle("reddust", [to[0], to[1] + 0.2, to[2]], [1.0, 1.0, 1.0]);
         }
+
         if let Some(target) =
             entity.world.entitiesAlong(from, to, 0.3, flight.m_owner).into_iter().find(|hit| hit.id != entity.id)
         {
@@ -323,10 +347,12 @@ impl EntityBehavior for Projectile
                     kind::MOB,
                 );
             }
+
             strike(self.m_shot, entity.world, &target, motion, flight.m_owner);
             land(self.m_shot, entity, to);
             return;
         }
+
         if let Some(hit) = entity.world.rayTrace(from, to, false)
         {
             if self.m_shot.m_impact != Impact::Stick
@@ -334,33 +360,42 @@ impl EntityBehavior for Projectile
                 land(self.m_shot, entity, hit.point);
                 return;
             }
+
             let _ = entity.setPosition(hit.point);
+
             flight.m_stuck = true;
+
             let _ = entity.setMotion([0.0; 3]);
             let _ = entity.setData(&flight);
+
             return;
         }
+
         let _ = entity.setMotion([
             motion[0] * self.m_shot.m_drag,
             motion[1] * self.m_shot.m_drag - self.m_shot.m_gravity,
             motion[2] * self.m_shot.m_drag,
         ]);
+
         let _ = entity.setData(&flight);
     }
 
     fn pose(&self, input: &PoseInput) -> Pose
     {
         let mut program: Program = Program::new();
+
         match self.m_shot.m_look
         {
             Look::Dart => dart(&mut program, input),
             Look::Sprite => snowball(&mut program),
+
             Look::Icon =>
             {
                 program.texture(self.m_shot.m_texture);
                 icon(&mut program);
             }
         }
+
         Pose { pre: Vec::new(), model: program.take() }
     }
 }
@@ -369,8 +404,10 @@ impl EntityBehavior for Projectile
 fn dart(program: &mut Program, input: &PoseInput)
 {
     const SIZE: f32 = 0.05625;
+
     let [tail0, tail1, tail2, tail3]: [f32; 4] = [0.0, 0.15625, 15.0 / 32.0, 20.0 / 32.0];
     let [shaft0, shaft1, shaft2, shaft3]: [f32; 4] = [0.0, 0.5, 10.0 / 32.0, 15.0 / 32.0];
+
     program.rotate(input.head_yaw - 90.0, 0.0, 1.0, 0.0).rotate(input.head_pitch, 0.0, 0.0, 1.0);
     program.rotate(45.0, 1.0, 0.0, 0.0).scale(SIZE, SIZE, SIZE).translate(-4.0, 0.0, 0.0);
     program.normal(SIZE, 0.0, 0.0).quad([
@@ -385,6 +422,7 @@ fn dart(program: &mut Program, input: &PoseInput)
         [-7.0, -2.0, 2.0, tail1, tail3],
         [-7.0, -2.0, -2.0, tail0, tail3],
     ]);
+
     for _ in 0..5
     {
         program.rotate(72.0, 1.0, 0.0, 0.0).normal(0.0, 0.0, SIZE).quad([
@@ -411,6 +449,7 @@ fn icon(program: &mut Program)
 fn snowball(program: &mut Program)
 {
     const ICON: [f32; 4] = [14.0 / 16.0, 0.0, 15.0 / 16.0, 1.0 / 16.0];
+
     let [u0, v0, u1, v1] = ICON;
     program.faceCamera().scale(0.5, 0.5, 0.5).normal(0.0, 1.0, 0.0).quad([
         [-0.5, -0.25, 0.0, u0, v1],
@@ -420,13 +459,14 @@ fn snowball(program: &mut Program)
     ]);
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for shot in &SHOTS
     {
         ctx.entities().register(
             shot.m_name,
-            EntitySpec {
+            EntitySpec
+            {
                 template: Identifier::parse("minecraft:projectile").ok(),
                 texture: Some(shot.m_texture.to_owned()),
                 size: Some([0.5, 0.5]),
@@ -439,5 +479,6 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             Some(std::rc::Rc::new(Projectile { m_shot: shot })),
         )?;
     }
+
     Ok(())
 }

@@ -64,19 +64,23 @@ const KINDS: [KindRow; 3] = [
 fn registerKinds(ctx: &mut RegisterCtx) -> Result<()>
 {
     let structures: Structures = ctx.structures();
+
     for row in &KINDS
     {
         match row.m_finder
         {
             Some(finder) =>
             {
-                structures.withFinder(row.m_name, row.m_label, super::DIMENSION, move |seed, chunkX, chunkZ| {
+                structures.withFinder(row.m_name, row.m_label, super::DIMENSION, move |seed, chunkX, chunkZ|
+                {
                     finder(&structure::candidate(seed, chunkX, chunkZ), chunkX, chunkZ)
                 })?
             }
+
             None => structures.register(row.m_name, row.m_label, super::DIMENSION)?,
         };
     }
+
     Ok(())
 }
 
@@ -90,6 +94,7 @@ fn record(world: &GenWorld, kind: usize, origin: BlockPos, rooms: &[StructureBox
         warn(&format!("structure name {name} is not an identifier"));
         return;
     };
+
     let pieces: Vec<StructurePiece> = rooms.iter().map(|room| room.piece("")).collect();
     if let Err(error) = world.m_world.addStructure(structure::start(&id, origin, pieces))
     {
@@ -105,28 +110,35 @@ fn startOrigin(chunkX: i32, chunkZ: i32, component: &StructureBox) -> BlockPos
 }
 
 // MapGenStructure.generateStructuresInChunk for the silver and golden dungeons, before the biome decorates
-pub fn structures(world: &GenWorld, random: &Random, chunk: &ChunkInfo)
+pub(crate) fn structures(world: &GenWorld, random: &Random, chunk: &ChunkInfo)
 {
     let clip: StructureBox = StructureBox::populated(chunk.x, chunk.z);
     let mut silvers: Vec<(i32, i32, silver::Start)> = Vec::new();
-    structure::candidates(chunk.seed, chunk.x, chunk.z, RANGE, |x, z, candidate| {
+
+    structure::candidates(chunk.seed, chunk.x, chunk.z, RANGE, |x, z, candidate|
+    {
         if silver::canSpawn(candidate, x, z)
         {
             silvers.push((x, z, silver::start(chunk.seed, x, z)));
         }
     });
+
     for (x, z, start) in silvers.iter().filter(|(_, _, start)| start.m_box.intersects(&clip))
     {
         record(world, SILVER, startOrigin(*x, *z, &start.m_box), &[start.m_box]);
         silver::generate(world, random, start, clip);
     }
+
     let mut goldens: Vec<(i32, i32, golden::Start)> = Vec::new();
-    structure::candidates(chunk.seed, chunk.x, chunk.z, RANGE, |x, z, candidate| {
+
+    structure::candidates(chunk.seed, chunk.x, chunk.z, RANGE, |x, z, candidate|
+    {
         if golden::canSpawn(candidate, x, z)
         {
             goldens.push((x, z, golden::start(chunk.seed, x, z)));
         }
     });
+
     for (x, z, start) in goldens.iter().filter(|(_, _, start)| start.m_box.intersects(&clip))
     {
         record(world, GOLDEN, startOrigin(*x, *z, &start.m_box), &[start.m_box]);
@@ -135,7 +147,7 @@ pub fn structures(world: &GenWorld, random: &Random, chunk: &ChunkInfo)
 }
 
 // the bronze dungeon tries once per chunk after the decorations
-pub fn bronze(world: &GenWorld, random: &Random, x: i32, z: i32)
+pub(crate) fn bronze(world: &GenWorld, random: &Random, x: i32, z: i32)
 {
     let y: i32 = random.nextIntBounded(bronze_spot::SPREAD) + bronze_spot::LOWEST;
     let rooms: Vec<StructureBox> = bronze::generate(world, random, x, y, z);
@@ -171,13 +183,15 @@ const STONES: [Stone; 9] = [
     stone("locked_hellfire_stone", "hellfire_stone", false),
     stone("locked_light_hellfire_stone", "light_hellfire_stone", true),
     Stone { m_name: "carved_trap", m_texture: "carved_stone", m_light: false, m_trapSpawns: Some(("sentry", BESIDE)) },
-    Stone {
+    Stone
+    {
         m_name: "angelic_trap",
         m_texture: "angelic_stone",
         m_light: false,
         m_trapSpawns: Some(("valkyrie", ON_TOP)),
     },
-    Stone {
+    Stone
+    {
         m_name: "hellfire_trap",
         m_texture: "hellfire_stone",
         m_light: false,
@@ -211,7 +225,7 @@ mod block
 }
 
 // the plain stone a locked dungeon block turns into once its boss is beaten
-pub fn unlocked(name: &str) -> &str { name.trim_start_matches("locked_") }
+pub(crate) fn unlocked(name: &str) -> &str { name.trim_start_matches("locked_") }
 
 // BlockDungeonTrap.onEntityWalking: a player springs it, it turns to plain stone and calls its guard
 struct Trap
@@ -230,6 +244,7 @@ impl BlockBehavior for Trap
         {
             return;
         }
+
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let _ = world.setBlock(pos, crate::ids::blockId(self.m_stone), 0);
@@ -255,6 +270,7 @@ fn releaseMimic(ctx: &mut BlockCtx, player: Player)
     {
         mimic.setField(EntityField::TargetId, player.id as f64);
     }
+
     let _ = world.setBlock(pos, 0, 0);
 }
 
@@ -275,6 +291,7 @@ impl BlockBehavior for MimicChest
             );
             releaseMimic(ctx, player);
         }
+
         true
     }
 
@@ -322,6 +339,7 @@ impl BlockBehavior for TreasureChest
         {
             return true;
         }
+
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let _ = world.setBlock(pos, crate::ids::blockId(OPEN_TREASURE), 0);
@@ -333,7 +351,9 @@ impl BlockBehavior for TreasureChest
             let (name, count): loot::Loot = (KEYS[kind].m_loot)(&random);
             let _ = world.setTileSlot(pos, slot, Some(ItemStack::of(name, count)));
         }
+
         let _ = player.setHeld((held.count > 1).then(|| ItemStack { count: held.count - 1, ..held }));
+
         true
     }
 }
@@ -349,6 +369,7 @@ impl BlockBehavior for OpenTreasureChest
         {
             let _ = player.openScreen(TREASURE, Some(ctx.pos()), Vec::new());
         }
+
         true
     }
 }
@@ -383,6 +404,7 @@ impl Screen for TreasureScreen
         let top: i32 = gui::ROWS * gui::SLOT + gui::TOP;
         draw.texture(gui::SHEET, 0, 0, 0, 0, gui::WIDTH, top);
         draw.texture(gui::SHEET, 0, top, 0, gui::BOTTOM_V, gui::WIDTH, gui::BOTTOM);
+
         let kind: i32 = match (self.m_pos, localPlayer().and_then(Player::info))
         {
             (Some(pos), Some(local)) => World { dimension: local.world }.tileData(pos),
@@ -414,6 +436,7 @@ fn registerChests(ctx: &mut RegisterCtx) -> Result<()>
             .drops(Vec::new())
             .behavior(MimicChest),
     )?;
+
     let treasureFaces =
         || faces(texture("treasure_chest_top"), texture("treasure_chest_side"), texture("treasure_chest_front"));
     ctx.blocks().register(
@@ -444,12 +467,15 @@ fn registerChests(ctx: &mut RegisterCtx) -> Result<()>
             .tileEntity(OPEN_TREASURE)
             .behavior(OpenTreasureChest),
     )?;
+
     let mut screen: ScreenBuilder =
         ScreenBuilder::new("", gui::WIDTH, gui::ROWS * gui::SLOT + gui::TOP + gui::BOTTOM + 1);
+
     for slot in 0..block::CHEST_SLOTS
     {
         screen = screen.slot(slot, gui::LEFT + slot % 9 * gui::SLOT, gui::SLOT + slot / 9 * gui::SLOT);
     }
+
     ctx.screens().register(
         TREASURE,
         screen.playerInventory(gui::LEFT, gui::INVENTORY_Y),
@@ -457,9 +483,10 @@ fn registerChests(ctx: &mut RegisterCtx) -> Result<()>
     )
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerKinds(ctx)?;
+
     for row in &STONES
     {
         let mut spec: BlockSpecBuilder = BlockSpecBuilder::template("minecraft:block")
@@ -468,15 +495,19 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             .hardness(block::UNBREAKABLE)
             .resistance(block::LOCKED_RESISTANCE)
             .sound("stone");
+
         if row.m_light
         {
             spec = spec.light(block::LIGHT);
         }
+
         if let Some((guard, offset)) = row.m_trapSpawns
         {
             spec = spec.behavior(Trap { m_stone: row.m_texture, m_guard: guard, m_offset: offset });
         }
+
         ctx.blocks().register(row.m_name, spec)?;
     }
+
     registerChests(ctx)
 }

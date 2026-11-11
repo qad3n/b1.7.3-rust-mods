@@ -1,7 +1,7 @@
 // draft from ComponentTFTowerRoofGableForwards.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
+pub(crate) fn new(i: i32, wing: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::TowerRoofGableForwards);
     init(&this, i, wing);
@@ -9,24 +9,26 @@ pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFTowerRoofGableForwards constructor
-pub fn init(this: &Piece, i: i32, wing: &Piece)
+pub(crate) fn init(this: &Piece, i: i32, wing: &Piece)
 {
-    tower_roof::init(this, i, &wing);
+    tower_roof::init(this, i, wing);
     this.setMode(wing.mode());
     this.m_size.set(wing.m_size.get() + 2);
     this.m_height.set(this.m_size.get());
-    tower_roof::makeAttachedOverhangBB(this, &wing);
+    tower_roof::makeAttachedOverhangBB(this, wing);
 }
 
 // ComponentTFTowerRoofGableForwards.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     let slabMeta: i32 = 2;
     let slopeChange: i32 = this.slopeChangeForSize(this.m_size.get());
+
     for y in 0..=this.m_height.get()
     {
         let min: i32;
         let max: i32;
+
         if y < slopeChange
         {
             min = y;
@@ -37,6 +39,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             min = (y + slopeChange) / 2;
             max = (this.m_size.get() - ((y + slopeChange) / 2)) - 1;
         }
+
         for x in 0..=(this.m_size.get() - 2)
         {
             for z in min..=max
@@ -52,6 +55,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             }
         }
     }
+
     let top: i32 = (this.m_size.get() + 1) - slopeChange;
     let zMid: i32 = this.m_size.get() / 2;
     this.placeBlock(world, blk("wooden_slab"), slabMeta | 10, this.m_size.get() - 1, top - 1, zMid, sbb);
@@ -60,18 +64,18 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
     this.placeBlock(world, blk("planks"), slabMeta, this.m_size.get() - 2, top, zMid, sbb);
     this.placeBlock(world, blk("planks"), slabMeta, this.m_size.get() - 1, top, zMid, sbb);
     this.placeBlock(world, blk("planks"), slabMeta, this.m_size.get() - 1, top + 1, zMid, sbb);
-    return true;
+    true
 }
 
 // ComponentTFTowerRoofGableForwards.slopeChangeForSize
-pub fn slopeChangeForSize(this: &Piece, _pSize: i32) -> i32
+pub(crate) fn slopeChangeForSize(this: &Piece, _pSize: i32) -> i32
 {
     if this.m_size.get() > 10
     {
-        return 3;
+        3
     }
     else
     {
-        return if this.m_size.get() > 6 { 2 } else { 1 };
+        if this.m_size.get() > 6 { 2 } else { 1 }
     }
 }

@@ -1,7 +1,7 @@
 // draft from ComponentTFMazeDeadEndChest.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, x: i32, y: i32, z: i32, rotation: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, x: i32, y: i32, z: i32, rotation: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MazeDeadEndChest);
     init(&this, i, x, y, z, rotation);
@@ -9,14 +9,14 @@ pub fn new(i: i32, x: i32, y: i32, z: i32, rotation: i32) -> Rc<Piece>
 }
 
 // ComponentTFMazeDeadEndChest constructor
-pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, rotation: i32)
+pub(crate) fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, rotation: i32)
 {
     maze_dead_end::init(this, i, x, y, z, rotation);
     this.m_spawnListIndex.set(i32::MAX);
 }
 
 // ComponentTFMazeDeadEndChest.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     this.placeBlock(world, blk("planks"), 0, 2, 1, 4, sbb);
     this.placeBlock(world, blk("planks"), 0, 3, 1, 4, sbb);
@@ -27,5 +27,5 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.fillMeta(world, sbb, 1, 1, 0, 4, 3, 1, blk("tf:mazestone"), 2, blk("air"), 0, false);
     this.fillMeta(world, sbb, 1, 4, 0, 4, 4, 1, blk("tf:mazestone"), 3, blk("air"), 0, false);
     this.fill(world, sbb, 2, 1, 0, 3, 3, 1, blk("iron_bars"), blk("air"), false);
-    return true;
+    true
 }

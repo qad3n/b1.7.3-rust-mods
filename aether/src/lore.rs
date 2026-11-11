@@ -146,6 +146,7 @@ fn loreKey(stack: &ItemStack) -> String
     {
         return format!("lore.minecraft.{}", id.path());
     }
+
     let path: &str = id.path();
     let key: &str = LORE_KEYS.iter().find(|(name, _)| *name == path).map_or(path, |(_, key)| key);
     format!("aether.lore.{key}")
@@ -156,6 +157,7 @@ fn wrap(text: &str, width: i32) -> Vec<String>
 {
     let mut lines: Vec<String> = Vec::new();
     let mut line: String = String::new();
+
     for word in text.split(' ')
     {
         let candidate: String = if line.is_empty()
@@ -166,15 +168,18 @@ fn wrap(text: &str, width: i32) -> Vec<String>
         {
             format!("{line} {word}")
         };
+
         if textWidth(&candidate) <= width
         {
             line = candidate;
             continue;
         }
+
         if !line.is_empty()
         {
             lines.push(std::mem::take(&mut line));
         }
+
         let mut rest: String = word.to_owned();
         while textWidth(&rest) > width && rest.chars().count() > 1
         {
@@ -185,12 +190,15 @@ fn wrap(text: &str, width: i32) -> Vec<String>
             lines.push(rest.chars().take(fit).collect());
             rest = rest.chars().skip(fit).collect();
         }
+
         line = rest;
     }
+
     if !line.is_empty()
     {
         lines.push(line);
     }
+
     lines
 }
 
@@ -205,8 +213,10 @@ impl ItemBehavior for LoreBook
         if world.isAuthority()
         {
             let _ = player.openScreen(NAME, None, Vec::new());
+
             crate::progress::read(player);
         }
+
         Use::Pass
     }
 }
@@ -238,11 +248,13 @@ fn drawButton(draw: &mut Draw, corner: [i32; 2], label: &str, enabled: bool, mou
         (true, false) => 1,
         (true, true) => 2,
     };
+
     let [x, y] = corner;
     let half: i32 = button::SIZE / 2;
     let v: i32 = button::ROW_V + state * button::SIZE;
     draw.texture(WIDGETS, x, y, 0, v, half, button::SIZE);
     draw.texture(WIDGETS, x + half, y, button::RIGHT_U - half, v, half, button::SIZE);
+
     let color: u32 = match state
     {
         0 => button::DISABLED_COLOR,
@@ -265,6 +277,7 @@ impl LoreScreen
                     .m_current
                     .as_ref()
                     .is_some_and(|current| current.item == stack.item && current.damage == stack.damage);
+
                 if !same
                 {
                     self.m_page = 0;
@@ -272,6 +285,7 @@ impl LoreScreen
                     self.m_current = Some(stack);
                 }
             }
+
             None =>
             {
                 self.m_page = 0;
@@ -295,9 +309,11 @@ impl LoreScreen
                 TEXT_COLOR,
             );
         }
+
         let nameLines: i32 = names.len() as i32 - 1;
         let lines: Vec<String> = wrap(&self.m_text, layout::WRAP);
         let perPage: i32 = layout::LINES_PER_PAGE;
+
         for (index, line) in lines.iter().enumerate()
         {
             let size: i32 = index as i32;
@@ -305,6 +321,7 @@ impl LoreScreen
             {
                 continue;
             }
+
             let row: i32 = if self.m_page >= 1
             {
                 size - (perPage - nameLines) * self.m_page
@@ -322,6 +339,7 @@ impl LoreScreen
             {
                 layout::LEFT_CENTER
             };
+
             let top: i32 = if right
             {
                 layout::RIGHT_TOP
@@ -332,6 +350,7 @@ impl LoreScreen
             };
             draw.plain(center - textWidth(line) / 2, top + layout::LINE * row, line, TEXT_COLOR);
         }
+
         self.m_hasPrevious = self.m_page != 0;
         self.m_hasNext = lines.len() as i32 > perPage * (self.m_page + 1);
     }
@@ -356,19 +375,24 @@ impl Screen for LoreScreen
         {
             draw.region(texture, rect, uv, size);
         }
+
         let stack: Option<ItemStack> = localPlayer().and_then(|player| player.openSlot(0));
         self.follow(stack);
+
         match self.m_current.clone()
         {
             Some(stack) => self.drawLore(draw, &stack),
+
             None =>
             {
                 self.m_hasPrevious = false;
                 self.m_hasNext = false;
             }
         }
+
         drawButton(draw, self.m_previous, "<", self.m_hasPrevious, mouse);
         drawButton(draw, self.m_next, ">", self.m_hasNext, mouse);
+
         for (label, x, y) in LABELS
         {
             draw.plain(x, y, label, TEXT_COLOR);
@@ -381,6 +405,7 @@ impl Screen for LoreScreen
         {
             return;
         }
+
         if self.m_hasPrevious && inside(self.m_previous, x, y)
         {
             self.m_page -= 1;
@@ -392,7 +417,7 @@ impl Screen for LoreScreen
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let [slotX, slotY] = layout::LORE_SLOT;
     let [inventoryX, inventoryY] = layout::INVENTORY;

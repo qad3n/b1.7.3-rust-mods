@@ -1,7 +1,7 @@
 // draft from ComponentTFMushroomTowerMainBridge.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MushroomTowerMainBridge);
     init(&this, i, x, y, z, pSize, pHeight, direction);
@@ -9,13 +9,13 @@ pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: 
 }
 
 // ComponentTFMushroomTowerMainBridge constructor
-pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, _pSize: i32, pHeight: i32, direction: i32)
+pub(crate) fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, _pSize: i32, pHeight: i32, direction: i32)
 {
     mushroom_tower_bridge::init(this, i, x, y, z, 11, pHeight, direction);
 }
 
 // ComponentTFMushroomTowerMainBridge.makeTowerWing
-pub fn makeTowerWing(
+pub(crate) fn makeTowerWing(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -33,7 +33,7 @@ pub fn makeTowerWing(
     dx = mushroom_tower_wing::adjustCoordinates(this, dx[0], dx[1], dx[2], 15, direction, list);
     let wing: Rc<Piece> = mushroom_tower_main::new7b(index, dx[0], dx[1], dx[2], 15, wingHeight, direction);
     list.push(Rc::clone(&wing));
-    wing.build(&Rc::clone(&list[(0) as usize]), list, random);
+    wing.build(&Rc::clone(&list[0usize]), list, random);
     this.addOpening(x, y, z, rotation);
-    return true;
+    true
 }

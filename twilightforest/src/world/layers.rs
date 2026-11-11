@@ -20,33 +20,39 @@ struct Seeds
 
 impl Seeds
 {
-    fn new(seed: i64) -> Seeds
+    fn new(seed: i64) -> Self
     {
         let mut base: i64 = seed;
+
         for _ in 0..3
         {
             base = step(base).wrapping_add(seed);
         }
-        Seeds { m_base: base, m_world: 0, m_chunk: 0 }
+
+        Self { m_base: base, m_world: 0, m_chunk: 0 }
     }
 
     fn initWorld(&mut self, seed: i64)
     {
         let mut world: i64 = seed;
+
         for _ in 0..3
         {
             world = step(world).wrapping_add(self.m_base);
         }
+
         self.m_world = world;
     }
 
     fn initChunk(&mut self, x: i64, z: i64)
     {
         let mut chunk: i64 = self.m_world;
+
         for offset in [x, z, x, z]
         {
             chunk = step(chunk).wrapping_add(offset);
         }
+
         self.m_chunk = chunk;
     }
 
@@ -57,6 +63,7 @@ impl Seeds
         {
             value += bound;
         }
+
         self.m_chunk = step(self.m_chunk).wrapping_add(self.m_world);
         value
     }
@@ -86,6 +93,7 @@ impl Seeds
         {
             return c;
         }
+
         self.pick(&[a, b, c, d])
     }
 }
@@ -105,11 +113,11 @@ enum Kind
     Voronoi,
 }
 
-pub struct Layer
+pub(crate) struct Layer
 {
     m_kind: Kind,
     m_seeds: Seeds,
-    m_parent: Option<Box<Layer>>,
+    m_parent: Option<Box<Self>>,
 }
 
 const NONE: i32 = -1;
@@ -137,6 +145,7 @@ fn streamBetween(first: i32, second: i32) -> bool
     {
         return false;
     }
+
     let paired: bool = NO_STREAM.iter().any(|(left, right)|
     {
         (first == id(*left) && second == id(*right)) || (first == id(*right) && second == id(*left))
@@ -145,6 +154,7 @@ fn streamBetween(first: i32, second: i32) -> bool
     {
         return false;
     }
+
     let lake: i32 = id(Biome::Lake);
     let clearing: i32 = id(Biome::Clearing);
     let savanna: i32 = id(Biome::OakSavanna);
@@ -168,9 +178,9 @@ fn neighbours(input: &[i32], width: usize, dx: usize, dz: usize) -> [i32; 5]
 
 impl Layer
 {
-    fn new(seed: i64, kind: Kind, parent: Option<Layer>) -> Layer
+    fn new(seed: i64, kind: Kind, parent: Option<Self>) -> Self
     {
-        Layer { m_kind: kind, m_seeds: Seeds::new(seed), m_parent: parent.map(Box::new) }
+        Self { m_kind: kind, m_seeds: Seeds::new(seed), m_parent: parent.map(Box::new) }
     }
 
     fn initWorld(&mut self, seed: i64)
@@ -179,16 +189,18 @@ impl Layer
         {
             parent.initWorld(seed);
         }
+
         if let Kind::RiverMix(rivers) = &mut self.m_kind
         {
             rivers.initWorld(seed);
         }
+
         self.m_seeds.initWorld(seed);
     }
 
-    fn parent(&mut self) -> &mut Layer { self.m_parent.as_mut().expect("a derived layer reads a parent") }
+    fn parent(&mut self) -> &mut Self { self.m_parent.as_mut().expect("a derived layer reads a parent") }
 
-    pub fn ints(&mut self, x: i32, z: i32, width: i32, depth: i32) -> Vec<i32>
+    pub(crate) fn ints(&mut self, x: i32, z: i32, width: i32, depth: i32) -> Vec<i32>
     {
         match self.m_kind
         {
@@ -205,11 +217,13 @@ impl Layer
     fn biomes(&mut self, x: i32, z: i32, width: i32, depth: i32) -> Vec<i32>
     {
         let mut output: Vec<i32> = Vec::with_capacity((width * depth) as usize);
+
         for dz in 0..depth
         {
             for dx in 0..width
             {
                 self.m_seeds.initChunk(i64::from(dx + x), i64::from(dz + z));
+
                 let biome: Biome = if self.m_seeds.next(RARE_ODDS) == 0
                 {
                     RARE[self.m_seeds.next(RARE.len() as i32) as usize]
@@ -221,6 +235,7 @@ impl Layer
                 output.push(id(biome));
             }
         }
+
         output
     }
 
@@ -228,19 +243,22 @@ impl Layer
     fn keyBiomes(&mut self, x: i32, z: i32, width: i32, depth: i32) -> Vec<i32>
     {
         let source: Vec<i32> = self.parent().ints(x, z, width, depth);
-        let mut output: Vec<i32> = source.clone();
+        let mut output: Vec<i32> = source;
+
         for dz in 0..depth
         {
             for dx in 0..width
             {
                 let (mapX, mapZ): (i32, i32) = (dx + x, dz + z);
                 self.m_seeds.initChunk(i64::from(mapX | 3), i64::from(mapZ | 3));
+
                 let ox: i32 = self.m_seeds.next(3) + 1;
                 let oz: i32 = self.m_seeds.next(3) + 1;
                 if (mapX & 3) != ox || (mapZ & 3) != oz
                 {
                     continue;
                 }
+
                 let index: i32 = match (mapX & 4 == 0, mapZ & 4 == 0)
                 {
                     (true, true) => 0,
@@ -251,12 +269,14 @@ impl Layer
                 output[(dx + dz * width) as usize] = self.keyBiome(mapX, mapZ, index);
             }
         }
+
         output
     }
 
     fn keyBiome(&mut self, mapX: i32, mapZ: i32, index: i32) -> i32
     {
         self.m_seeds.initChunk(i64::from((mapX + 4) >> 3), i64::from((mapZ + 4) >> 3));
+
         let offset: i32 = self.m_seeds.next(4);
         let biome: Biome = match (index + offset) % 4
         {
@@ -275,14 +295,17 @@ impl Layer
         let input: Vec<i32> = self.parent().ints(x - 1, z - 1, width + 2, depth + 2);
         let mut output: Vec<i32> = Vec::with_capacity((width * depth) as usize);
         let (offX, offZ): (i32, i32) = (x & 3, z & 3);
+
         for dz in 0..depth as usize
         {
             for dx in 0..width as usize
             {
                 let [right, left, up, down, center] = neighbours(&input, wide, dx, dz);
+
                 let value: i32 = match self.m_kind
                 {
                     Kind::Companions => companion(center, [right, left, up, down]),
+
                     Kind::ThornBorder =>
                     {
                         let corners: [i32; 4] = [
@@ -293,18 +316,21 @@ impl Layer
                         ];
                         thorns(center, [right, left, up, down], corners)
                     }
+
                     Kind::Stream =>
                     {
                         // GenLayerTFStream names the same cells left right down up
                         let streams: bool = [right, left, up, down].iter().any(|other| streamBetween(center, *other));
                         if streams { id(Biome::Stream) } else { NONE }
                     }
+
                     _ =>
                     {
                         let centerX: i32 = ((dx as i32 + offX + 1) & -4) - offX;
                         let centerZ: i32 = ((dz as i32 + offZ + 1) & -4) - offZ;
                         let near: bool = (centerX - 1..=centerX + 1).contains(&(dx as i32))
                             && (centerZ - 1..=centerZ + 1).contains(&(dz as i32));
+
                         if near
                         {
                             input[(centerX + 1) as usize + (centerZ + 1) as usize * wide]
@@ -318,6 +344,7 @@ impl Layer
                 output.push(value);
             }
         }
+
         output
     }
 
@@ -332,16 +359,20 @@ impl Layer
         let zoomedDepth: i32 = (parentDepth - 1) << 1;
         let mut zoomed: Vec<i32> = vec![0; (zoomedWidth * zoomedDepth) as usize];
         let at = |px: i32, pz: i32| input[(px + pz * parentWidth) as usize];
+
         for pz in 0..parentDepth - 1
         {
             let mut index: i32 = (pz << 1) * zoomedWidth;
             let mut topLeft: i32 = at(0, pz);
             let mut bottomLeft: i32 = at(0, pz + 1);
+
             for px in 0..parentWidth - 1
             {
                 self.m_seeds.initChunk(i64::from((px + parentX) << 1), i64::from((pz + parentZ) << 1));
+
                 let topRight: i32 = at(px + 1, pz);
                 let bottomRight: i32 = at(px + 1, pz + 1);
+
                 zoomed[index as usize] = topLeft;
                 zoomed[(index + zoomedWidth) as usize] = self.m_seeds.pick(&[topLeft, bottomLeft]);
                 index += 1;
@@ -352,6 +383,7 @@ impl Layer
                 bottomLeft = bottomRight;
             }
         }
+
         crop(&zoomed, zoomedWidth, x & 1, z & 1, width, depth)
     }
 
@@ -361,6 +393,7 @@ impl Layer
         let wide: usize = (width + 2) as usize;
         let input: Vec<i32> = self.parent().ints(x - 1, z - 1, width + 2, depth + 2);
         let mut output: Vec<i32> = Vec::with_capacity((width * depth) as usize);
+
         for dz in 0..depth as usize
         {
             for dx in 0..width as usize
@@ -377,6 +410,7 @@ impl Layer
                     {
                         center = left;
                     }
+
                     if up == down
                     {
                         center = up;
@@ -385,6 +419,7 @@ impl Layer
                 output.push(center);
             }
         }
+
         output
     }
 
@@ -392,11 +427,13 @@ impl Layer
     fn riverMix(&mut self, x: i32, z: i32, width: i32, depth: i32) -> Vec<i32>
     {
         let biomes: Vec<i32> = self.parent().ints(x, z, width, depth);
+
         let Kind::RiverMix(rivers) = &mut self.m_kind
         else
         {
             return biomes;
         };
+
         let streams: Vec<i32> = rivers.ints(x, z, width, depth);
         let stream: i32 = id(Biome::Stream);
         biomes
@@ -430,15 +467,18 @@ impl Layer
         let at = |px: i32, pz: i32| input[(px + pz * parentWidth) as usize];
         let jitter: f64 = 3.6;
         let resolution: i32 = 1024;
+
         for pz in 0..parentDepth - 1
         {
             let mut topLeft: i32 = at(0, pz);
             let mut bottomLeft: i32 = at(0, pz + 1);
+
             for px in 0..parentWidth - 1
             {
                 let mut corner = |cx: i32, cz: i32, shiftX: f64, shiftZ: f64| -> (f64, f64)
                 {
                     self.m_seeds.initChunk(i64::from((px + parentX + cx) << 2), i64::from((pz + parentZ + cz) << 2));
+
                     let first: f64 =
                         (f64::from(self.m_seeds.next(resolution)) / f64::from(resolution) - 0.5) * jitter + shiftX;
                     let second: f64 =
@@ -451,9 +491,11 @@ impl Layer
                 let (d7, d8): (f64, f64) = corner(1, 1, 4.0, 4.0);
                 let topRight: i32 = at(px + 1, pz) & 0xFF;
                 let bottomRight: i32 = at(px + 1, pz + 1) & 0xFF;
+
                 for row in 0..4
                 {
                     let mut index: usize = (((pz << 2) + row) * zoomedWidth + (px << 2)) as usize;
+
                     for column in 0..4
                     {
                         let (r, c): (f64, f64) = (f64::from(row), f64::from(column));
@@ -482,10 +524,12 @@ impl Layer
                         index += 1;
                     }
                 }
+
                 topLeft = topRight;
                 bottomLeft = bottomRight;
             }
         }
+
         crop(&zoomed, zoomedWidth, x & 3, z & 3, width, depth)
     }
 }
@@ -493,11 +537,13 @@ impl Layer
 fn crop(source: &[i32], sourceWidth: i32, offX: i32, offZ: i32, width: i32, depth: i32) -> Vec<i32>
 {
     let mut output: Vec<i32> = Vec::with_capacity((width * depth) as usize);
+
     for row in 0..depth
     {
         let start: usize = ((row + offZ) * sourceWidth + offX) as usize;
         output.extend_from_slice(&source[start..start + width as usize]);
     }
+
     output
 }
 
@@ -529,7 +575,7 @@ fn thorns(center: i32, around: [i32; 4], corners: [i32; 4]) -> i32
 }
 
 // the two maps the world reads, one cell per four blocks for terrain and one per block for everything else
-pub struct BiomeMaps
+pub(crate) struct BiomeMaps
 {
     pub m_coarse: Layer,
     pub m_fine: Layer,
@@ -543,6 +589,7 @@ fn zooms(mut parent: Layer, seeds: std::ops::Range<i64>) -> Layer
     {
         parent = layer(seed, Kind::Zoom, parent);
     }
+
     parent
 }
 
@@ -558,17 +605,19 @@ fn zoomedChain() -> Layer
     zooms(thorns, 1002..1006)
 }
 
-pub fn build(seed: i64) -> BiomeMaps
+pub(crate) fn build(seed: i64) -> BiomeMaps
 {
     let streams: Layer = layer(1, Kind::Stream, zoomedChain());
     let smooth: Layer = layer(7000, Kind::Smooth, streams);
     let mut mixed: Layer = Layer::new(100, Kind::RiverMix(Box::new(smooth)), Some(zoomedChain()));
+
     let mut fine: Layer = layer(10, Kind::Voronoi,
     {
         let streams: Layer = layer(1, Kind::Stream, zoomedChain());
         let smooth: Layer = layer(7000, Kind::Smooth, streams);
         Layer::new(100, Kind::RiverMix(Box::new(smooth)), Some(zoomedChain()))
     });
+
     mixed.initWorld(seed);
     fine.initWorld(seed);
     BiomeMaps { m_coarse: mixed, m_fine: fine }

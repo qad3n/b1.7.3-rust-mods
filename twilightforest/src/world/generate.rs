@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 // the world a generator writes into, with block ids and properties cached for one populate call
-pub struct GenWorld
+pub(crate) struct GenWorld
 {
     pub m_world: World,
     m_info: RefCell<HashMap<i32, BlockInfo>>,
@@ -12,40 +12,41 @@ pub struct GenWorld
 
 impl GenWorld
 {
-    pub fn new(world: World) -> GenWorld
+    pub(crate) fn new(world: World) -> Self
     {
-        GenWorld { m_world: world, m_info: RefCell::new(HashMap::new()), m_ids: RefCell::new(HashMap::new()) }
+        Self { m_world: world, m_info: RefCell::new(HashMap::new()), m_ids: RefCell::new(HashMap::new()) }
     }
 
-    pub fn block(&self, x: i32, y: i32, z: i32) -> i32 { self.m_world.block(BlockPos::new(x, y, z)) }
+    pub(crate) fn block(&self, x: i32, y: i32, z: i32) -> i32 { self.m_world.block(BlockPos::new(x, y, z)) }
 
-    pub fn meta(&self, x: i32, y: i32, z: i32) -> i32 { self.m_world.meta(BlockPos::new(x, y, z)) }
+    pub(crate) fn meta(&self, x: i32, y: i32, z: i32) -> i32 { self.m_world.meta(BlockPos::new(x, y, z)) }
 
-    pub fn isAir(&self, x: i32, y: i32, z: i32) -> bool { self.block(x, y, z) == 0 }
+    pub(crate) fn isAir(&self, x: i32, y: i32, z: i32) -> bool { self.block(x, y, z) == 0 }
 
     // world generation places blocks without neighbour updates, as WorldGenerator.setBlockAndNotifyAdequately
-    pub fn set(&self, x: i32, y: i32, z: i32, block: i32) { self.setMeta(x, y, z, block, 0); }
+    pub(crate) fn set(&self, x: i32, y: i32, z: i32, block: i32) { self.setMeta(x, y, z, block, 0); }
 
-    pub fn setMeta(&self, x: i32, y: i32, z: i32, block: i32, meta: i32)
+    pub(crate) fn setMeta(&self, x: i32, y: i32, z: i32, block: i32, meta: i32)
     {
         if !(0..crate::world::WORLD_HEIGHT).contains(&y)
         {
             return;
         }
+
         let _ = self.m_world.setBlockQuiet(BlockPos::new(x, y, z), block, meta);
     }
 
     // a sapling growing into a tree notifies its neighbours as World.setBlock does
-    pub fn setNotify(&self, x: i32, y: i32, z: i32, block: i32, meta: i32)
+    pub(crate) fn setNotify(&self, x: i32, y: i32, z: i32, block: i32, meta: i32)
     {
         let _ = self.m_world.setBlock(BlockPos::new(x, y, z), block, meta);
     }
 
     // World.getHeightValue, the first air above the topmost light blocking block
-    pub fn height(&self, x: i32, z: i32) -> i32 { self.m_world.height(x, z) }
+    pub(crate) fn height(&self, x: i32, z: i32) -> i32 { self.m_world.height(x, z) }
 
     // World.getTopSolidOrLiquidBlock
-    pub fn topSolid(&self, x: i32, z: i32) -> i32
+    pub(crate) fn topSolid(&self, x: i32, z: i32) -> i32
     {
         let mut y: i32 = self.height(x, z).min(crate::world::WORLD_HEIGHT - 1);
         while y > 0
@@ -55,28 +56,29 @@ impl GenWorld
             {
                 return y;
             }
+
             y -= 1;
         }
         -1
     }
 
-    pub fn id(&self, name: &'static str) -> i32
+    pub(crate) fn id(&self, name: &'static str) -> i32
     {
         *self.m_ids.borrow_mut().entry(name).or_insert_with(|| crate::ids::blockId(name))
     }
 
-    pub fn info(&self, block: i32) -> BlockInfo
+    pub(crate) fn info(&self, block: i32) -> BlockInfo
     {
         *self.m_info.borrow_mut().entry(block).or_insert_with(|| World::blockInfo(block))
     }
 
-    pub fn isOpaque(&self, x: i32, y: i32, z: i32) -> bool { self.info(self.block(x, y, z)).opaque }
+    pub(crate) fn isOpaque(&self, x: i32, y: i32, z: i32) -> bool { self.info(self.block(x, y, z)).opaque }
 
-    pub fn isSolid(&self, x: i32, y: i32, z: i32) -> bool { self.info(self.block(x, y, z)).solid }
+    pub(crate) fn isSolid(&self, x: i32, y: i32, z: i32) -> bool { self.info(self.block(x, y, z)).solid }
 
-    pub fn isLiquid(&self, x: i32, y: i32, z: i32) -> bool { self.info(self.block(x, y, z)).liquid }
+    pub(crate) fn isLiquid(&self, x: i32, y: i32, z: i32) -> bool { self.info(self.block(x, y, z)).liquid }
 
-    pub fn isReplaceable(&self, x: i32, y: i32, z: i32) -> bool
+    pub(crate) fn isReplaceable(&self, x: i32, y: i32, z: i32) -> bool
     {
         let block: i32 = self.block(x, y, z);
         block == 0 || self.info(block).replaceable

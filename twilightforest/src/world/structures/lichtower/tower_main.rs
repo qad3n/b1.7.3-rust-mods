@@ -1,7 +1,7 @@
 // draft from ComponentTFTowerMain.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::TowerMain);
     init(&this, world, random, index, x, y, z);
@@ -9,15 +9,16 @@ pub fn new(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32
 }
 
 // ComponentTFTowerMain constructor
-pub fn init(this: &Piece, _world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, _world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32)
 {
     tower_wing::init7(this, index, x, y, z, 15, 55 + random.nextIntBounded(32), 0);
 }
 
 // ComponentTFTowerMain.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
-    this.makeARoof(&parent, list, random);
+    this.makeARoof(parent, list, random);
+
     for i in 0..4
     {
         let mut dest: Vec<i32> = this.getValidOpening(random, i);
@@ -25,12 +26,14 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
         {
             dest[1] += 20;
         }
+
         let childHeight: i32 = (21 + random.nextIntBounded(10)).min((this.m_height.get() - dest[1]) - 3);
         if !this.makeTowerWing(list, random, 1, dest[0], dest[1], dest[2], 9, childHeight, i)
         {
             this.makeTowerWing(list, random, 1, dest[0], dest[1], dest[2], 7, childHeight, i);
         }
     }
+
     for i in 0..4
     {
         let mut dest: Vec<i32> = this.getValidOpening(random, i);
@@ -38,12 +41,14 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
         {
             dest[1] += 10;
         }
+
         let childHeight: i32 = (21 + random.nextIntBounded(10)).min((this.m_height.get() - dest[1]) - 3);
         if !this.makeTowerWing(list, random, 1, dest[0], dest[1], dest[2], 9, childHeight, i)
         {
             this.makeTowerWing(list, random, 1, dest[0], dest[1], dest[2], 7, childHeight, i);
         }
     }
+
     for i in 0..4
     {
         let dest: Vec<i32> = this.getValidOpening(random, i);
@@ -53,13 +58,15 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
             this.makeTowerWing(list, random, 1, dest[0], dest[1], dest[2], 3, childHeight, i);
         }
     }
+
     for i in 0..4
     {
-        let dest: Vec<i32> = tower_main::getOutbuildingOpening(this, random, i);
+        let dest: Vec<i32> = tower_main::outbuildingOpening(this, random, i);
         let childHeight: i32 = 11 + random.nextIntBounded(10);
         let childSize: i32 = 7 + (random.nextIntBounded(2) * 2);
         tower_main::makeTowerOutbuilding(this, list, random, 1, dest[0], dest[1], dest[2], childSize, childHeight, i);
     }
+
     for i in 0..16
     {
         let dest: Vec<i32> = this.getValidOpening(random, i % 4);
@@ -73,11 +80,12 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFTowerMain.getOutbuildingOpening
-pub fn getOutbuildingOpening(this: &Piece, random: &Random, rotation: i32) -> Vec<i32>
+pub(crate) fn outbuildingOpening(this: &Piece, random: &Random, rotation: i32) -> Vec<i32>
 {
     let mut rx: i32 = 0;
     let ry: i32 = 1;
     let mut rz: i32 = 0;
+
     match rotation
     {
         0 =>
@@ -85,29 +93,34 @@ pub fn getOutbuildingOpening(this: &Piece, random: &Random, rotation: i32) -> Ve
             rx = this.m_size.get() - 1;
             rz = 6 + random.nextIntBounded(8);
         }
+
         1 =>
         {
             rx = 1 + random.nextIntBounded(11);
             rz = this.m_size.get() - 1;
         }
+
         2 =>
         {
             rx = 0;
             rz = 1 + random.nextIntBounded(8);
         }
+
         3 =>
         {
             rx = 3 + random.nextIntBounded(11);
             rz = 0;
         }
+
         _ =>
         {}
     }
-    return vec![rx, ry, rz];
+
+    vec![rx, ry, rz]
 }
 
 // ComponentTFTowerMain.makeTowerOutbuilding
-pub fn makeTowerOutbuilding(
+pub(crate) fn makeTowerOutbuilding(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -128,14 +141,15 @@ pub fn makeTowerOutbuilding(
     {
         return false;
     }
+
     list.push(Rc::clone(&outbuilding));
     outbuilding.build(this, list, random);
     this.addOpening(x, y, z, rotation);
-    return true;
+    true
 }
 
 // ComponentTFTowerMain.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     this.fillSelected(
         world,
@@ -151,6 +165,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         Stones::stronghold(),
     );
     this.fillAir(world, sbb, 1, 1, 1, this.m_size.get() - 2, this.m_height.get() - 2, this.m_size.get() - 2);
+
     for x in 0..this.m_size.get()
     {
         for z in 0..this.m_size.get()
@@ -158,22 +173,25 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             this.fillDown(world, blk("cobblestone"), 0, x, -1, z, sbb);
         }
     }
+
     this.darken(world);
+
     if (this.m_height.get() - this.m_highestOpening.get()) > 15
     {
         this.m_highestOpening.set(this.m_height.get() - 15);
     }
+
     tower_wing::makeStairs(this, world, random, sbb);
     this.makeOpenings(world, sbb);
     tower_wing::decorateStairFloor(this, world, random, sbb);
     tower_main::makeStairwayCrossings(this, world, random, sbb);
     tower_main::makeLichRoom(this, world, random, sbb);
     tower_main::makeTowerPaintings(this, world, random, sbb);
-    return true;
+    true
 }
 
 // ComponentTFTowerMain.makeStairwayCrossings
-pub fn makeStairwayCrossings(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
+pub(crate) fn makeStairwayCrossings(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
 {
     let flights: i32 = (this.m_highestOpening.get() / 5) - 2;
     {
@@ -187,15 +205,18 @@ pub fn makeStairwayCrossings(this: &Piece, world: &GenWorld, random: &Random, sb
 }
 
 // ComponentTFTowerMain.makeStairCrossing
-pub fn makeStairCrossing(this: &Piece, world: &GenWorld, random: &Random, flight: i32, sbb: StructureBox)
+pub(crate) fn makeStairCrossing(this: &Piece, world: &GenWorld, random: &Random, flight: i32, sbb: StructureBox)
 {
     let temp: i32 = this.mode();
+
     if (flight % 2) == 0
     {
         this.setMode((this.mode() + 1) % 4);
     }
+
     let floorMeta: i32 = if random.nextIntBounded(2) == 0 { 0 } else { 2 };
     let mut floorLevel: i32 = 0 + (flight * 5);
+
     for dx in 6..=8
     {
         for dz in 4..=10
@@ -203,46 +224,42 @@ pub fn makeStairCrossing(this: &Piece, world: &GenWorld, random: &Random, flight
             this.placeBlock(world, blk("double_stone_slab"), floorMeta, dx, floorLevel, dz, sbb);
         }
     }
+
     floorLevel += 1;
+
     let mut dx: i32 = 6;
+
     for dz in 3..=11
     {
         this.placeBlock(world, blk("fence"), 0, dx, floorLevel, dz, sbb);
     }
+
     dx += 1;
+
     for dz in 3..=11
     {
         this.placeBlock(world, blk("air"), 0, dx, floorLevel, dz, sbb);
     }
+
     dx += 1;
+
     for dz in 3..=11
     {
         this.placeBlock(world, blk("fence"), 0, dx, floorLevel, dz, sbb);
     }
+
     this.placeBlock(world, blk("double_stone_slab"), floorMeta, 6, floorLevel - 1, 11, sbb);
     this.placeBlock(world, blk("double_stone_slab"), floorMeta, 8, floorLevel - 1, 3, sbb);
     this.placeBlock(world, blk("fence"), 0, 5, floorLevel, 11, sbb);
     this.placeBlock(world, blk("fence"), 0, 9, floorLevel, 3, sbb);
-    let var10000: &'static str;
-    match random.nextIntBounded(4)
+
+    let var10000: &'static str = match random.nextIntBounded(4)
     {
-        0 | 1 =>
-        {
-            var10000 = "Skeleton";
-        }
-        2 =>
-        {
-            var10000 = "Zombie";
-        }
-        3 =>
-        {
-            var10000 = mob("Swarm Spider");
-        }
-        _ =>
-        {
-            var10000 = "Skeleton";
-        }
-    }
+        0 | 1 => "Skeleton",
+        2 => "Zombie",
+        3 => mob("Swarm Spider"),
+        _ => "Skeleton",
+    };
     let mobID: &'static str = var10000;
     this.placeSpawner(world, random, 7, floorLevel + 2, 7, mobID, sbb);
     this.placeBlock(world, blk("fence"), 0, 6, floorLevel + 1, 7, sbb);
@@ -253,7 +270,7 @@ pub fn makeStairCrossing(this: &Piece, world: &GenWorld, random: &Random, flight
 }
 
 // ComponentTFTowerMain.makeLichRoom
-pub fn makeLichRoom(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
+pub(crate) fn makeLichRoom(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
 {
     let floorLevel: i32 = 2 + ((this.m_highestOpening.get() / 5) * 5);
     tower_main::makeLichFloor(this, world, floorLevel, (this.m_highestOpening.get() / 5) % 2, sbb);
@@ -264,7 +281,7 @@ pub fn makeLichRoom(this: &Piece, world: &GenWorld, random: &Random, sbb: Struct
 }
 
 // ComponentTFTowerMain.makeTowerPaintings
-pub fn makeTowerPaintings(this: &Piece, _world: &GenWorld, random: &Random, sbb: StructureBox)
+pub(crate) fn makeTowerPaintings(this: &Piece, _world: &GenWorld, random: &Random, sbb: StructureBox)
 {
     let howMany: i32 = 10;
     tower_wing::generatePaintingsOnWall(this, random, howMany, 0, 0, 48, sbb);
@@ -282,10 +299,12 @@ pub fn makeTowerPaintings(this: &Piece, _world: &GenWorld, random: &Random, sbb:
 }
 
 // ComponentTFTowerMain.makeLichFloor
-pub fn makeLichFloor(this: &Piece, world: &GenWorld, floorLevel: i32, rotation: i32, sbb: StructureBox)
+pub(crate) fn makeLichFloor(this: &Piece, world: &GenWorld, floorLevel: i32, rotation: i32, sbb: StructureBox)
 {
     let temp: i32 = this.mode();
+
     this.setMode((this.mode() + rotation) % 4);
+
     for fx in 1..14
     {
         for fz in 1..14
@@ -332,6 +351,7 @@ pub fn makeLichFloor(this: &Piece, world: &GenWorld, floorLevel: i32, rotation: 
             }
         }
     }
+
     this.placeBlock(world, blk("air"), 0, 3, floorLevel + 1, 11, sbb);
     this.placeBlock(world, blk("air"), 0, 3, floorLevel + 1, 10, sbb);
     this.placeBlock(world, blk("air"), 0, 3, floorLevel + 2, 11, sbb);
@@ -342,7 +362,7 @@ pub fn makeLichFloor(this: &Piece, world: &GenWorld, floorLevel: i32, rotation: 
 }
 
 // ComponentTFTowerMain.decorateLichChandelier
-pub fn decorateLichChandelier(this: &Piece, world: &GenWorld, floorLevel: i32, sbb: StructureBox)
+pub(crate) fn decorateLichChandelier(this: &Piece, world: &GenWorld, floorLevel: i32, sbb: StructureBox)
 {
     let cx: i32 = this.m_size.get() / 2;
     let mut cy: i32 = floorLevel + 4;
@@ -397,6 +417,7 @@ pub fn decorateLichChandelier(this: &Piece, world: &GenWorld, floorLevel: i32, s
     this.placeBlock(world, blk("torch"), 0, cx + 0, cy, cz + 1, sbb);
     this.placeBlock(world, blk("torch"), 0, cx - 1, cy, cz + 0, sbb);
     this.placeBlock(world, blk("torch"), 0, cx + 0, cy, cz - 1, sbb);
+
     for y in floorLevel + 5..(this.m_height.get() - 1)
     {
         this.placeBlock(world, blk("fence"), 0, cx + 0, y, cz + 0, sbb);
@@ -404,7 +425,7 @@ pub fn decorateLichChandelier(this: &Piece, world: &GenWorld, floorLevel: i32, s
 }
 
 // ComponentTFTowerMain.decoratePaintings
-pub fn decoratePaintings(this: &Piece, _world: &GenWorld, random: &Random, floorLevel: i32, sbb: StructureBox)
+pub(crate) fn decoratePaintings(this: &Piece, _world: &GenWorld, random: &Random, floorLevel: i32, sbb: StructureBox)
 {
     let howMany: i32 = 100;
     tower_wing::generatePaintingsOnWall(this, random, howMany, floorLevel, 0, 48, sbb);
@@ -422,7 +443,7 @@ pub fn decoratePaintings(this: &Piece, _world: &GenWorld, random: &Random, floor
 }
 
 // ComponentTFTowerMain.decorateTorches
-pub fn decorateTorches(this: &Piece, world: &GenWorld, random: &Random, floorLevel: i32, sbb: StructureBox)
+pub(crate) fn decorateTorches(this: &Piece, world: &GenWorld, random: &Random, floorLevel: i32, sbb: StructureBox)
 {
     tower_main::generateTorchesOnWall(this, world, random, floorLevel, 0, sbb);
     tower_main::generateTorchesOnWall(this, world, random, floorLevel, 1, sbb);
@@ -431,7 +452,7 @@ pub fn decorateTorches(this: &Piece, world: &GenWorld, random: &Random, floorLev
 }
 
 // ComponentTFTowerMain.generateTorchesOnWall
-pub fn generateTorchesOnWall(
+pub(crate) fn generateTorchesOnWall(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
@@ -442,7 +463,7 @@ pub fn generateTorchesOnWall(
 {
     for _i in 0..5
     {
-        let Some(mut tCoords) = tower_wing::getRandomWallSpot(this, random, floorLevel, direction, sbb)
+        let Some(mut tCoords) = tower_wing::randomWallSpot(this, random, floorLevel, direction, sbb)
         else
         {
             continue;
@@ -454,21 +475,26 @@ pub fn generateTorchesOnWall(
             {
                 tCoords[2] += 1;
             }
+
             1 =>
             {
                 tCoords[0] -= 1;
             }
+
             2 =>
             {
                 tCoords[2] -= 1;
             }
+
             3 =>
             {
                 tCoords[0] += 1;
             }
+
             _ =>
             {}
         }
+
         if (world.getBlock(tCoords[0], tCoords[1], tCoords[2]) == blk("air"))
             && (world.getBlock(tCoords[0], tCoords[1] + 1, tCoords[2]) == blk("air"))
         {

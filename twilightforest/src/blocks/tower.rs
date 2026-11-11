@@ -75,7 +75,7 @@ const TOWERWOOD: [Cube; 4] = [
 
 // every device state the tower blocks pass through, each its own block so hardness and light hold per state
 #[derive(Clone, Copy, PartialEq)]
-pub enum Device
+pub(crate) enum Device
 {
     Reappearing,
     ReappearingActive,
@@ -392,7 +392,7 @@ fn deviceRow(device: Device) -> &'static DeviceRow
     DEVICES.iter().find(|row| row.m_device == device).expect("every device has a row")
 }
 
-pub fn deviceId(device: Device) -> i32 { ids::blockId(deviceRow(device).m_name) }
+pub(crate) fn deviceId(device: Device) -> i32 { ids::blockId(deviceRow(device).m_name) }
 
 fn deviceAt(world: World, pos: BlockPos) -> Option<Device>
 {
@@ -408,7 +408,7 @@ fn click(world: World, pos: BlockPos, volume: f32, pitch: f32)
 }
 
 // BlockTFTowerDevice.areNearbyLockBlocks
-pub fn locked(world: World, pos: BlockPos) -> bool
+pub(crate) fn locked(world: World, pos: BlockPos) -> bool
 {
     let lock: i32 = deviceId(Device::Locked);
     let range: i32 = device::LOCK_RANGE;
@@ -426,16 +426,18 @@ fn delayFor(world: World, to: Device) -> i32
         {
             device::ACTIVE_BASE + world.random(device::ACTIVE_SPREAD)
         }
+
         Device::BuiltActive => device::BUILT_DELAY,
         _ => device::DELAY,
     }
 }
 
 // BlockTFTowerDevice.changeToActiveVanishBlock
-pub fn activate(world: World, pos: BlockPos, to: Device)
+pub(crate) fn activate(world: World, pos: BlockPos, to: Device)
 {
     swap(world, pos, to);
     world.playSound(center(pos), "random.pop", 0.3, 0.6);
+
     let _ = world.scheduleTick(pos, deviceId(to), delayFor(world, to));
 }
 
@@ -447,6 +449,7 @@ fn chain(world: World, pos: BlockPos)
     {
         return;
     };
+
     match found
     {
         Device::Vanishing | Device::Unlocked if !locked(world, pos) => activate(world, pos, Device::VanishingActive),
@@ -468,12 +471,13 @@ fn chainAround(world: World, pos: BlockPos)
 }
 
 // BlockTFTowerDevice.unlockBlock, a tower key turns a lock
-pub fn unlock(world: World, pos: BlockPos) -> bool
+pub(crate) fn unlock(world: World, pos: BlockPos) -> bool
 {
     if deviceAt(world, pos) != Some(Device::Locked)
     {
         return false;
     }
+
     swap(world, pos, Device::Unlocked);
     click(world, pos, 0.3, 0.6);
     true
@@ -483,6 +487,7 @@ fn reactorReady(world: World, pos: BlockPos) -> bool
 {
     let redstone: i32 = ids::blockId("minecraft:redstone_ore");
     let glowing: i32 = ids::blockId("minecraft:lit_redstone_ore");
+
     NEIGHBORS.iter().all(|[dx, dy, dz]|
     {
         let around: i32 = world.block(pos.offset(*dx, *dy, *dz));
@@ -500,28 +505,36 @@ impl DeviceBlock
     fn neighbor(&self, world: World, pos: BlockPos)
     {
         let powered: bool = world.isPowered(pos);
+
         match self.m_device
         {
             Device::Vanishing if powered && !locked(world, pos) => activate(world, pos, Device::VanishingActive),
             Device::Reappearing if powered && !locked(world, pos) => activate(world, pos, Device::ReappearingActive),
+
             Device::Builder if powered =>
             {
                 swap(world, pos, Device::BuilderActive);
                 click(world, pos, 0.3, 0.6);
+
                 let _ = world.scheduleTick(pos, deviceId(Device::BuilderActive), device::BUILDER_DELAY);
             }
+
             Device::BuilderActive if !powered =>
             {
                 swap(world, pos, Device::Builder);
                 click(world, pos, 0.3, 0.6);
+
                 let _ = world.scheduleTick(pos, deviceId(Device::Builder), device::BUILDER_DELAY);
             }
+
             Device::BuilderTimeout if !powered => swap(world, pos, Device::Builder),
+
             Device::GhastTrap if powered && crate::tower::trapCharged(world, pos) =>
             {
                 swap(world, pos, Device::GhastTrapActive);
                 click(world, pos, 0.3, 0.6);
             }
+
             Device::Reactor if reactorReady(world, pos) => swap(world, pos, Device::ReactorActive),
             _ =>
             {}
@@ -538,6 +551,7 @@ impl DeviceBlock
                 if ghost
                 {
                     swap(world, pos, Device::Ghost);
+
                     let _ = world.scheduleTick(pos, deviceId(Device::Ghost), device::REAPPEAR_DELAY);
                 }
                 else
@@ -547,12 +561,15 @@ impl DeviceBlock
                 world.playSound(center(pos), "random.pop", 0.3, 0.5);
                 chainAround(world, pos);
             }
+
             Device::Ghost => activate(world, pos, Device::GhostActive),
+
             Device::GhostActive =>
             {
                 swap(world, pos, Device::Reappearing);
                 click(world, pos, 0.3, 0.5);
             }
+
             Device::BuilderActive if world.isPowered(pos) => crate::tower::startBuilding(world, pos),
             Device::Builder | Device::BuilderTimeout => chainAround(world, pos),
             _ =>
@@ -577,16 +594,19 @@ impl BlockBehavior for DeviceBlock
     {
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
+
         let target: Device = match self.m_device
         {
             Device::Vanishing => Device::VanishingActive,
             Device::Reappearing => Device::ReappearingActive,
             _ => return false,
         };
+
         if !ctx.isAuthority()
         {
             return true;
         }
+
         if locked(world, pos)
         {
             click(world, pos, 1.0, 0.3);
@@ -635,6 +655,7 @@ fn deviceSpec(row: &DeviceRow) -> Result<BlockSpecBuilder>
         .light(row.m_light)
         .texture(&look)
         .behavior(DeviceBlock { m_device: row.m_device });
+
     if matches!(row.m_device, Device::GhastTrap | Device::GhastTrapActive)
     {
         let lid: &str = if row.m_device == Device::GhastTrap
@@ -645,14 +666,16 @@ fn deviceSpec(row: &DeviceRow) -> Result<BlockSpecBuilder>
         {
             "towerdev_ghasttraplid_on"
         };
+
         spec = spec.faces(FaceTextures
         {
             top: Some(texture(lid)),
             bottom: Some(texture("towerwood_encased")),
-            side: Some(look.clone()),
+            side: Some(look),
             front: None,
         });
     }
+
     if row.m_translucent
     {
         spec = spec
@@ -660,19 +683,23 @@ fn deviceSpec(row: &DeviceRow) -> Result<BlockSpecBuilder>
             .sound("metal")
             .model(BlockModelSpec { translucent: true, ..BlockModelSpec::default() });
     }
+
     if matches!(row.m_device, Device::Ghost | Device::GhostActive)
     {
         spec = spec.collision(Vec::new());
     }
+
     spec = match row.m_drop
     {
         Some(name) => spec.drops(vec![drop(name, vec![1], 1.0)?]),
         None => spec.drops(Vec::new()),
     };
+
     if let Some(tile) = crate::tower::tileFor(row.m_device)
     {
         spec = spec.tileEntity(tile);
     }
+
     Ok(spec)
 }
 
@@ -703,7 +730,7 @@ impl BlockBehavior for Shaded
 
 // BlockTFFireJet: smokers puff while lit, jets suck lava from below and burst into flame
 #[derive(Clone, Copy, PartialEq)]
-pub enum Jet
+pub(crate) enum Jet
 {
     Smoker,
     EncasedSmoker,
@@ -830,7 +857,7 @@ const JETS: [JetRow; 9] = [
     },
 ];
 
-pub fn jetId(jet: Jet) -> i32
+pub(crate) fn jetId(jet: Jet) -> i32
 {
     ids::blockId(JETS.iter().find(|row| row.m_jet == jet).expect("every jet has a row").m_name)
 }
@@ -842,7 +869,7 @@ fn jetAt(world: World, pos: BlockPos) -> Option<Jet>
 }
 
 // what a popping or flaming jet turns into when its tile runs out, TileEntityTFPoppingJet and TileEntityTFFlameJet
-pub fn nextJet(world: World, pos: BlockPos) -> Option<Jet>
+pub(crate) fn nextJet(world: World, pos: BlockPos) -> Option<Jet>
 {
     match jetAt(world, pos)?
     {
@@ -869,10 +896,12 @@ fn stillLava(world: World, pos: BlockPos) -> bool
 fn findLava(world: World, below: BlockPos) -> Option<BlockPos>
 {
     let tries: i32 = 3;
+
     if stillLava(world, below)
     {
         return Some(below);
     }
+
     (0..tries).map(|_| below.offset(world.random(3) - 1, 0, world.random(3) - 1)).find(|pos| stillLava(world, *pos))
 }
 
@@ -885,6 +914,7 @@ impl BlockBehavior for JetBlock
         {
             return;
         }
+
         let world: World = ctx.world();
         if let Some(lava) = findLava(world, ctx.pos().offset(0, -1, 0))
         {
@@ -899,8 +929,10 @@ impl BlockBehavior for JetBlock
         {
             return;
         }
+
         let world: World = ctx.world();
         let powered: bool = world.isPowered(ctx.pos());
+
         let next: Option<Jet> = match self.m_jet
         {
             Jet::EncasedSmoker if powered => Some(Jet::EncasedSmokerOn),
@@ -911,6 +943,7 @@ impl BlockBehavior for JetBlock
         if let Some(next) = next
         {
             let _ = world.setBlock(ctx.pos(), jetId(next), 0);
+
             click(world, ctx.pos(), 0.3, 0.6);
         }
     }
@@ -923,6 +956,7 @@ impl BlockBehavior for JetBlock
             {
                 crate::world::biomes::grassAround(ctx.world(), ctx.pos())
             }
+
             _ => 0xFFFFFF,
         }
     }
@@ -931,6 +965,7 @@ impl BlockBehavior for JetBlock
 fn registerJets(ctx: &mut RegisterCtx) -> Result<()>
 {
     let hardness: f32 = 1.5;
+
     for row in &JETS
     {
         let mut spec: BlockSpecBuilder = base("minecraft:block", row.m_label, Kind::Rock, hardness)
@@ -955,21 +990,25 @@ fn registerJets(ctx: &mut RegisterCtx) -> Result<()>
             })
             .drops(vec![drop(row.m_drop, vec![1], 1.0)?])
             .behavior(JetBlock { m_jet: row.m_jet });
+
         if let Some(tile) = row.m_tile
         {
             spec = spec.tileEntity(tile);
         }
+
         super::put(ctx, row.m_name, spec)?;
     }
+
     Ok(())
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &TOWERWOOD
     {
         super::put(ctx, row.m_name, super::build(row).flammable(0, 1).behavior(Shaded))?;
     }
+
     super::put(
         ctx,
         block::INFESTED_TOWERWOOD,
@@ -981,9 +1020,11 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             .behavior(Infested),
     )?;
     crate::tower::registerTiles(ctx)?;
+
     for row in &DEVICES
     {
         super::put(ctx, row.m_name, deviceSpec(row)?)?;
     }
+
     registerJets(ctx)
 }

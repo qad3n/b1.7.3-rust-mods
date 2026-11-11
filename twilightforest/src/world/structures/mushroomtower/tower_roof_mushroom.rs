@@ -1,7 +1,7 @@
 // draft from ComponentTFTowerRoofMushroom.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, wing: &Piece, pHang: f32) -> Rc<Piece>
+pub(crate) fn new(i: i32, wing: &Piece, pHang: f32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::TowerRoofMushroom);
     init(&this, i, wing, pHang);
@@ -9,10 +9,11 @@ pub fn new(i: i32, wing: &Piece, pHang: f32) -> Rc<Piece>
 }
 
 // ComponentTFTowerRoofMushroom constructor
-pub fn init(this: &Piece, i: i32, wing: &Piece, pHang: f32)
+pub(crate) fn init(this: &Piece, i: i32, wing: &Piece, pHang: f32)
 {
-    tower_roof::init(this, i, &wing);
+    tower_roof::init(this, i, wing);
     this.m_height.set(wing.m_size.get());
+
     let overhang: i32 = ((wing.m_size.get()) as f32 * pHang) as i32;
     this.m_size.set(wing.m_size.get() + (overhang * 2));
     this.setMode(0);
@@ -27,13 +28,13 @@ pub fn init(this: &Piece, i: i32, wing: &Piece, pHang: f32)
 }
 
 // ComponentTFTowerRoofMushroom.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFTowerRoofMushroom.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for y in 0..=this.m_height.get()
     {
@@ -42,20 +43,24 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
                 * (this.m_size.get()) as f32)
                 / 2.0) as i32;
         let mut hollow: i32 = floorF((radius) as f32 * 0.9);
+
         if (this.m_height.get() - y) < 3
         {
             hollow = -1;
         }
+
         tower_roof_mushroom::makeCircle(this, world, y, radius, hollow, sbb);
     }
-    return true;
+
+    true
 }
 
 // ComponentTFTowerRoofMushroom.makeCircle
-pub fn makeCircle(this: &Piece, world: &GenWorld, y: i32, radius: i32, hollow: i32, sbb: StructureBox)
+pub(crate) fn makeCircle(this: &Piece, world: &GenWorld, y: i32, radius: i32, hollow: i32, sbb: StructureBox)
 {
     let cx: i32 = this.m_size.get() / 2;
     let cz: i32 = this.m_size.get() / 2;
+
     for dx in -radius..=radius
     {
         for dz in -radius..=radius

@@ -50,7 +50,7 @@ struct Shape
     m_floor: i32,
 }
 
-pub fn canSpawn(random: &Random, chunkX: i32, chunkZ: i32) -> bool
+pub(crate) fn canSpawn(random: &Random, chunkX: i32, chunkZ: i32) -> bool
 {
     let mut tracker: RandomTracker = RandomTracker::default();
     let rare: bool = tracker.test(random, gold::ODDS[0]) != 0 && tracker.test(random, gold::ODDS[1]) != 0;
@@ -58,14 +58,14 @@ pub fn canSpawn(random: &Random, chunkX: i32, chunkZ: i32) -> bool
 }
 
 // MapGenGoldenDungeon.Start: the island, a ring of stub islands and the hall facing one of four ways
-pub struct Start
+pub(crate) struct Start
 {
     m_direction: i32,
     m_stubs: Vec<[i32; 3]>,
     pub m_box: StructureBox,
 }
 
-pub fn start(seed: i64, chunkX: i32, chunkZ: i32) -> Start
+pub(crate) fn start(seed: i64, chunkX: i32, chunkZ: i32) -> Start
 {
     let random: Random = super::startRandom(seed, chunkX, chunkZ);
     let min: [i32; 3] = [(chunkX << 4) + START_OFFSET, START_BOX[0], (chunkZ << 4) + START_OFFSET];
@@ -74,7 +74,8 @@ pub fn start(seed: i64, chunkX: i32, chunkZ: i32) -> Start
     let direction: i32 = random.nextIntBounded(4);
     let count: i32 = gold::STUBS_MIN + random.nextIntBounded(gold::STUBS_SPREAD);
     let stubs: Vec<[i32; 3]> = (0..count)
-        .map(|_| {
+        .map(|_|
+        {
             let angle: f32 = random.nextFloat() * gold::FULL_TURN;
             let reach: f32 = (random.nextFloat() * 0.125 + 0.7) * gold::STUB_REACH;
             let turn: f64 = (gold::DEGREE * angle) as f64;
@@ -103,7 +104,9 @@ struct Ids
 fn ids(world: &GenWorld) -> Ids
 {
     let pick = |name: &'static str| (world.id(name), 0);
-    Ids {
+
+    Ids
+    {
         m_grass: (world.id("aether_grass"), 3),
         m_dirt: pick("aether_dirt"),
         m_holystone: pick("holystone"),
@@ -116,9 +119,9 @@ fn ids(world: &GenWorld) -> Ids
 }
 
 // BlocksAether.isGood: open air or cloud an island may grow into
-fn isGood(ids: &Ids, block: i32) -> bool { block == 0 || block == ids.m_cloud }
+fn good(ids: &Ids, block: i32) -> bool { block == 0 || block == ids.m_cloud }
 
-pub fn generate(world: &GenWorld, random: &Random, start: &Start, clip: StructureBox)
+pub(crate) fn generate(world: &GenWorld, random: &Random, start: &Start, clip: StructureBox)
 {
     let ids: Ids = ids(world);
     let mut writer: Writer = Writer::structure(world, random, &start.m_box, clip);
@@ -126,10 +129,12 @@ pub fn generate(world: &GenWorld, random: &Random, start: &Start, clip: Structur
     writer.m_replaceSolid = true;
     writer.setOffset(gold::OFFSET);
     island(&writer, &ids);
+
     for stub in &start.m_stubs
     {
         stubIsland(&writer, &ids, *stub);
     }
+
     hall(&mut writer, &ids, start.m_direction);
 }
 
@@ -138,6 +143,7 @@ pub fn generate(world: &GenWorld, random: &Random, start: &Start, clip: Structur
 fn sphere(writer: &Writer, ids: &Ids, at: [i32; 3], shape: Shape, flowers: bool)
 {
     let Shape { m_size: size, m_radius: radius, m_divisor: divisor, m_squash: squash, m_floor: floor } = shape;
+
     for i in -size..=size
     {
         for k in (-size..=size).rev()
@@ -146,6 +152,7 @@ fn sphere(writer: &Writer, ids: &Ids, at: [i32; 3], shape: Shape, flowers: bool)
             {
                 let x: i32 = math::floor(i as f64 / divisor);
                 let mut y: i32 = k;
+
                 if k > squash.0
                 {
                     y = math::floor(y as f64 * gold::TOP_SQUASH) - squash.1;
@@ -159,12 +166,14 @@ fn sphere(writer: &Writer, ids: &Ids, at: [i32; 3], shape: Shape, flowers: bool)
                 {
                     continue;
                 }
+
                 let [px, py, pz] = [at[0] + i, at[1] + k, at[2] + j];
-                if isGood(ids, writer.getOffset(px, py + 1, pz)) && k > floor
+                if good(ids, writer.getOffset(px, py + 1, pz)) && k > floor
                 {
                     writer.putOffset(px, py, pz, ids.m_grass);
                     writer.putOffset(px, py - 1, pz, ids.m_dirt);
                     writer.putOffset(px, py - (1 + writer.m_random.nextIntBounded(2)), pz, ids.m_dirt);
+
                     if flowers
                     {
                         islandFlowers(writer, ids, px, py, pz);
@@ -178,7 +187,7 @@ fn sphere(writer: &Writer, ids: &Ids, at: [i32; 3], shape: Shape, flowers: bool)
                         }
                     }
                 }
-                else if isGood(ids, writer.getOffset(px, py, pz))
+                else if good(ids, writer.getOffset(px, py, pz))
                 {
                     writer.putOffset(px, py, pz, ids.m_holystone);
                 }
@@ -190,10 +199,12 @@ fn sphere(writer: &Writer, ids: &Ids, at: [i32; 3], shape: Shape, flowers: bool)
 fn islandFlowers(writer: &Writer, ids: &Ids, x: i32, y: i32, z: i32)
 {
     const HIGH_GROUND: i32 = 12;
+
     if y < HIGH_GROUND
     {
         return;
     }
+
     let random: &Random = writer.m_random;
     match random.nextIntBounded(gold::FLOWER_ODDS)
     {
@@ -201,6 +212,7 @@ fn islandFlowers(writer: &Writer, ids: &Ids, x: i32, y: i32, z: i32)
         {
             random.nextIntBounded(2);
         }
+
         4 =>
         {
             let name: &'static str = if random.nextIntBounded(2) == 0
@@ -218,6 +230,7 @@ fn islandFlowers(writer: &Writer, ids: &Ids, x: i32, y: i32, z: i32)
             ];
             flower(writer, ids, (writer.m_world.id(name), 0), at);
         }
+
         _ =>
         {}
     }
@@ -228,6 +241,7 @@ fn flower(writer: &Writer, ids: &Ids, pick: Pick, at: [i32; 3])
 {
     let random: &Random = writer.m_random;
     let [mut x, mut y, mut z] = at;
+
     for _ in 0..gold::FLOWER_TRIES
     {
         x += random.nextIntBounded(8) - random.nextIntBounded(8);
@@ -244,6 +258,7 @@ fn flower(writer: &Writer, ids: &Ids, pick: Pick, at: [i32; 3])
 fn island(writer: &Writer, ids: &Ids)
 {
     let mut found: i32 = 0;
+
     for i in -gold::ISLAND_CHECK..=gold::ISLAND_CHECK
     {
         for k in (-gold::ISLAND_CHECK..=gold::ISLAND).rev()
@@ -261,7 +276,9 @@ fn island(writer: &Writer, ids: &Ids)
             }
         }
     }
-    let shape: Shape = Shape {
+
+    let shape: Shape = Shape
+    {
         m_size: gold::ISLAND,
         m_radius: gold::ISLAND as f64,
         m_divisor: gold::WIDEN,
@@ -269,7 +286,9 @@ fn island(writer: &Writer, ids: &Ids)
         m_floor: 4,
     };
     sphere(writer, ids, [0; 3], shape, true);
+
     let size: i32 = gold::ISLAND + gold::CAVES / 3;
+
     for _ in 0..gold::CAVES
     {
         let random: &Random = writer.m_random;
@@ -292,6 +311,7 @@ fn cave(writer: &Writer, ids: &Ids, at: [i32; 3], size: i32)
     let y0: f64 = (y + random.nextIntBounded(3) + 2) as f64;
     let y1: f64 = (y + random.nextIntBounded(3) + 2) as f64;
     let carvable: [i32; 4] = [ids.m_mossy.0, ids.m_holystone.0, ids.m_grass.0, ids.m_dirt.0];
+
     for step in 0..=size
     {
         let along: f64 = step as f64 / size as f64;
@@ -309,6 +329,7 @@ fn cave(writer: &Writer, ids: &Ids, at: [i32; 3], size: i32)
             {
                 continue;
             }
+
             for by in minY..=maxY
             {
                 let dy: f64 = (by as f64 + 0.5 - cy) / (swell / 2.0);
@@ -316,6 +337,7 @@ fn cave(writer: &Writer, ids: &Ids, at: [i32; 3], size: i32)
                 {
                     continue;
                 }
+
                 for bz in minZ..=maxZ
                 {
                     let dz: f64 = (bz as f64 + 0.5 - cz) / (swell / 2.0);
@@ -345,18 +367,23 @@ fn hall(writer: &mut Writer, ids: &Ids, direction: i32)
     let wid: i32 = ((radius * radius / 2) as f64).sqrt() as i32;
     let netherrack: Pick = (writer.m_world.id("minecraft:netherrack"), 0);
     let fire: Pick = (writer.m_world.id("minecraft:fire"), 0);
+
     writer.setChance(ids.m_locked, ids.m_lockedLight, gold::HALL_CHANCE);
+
     for j in (-4..=4).rev()
     {
         let mut a: i32 = wid;
+
         if j >= 3 || j <= -3
         {
             a -= 1;
         }
+
         if j == 4 || j == -4
         {
             a -= 1;
         }
+
         for i in -a..=a
         {
             for k in -a..=a
@@ -373,6 +400,7 @@ fn hall(writer: &mut Writer, ids: &Ids, direction: i32)
                 else
                 {
                     writer.placeOffset(i, j, k);
+
                     if (i == a - 2 || -i == a - 2) && (k == a - 2 || -k == a - 2)
                     {
                         writer.putOffset(i, j + 1, k, netherrack);
@@ -382,7 +410,9 @@ fn hall(writer: &mut Writer, ids: &Ids, direction: i32)
             }
         }
     }
+
     tunnel(writer, ids, wid, direction);
+
     let boss: [i32; 3] = writer.actualOffset(0, -1, 0);
     if writer.inside(boss)
     {
@@ -394,6 +424,7 @@ fn hall(writer: &mut Writer, ids: &Ids, direction: i32)
 fn tunnel(writer: &mut Writer, ids: &Ids, wid: i32, direction: i32)
 {
     let chest: Pick = (writer.m_world.id("treasure_chest"), 0);
+
     for i in wid..wid + gold::TUNNEL
     {
         for j in -3..2
@@ -401,22 +432,27 @@ fn tunnel(writer: &mut Writer, ids: &Ids, wid: i32, direction: i32)
             for k in -3..4
             {
                 let (mut a, mut b): (i32, i32) = if direction / 2 == 0 { (i, k) } else { (k, i) };
+
                 if direction % 2 == 0
                 {
                     a = -a;
                     b = -b;
                 }
-                if !isGood(ids, writer.getOffset(a, j, b))
+
+                if !good(ids, writer.getOffset(a, j, b))
                 {
                     tunnelBlock(writer, ids, [a, j, b], i - wid, k);
                 }
+
                 a = -a;
                 b = -b;
                 writer.setChance(ids.m_locked, ids.m_lockedLight, gold::HALL_CHANCE);
+
                 if i >= wid + gold::ROOM_DEPTH
                 {
                     continue;
                 }
+
                 let edge: bool = i == wid || i == wid + 5 || k == 3 || k == -3;
                 if j == -3 || j >= 1 || edge
                 {
@@ -439,7 +475,9 @@ fn tunnel(writer: &mut Writer, ids: &Ids, wid: i32, direction: i32)
 fn tunnelBlock(writer: &mut Writer, ids: &Ids, at: [i32; 3], depth: i32, k: i32)
 {
     let [a, j, b] = at;
+
     writer.setChance(ids.m_holystone, ids.m_mossy, gold::MOSS_CHANCE);
+
     if j == -3
     {
         writer.placeOffset(a, j, b);

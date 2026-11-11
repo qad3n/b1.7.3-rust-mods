@@ -1,7 +1,7 @@
 // draft from ComponentTFMazeRoomSpawnerChests.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MazeRoomSpawnerChests);
     init(&this, i, random, x, y, z);
@@ -9,13 +9,13 @@ pub fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFMazeRoomSpawnerChests constructor
-pub fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
 {
     maze_room::init(this, i, random, x, y, z);
 }
 
 // ComponentTFMazeRoomSpawnerChests.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     maze_room::add(this, world, random, sbb);
     maze_room_spawner_chests::placePillarEnclosure(this, world, sbb, 3, 3);
@@ -30,11 +30,11 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.placeBlock(world, blk("tnt"), 0, 11, 0, 10, sbb);
     this.placeBlock(world, blk("tnt"), 0, 11, 0, 12, sbb);
     this.placeBlock(world, blk("tnt"), 0, 12, 0, 11, sbb);
-    return true;
+    true
 }
 
 // ComponentTFMazeRoomSpawnerChests.placePillarEnclosure
-pub fn placePillarEnclosure(this: &Piece, world: &GenWorld, sbb: StructureBox, dx: i32, dz: i32)
+pub(crate) fn placePillarEnclosure(this: &Piece, world: &GenWorld, sbb: StructureBox, dx: i32, dz: i32)
 {
     for y in 1..5
     {
@@ -43,6 +43,7 @@ pub fn placePillarEnclosure(this: &Piece, world: &GenWorld, sbb: StructureBox, d
         this.placeBlock(world, blk("tf:mazestone"), 2, dx + 0, y, dz + 2, sbb);
         this.placeBlock(world, blk("tf:mazestone"), 2, dx + 2, y, dz + 2, sbb);
     }
+
     this.placeBlock(world, blk("planks"), 0, dx + 1, 1, dz + 1, sbb);
     this.placeBlock(world, blk("planks"), 0, dx + 1, 4, dz + 1, sbb);
     this.placeBlock(world, blk("oak_stairs"), this.stairMeta(1), dx + 1, 1, dz + 0, sbb);

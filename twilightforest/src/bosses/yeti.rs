@@ -6,14 +6,14 @@ use crate::math::look;
 use crate::models::{Program, bipedPose, tf_yeti_alpha};
 use crate::progress::{self, Gate};
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::rc::Rc;
 
 // EntityTFYetiAlpha, the yeti cave's boss: ice bombs until hurt, then rampages that bring the ceiling down
-pub const NAME: &str = "yeti_alpha";
+pub(crate) const NAME: &str = "yeti_alpha";
 const LABEL: &str = "Alpha Yeti";
-pub const ICE_BOMB: &str = "ice_bomb";
+pub(crate) const ICE_BOMB: &str = "ice_bomb";
 const FALLING_ICE: &str = "falling_ice";
 
 mod yeti
@@ -190,6 +190,7 @@ fn throwBomb(world: World, from: [f64; 3], to: [f64; 3], owner: Option<i32>)
 {
     let flat: f64 = ((to[0] - from[0]).powi(2) + (to[2] - from[2]).powi(2)).sqrt();
     let aim: [f64; 3] = [to[0], to[1] - 1.1 + flat * 0.2, to[2]];
+
     let Ok(bomb) = world.spawnEntity(&format!("twilightforest:{ICE_BOMB}"), from)
     else
     {
@@ -201,6 +202,7 @@ fn throwBomb(world: World, from: [f64; 3], to: [f64; 3], owner: Option<i32>)
     let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
     // RenderTFThrownIce draws the bomb as a block of ice
     bomb.setField(EntityField::Block, f64::from(ids::blockId("minecraft:ice")));
+
     let _ = bomb.setMotion(delta.map(|axis| axis / length * bomb::SPEED));
     let _ = bomb.setData(&Bomb { m_owner: owner, ..Bomb::default() });
     let pitch: f32 = 1.0 / (ids::fraction(world) * 0.4 + 0.8);
@@ -226,6 +228,7 @@ fn throwRider(entity: Entity, info: &EntityInfo, brain: &mut Brain)
     let _ = rider.mount(None);
     let aim: [f64; 3] = look(info.yaw, info.pitch);
     let _ = rider.setMotion([aim[0] * yeti::THROW_SPEED, yeti::THROW_LIFT, aim[2] * yeti::THROW_SPEED]);
+
     brain.m_rest = 0;
 }
 
@@ -234,6 +237,7 @@ fn stomp(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
     world.playSound(info.pos, "random.bow", 1.0, 1.0 / (ids::fraction(world) * 0.4 + 0.8));
+
     for near in world.entitiesNear(info.pos, yeti::STOMP_RANGE)
     {
         if near.id == entity.id || near.health.is_none()
@@ -253,31 +257,40 @@ fn stomp(entity: Entity, info: &EntityInfo)
 fn rampage(entity: Entity, info: &EntityInfo, goal: Option<&EntityInfo>, brain: &mut Brain)
 {
     let world: World = entity.world;
+
     brain.m_rampage -= 1;
+
     if let Some(goal) = goal
     {
         face(entity, info.pos, goal.pos);
     }
+
     if entity.flag(EntityField::OnGround)
     {
         let _ = entity.setMotion([0.0, yeti::RAMPAGE_JUMP, 0.0]);
     }
+
     let (low, high): ([f64; 3], [f64; 3]) = bounds(entity, info, [1.0, 2.0, 1.0], 2.0);
     destroyBox(world, low, high);
+
     let eyes: f64 = entity.field(EntityField::Height) * 0.85;
+
     if brain.m_rampage % 20 == 0
     {
         dropRandom(world, info, eyes, ice::RANDOM_RANGE);
     }
+
     if brain.m_rampage % 40 == 0
         && let Some(goal) = goal
     {
         dropAbove(world, goal.pos[0].floor() as i32, (goal.pos[1] + 1.62).floor() as i32, goal.pos[2].floor() as i32);
     }
+
     if brain.m_rampage < 40 && brain.m_rampage % 10 == 0
     {
         dropRandom(world, info, eyes, ice::NEAR_RANGE);
     }
+
     if brain.m_rampage <= 0
     {
         brain.m_tired = yeti::TIRED_TICKS;
@@ -293,6 +306,7 @@ fn hunt(entity: Entity, info: &EntityInfo, goal: Option<&EntityInfo>, brain: &mu
     let homeAt: Option<[f64; 3]> = home(entity).map(|at| at.map(f64::from));
     let away: bool = homeAt.is_some_and(|at| distance(at, info.pos) > yeti::HOME_RANGE);
     let seen: bool = goal.is_some_and(|goal| world.rayTrace(eyes(entity, info), goal.pos, false).is_none());
+
     let walkTo: Option<[f64; 3]> = if away
     {
         homeAt
@@ -301,13 +315,16 @@ fn hunt(entity: Entity, info: &EntityInfo, goal: Option<&EntityInfo>, brain: &mu
     {
         goal.filter(|goal| !seen || distance(info.pos, goal.pos) > yeti::SHOT_RANGE).map(|goal| goal.pos)
     };
+
     if let Some(to) = walkTo
     {
         let (dx, dz): (f64, f64) = (to[0] - info.pos[0], to[2] - info.pos[2]);
         let flat: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-4);
         let _ = entity.setMotion([dx / flat * yeti::WALK, info.motion[1], dz / flat * yeti::WALK]);
+
         face(entity, info.pos, to);
     }
+
     let Some(goal) = goal
     else
     {
@@ -322,6 +339,7 @@ fn hunt(entity: Entity, info: &EntityInfo, goal: Option<&EntityInfo>, brain: &mu
         {
             throwBomb(world, eyes(entity, info), eyes(Entity { world, id: goal.id }, goal), Some(entity.id));
         }
+
         brain.m_shot = yeti::SHOT_PERIOD;
     }
 }
@@ -330,16 +348,19 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
 {
     let world: World = entity.world;
     let goal: Option<EntityInfo> = target(entity, info);
+
     if entity.flag(EntityField::Collided)
     {
         brain.m_collisions += 1;
     }
+
     if brain.m_collisions >= yeti::COLLISIONS
     {
         let (low, high): ([f64; 3], [f64; 3]) = bounds(entity, info, [0.0; 3], 0.0);
         destroyBox(world, low, high);
         brain.m_collisions = 0;
     }
+
     throwRider(entity, info, brain);
 
     let grounded: bool = entity.flag(EntityField::OnGround);
@@ -347,11 +368,13 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
     {
         stomp(entity, info);
     }
+
     brain.m_grounded = grounded;
 
     if brain.m_tired > 0
     {
         brain.m_tired -= 1;
+
         let _ = entity.setMotion([0.0, info.motion[1], 0.0]);
     }
     else if brain.m_rampage > 0
@@ -364,6 +387,7 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         {
             brain.m_wait -= 1;
         }
+
         if brain.m_wait <= 0 && brain.m_canRampage
         {
             brain.m_rampage = yeti::RAMPAGE_TICKS;
@@ -393,9 +417,11 @@ fn effects(entity: Entity, info: &EntityInfo)
     let shown: Shown = entity.synced();
     let world: World = entity.world;
     let ticks: f64 = entity.field(EntityField::TicksExisted);
+
     if shown.m_rampage
     {
         let turn: f64 = ticks / 10.0;
+
         for i in 0..20
         {
             let angle: f64 = turn + f64::from(i) * 50.0;
@@ -407,10 +433,12 @@ fn effects(entity: Entity, info: &EntityInfo)
             world.particle("snowballpoof", at, [0.0; 3]);
         }
     }
+
     if shown.m_tired
     {
         let width: f64 = entity.field(EntityField::Width);
         let eyes: f64 = entity.field(EntityField::Height) * 0.85;
+
         for _ in 0..20
         {
             let spread = || f64::from(ids::fraction(world)) - 0.5;
@@ -455,9 +483,10 @@ impl EntityBehavior for YetiAlpha
     {
         let kind: Option<Identifier> = b173_api::world::damageType();
         let ranged: bool = kind.is_some_and(|kind| matches!(kind.path(), "arrow" | "thrown" | "fireball"));
+
         BRAINS.with(|brains|
         {
-            let mut brains = brains.borrow_mut();
+            let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
             let brain: &mut Brain = brains.entry(key(entity)).or_default();
             if !brain.m_canRampage && brain.m_tired <= 0 && ranged
             {
@@ -472,7 +501,9 @@ impl EntityBehavior for YetiAlpha
     fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
         let world: World = entity.world;
+
         BRAINS.with(|brains| brains.borrow_mut().remove(&key(entity)));
+
         let Some(info) = entity.info()
         else
         {
@@ -485,6 +516,7 @@ impl EntityBehavior for YetiAlpha
             dropAt(world, info.pos, ICE_BOMB, yeti::DROPS_MIN + world.random(yeti::DROPS_SPREAD));
             super::conquer(world, info.pos);
         }
+
         if let Some(player) = killer(world, source)
         {
             progress::grant(player, Gate::Hunter);
@@ -515,6 +547,7 @@ fn chill(world: World, at: [f64; 3])
     let (water, flowingWater): (i32, i32) = (ids::blockId("minecraft:water"), ids::blockId("minecraft:flowing_water"));
     let (lava, flowingLava): (i32, i32) = (ids::blockId("minecraft:lava"), ids::blockId("minecraft:flowing_lava"));
     let snow: i32 = ids::blockId("minecraft:snow_layer");
+
     for x in -bomb::TERRAIN..=bomb::TERRAIN
     {
         for y in -bomb::TERRAIN..=bomb::TERRAIN
@@ -551,9 +584,11 @@ fn zone(entity: Entity, at: [f64; 3], owner: Option<i32>)
         }
 
         let victim: Entity = Entity { world, id: near.id };
+
         if near.kind.as_ref().is_some_and(|kind| kind.namespace() == "twilightforest" && kind.path() == "yeti")
         {
             victim.kill();
+
             let pos: BlockPos = cell(near.pos);
             let _ = world.setBlock(pos, ids::blockId("minecraft:ice"), 0);
             let _ = world.setBlock(pos.offset(0, 1, 0), ids::blockId("minecraft:ice"), 0);
@@ -587,27 +622,34 @@ impl EntityBehavior for IceBomb
                     [0.0; 3],
                 );
             }
+
             if !world.isAuthority()
             {
                 return;
             }
 
             let _ = entity.setMotion([0.0; 3]);
+
             if left % bomb::ZONE_PERIOD == 0
             {
                 zone(entity, info.pos, state.m_owner);
             }
+
             if left <= 1
             {
                 entity.kill();
                 return;
             }
+
             state.m_zone = Some(left - 1);
+
             let _ = entity.setData(&state);
+
             return;
         }
 
         world.particle("snowballpoof", info.pos, [0.0; 3]);
+
         if !world.isAuthority()
         {
             return;
@@ -619,6 +661,7 @@ impl EntityBehavior for IceBomb
             entity.kill();
             return;
         }
+
         let to: [f64; 3] = info.pos;
         let from: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - info.motion[axis]);
         let struck: bool = world
@@ -626,6 +669,7 @@ impl EntityBehavior for IceBomb
             .iter()
             .any(|hit| hit.id != entity.id && hit.health.is_some())
             || world.rayTrace(from, to, false).is_some();
+
         if struck
         {
             let ownNear: bool =
@@ -634,22 +678,28 @@ impl EntityBehavior for IceBomb
                     owner.kind.as_ref().is_some_and(|kind| kind.path() == NAME)
                         && distance(owner.pos, to) <= bomb::OWN_RANGE
                 });
+
             if ownNear
             {
                 entity.kill();
                 return;
             }
+
             chill(world, to);
             state.m_zone = Some(bomb::ZONE_TICKS);
+
             let _ = entity.setData(&state);
             let _ = entity.setMotion([0.0; 3]);
+
             return;
         }
+
         let _ = entity.setMotion([
             info.motion[0] * bomb::DRAG,
             info.motion[1] * bomb::DRAG - bomb::GRAVITY,
             info.motion[2] * bomb::DRAG,
         ]);
+
         let _ = entity.setData(&state);
     }
 }
@@ -681,6 +731,7 @@ impl EntityBehavior for FallingIce
                     [0.0, -1.0, 0.0],
                 );
             }
+
             return;
         }
 
@@ -689,6 +740,7 @@ impl EntityBehavior for FallingIce
         {
             state.m_from = info.pos[1];
         }
+
         state.m_ticks += 1;
         let fall: f64 = if state.m_ticks > ice::HANG
         {
@@ -716,8 +768,10 @@ impl EntityBehavior for FallingIce
                 }
             }
         }
+
         let landed: bool =
             state.m_ticks > ice::HANG && world.block(below) != 0 && !breakable.contains(&world.block(below));
+
         if landed
         {
             let dropped: f64 = state.m_from - info.pos[1];
@@ -734,10 +788,12 @@ impl EntityBehavior for FallingIce
                     }
                 }
             }
+
             world.playSound(info.pos, "random.glass", 3.0, 0.5);
             entity.kill();
             return;
         }
+
         let _ = entity.setData(&state);
     }
 
@@ -775,12 +831,13 @@ impl ItemBehavior for IceBombItem
                 Some(player.id),
             );
         }
+
         let left: i32 = stack.count - 1;
         Use::Done((left > 0).then_some(ItemStack { count: left, ..stack }))
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,

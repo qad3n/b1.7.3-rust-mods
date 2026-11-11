@@ -5,7 +5,7 @@ use b173_api::prelude::*;
 
 // TFAchievementPage, the forest's achievements on the loader's mod achievements
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Gate
+pub(crate) enum Gate
 {
     Portal,
     Arrival,
@@ -367,6 +367,7 @@ fn adopt(player: Player)
     {
         unlock(player, step.m_gate);
     }
+
     if let Err(error) = player.setData(LEGACY_KEY, &0u64)
     {
         warn(&format!("progress adopt: {}", error.0));
@@ -381,14 +382,15 @@ fn unlock(player: Player, gate: Gate)
     }
 }
 
-pub fn earned(player: Player) -> u64
+pub(crate) fn earned(player: Player) -> u64
 {
     adopt(player);
+
     let earned = STEPS.iter().filter(|step| player.hasAchievement(&id(step.m_gate)));
     earned.fold(0, |bits, step| bits | 1 << step.m_gate as u32)
 }
 
-pub fn has(player: Player, gate: Gate) -> bool
+pub(crate) fn has(player: Player, gate: Gate) -> bool
 {
     if player.hasAchievement(&id(gate))
     {
@@ -400,7 +402,7 @@ pub fn has(player: Player, gate: Gate) -> bool
 }
 
 // EntityPlayer.triggerAchievement, the loader holds back a child until its parent is earned and shows beta's toast
-pub fn grant(player: Player, gate: Gate)
+pub(crate) fn grant(player: Player, gate: Gate)
 {
     adopt(player);
     unlock(player, gate);
@@ -420,10 +422,12 @@ fn pickedUp(player: Player, stack: &ItemStack)
         (&[item::ALPHA_FUR, item::YETI_HELM, item::YETI_PLATE, item::YETI_LEGS, item::YETI_BOOTS], Gate::Yeti),
         (&[item::LAMP_OF_CINDERS], Gate::Troll),
     ];
+
     if let Some((_, gate)) = prizes.iter().find(|(names, _)| names.iter().any(|name| stack.item.is(name)))
     {
         grant(player, *gate);
     }
+
     let trophies: [(&str, Gate); 5] = [
         (item::HYDRA_TROPHY, Gate::KillHydra),
         (item::NAGA_TROPHY, Gate::KillNaga),
@@ -431,6 +435,7 @@ fn pickedUp(player: Player, stack: &ItemStack)
         (item::UR_GHAST_TROPHY, Gate::UrGhast),
         (item::SNOW_QUEEN_TROPHY, Gate::Glacier),
     ];
+
     if let Some((_, gate)) = trophies.iter().find(|(name, _)| stack.item.is(name))
     {
         grant(player, *gate);
@@ -438,7 +443,7 @@ fn pickedUp(player: Player, stack: &ItemStack)
 }
 
 // TFBiomeBase.getRequiredAchievement of each biome
-pub fn required(biome: Biome) -> Option<Gate>
+pub(crate) fn required(biome: Biome) -> Option<Gate>
 {
     match biome
     {
@@ -470,15 +475,18 @@ mod enforce
 fn punish(world: World, player: Player, info: &EntityInfo, biome: Biome, now: i64)
 {
     let entity: Entity = Entity { world, id: player.id };
+
     if biome == Biome::Highlands
     {
         crate::combat::hit(entity, 1, None, crate::combat::kind::MAGIC);
         world.playSound(info.pos, "random.fizz", 1.0, 1.0);
     }
+
     if now % enforce::CHECK != 0
     {
         return;
     }
+
     match biome
     {
         Biome::SnowyForest => chill(world, entity, info, enforce::SNOW_SLOW),
@@ -487,6 +495,7 @@ fn punish(world: World, player: Player, info: &EntityInfo, biome: Biome, now: i6
         _ =>
         {}
     }
+
     let hint: Option<Feature> = match biome
     {
         Biome::SnowyForest => Some(Feature::YetiCave),
@@ -528,6 +537,7 @@ fn checkPlayers()
     {
         return;
     }
+
     for player in world.players()
     {
         let Some(info) = player.info()
@@ -541,6 +551,7 @@ fn checkPlayers()
         {
             continue;
         };
+
         if !has(player, gate)
         {
             punish(world, player, &info, biome, now);
@@ -548,9 +559,9 @@ fn checkPlayers()
     }
 }
 
-pub fn doorLocked(_world: World, _pos: BlockPos) -> bool { false }
+pub(crate) fn doorLocked(_world: World, _pos: BlockPos) -> bool { false }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for step in &STEPS
     {
@@ -563,6 +574,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
         ctx.achievements().register(step.m_name, spec)?;
     }
+
     ctx.events().on::<ItemPickup>(Priority::Normal, |event|
     {
         let (Some(player), Some(stack), Some(world)) = (event.player(), event.stack(), event.world())
@@ -570,18 +582,22 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         {
             return;
         };
+
         if world.isAuthority() && crate::world::isTwilight(world)
         {
             pickedUp(player, &stack);
         }
     })?;
+
     ctx.events().on::<TickPost>(Priority::Normal, |_| checkPlayers())?;
+
     ctx.commands().registerWithUsage("tfprogress", Permission::Op, "<player> <boss>", |command|
     {
         let reply: String = setProgress(command.arg(0), command.arg(1));
         command.reply(&reply);
         Ok(())
     })?;
+
     Ok(())
 }
 
@@ -627,6 +643,7 @@ fn setProgress(name: Option<&str>, boss: Option<&str>) -> String
     {
         return format!("player {name} is not online");
     };
+
     // getBossIndex falls back to none for an unknown boss
     let index: usize = BOSS_STEPS.iter().position(|step| step.m_name.eq_ignore_ascii_case(boss)).unwrap_or(0);
     for step in &BOSS_STEPS[..=index]
@@ -636,5 +653,6 @@ fn setProgress(name: Option<&str>, boss: Option<&str>) -> String
             grant(player, *gate);
         }
     }
+
     format!("Setting player {name} progress to past boss {}.", BOSS_STEPS[index].m_name)
 }

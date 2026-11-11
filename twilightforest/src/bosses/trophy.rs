@@ -65,6 +65,7 @@ fn crown(world: World, pos: BlockPos)
             player.info().is_some_and(|info| crate::entities::ai::distance(info.pos, center) <= pedestal::REACH)
         })
         .collect();
+
     for player in &near
     {
         progress::grant(*player, Gate::Trophy);
@@ -80,6 +81,7 @@ fn crown(world: World, pos: BlockPos)
     {
         open(world, pos, meta);
     }
+
     for player in near.iter().filter(|player| !progress::has(**player, Gate::Trophy))
     {
         player.chat("You are unworthy.");
@@ -106,7 +108,9 @@ fn open(world: World, pos: BlockPos, meta: i32)
             }
         }
     }
+
     let _ = world.setBlock(pos, ids::blockId(block::TROPHY_PEDESTAL), meta & !pedestal::LATENT);
+
     world.playSound(ids::center(pos), "mob.zombie.infect", 4.0, 0.1);
 }
 
@@ -160,11 +164,13 @@ fn blockTexture(name: &str, lit: bool) -> String
 fn skin(from: [f32; 3], to: [f32; 3], axis: usize, step: i32) -> ([f32; 3], [f32; 3])
 {
     let (mut low, mut high): ([f32; 3], [f32; 3]) = (from, to);
+
     match step
     {
         1 => low[axis] = to[axis] - pedestal::SKIN,
         _ => high[axis] = from[axis] + pedestal::SKIN,
     }
+
     (low, high)
 }
 
@@ -173,6 +179,7 @@ fn pedestalModel() -> Vec<Cuboid>
 {
     let sides: [(usize, i32); 4] = [(2, -1), (2, 1), (0, -1), (0, 1)];
     let mut cuboids: Vec<Cuboid> = Vec::new();
+
     for [from, to] in pedestal::BOXES
     {
         let core: Cuboid = Cuboid
@@ -183,13 +190,16 @@ fn pedestalModel() -> Vec<Cuboid>
             ..Cuboid::default()
         };
         cuboids.push(core);
+
         for meta in 0..pedestal::LATENT * 2
         {
             let lit: bool = latent(meta);
+
             if meta % pedestal::LATENT == 0
             {
                 let (low, high): ([f32; 3], [f32; 3]) = skin(from, to, 1, 1);
                 let plates: Vec<i32> = (meta..meta + pedestal::LATENT).collect();
+
                 cuboids.push(Cuboid
                 {
                     from: low,
@@ -199,11 +209,13 @@ fn pedestalModel() -> Vec<Cuboid>
                     ..Cuboid::default()
                 });
             }
+
             for (side, (axis, step)) in sides.into_iter().enumerate()
             {
                 let face: &str =
                     pedestal::FACES[(side + (meta & pedestal::TURNS - 1) as usize) % pedestal::FACES.len()];
                 let (low, high): ([f32; 3], [f32; 3]) = skin(from, to, axis, step);
+
                 cuboids.push(Cuboid
                 {
                     from: low,
@@ -215,6 +227,7 @@ fn pedestalModel() -> Vec<Cuboid>
             }
         }
     }
+
     cuboids
 }
 
@@ -283,6 +296,7 @@ impl ItemBehavior for TrophyItem
         if world.isAuthority()
         {
             let yaw: f32 = player.info().map_or(0.0, |info| info.yaw);
+
             let turn: i32 = if face == head::FLOOR
             {
                 (yaw * head::TURNS as f32 / head::FULL_TURN + 0.5).floor() as i32 & (head::TURNS - 1)
@@ -298,6 +312,7 @@ impl ItemBehavior for TrophyItem
                 warn(&format!("trophy at {at:?}: {}", error.0));
             }
         }
+
         let left: i32 = stack.count - 1;
         Use::Done((left > 0).then_some(ItemStack { count: left, ..stack }))
     }
@@ -318,6 +333,7 @@ fn dropHead(ctx: &mut BlockCtx)
     {
         return;
     };
+
     let name: String = format!("twilightforest:{}", trophy.m_item);
     if let Err(error) = ctx.world().spawnItem(ids::center(ctx.pos()), ItemStack::of(name.as_str(), 1))
     {
@@ -340,6 +356,7 @@ fn kindStarts() -> [u16; 5]
     {
         static STARTS: std::cell::OnceCell<[u16; 5]> = const { std::cell::OnceCell::new() };
     }
+
     STARTS.with(|starts|
     {
         *starts.get_or_init(||
@@ -351,10 +368,13 @@ fn kindStarts() -> [u16; 5]
                 super::ur_ghast::model().parts.len(),
                 tf_snow_queen::model().parts.len(),
             ];
+
             let mut first: u16 = 0;
+
             sizes.map(|size|
             {
                 let start: u16 = first;
+
                 first += size as u16;
                 start
             })
@@ -384,6 +404,7 @@ impl TileBehavior for HeadTile
         let state: Head = ctx.tileData();
         let meta: i32 = i32::from(ctx.meta()) & 7;
         let floor: bool = meta == head::FLOOR;
+
         let turn: f32 = match meta
         {
             2 => 0.0,
@@ -392,13 +413,16 @@ impl TileBehavior for HeadTile
             5 => 90.0,
             _ => f32::from(state.m_turn) * head::FULL_TURN / head::TURNS as f32,
         };
+
         let starts: [u16; 5] = kindStarts();
         let mut body: Program = Program::new();
         body.translate(0.5, 0.5, 0.5);
+
         let face = |body: &mut Program, texture: &str|
         {
             body.texture(texture).scale(1.0, -1.0, -1.0).rotate(turn, 0.0, 1.0, 0.0).rotate(180.0, 0.0, 1.0, 0.0);
         };
+
         match state.m_kind
         {
             0 =>
@@ -421,6 +445,7 @@ impl TileBehavior for HeadTile
                 );
                 body.part(first + tf_hydra_head::FRILL, tf_hydra_head::ROTATIONS[2], tf_hydra_head::PIVOTS[2]);
             }
+
             1 =>
             {
                 body.translate(0.0, -0.125, 0.0).scale(0.25, 0.25, 0.25);
@@ -428,6 +453,7 @@ impl TileBehavior for HeadTile
                 body.translate(0.0, if floor { 1.0 } else { 0.0 }, if floor { 0.0 } else { 1.0 });
                 body.scale(2.0, 2.0, 2.0).rest(starts[1] + tf_naga::HEAD);
             }
+
             2 =>
             {
                 body.translate(0.0, 1.0, 0.0);
@@ -435,6 +461,7 @@ impl TileBehavior for HeadTile
                 body.translate(0.0, if floor { 1.75 } else { 1.5 }, if floor { 0.0 } else { 0.24 });
                 body.rest(starts[2] + tf_lich::HEAD).rest(starts[2] + tf_lich::HEADWEAR);
             }
+
             3 =>
             {
                 body.translate(0.0, 1.0, 0.0).scale(0.5, 0.5, 0.5);
@@ -442,6 +469,7 @@ impl TileBehavior for HeadTile
                 body.translate(0.0, 1.0, 0.0);
                 super::ur_ghast::drawBody(&mut body, starts[3], ticks as f32 + partial, [0.0, 0.0]);
             }
+
             _ =>
             {
                 body.translate(0.0, 1.0, 0.0);
@@ -450,11 +478,12 @@ impl TileBehavior for HeadTile
                 body.rest(starts[4] + tf_snow_queen::HEAD).rest(starts[4] + tf_snow_queen::HEADWEAR);
             }
         }
+
         Pose { pre: Vec::new(), model: body.take() }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerPedestal(ctx)?;
     // the bounds of each placement, drawn with an empty sprite since the tile draws the head
@@ -485,6 +514,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             .drops(Vec::new())
             .behavior(TrophyBlock),
     )?;
+
     for (kind, trophy) in TROPHIES.iter().enumerate()
     {
         let spec: ItemSpecBuilder = ItemSpecBuilder::new()
@@ -493,5 +523,6 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             .behavior(TrophyItem { m_kind: kind as i32 });
         ctx.items().register(trophy.m_item, spec)?;
     }
+
     Ok(())
 }

@@ -1,7 +1,7 @@
 // draft from ComponentTFHollowTreeLeafDungeon.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(index: i32, x: i32, y: i32, z: i32, radius: i32) -> Rc<Piece>
+pub(crate) fn new(index: i32, x: i32, y: i32, z: i32, radius: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::HollowTreeLeafDungeon);
     init(&this, index, x, y, z, radius);
@@ -9,7 +9,7 @@ pub fn new(index: i32, x: i32, y: i32, z: i32, radius: i32) -> Rc<Piece>
 }
 
 // ComponentTFHollowTreeLeafDungeon constructor
-pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, radius: i32)
+pub(crate) fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, radius: i32)
 {
     this.m_depth.set(index);
     this.setMode(0);
@@ -18,13 +18,13 @@ pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, radius: i32)
 }
 
 // ComponentTFHollowTreeLeafDungeon.func_74861_a
-pub fn build(this: &Piece, _structurecomponent: &Piece, _list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, _structurecomponent: &Piece, _list: &mut Pieces, random: &Random)
 {
     this.setMode(random.nextIntBounded(4));
 }
 
 // ComponentTFHollowTreeLeafDungeon.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     hollow_tree_leaf_dungeon::drawBlockBlob(
         this,
@@ -80,11 +80,11 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         mob("Swarm Spider"),
         sbb,
     );
-    return true;
+    true
 }
 
 // ComponentTFHollowTreeLeafDungeon.drawBlockBlob
-pub fn drawBlockBlob(
+pub(crate) fn drawBlockBlob(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,
@@ -115,6 +115,7 @@ pub fn drawBlockBlob(
                 {
                     dz + ((((dx.max(dy)) as f64 * 0.5) + ((dx.min(dy)) as f64 * 0.25)) as i32)
                 };
+
                 if dist <= blobRadius
                 {
                     if isLeaves
@@ -146,7 +147,7 @@ pub fn drawBlockBlob(
 }
 
 // ComponentTFHollowTreeLeafDungeon.placeLeafBlock
-pub fn placeLeafBlock(
+pub(crate) fn placeLeafBlock(
     this: &Piece,
     world: &GenWorld,
     blockID: Blk,

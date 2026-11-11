@@ -5,7 +5,7 @@ use b173_api::terrain::Random;
 
 // TFFeature, one landmark per 16x16 chunk region, its kind picked from the biome under the region center
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
-pub enum Feature
+pub(crate) enum Feature
 {
     Nothing,
     SmallHill,
@@ -30,7 +30,7 @@ pub enum Feature
     MushroomTower,
 }
 
-pub struct FeatureRow
+pub(crate) struct FeatureRow
 {
     pub m_feature: Feature,
     // the structure identifier path under twilightforest
@@ -91,7 +91,7 @@ const fn auraless(mut row: FeatureRow) -> FeatureRow
     row
 }
 
-pub const FEATURES: [FeatureRow; 21] = [
+pub(crate) const FEATURES: [FeatureRow; 21] = [
     bare(decorated(feature(Feature::Nothing, "nothing", "No Feature", 0))),
     shaping(decorated(feature(Feature::SmallHill, "small_hollow_hill", "Small Hollow Hill", 1))),
     shaping(decorated(feature(Feature::MediumHill, "medium_hollow_hill", "Medium Hollow Hill", 2))),
@@ -115,7 +115,7 @@ pub const FEATURES: [FeatureRow; 21] = [
     feature(Feature::MushroomTower, "mushroom_tower", "Mushroom Tower", 2),
 ];
 
-pub fn row(feature: Feature) -> &'static FeatureRow { &FEATURES[feature as usize] }
+pub(crate) fn row(feature: Feature) -> &'static FeatureRow { &FEATURES[feature as usize] }
 
 mod region
 {
@@ -133,13 +133,14 @@ fn round(value: f32) -> i32 { (value + 0.5).floor() as i32 }
 fn snap(chunk: i32) -> i32 { round(chunk as f32 / region::CHUNKS as f32) * region::CHUNKS }
 
 // TFFeature.generateFeatureFor1Point7
-pub fn forRegion(seed: i64, chunkX: i32, chunkZ: i32) -> Feature
+pub(crate) fn forRegion(seed: i64, chunkX: i32, chunkZ: i32) -> Feature
 {
     let (chunkX, chunkZ): (i32, i32) = (snap(chunkX), snap(chunkZ));
     let biome: Biome = biomes::at(seed, (chunkX << 4) + 8, (chunkZ << 4) + 8);
     let random: Random =
         Random::withSeed(seed + i64::from(chunkX) * region::SPREAD_X + i64::from(chunkZ) * region::SPREAD_Z);
     let roll: i32 = random.nextIntBounded(region::ROLLS);
+
     let byBiome: Option<Feature> = match biome
     {
         Biome::Glacier => Some(Feature::IceTower),
@@ -170,6 +171,7 @@ pub fn forRegion(seed: i64, chunkX: i32, chunkZ: i32) -> Feature
     {
         return Feature::NagaCourtyard;
     }
+
     match roll
     {
         6..=8 => Feature::MediumHill,
@@ -182,7 +184,7 @@ pub fn forRegion(seed: i64, chunkX: i32, chunkZ: i32) -> Feature
 }
 
 // TFFeature.getNearestCenterXYZ, the block the feature of this chunk's region centers on
-pub fn regionCenter(chunkX: i32, chunkZ: i32) -> (i32, i32)
+pub(crate) fn regionCenter(chunkX: i32, chunkZ: i32) -> (i32, i32)
 {
     let regionX: i32 = (chunkX + 8) >> 4;
     let regionZ: i32 = (chunkZ + 8) >> 4;
@@ -191,6 +193,7 @@ pub fn regionCenter(chunkX: i32, chunkZ: i32) -> (i32, i32)
     let bits = |shift: i64| ((hash >> shift) & 3) as i32;
     let centerX: i32 = 8 + bits(12) - bits(15);
     let centerZ: i32 = 8 + bits(18) - bits(21);
+
     let place = |region: i32, center: i32|
     {
         if region >= 0
@@ -206,16 +209,16 @@ pub fn regionCenter(chunkX: i32, chunkZ: i32) -> (i32, i32)
 }
 
 // TFWorldChunkManager.isInFeatureChunk
-pub fn isFeatureChunk(chunkX: i32, chunkZ: i32) -> bool
+pub(crate) fn featureChunk(chunkX: i32, chunkZ: i32) -> bool
 {
     let (x, z): (i32, i32) = regionCenter(chunkX, chunkZ);
     chunkX == x >> 4 && chunkZ == z >> 4
 }
 
 // TFFeature.getFeatureDirectlyAt
-pub fn directlyAt(seed: i64, chunkX: i32, chunkZ: i32) -> Feature
+pub(crate) fn directlyAt(seed: i64, chunkX: i32, chunkZ: i32) -> Feature
 {
-    if isFeatureChunk(chunkX, chunkZ)
+    if featureChunk(chunkX, chunkZ)
     {
         forRegion(seed, chunkX, chunkZ)
     }
@@ -226,7 +229,7 @@ pub fn directlyAt(seed: i64, chunkX: i32, chunkZ: i32) -> Feature
 }
 
 // TFFeature.getNearestFeature and getNearestCenter, the closest feature whose area covers this chunk
-pub fn nearest(seed: i64, chunkX: i32, chunkZ: i32) -> (Feature, [i32; 2])
+pub(crate) fn nearest(seed: i64, chunkX: i32, chunkZ: i32) -> (Feature, [i32; 2])
 {
     for radius in 1..=3
     {
@@ -242,6 +245,7 @@ pub fn nearest(seed: i64, chunkX: i32, chunkZ: i32) -> (Feature, [i32; 2])
             }
         }
     }
+
     (Feature::Nothing, [0, 0])
 }
 
@@ -275,11 +279,12 @@ fn locate(seed: i64, from: i32, wanted: &str) -> String
             }
         }
     }
+
     format!("no {wanted} within {} regions", search::RINGS)
 }
 
 // CommandTFFeature, the nearest feature to a player, or to the coordinates a console gives
-pub fn registerCommand(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn registerCommand(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.commands().registerWithUsage(
         "tffeature",
@@ -293,10 +298,12 @@ pub fn registerCommand(ctx: &mut RegisterCtx) -> Result<()>
                 let first: usize = if skip.is_some() { 2 } else { 1 };
                 let wanted: String =
                     (first..).map_while(|index| command.arg(index)).collect::<Vec<&str>>().join(" ").to_lowercase();
+
                 if let Some(numeric) = super::dimension()
                 {
                     command.reply(&locate(World { dimension: numeric }.seed(), skip.unwrap_or(0), &wanted));
                 }
+
                 return Ok(());
             }
 
@@ -309,28 +316,34 @@ pub fn registerCommand(ctx: &mut RegisterCtx) -> Result<()>
                         .and_then(Player::info)
                         .map(|info| [info.pos[0].floor() as i32, info.pos[2].floor() as i32]),
                 };
+
             let Some([x, z]) = position
             else
             {
                 command.reply("tffeature accepts the following arguments: info, center, a console adds x z");
                 return Ok(());
             };
+
             let Some(numeric) = super::dimension()
             else
             {
                 return Ok(());
             };
+
             let seed: i64 = World { dimension: numeric }.seed();
             let (feature, [offsetX, offsetZ]) = nearest(seed, x >> 4, z >> 4);
             let (centerX, centerZ): (i32, i32) = ((x >> 4 << 4) + offsetX, (z >> 4 << 4) + offsetZ);
+
             match command.arg(0)
             {
                 Some("center") =>
                 {
                     command.reply(&format!("The center of {} is at {centerX}, {centerZ}", row(feature).m_label))
                 }
+
                 _ => command.reply(&format!("The nearest feature is {}", row(feature).m_label)),
             }
+
             Ok(())
         },
     )

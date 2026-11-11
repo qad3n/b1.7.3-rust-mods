@@ -1,7 +1,7 @@
 // draft from ComponentTFMushroomTowerWing.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MushroomTowerWing);
     init(&this, i, x, y, z, pSize, pHeight, direction);
@@ -9,7 +9,7 @@ pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: 
 }
 
 // ComponentTFMushroomTowerWing constructor
-pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
+pub(crate) fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
 {
     tower_wing::init7(this, i, x, y, z, pSize, pHeight, direction);
     this.m_hasBase.set(false);
@@ -17,15 +17,17 @@ pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i
 }
 
 // ComponentTFMushroomTowerWing.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
     this.addOpening(0, 1, this.m_size.get() / 2, 2);
     this.m_hasBase.set(this.m_size.get() > 3);
+
     if this.m_isAscender.get()
     {
         let mut dest: Vec<i32> = this.getValidOpening(random, 2);
         dest[1] = this.m_height.get() - 3;
+
         let childHeight: i32 = (((random.nextIntBounded(3) + random.nextIntBounded(3)) + 2) * 4) + 1;
         let madeIt: bool = mushroom_tower_wing::makeMainBridge(
             this,
@@ -40,12 +42,9 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
             2,
         );
         if !madeIt
-        {
-        }
-        else
-        {
-        }
+        {}
     }
+
     if (this.depth() < 5) && (this.m_size.get() > 6)
     {
         for i in 0..4
@@ -68,20 +67,21 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
             }
         }
     }
+
     if mushroom_tower_wing::isHighest(this, this.m_box.get(), this.m_size.get(), list) || (!this.m_hasBase.get())
     {
-        this.makeARoof(&parent, list, random);
+        this.makeARoof(parent, list, random);
     }
 }
 
 // ComponentTFMushroomTowerWing.isOutOfRange
-pub fn isOutOfRange(_this: &Piece, parent: &Piece, nx: i32, _ny: i32, nz: i32, range: i32) -> bool
+pub(crate) fn isOutOfRange(_this: &Piece, parent: &Piece, nx: i32, _ny: i32, nz: i32, range: i32) -> bool
 {
-    return ((nx - parent.bounds().centerX()).abs() > range) || ((nz - parent.bounds().centerZ()).abs() > range);
+    ((nx - parent.bounds().centerX()).abs() > range) || ((nz - parent.bounds().centerZ()).abs() > range)
 }
 
 // ComponentTFMushroomTowerWing.makeTowerWing
-pub fn makeTowerWing(
+pub(crate) fn makeTowerWing(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -96,14 +96,16 @@ pub fn makeTowerWing(
 {
     let direction: i32 = (this.mode() + rotation) % 4;
     let mut dx: Vec<i32> = this.offsetTower(x, y, z, wingSize, direction);
-    if this.isOutOfRange(&Rc::clone(&list[(0) as usize]), dx[0], dx[1], dx[2], 200)
+    if this.isOutOfRange(&Rc::clone(&list[0usize]), dx[0], dx[1], dx[2], 200)
     {
         return false;
     }
+
     if wingSize > 3
     {
         dx = mushroom_tower_wing::adjustCoordinates(this, dx[0], dx[1], dx[2], wingSize, direction, list);
     }
+
     let wing: Rc<Piece> = mushroom_tower_wing::new(index, dx[0], dx[1], dx[2], wingSize, wingHeight, direction);
     let intersect: Option<Rc<Piece>> = intersecting(list, wing.bounds());
     if ((intersect.is_some()) && (!same(&intersect, &this)))
@@ -111,18 +113,20 @@ pub fn makeTowerWing(
     {
         return false;
     }
+
     if (matches!(this.m_kind, Kind::MushroomTowerBridge | Kind::MushroomTowerMainBridge)) && this.m_isAscender.get()
     {
         wing.m_isAscender.set(true);
     }
+
     list.push(Rc::clone(&wing));
-    wing.build(&Rc::clone(&list[(0) as usize]), list, random);
+    wing.build(&Rc::clone(&list[0usize]), list, random);
     this.addOpening(x, y, z, rotation);
-    return true;
+    true
 }
 
 // ComponentTFMushroomTowerWing.adjustCoordinates
-pub fn adjustCoordinates(
+pub(crate) fn adjustCoordinates(
     _this: &Piece,
     x: i32,
     y: i32,
@@ -183,32 +187,38 @@ pub fn adjustCoordinates(
                     {
                         return vec![otherWing.bounds().m_min[0], y, otherWing.bounds().m_min[2]];
                     }
+
                     1 =>
                     {
                         return vec![otherWing.bounds().m_max[0], y, otherWing.bounds().m_min[2]];
                     }
+
                     2 =>
                     {
                         return vec![otherWing.bounds().m_max[0], y, otherWing.bounds().m_max[2]];
                     }
+
                     3 =>
                     {
                         return vec![otherWing.bounds().m_min[0], y, otherWing.bounds().m_max[2]];
                     }
+
                     _ =>
                     {}
                 }
             }
         }
     }
-    return vec![x, y, z];
+
+    vec![x, y, z]
 }
 
 // ComponentTFMushroomTowerWing.isHighest
-pub fn isHighest(this: &Piece, boundingBox: StructureBox, size: i32, list: &mut Pieces) -> bool
+pub(crate) fn isHighest(this: &Piece, boundingBox: StructureBox, size: i32, list: &mut Pieces) -> bool
 {
     let mut boxAbove: StructureBox = boundingBox;
     boxAbove.m_max[1] = 256;
+
     for obj in list.clone()
     {
         if (!same(&this, &obj))
@@ -259,11 +269,12 @@ pub fn isHighest(this: &Piece, boundingBox: StructureBox, size: i32, list: &mut 
             }
         }
     }
-    return true;
+
+    true
 }
 
 // ComponentTFMushroomTowerWing.makeARoof
-pub fn makeARoof(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn makeARoof(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let mut roof: Rc<Piece> = tower_roof_mushroom::new(this.depth() + 1, this, 1.6);
     if intersecting(list, roof.bounds()).as_ref().is_some_and(|piece| matches!(piece.m_kind, Kind::TowerRoofMushroom))
@@ -291,7 +302,7 @@ pub fn makeARoof(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Rand
 }
 
 // ComponentTFMushroomTowerWing.makeBridge
-pub fn makeBridge(
+pub(crate) fn makeBridge(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -304,13 +315,11 @@ pub fn makeBridge(
     rotation: i32,
 ) -> bool
 {
-    return mushroom_tower_wing::makeBridge10(
-        this, list, random, index, x, y, z, wingSize, wingHeight, rotation, false,
-    );
+    mushroom_tower_wing::makeBridge10(this, list, random, index, x, y, z, wingSize, wingHeight, rotation, false)
 }
 
 // ComponentTFMushroomTowerWing.makeBridge
-pub fn makeBridge10(
+pub(crate) fn makeBridge10(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -326,30 +335,35 @@ pub fn makeBridge10(
 {
     let direction: i32 = (this.mode() + rotation) % 4;
     let dx: Vec<i32> = this.offsetTower(x, y, z, 3, direction);
+
     if wingSize == 3
     {
         wingHeight = 4;
     }
+
     let bridge: Rc<Piece> = mushroom_tower_bridge::new(index, dx[0], dx[1], dx[2], wingSize, wingHeight, direction);
     bridge.m_isAscender.set(ascender);
+
     let mut intersect: Option<Rc<Piece>> = intersecting(list, bridge.bounds());
     if (intersect.is_some()) && (!same(&intersect, &this))
     {
         return false;
     }
+
     intersect = intersecting(list, bridge.getWingBB());
     if (intersect.is_some()) && (!same(&intersect, &this))
     {
         return false;
     }
+
     list.push(Rc::clone(&bridge));
     bridge.build(this, list, random);
     this.addOpening(x, y, z, rotation);
-    return true;
+    true
 }
 
 // ComponentTFMushroomTowerWing.makeMainBridge
-pub fn makeMainBridge(
+pub(crate) fn makeMainBridge(
     this: &Piece,
     list: &mut Pieces,
     random: &Random,
@@ -369,21 +383,24 @@ pub fn makeMainBridge(
     list.push(Rc::clone(&bridge));
     bridge.build(this, list, random);
     this.addOpening(x, y, z, rotation);
-    return true;
+    true
 }
 
 // ComponentTFMushroomTowerWing.getValidOpening
-pub fn getValidOpening(this: &Piece, random: &Random, direction: i32) -> Vec<i32>
+pub(crate) fn getValidOpening(this: &Piece, random: &Random, direction: i32) -> Vec<i32>
 {
     let wLength: i32 = (this.m_size.get() / 3).min(3);
     let offset: i32 = (this.m_size.get() - wLength) / 2;
+
     if (direction != 0) && (direction != 2)
     {
         if (direction != 1) && (direction != 3)
         {
             return vec![0, 0, 0];
         }
+
         let rx: i32 = offset + random.nextIntBounded(wLength);
+
         let rz: i32 = if direction == 1
         {
             this.m_size.get() - 1
@@ -393,7 +410,7 @@ pub fn getValidOpening(this: &Piece, random: &Random, direction: i32) -> Vec<i32
             0
         };
         let ry: i32 = this.getYByStairs(rx, random, direction);
-        return vec![rx, ry, rz];
+        vec![rx, ry, rz]
     }
     else
     {
@@ -407,19 +424,19 @@ pub fn getValidOpening(this: &Piece, random: &Random, direction: i32) -> Vec<i32
         };
         let rz: i32 = offset + random.nextIntBounded(wLength);
         let ry: i32 = this.getYByStairs(rz, random, direction);
-        return vec![rx, ry, rz];
+        vec![rx, ry, rz]
     }
 }
 
 // ComponentTFMushroomTowerWing.getYByStairs
-pub fn getYByStairs(this: &Piece, _rx: i32, random: &Random, _direction: i32) -> i32
+pub(crate) fn getYByStairs(this: &Piece, _rx: i32, random: &Random, _direction: i32) -> i32
 {
     let floors: i32 = this.m_height.get() / 4;
-    return 5 + (random.nextIntBounded(floors - 1) * 4);
+    5 + (random.nextIntBounded(floors - 1) * 4)
 }
 
 // ComponentTFMushroomTowerWing.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     let decoRNG: Random = Random::withSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
@@ -429,16 +446,17 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
     this.makeFloorsForTower(world, &decoRNG, sbb);
     this.darken(world);
     this.makeOpenings(world, sbb);
-    return true;
+    true
 }
 
 // ComponentTFMushroomTowerWing.makeTrunk
-pub fn makeTrunk(this: &Piece, world: &GenWorld, sbb: StructureBox)
+pub(crate) fn makeTrunk(this: &Piece, world: &GenWorld, sbb: StructureBox)
 {
     let diameter: i32 = this.m_size.get() / 2;
     let hollow: i32 = ((diameter) as f64 * 0.8) as i32;
     let cx: i32 = diameter;
     let cz: i32 = diameter;
+
     for dx in -diameter..=diameter
     {
         for dz in -diameter..=diameter
@@ -466,6 +484,7 @@ pub fn makeTrunk(this: &Piece, world: &GenWorld, sbb: StructureBox)
                     dz + cz,
                     sbb,
                 );
+
                 if dist > hollow
                 {
                     for dy in 0..=this.m_height.get()
@@ -488,6 +507,7 @@ pub fn makeTrunk(this: &Piece, world: &GenWorld, sbb: StructureBox)
                         this.placeBlock(world, blk("air"), 0, dx + cx, dy, dz + cz, sbb);
                     }
                 }
+
                 if this.m_hasBase.get()
                 {
                     this.fillDown(
@@ -506,14 +526,16 @@ pub fn makeTrunk(this: &Piece, world: &GenWorld, sbb: StructureBox)
 }
 
 // ComponentTFMushroomTowerWing.makeFloorsForTower
-pub fn makeFloorsForTower(this: &Piece, world: &GenWorld, _decoRNG: &Random, sbb: StructureBox)
+pub(crate) fn makeFloorsForTower(this: &Piece, world: &GenWorld, _decoRNG: &Random, sbb: StructureBox)
 {
     let floors: i32 = this.m_height.get() / 4;
     let mut ladderDir: i32 = 3;
     let _downLadderDir: i32 = -1;
+
     for i in 0..floors
     {
         mushroom_tower_wing::placeFloor(this, world, i * 4, sbb);
+
         ladderDir =
         {
             ladderDir += 1;
@@ -523,12 +545,13 @@ pub fn makeFloorsForTower(this: &Piece, world: &GenWorld, _decoRNG: &Random, sbb
 }
 
 // ComponentTFMushroomTowerWing.placeFloor
-pub fn placeFloor(this: &Piece, world: &GenWorld, dy: i32, sbb: StructureBox)
+pub(crate) fn placeFloor(this: &Piece, world: &GenWorld, dy: i32, sbb: StructureBox)
 {
     let diameter: i32 = this.m_size.get() / 2;
     let hollow: i32 = ((diameter) as f64 * 0.8) as i32;
     let cx: i32 = diameter;
     let cz: i32 = diameter;
+
     for dx in -diameter..=diameter
     {
         for dz in -diameter..=diameter
@@ -560,9 +583,10 @@ pub fn placeFloor(this: &Piece, world: &GenWorld, dy: i32, sbb: StructureBox)
 }
 
 // ComponentTFMushroomTowerWing.makeDoorOpening
-pub fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
+pub(crate) fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32, sbb: StructureBox)
 {
     tower_wing::makeDoorOpening(this, world, dx, dy, dz, sbb);
+
     if this.getBlock(world, dx, dy + 2, dz, sbb) != blk("air")
     {
         this.placeBlock(world, this.m_deco.get().m_accentID, this.m_deco.get().m_accentMeta, dx, dy + 2, dz, sbb);
@@ -570,7 +594,7 @@ pub fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32
 }
 
 // ComponentTFMushroomTowerWing.decorateFloor
-pub fn decorateFloor8(
+pub(crate) fn decorateFloor8(
     _this: &Piece,
     _world: &GenWorld,
     _random: &Random,

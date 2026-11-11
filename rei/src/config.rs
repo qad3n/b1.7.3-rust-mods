@@ -2,7 +2,7 @@ use b173_api::prelude::*;
 
 const MOD_NAME: &str = "tooltip.mod_name";
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.config().options([Setting::bool(MOD_NAME, true)
         .label("Mod Name")
@@ -10,4 +10,4 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         .client()])
 }
 
-pub fn modName() -> bool { Config.getBool(MOD_NAME) }
+pub(crate) fn modName() -> bool { Config.getBool(MOD_NAME) }

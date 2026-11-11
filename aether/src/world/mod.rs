@@ -1,16 +1,16 @@
 mod decorate;
-pub mod dungeons;
+pub(crate) mod dungeons;
 mod gen_world;
 mod lakes;
 mod terrain;
-pub mod trees;
+pub(crate) mod trees;
 
 use crate::ids::block;
 use b173_api::prelude::*;
-pub use gen_world::GenWorld;
+pub(crate) use gen_world::GenWorld;
 
-pub const DIMENSION: &str = "the_aether";
-pub const DIMENSION_ID: &str = "aether:the_aether";
+pub(crate) const DIMENSION: &str = "the_aether";
+pub(crate) const DIMENSION_ID: &str = "aether:the_aether";
 // AetherMusicTicker: aether1 to aether4, a minute to a minute and a quarter apart
 const MUSIC: &str = "aether.music.aether";
 const MUSIC_DELAY: [i32; 2] = [1200, 1500];
@@ -26,11 +26,12 @@ mod sky
 
 fn own(name: &str) -> Option<Identifier> { Identifier::parse(&format!("aether:{name}")).ok() }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.dimensions().biome(
         BIOME,
-        BiomeSpec {
+        BiomeSpec
+        {
             name: "Aether Highlands".to_owned(),
             color: sky::MAP,
             temperature: 0.5,
@@ -40,9 +41,11 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             weight: 1,
         },
     )?;
+
     let aether: Dimension = ctx.dimensions().register(
         DIMENSION,
-        DimensionSpec {
+        DimensionSpec
+        {
             name: "The Aether".to_owned(),
             sky_color: sky::SKY,
             fog_color: sky::FOG,

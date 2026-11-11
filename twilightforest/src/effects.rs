@@ -3,7 +3,7 @@ use b173_api::prelude::*;
 // the 1.7 potions the source hands out that beta's attributes can carry, on the loader's status effects; hunger,
 // blindness, jump boost, resistance and fire resistance have no beta stat and stay out
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Effect
+pub(crate) enum Effect
 {
     Slowness,
     Speed,
@@ -101,7 +101,7 @@ fn row(effect: Effect) -> &'static EffectRow
 }
 
 // EntityLivingBase.addPotionEffect, level 0 is the first level
-pub fn give(target: Entity, effect: Effect, level: i32, ticks: i32)
+pub(crate) fn give(target: Entity, effect: Effect, level: i32, ticks: i32)
 {
     let name: String = format!("twilightforest:{}", row(effect).m_name);
     if let Err(error) = target.addEffect(&name, level, ticks)
@@ -110,7 +110,7 @@ pub fn give(target: Entity, effect: Effect, level: i32, ticks: i32)
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &EFFECTS
     {
@@ -124,6 +124,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
                 Ok(EffectModifierSpec { attribute, amount: *amount, operation: *operation })
             })
             .collect::<Result<Vec<EffectModifierSpec>>>()?;
+
         let spec: EffectSpec = EffectSpec
         {
             color: row.m_color,
@@ -135,5 +136,6 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
         ctx.effects().register(row.m_name, spec)?;
     }
+
     Ok(())
 }

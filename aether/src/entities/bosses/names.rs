@@ -1,5 +1,5 @@
 // AetherNameGen word lists, boss names are one first part, two or three middles and one last part
-pub const FIRST: [&str; 150] = [
+pub(crate) const FIRST: [&str; 150] = [
     "Del", "Ros", "Per", "Cyn", "Flar", "Ba", "Lab", "Az", "Ob", "Al", "Pas", "Nun", "Ur", "Ter", "Jar", "Est", "Car",
     "Houl", "In", "Kop", "Shot", "Vast", "Ael", "Skal", "Geld", "Er", "Sald", "Sar", "Binthe", "Haur", "Syn", "Kren",
     "Verd", "Pav", "Mart", "Yal", "Kor", "Lar", "Mel", "Claune", "For", "Rusk", "Pan", "Dir", "Chies", "Kil", "Odas",
@@ -11,7 +11,7 @@ pub const FIRST: [&str; 150] = [
     "Ash", "Ost", "Haith", "I", "Ca", "Vad", "Ro", "Dez", "Kuv", "Vab", "Dar", "Ral", "Mar", "Quarne", "Pulg", "Hor",
     "Ka", "Quer", "And", "Ny", "Ym", "Wal", "Tarl", "Vart", "Pro",
 ];
-pub const MIDDLE: [&str; 136] = [
+pub(crate) const MIDDLE: [&str; 136] = [
     "cath", "yd", "rik", "nal", "y", "ro", "stead", "carn", "tak", "chean", "ain", "ak", "loc", "ras", "ien", "cuth",
     "alen", "is", "carad", "acy", "la", "asc", "arn", "ayn", "sene", "art", "lyn", "cam", "mel", "ly", "eas", "il",
     "oller", "bin", "a", "astar", "tuny", "iera", "aldy", "ene", "in", "yne", "id", "aur", "era", "fyn", "om", "sume",
@@ -22,7 +22,7 @@ pub const MIDDLE: [&str; 136] = [
     "et", "er", "im", "dar", "end", "doth", "en", "aller", "reth", "juin", "arny", "un", "len", "ere", "ane", "aryn",
     "dy", "gary", "arry", "arty", "ydd", "ris", "ar", "ance", "hen", "el", "air", "rum",
 ];
-pub const LAST: [&str; 127] = [
+pub(crate) const LAST: [&str; 127] = [
     "cath", "carth", "ayne", "yd", "arik", "asty", "rik", "lir", "dor", "nal", "on", "codd", "y", "ber", "ro", "stead",
     "ta", "tyne", "wat", "carn", "erry", "chean", "ain", "aryne", "al", "ak", "ert", "ras", "ien", "alen", "is", "acy",
     "la", "ame", "ter", "arn", "quine", "ayn", "sene", "art", "arth", "lyn", "mel", "arne", "ern", "eth", "ly", "zane",
@@ -33,6 +33,6 @@ pub const LAST: [&str; 127] = [
     "aver", "geth", "car", "lin", "ydd", "ris", "nyd", "ance", "luth", "ar", "dal", "gant", "el", "tyn", "air", "gine",
     "boo",
 ];
-pub const VALKYRIE_PREFIX: [&str; 5] = ["Har", "Her", "Gon", "Sko", "Hil"];
-pub const VALKYRIE_MIDDLE: [&str; 5] = ["fjo", "ska", "bri", "", ""];
-pub const VALKYRIE_SUFFIX: [&str; 5] = ["tur", "pul", "dul", "gul", "or"];
+pub(crate) const VALKYRIE_PREFIX: [&str; 5] = ["Har", "Her", "Gon", "Sko", "Hil"];
+pub(crate) const VALKYRIE_MIDDLE: [&str; 5] = ["fjo", "ska", "bri", "", ""];
+pub(crate) const VALKYRIE_SUFFIX: [&str; 5] = ["tur", "pul", "dul", "gul", "or"];

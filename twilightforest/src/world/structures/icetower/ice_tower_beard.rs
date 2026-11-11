@@ -1,7 +1,7 @@
 // draft from ComponentTFIceTowerBeard.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
+pub(crate) fn new(i: i32, wing: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::IceTowerBeard);
     init(&this, i, wing);
@@ -9,7 +9,7 @@ pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFIceTowerBeard constructor
-pub fn init(this: &Piece, i: i32, wing: &Piece)
+pub(crate) fn init(this: &Piece, i: i32, wing: &Piece)
 {
     this.m_depth.set(i);
     this.setMode(wing.mode());
@@ -23,7 +23,7 @@ pub fn init(this: &Piece, i: i32, wing: &Piece)
 }
 
 // ComponentTFIceTowerBeard.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for x in 0..this.m_size.get()
     {
@@ -44,5 +44,6 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             }
         }
     }
-    return true;
+
+    true
 }

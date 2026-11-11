@@ -78,7 +78,7 @@ fn ground(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 }
 
 // TFGenerator.isAreaSuitable, solid ground under the whole footprint and air above it
-pub fn suitable(world: &GenWorld, x: i32, y: i32, z: i32, size: [i32; 3]) -> bool
+pub(crate) fn suitable(world: &GenWorld, x: i32, y: i32, z: i32, size: [i32; 3]) -> bool
 {
     let [width, height, depth] = size;
     for cx in 0..width
@@ -95,14 +95,16 @@ pub fn suitable(world: &GenWorld, x: i32, y: i32, z: i32, size: [i32; 3]) -> boo
             }
         }
     }
+
     true
 }
 
 // TFGenPlantRoots, root strands hanging under the dirt
-pub fn plantRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn plantRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
     let strand: i32 = world.id(block::ROOT_STRAND);
     let (mut bx, mut bz): (i32, i32) = (x, z);
+
     for by in (reach::ROOT_FLOOR + 1..=y).rev()
     {
         if world.isAir(bx, by, bz) && rootHold(world, bx, by + 1, bz) && random.nextIntBounded(odds::ROOT) > 0
@@ -118,10 +120,11 @@ pub fn plantRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 }
 
 // TFGenTorchBerries, one torchberry plant under the first root that takes it
-pub fn torchBerries(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn torchBerries(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
     let berries: i32 = world.id(block::TORCHBERRY_PLANT);
     let (mut bx, mut bz): (i32, i32) = (x, z);
+
     for by in (reach::ROOT_FLOOR + 1..=y).rev()
     {
         if world.isAir(bx, by, bz) && rootHold(world, bx, by + 1, bz) && random.nextIntBounded(odds::ROOT) > 0
@@ -129,16 +132,18 @@ pub fn torchBerries(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
             world.set(bx, by, bz, berries);
             return;
         }
+
         bx = wander(random, x);
         bz = wander(random, z);
     }
 }
 
 // TFGenTrollRoots, troll roots and the odd unripe trollber under the highland stone
-pub fn trollRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn trollRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
     let (root, berry): (i32, i32) = (world.id(block::TROLL_ROOT), world.id(block::UNRIPE_TROLLBER));
     let (mut bx, mut bz): (i32, i32) = (x, z);
+
     for by in (reach::ROOT_FLOOR + 1..=y).rev()
     {
         if !world.isAir(bx, by, bz) || !trollHold(world, bx, by + 1, bz) || random.nextIntBounded(odds::ROOT) <= 0
@@ -158,12 +163,13 @@ pub fn trollRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 }
 
 // TFGenWoodRoots, a root line through the stone with an occasional knot of liveroot
-pub fn woodRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn woodRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
     if world.block(x, y, z) != world.id("minecraft:stone")
     {
         return;
     }
+
     let length: f32 = (random.nextFloat() * 6.0 + random.nextFloat() * 6.0 + 4.0).min(y as f32);
     let tilt: f32 = 0.6 + random.nextFloat() * 0.3;
     let angle: f32 = random.nextFloat();
@@ -189,11 +195,14 @@ fn woodRoot(world: &GenWorld, random: &Random, origin: [i32; 3], from: [i32; 3],
     {
         return;
     }
+
     let (root, ore): ((i32, i32), (i32, i32)) = ((world.id(block::ROOT), 0), (world.id(block::LIVEROOT), 0));
+
     for at in super::trees::line(from, dest)
     {
         placeRoot(world, at, root);
     }
+
     let branchLength: f32 = 8.0;
     if length > branchLength && random.nextIntBounded(odds::ROOT_BRANCH) > 0
     {
@@ -202,6 +211,7 @@ fn woodRoot(world: &GenWorld, random: &Random, origin: [i32; 3], from: [i32; 3],
         let nextTilt: f32 = 0.6 + random.nextFloat() * 0.3;
         woodRoot(world, random, origin, next, length / 2.0, nextAngle, nextTilt);
     }
+
     let knotLength: f32 = 6.0;
     if length > knotLength && random.nextIntBounded(odds::ROOT_KNOT) == 0
     {
@@ -221,10 +231,11 @@ fn woodRoot(world: &GenWorld, random: &Random, origin: [i32; 3], from: [i32; 3],
 }
 
 // TFGenMyceliumBlob, a disc that turns the ground over, beta has no mycelium so it lays dirt
-pub fn groundBlob(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32, size: i32)
+pub(crate) fn groundBlob(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32, size: i32)
 {
     let range: i32 = random.nextIntBounded(size - 2) + 2;
     let turns: [i32; 3] = [world.id("minecraft:dirt"), world.id("minecraft:grass"), world.id("minecraft:stone")];
+
     for bx in x - range..=x + range
     {
         for bz in z - range..=z + range
@@ -233,6 +244,7 @@ pub fn groundBlob(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, blo
             {
                 continue;
             }
+
             for by in y - 1..=y + 1
             {
                 if turns.contains(&world.block(bx, by, bz))
@@ -245,7 +257,7 @@ pub fn groundBlob(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, blo
 }
 
 // TFGenTallGrass, plants scattered around the first non leaf block below
-pub fn plants(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, plant: &'static str, amount: i32)
+pub(crate) fn plants(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, plant: &'static str, amount: i32)
 {
     let mut y: i32 = y;
     while leafy(world, world.block(x, y, z))
@@ -256,7 +268,9 @@ pub fn plants(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, plant: 
             break;
         }
     }
+
     let id: i32 = world.id(plant);
+
     for _ in 0..amount
     {
         let [bx, by, bz] = scatter(random, x, y, z);
@@ -268,9 +282,10 @@ pub fn plants(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, plant: 
 }
 
 // the vanilla WorldGenTallGrass placing one of the twilight plants
-pub fn plantPatch(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, plant: &'static str)
+pub(crate) fn plantPatch(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, plant: &'static str)
 {
     let id: i32 = world.id(plant);
+
     let stays = |world: &GenWorld, bx: i32, by: i32, bz: i32|
     {
         crate::blocks::plantStays(world.m_world, BlockPos::new(bx, by, bz), plant)
@@ -292,7 +307,7 @@ fn holdsLamp(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 }
 
 // TFGenHangingLamps, a firefly jar on a fence chain under the canopy
-pub fn hangingLamp(world: &GenWorld, x: i32, y: i32, z: i32)
+pub(crate) fn hangingLamp(world: &GenWorld, x: i32, y: i32, z: i32)
 {
     let below: i32 = 4;
     let canopy: bool = (1..HANG).any(|cy| holdsLamp(world, x, y + cy, z));
@@ -301,20 +316,24 @@ pub fn hangingLamp(world: &GenWorld, x: i32, y: i32, z: i32)
     {
         return;
     }
+
     world.set(x, y, z, world.id(block::FIREFLY_JAR));
+
     let fence: i32 = world.id("minecraft:fence");
+
     for cy in 1..HANG
     {
         if holdsLamp(world, x, y + cy, z)
         {
             break;
         }
+
         world.set(x, y + cy, z, fence);
     }
 }
 
 // TFGenLampposts, a fence post on the grass topped with a firefly jar
-pub fn lamppost(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn lamppost(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
     if world.block(x, y - 1, z) != world.id("minecraft:grass")
     {
@@ -325,33 +344,40 @@ pub fn lamppost(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
     {
         return;
     }
+
     let fence: i32 = world.id("minecraft:fence");
+
     for dy in 0..height
     {
         world.set(x, y + dy, z, fence);
     }
+
     world.set(x, y + height, z, world.id(block::FIREFLY_JAR));
 }
 
 // TFGenFireJet, a smoker or fire jet in the grass over a pocket of lava ringed in stone
-pub fn fireJet(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, jet: &'static str)
+pub(crate) fn fireJet(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, jet: &'static str)
 {
     let grass: i32 = world.id("minecraft:grass");
     let (stone, flowing): (i32, i32) = (world.id("minecraft:stone"), world.id("minecraft:flowing_lava"));
+
     for _ in 0..4
     {
         let [bx, by, bz] = scatter(random, x, y, z);
         let grassy: bool = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]
             .iter()
             .all(|[dx, dz]| world.block(bx + dx, by - 1, bz + dz) == grass);
+
         if !world.isAir(bx, by, bz) || world.height(bx, bz) > by || !grassy
         {
             continue;
         }
+
         world.set(bx, by - 1, bz, world.id(jet));
-        for rx in -2..=2_i32
+
+        for rx in -2..=2i32
         {
-            for rz in -2..=2_i32
+            for rz in -2..=2i32
             {
                 if rx.abs() <= 1 && rz.abs() <= 1
                 {
@@ -368,7 +394,7 @@ pub fn fireJet(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, jet: &
 }
 
 // spawns a mob during decoration facing a random way, TFGenPenguins and TFGenMonolith
-pub fn critters(world: &GenWorld, random: &Random, x: i32, z: i32, kind: &str, count: i32)
+pub(crate) fn critters(world: &GenWorld, random: &Random, x: i32, z: i32, kind: &str, count: i32)
 {
     for _ in 0..count
     {
@@ -381,7 +407,7 @@ pub fn critters(world: &GenWorld, random: &Random, x: i32, z: i32, kind: &str, c
 }
 
 // TFGenThorns, a thorn bush branching from the ground
-pub fn thorns(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn thorns(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
     let length: i32 = 2 + random.nextIntBounded(4);
     let longest: i32 = 2 + random.nextIntBounded(4) + random.nextIntBounded(4) + random.nextIntBounded(4);
@@ -414,6 +440,7 @@ fn thornArm(
         (world.id(block::BROWN_THORNS), world.id(block::THORN_LEAVES), world.id(block::THORN_ROSE));
     let axis: i32 = i32::from(crate::blocks::axisOf(dir));
     let mut complete: bool = false;
+
     for i in 0..length
     {
         let at: [i32; 3] = step(from, dir, i);
@@ -421,12 +448,16 @@ fn thornArm(
         {
             break;
         }
+
         world.setMeta(at[0], at[1], at[2], thorn, axis);
+
         if i < length - 1
         {
             continue;
         }
+
         complete = true;
+
         let tip: [i32; 3] = step(at, dir, 1);
         if random.nextIntBounded(odds::THORN_FLOWER) == 0 && world.isAir(tip[0], tip[1], tip[2])
         {
@@ -441,26 +472,31 @@ fn thornArm(
             world.set(tip[0], tip[1], tip[2], flower);
         }
     }
+
     if !complete
     {
         return;
     }
+
     let branchFrom = |offset: i32|
     {
         let next: [i32; 3] = DIRECTIONS[random.nextIntBounded(DIRECTIONS.len() as i32) as usize];
         (next, step(step(from, dir, offset), next, 1))
     };
+
     if longest > 1
     {
         let (next, start): ([i32; 3], [i32; 3]) = branchFrom(length - 1);
         thornArm(world, random, start, 1 + random.nextIntBounded(longest), next, longest - 1, origin);
     }
+
     if length > 3 && random.nextIntBounded(odds::THORN_BRANCH) == 0
     {
         let middle: i32 = random.nextIntBounded(length);
         let (next, start): ([i32; 3], [i32; 3]) = branchFrom(middle);
         thornArm(world, random, start, 1 + random.nextIntBounded(longest), next, longest - 1, origin);
     }
+
     if length > 3 && random.nextIntBounded(odds::THORN_BRANCH) == 0
     {
         let middle: i32 = random.nextIntBounded(length);
@@ -473,10 +509,11 @@ fn thornArm(
 }
 
 // TFGenHugeLilyPad, two by two pads on still water turned by a hash of their spot
-pub fn lilyPads(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn lilyPads(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
     let pad: i32 = world.id(block::HUGE_LILY_PAD);
     let pieces: [[i32; 2]; 4] = crate::blocks::PAD_PIECES;
+
     for _ in 0..10
     {
         let [bx, by, bz] = scatter(random, x, y, z);
@@ -485,7 +522,9 @@ pub fn lilyPads(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
         {
             continue;
         }
+
         let turn: i32 = crate::blocks::padTurn(bx, bz);
+
         for (piece, [dx, dz]) in pieces.iter().enumerate()
         {
             world.setMeta(bx + dx, by, bz + dz, pad, crate::blocks::padMeta(piece, turn));
@@ -494,9 +533,10 @@ pub fn lilyPads(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 }
 
 // TFGenHugeWaterLily
-pub fn waterLilies(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
+pub(crate) fn waterLilies(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
     let lily: i32 = world.id(block::HUGE_WATER_LILY);
+
     for _ in 0..4
     {
         let [bx, by, bz] = scatter(random, x, y, z);
@@ -508,7 +548,7 @@ pub fn waterLilies(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 }
 
 // TFGenBigMushgloom
-pub fn bigMushgloom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn bigMushgloom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let height: i32 = 3 + random.nextIntBounded(2) + random.nextIntBounded(2);
     if !suitable(world, x - 1, y, z - 1, [3, height, 3])
@@ -520,12 +560,15 @@ pub fn bigMushgloom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -
     {
         return false;
     }
+
     let gloom: i32 = world.id(block::HUGE_GLOOM);
     let stem: i32 = 1;
+
     for dy in 0..height - 2
     {
         world.setMeta(x, y + dy, z, gloom, stem);
     }
+
     let cap = |cy: i32|
     {
         for dx in -1..=1
@@ -537,16 +580,18 @@ pub fn bigMushgloom(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -
         }
     };
     cap(y + height - 2);
+
     if random.nextBoolean()
     {
         cap(y + height - 1);
     }
+
     true
 }
 
 // one kind of TFGenCaveStalactite
 #[derive(Clone, Copy)]
-pub struct Spike
+pub(crate) struct Spike
 {
     pub m_block: &'static str,
     pub m_size: f32,
@@ -560,24 +605,25 @@ const fn ore(block: &'static str, size: f32, longest: i32, gap: i32) -> Spike
     Spike { m_block: block, m_size: size, m_longest: longest, m_gap: gap, m_hang: true }
 }
 
-pub mod spikes
+pub(crate) mod spikes
 {
     use super::{Spike, ore};
 
-    pub const DIAMOND: Spike = ore("minecraft:diamond_ore", 0.5, 4, 16);
-    pub const LAPIS: Spike = ore("minecraft:lapis_ore", 0.8, 8, 1);
+    pub(crate) const DIAMOND: Spike = ore("minecraft:diamond_ore", 0.5, 4, 16);
+    pub(crate) const LAPIS: Spike = ore("minecraft:lapis_ore", 0.8, 8, 1);
     // beta has no emerald ore, the emerald spike is a smaller diamond one
-    pub const EMERALD: Spike = ore("minecraft:diamond_ore", 0.5, 3, 12);
-    pub const GOLD: Spike = ore("minecraft:gold_ore", 0.6, 6, 1);
-    pub const REDSTONE: Spike = ore("minecraft:redstone_ore", 0.8, 8, 1);
-    pub const IRON: Spike = ore("minecraft:iron_ore", 0.7, 8, 1);
-    pub const COAL: Spike = ore("minecraft:coal_ore", 0.8, 12, 1);
-    pub const GLOWSTONE: Spike = ore("minecraft:glowstone", 0.5, 8, 1);
-    pub const STONE: Spike = Spike { m_block: "minecraft:stone", m_size: 1.0, m_longest: -1, m_gap: -1, m_hang: false };
+    pub(crate) const EMERALD: Spike = ore("minecraft:diamond_ore", 0.5, 3, 12);
+    pub(crate) const GOLD: Spike = ore("minecraft:gold_ore", 0.6, 6, 1);
+    pub(crate) const REDSTONE: Spike = ore("minecraft:redstone_ore", 0.8, 8, 1);
+    pub(crate) const IRON: Spike = ore("minecraft:iron_ore", 0.7, 8, 1);
+    pub(crate) const COAL: Spike = ore("minecraft:coal_ore", 0.8, 12, 1);
+    pub(crate) const GLOWSTONE: Spike = ore("minecraft:glowstone", 0.5, 8, 1);
+    pub(crate) const STONE: Spike =
+        Spike { m_block: "minecraft:stone", m_size: 1.0, m_longest: -1, m_gap: -1, m_hang: false };
 }
 
 // TFGenCaveStalactite.makeRandomOreStalactite, richer ores in the bigger hollow hills
-pub fn randomOre(random: &Random, hill: i32) -> &'static Spike
+pub(crate) fn randomOre(random: &Random, hill: i32) -> &'static Spike
 {
     if hill >= 3 || hill >= 2 && random.nextIntBounded(5) == 0
     {
@@ -590,6 +636,7 @@ pub fn randomOre(random: &Random, hill: i32) -> &'static Spike
             {}
         }
     }
+
     if hill >= 2 || hill >= 1 && random.nextIntBounded(5) == 0
     {
         match random.nextIntBounded(6)
@@ -600,6 +647,7 @@ pub fn randomOre(random: &Random, hill: i32) -> &'static Spike
             {}
         }
     }
+
     match random.nextIntBounded(5)
     {
         0 | 1 => &spikes::IRON,
@@ -612,7 +660,7 @@ pub fn randomOre(random: &Random, hill: i32) -> &'static Spike
 fn earthy(world: &GenWorld, block: i32) -> bool { block == world.id("minecraft:dirt") || ids::stony(block) }
 
 // TFGenCaveStalactite.generate, a spike from the ceiling or floor of the cave around the spot
-pub fn stalactite(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, spike: &Spike) -> bool
+pub(crate) fn stalactite(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, spike: &Spike) -> bool
 {
     let top: i32 = super::terrain::height();
     let Some(ceiling) = (y..top).find(|ty| !world.isAir(x, *ty, z))
@@ -624,8 +672,10 @@ pub fn stalactite(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, spi
     {
         return false;
     }
+
     let lowest: i32 = 4;
     let mut floor: i32 = -1;
+
     for ty in (lowest + 1..=y).rev()
     {
         let block: i32 = world.block(x, ty, z);
@@ -637,30 +687,36 @@ pub fn stalactite(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, spi
         {
             return false;
         }
+
         floor = ty;
         break;
     }
+
     let mut length: i32 = ((ceiling - floor) as f32 * spike.m_size * random.nextFloat()) as i32;
+
     if spike.m_longest > -1
     {
         length = length.min(spike.m_longest);
     }
+
     if spike.m_gap > -1 && ceiling - floor - length < spike.m_gap
     {
         return false;
     }
+
     makeSpike(world, random, [x, if spike.m_hang { ceiling } else { floor }, z], length, spike);
     true
 }
 
 // TFGenOutsideStalagmite, a stone spike standing on open ground
-pub fn stalagmite(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
+pub(crate) fn stalagmite(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
     let length: i32 = random.nextIntBounded(10) + 5;
     if !suitable(world, x, y, z, [1, length, 1])
     {
         return false;
     }
+
     makeSpike(world, random, [x, y - 1, z], length, &spikes::STONE);
     true
 }
@@ -671,6 +727,7 @@ fn makeSpike(world: &GenWorld, random: &Random, at: [i32; 3], longest: i32, spik
     let block: i32 = world.id(spike.m_block);
     let diameter: i32 = (f64::from(longest) / 4.5) as i32;
     let dir: i32 = if spike.m_hang { -1 } else { 1 };
+
     for dx in -diameter..=diameter
     {
         for dz in -diameter..=diameter
@@ -685,10 +742,12 @@ fn makeSpike(world: &GenWorld, random: &Random, at: [i32; 3], longest: i32, spik
             {
                 random.nextIntBounded(((f64::from(longest) / (f64::from(distance) + 0.25)) as i32).max(1))
             };
+
             if !world.isSolid(x + dx, y - dir, z + dz)
             {
                 length = 0;
             }
+
             let mut dy: i32 = 0;
             while dy != length * dir
             {

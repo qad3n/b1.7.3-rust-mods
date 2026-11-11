@@ -1,7 +1,7 @@
 // draft from ComponentTFStrongholdRightTurn.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::StrongholdRightTurn);
     init(&this, i, facing, x, y, z);
@@ -9,27 +9,27 @@ pub fn new(i: i32, facing: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFStrongholdRightTurn constructor
-pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 {
     stronghold_component::init(this, i, facing, x, y, z);
 }
 
 // ComponentTFStrongholdRightTurn.generateBoundingBox
-pub fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub(crate) fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
-    return Some(boxFor(x, y, z, -4, -1, 0, 9, 7, 9, facing));
+    Some(boxFor(x, y, z, -4, -1, 0, 9, 7, 9, facing))
 }
 
 // ComponentTFStrongholdRightTurn.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 {
-    stronghold_component::build(this, &parent, list, random);
+    stronghold_component::build(this, parent, list, random);
     stronghold_component::addDoor(this, 4, 1, 0);
-    stronghold_component::addNewComponent(this, &parent, list, random, 1, -1, 1, 4);
+    stronghold_component::addNewComponent(this, parent, list, random, 1, -1, 1, 4);
 }
 
 // ComponentTFStrongholdRightTurn.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     stronghold_component::placeStrongholdWalls(
         this,
@@ -47,5 +47,5 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.fillAir(world, sbb, 1, 1, 1, 7, 5, 7);
     stronghold_component::placeCornerStatue(this, world, 6, 1, 6, 3, sbb);
     stronghold_component::placeDoors(this, world, random, sbb);
-    return true;
+    true
 }

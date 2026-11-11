@@ -1,7 +1,7 @@
 // draft from ComponentTFQuestGrove.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::QuestGrove);
     init(&this, world, random, i, x, y, z);
@@ -9,7 +9,7 @@ pub fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) ->
 }
 
 // ComponentTFQuestGrove constructor
-pub fn init(this: &Piece, _world: &GenWorld, _random: &Random, i: i32, x: i32, y: i32, z: i32)
+pub(crate) fn init(this: &Piece, _world: &GenWorld, _random: &Random, i: i32, x: i32, y: i32, z: i32)
 {
     this.m_depth.set(i);
     this.m_beastPlaced.set(false);
@@ -19,12 +19,13 @@ pub fn init(this: &Piece, _world: &GenWorld, _random: &Random, i: i32, x: i32, y
 }
 
 // ComponentTFQuestGrove.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     for i in 0..4
     {
         quest_grove::makeWallSide(this, world, random, i, sbb);
     }
+
     for x in 10..17
     {
         for z in 10..17
@@ -46,6 +47,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             }
         }
     }
+
     this.placeBlock(world, blk("stone_button"), 4, 13, 5, 19, sbb);
     this.placeBlock(world, blk("stonebrick"), 1, 12, 7, 20, sbb);
     this.placeBlock(world, blk("stonebrick"), 1, 13, 7, 20, sbb);
@@ -53,6 +55,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.placeBlock(world, blk("stonebrick"), 1, 12, 7, 21, sbb);
     this.placeBlock(world, blk("stonebrick"), 1, 13, 7, 21, sbb);
     this.placeBlock(world, blk("stonebrick"), 1, 14, 7, 21, sbb);
+
     if !this.m_dispenserPlaced.get()
     {
         let bx: i32 = this.xAt(13, 20);
@@ -62,6 +65,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         {
             this.m_dispenserPlaced.set(true);
             world.setBlock(bx, by, bz, blk("dispenser"), 2, 4);
+
             for i in 0..4
             {
                 let wool: b173_api::ItemStack = b173_api::ItemStack
@@ -76,6 +80,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             }
         }
     }
+
     if !this.m_beastPlaced.get()
     {
         let bx: i32 = this.xAt(13, 13);
@@ -87,13 +92,15 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             spawnHome(world, "twilightforest:quest_ram", bx, by, bz, true);
         }
     }
-    return true;
+
+    true
 }
 
 // ComponentTFQuestGrove.makeWallSide
-pub fn makeWallSide(this: &Piece, world: &GenWorld, _random: &Random, direction: i32, sbb: StructureBox)
+pub(crate) fn makeWallSide(this: &Piece, world: &GenWorld, _random: &Random, direction: i32, sbb: StructureBox)
 {
     let temp: i32 = this.mode();
+
     this.setMode(direction);
     quest_grove::placeOuterArch(this, world, 3, -1, sbb);
     quest_grove::placeOuterArch(this, world, 11, -1, sbb);
@@ -112,6 +119,7 @@ pub fn makeWallSide(this: &Piece, world: &GenWorld, _random: &Random, direction:
     this.placeBlock(world, blk("stonebrick"), 3, 18, 3, 0, sbb);
     this.placeBlock(world, blk("stonebrick"), 3, 24, 3, 0, sbb);
     this.placeBlock(world, blk("stonebrick"), 3, 25, 3, 0, sbb);
+
     for x in 0..9
     {
         for y in 0..9
@@ -126,6 +134,7 @@ pub fn makeWallSide(this: &Piece, world: &GenWorld, _random: &Random, direction:
             }
         }
     }
+
     this.placeBlock(world, blk("stonebrick"), 3, 6, 0, 6, sbb);
     this.placeBlock(world, blk("stonebrick"), 3, 6, 1, 6, sbb);
     this.placeBlock(world, blk("stonebrick"), 3, 6, 2, 6, sbb);
@@ -139,7 +148,7 @@ pub fn makeWallSide(this: &Piece, world: &GenWorld, _random: &Random, direction:
 }
 
 // ComponentTFQuestGrove.placeOuterArch
-pub fn placeOuterArch(this: &Piece, world: &GenWorld, ox: i32, oy: i32, sbb: StructureBox)
+pub(crate) fn placeOuterArch(this: &Piece, world: &GenWorld, ox: i32, oy: i32, sbb: StructureBox)
 {
     for x in 0..5
     {

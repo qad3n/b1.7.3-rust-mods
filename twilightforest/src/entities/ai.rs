@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 // the parts of the twilight mobs' EntityAI tasks the beta templates do not have
 #[derive(Clone, Copy, PartialEq)]
-pub enum Ai
+pub(crate) enum Ai
 {
     Plain,
     // EntityAIArrowAttack and EntityAITFMagicAttack, a shot every so many ticks at a target in sight
@@ -15,6 +15,7 @@ pub enum Ai
         period: i32,
         sound: &'static str,
     },
+
     // EntityFlying wraiths and the hovering death tome, gliding at the target or drifting
     Flyer
     {
@@ -110,21 +111,24 @@ fn setTimer(entity: Entity, value: i32)
     TIMERS.with(|timers| timers.borrow_mut().insert((entity.world.dimension, entity.id), value));
 }
 
-pub fn target(entity: Entity) -> Option<EntityInfo>
+pub(crate) fn target(entity: Entity) -> Option<EntityInfo>
 {
     let id: i32 = entity.field(EntityField::TargetId) as i32;
     (id >= 0).then(|| Entity { world: entity.world, id }.info()).flatten().filter(|info| info.alive)
 }
 
-pub fn eyes(entity: Entity, info: &EntityInfo) -> [f64; 3]
+pub(crate) fn eyes(entity: Entity, info: &EntityInfo) -> [f64; 3]
 {
     let height: f64 = entity.field(EntityField::Height);
     [info.pos[0], info.pos[1] + height * tuning::EYES, info.pos[2]]
 }
 
-pub fn distance(a: [f64; 3], b: [f64; 3]) -> f64 { (0..3).map(|axis| (a[axis] - b[axis]).powi(2)).sum::<f64>().sqrt() }
+pub(crate) fn distance(a: [f64; 3], b: [f64; 3]) -> f64
+{
+    (0..3).map(|axis| (a[axis] - b[axis]).powi(2)).sum::<f64>().sqrt()
+}
 
-pub fn face(entity: Entity, from: [f64; 3], to: [f64; 3])
+pub(crate) fn face(entity: Entity, from: [f64; 3], to: [f64; 3])
 {
     let (dx, dz): (f64, f64) = (to[0] - from[0], to[2] - from[2]);
     entity.setField(EntityField::Yaw, dz.atan2(dx).to_degrees() - 90.0);
@@ -138,16 +142,21 @@ fn shoot(entity: Entity, info: &EntityInfo, shot: &str, period: i32, sound: &str
     {
         return;
     };
+
     let from: [f64; 3] = eyes(entity, info);
+
     face(entity, info.pos, goal.pos);
+
     let left: i32 = (timer(entity) - 1).max(0);
     let seen: bool =
         entity.world.rayTrace(from, eyes(Entity { world: entity.world, id: goal.id }, &goal), false).is_none();
+
     if left > 0 || !seen || distance(info.pos, goal.pos) > tuning::RANGE
     {
         setTimer(entity, left);
         return;
     }
+
     let start: [f64; 3] = [from[0], from[1] - tuning::LET_GO, from[2]];
     let flat: f64 = ((goal.pos[0] - info.pos[0]).powi(2) + (goal.pos[2] - info.pos[2]).powi(2)).sqrt();
     let aim: [f64; 3] = [
@@ -155,11 +164,13 @@ fn shoot(entity: Entity, info: &EntityInfo, shot: &str, period: i32, sound: &str
         eyes(Entity { world: entity.world, id: goal.id }, &goal)[1] - tuning::AIM_DROP + flat * tuning::ARC,
         goal.pos[2],
     ];
+
     if shots::fire(entity.world, shot, start, aim, tuning::SHOT_SPEED, tuning::SHOT_SPREAD, Some(entity.id)).is_some()
     {
         let pitch: f32 = 1.0 / (crate::ids::fraction(entity.world) * 0.4 + 0.8);
         entity.world.playSound(info.pos, sound, 1.0, pitch);
     }
+
     setTimer(entity, period);
 }
 
@@ -172,6 +183,7 @@ fn fly(entity: Entity, info: &EntityInfo, speed: f64)
         {
             let aim: [f64; 3] = [goal.pos[0], goal.pos[1] + tuning::HOVER_ABOVE, goal.pos[2]];
             let length: f64 = distance(info.pos, aim).max(1.0e-3);
+
             face(entity, info.pos, goal.pos);
             [0, 1, 2].map(|axis| (aim[axis] - info.pos[axis]) / length * speed)
         }
@@ -179,6 +191,7 @@ fn fly(entity: Entity, info: &EntityInfo, speed: f64)
         None => [info.motion[0], info.motion[1].max(0.0) * tuning::DRIFT, info.motion[2]],
     };
     let _ = entity.setMotion(motion);
+
     entity.setField(EntityField::FallDistance, 0.0);
 }
 
@@ -192,10 +205,12 @@ fn flee(entity: Entity, info: &EntityInfo, hop: bool)
         {
             let _ = entity.setMotion([info.motion[0], info.motion[1] * tuning::FLUTTER, info.motion[2]]);
         }
+
         return;
     };
     let (dx, dz): (f64, f64) = (info.pos[0] - player.pos[0], info.pos[2] - player.pos[2]);
     let length: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-3);
+
     let up: f64 = if hop && entity.flag(EntityField::OnGround)
     {
         tuning::HOP
@@ -205,6 +220,7 @@ fn flee(entity: Entity, info: &EntityInfo, hop: bool)
         info.motion[1]
     };
     let _ = entity.setMotion([dx / length * tuning::FLEE, up, dz / length * tuning::FLEE]);
+
     face(entity, player.pos, info.pos);
 }
 
@@ -215,10 +231,12 @@ fn burst(entity: Entity, info: &EntityInfo)
     {
         return;
     }
+
     if let Err(error) = entity.world.explode(info.pos, tuning::EXPLODE_POWER)
     {
         warn(&format!("ice core burst: {}", error.0));
     }
+
     entity.kill();
 }
 
@@ -227,6 +245,7 @@ fn charge(entity: Entity, info: &EntityInfo)
 {
     let left: i32 = (timer(entity) - 1).max(0);
     setTimer(entity, left);
+
     let Some(goal) = target(entity)
     else
     {
@@ -237,6 +256,7 @@ fn charge(entity: Entity, info: &EntityInfo)
     {
         return;
     }
+
     let (dx, dz): (f64, f64) = (goal.pos[0] - info.pos[0], goal.pos[2] - info.pos[2]);
     let _ = entity.setMotion([
         dx / gap * tuning::CHARGE_SPEED * 2.0,
@@ -259,6 +279,7 @@ fn seize(entity: Entity, info: &EntityInfo)
     {
         return;
     }
+
     if let Err(error) = victim.mount(Some(entity.id))
     {
         warn(&format!("grab: {}", error.0));
@@ -268,22 +289,26 @@ fn seize(entity: Entity, info: &EntityInfo)
 fn grab(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
+
     if let Some(rider) = entity.rider()
     {
         if world.random(tuning::THROW_ODDS) != 0
         {
             return;
         }
+
         let rider: Entity = Entity { world, id: rider };
         let _ = rider.mount(None);
         let aim: [f64; 3] = crate::math::look(info.yaw, info.pitch);
         let _ = rider.setMotion([aim[0] * tuning::THROW_SPEED, tuning::THROW_LIFT, aim[2] * tuning::THROW_SPEED]);
+
         setTimer(entity, tuning::THROW_REST);
         return;
     }
 
     let left: i32 = (timer(entity) - 1).max(0);
     setTimer(entity, left);
+
     if left == 0
     {
         seize(entity, info);
@@ -294,6 +319,7 @@ fn grab(entity: Entity, info: &EntityInfo)
 fn pinch(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
+
     if entity.rider().is_some()
     {
         if world.random(tuning::THROW_ODDS) == 0
@@ -306,20 +332,23 @@ fn pinch(entity: Entity, info: &EntityInfo)
             );
             entity.walkTo(spot, tuning::KIDNAP_SPEED);
         }
+
         return;
     }
+
     charge(entity, info);
     seize(entity, info);
 }
 
 // EntityTFTroll.onDeathUpdate, half the unripe trollber in range ripens as it dies
-pub fn ripen(entity: Entity, info: &EntityInfo)
+pub(crate) fn ripen(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
     if !world.isAuthority()
     {
         return;
     }
+
     let (unripe, ripe): (i32, i32) =
         (crate::ids::blockId(crate::ids::block::UNRIPE_TROLLBER), crate::ids::blockId(crate::ids::block::TROLLBER));
     let [x, y, z]: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
@@ -335,11 +364,13 @@ pub fn ripen(entity: Entity, info: &EntityInfo)
                 {
                     continue;
                 }
+
                 if let Err(error) = world.setBlock(pos, ripe, 0)
                 {
                     warn(&format!("trollber ripen: {}", error.0));
                     continue;
                 }
+
                 world.particle(
                     "flame",
                     [f64::from(pos.x) + 0.5, f64::from(pos.y) + 0.5, f64::from(pos.z) + 0.5],
@@ -366,7 +397,7 @@ fn outward(reach: i32) -> impl Iterator<Item = i32>
     })
 }
 
-pub fn termiteHurt(entity: Entity, source: Option<i32>)
+pub(crate) fn termiteHurt(entity: Entity, source: Option<i32>)
 {
     let called: bool = source.is_some() || crate::combat::hurtBy(crate::combat::kind::MAGIC);
     if called && timer(entity) <= 0
@@ -380,6 +411,7 @@ fn summon(entity: Entity, info: &EntityInfo)
     let world: World = entity.world;
     let infested: i32 = crate::ids::blockId(crate::ids::block::INFESTED_TOWERWOOD);
     let [x, y, z]: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
+
     for dy in outward(tuning::SUMMON_RISE)
     {
         for dx in outward(tuning::SUMMON_REACH)
@@ -391,14 +423,18 @@ fn summon(entity: Entity, info: &EntityInfo)
                 {
                     continue;
                 }
+
                 let _ = world.breakEffect(pos, infested, 0);
+
                 if let Err(error) = world.setBlock(pos, 0, 0)
                 {
                     warn(&format!("termite ally: {}", error.0));
                     continue;
                 }
+
                 let center: [f64; 3] = [f64::from(pos.x) + 0.5, f64::from(pos.y), f64::from(pos.z) + 0.5];
                 super::spawnAt(world, "twilightforest:tower_termite", center, 0.0);
+
                 if world.random(2) == 0
                 {
                     return;
@@ -415,16 +451,19 @@ fn burrow(entity: Entity, info: &EntityInfo)
     if left > 0
     {
         setTimer(entity, left - 1);
+
         if left == 1
         {
             summon(entity, info);
         }
     }
+
     let idle: bool = info.motion[0].abs() < tuning::IDLE && info.motion[2].abs() < tuning::IDLE;
     if target(entity).is_some() || !idle
     {
         return;
     }
+
     let world: World = entity.world;
     let [dx, dy, dz]: [i32; 3] = crate::ids::NEIGHBORS[world.random(6) as usize];
     let pos: BlockPos = BlockPos::new(
@@ -432,26 +471,30 @@ fn burrow(entity: Entity, info: &EntityInfo)
         (info.pos[1] + 0.5).floor() as i32 + dy,
         info.pos[2].floor() as i32 + dz,
     );
+
     if world.block(pos) != crate::ids::blockId(crate::ids::block::TOWERWOOD)
     {
         return;
     }
+
     if let Err(error) = world.setBlock(pos, crate::ids::blockId(crate::ids::block::INFESTED_TOWERWOOD), 0)
     {
         warn(&format!("termite burrow: {}", error.0));
         return;
     }
+
     world.particle("explode", info.pos, [0.0; 3]);
     entity.kill();
 }
 
-pub fn tick(ai: Ai, entity: Entity, info: &EntityInfo)
+pub(crate) fn tick(ai: Ai, entity: Entity, info: &EntityInfo)
 {
     if ai == Ai::Kobold
     {
         super::flock::kobold(entity, info);
         return;
     }
+
     // the breath's puffs are each client's own
     if let Ai::Breather(breath) = ai
         && !entity.world.isAuthority()
@@ -459,10 +502,12 @@ pub fn tick(ai: Ai, entity: Entity, info: &EntityInfo)
         super::breath::puff(entity, info, breath);
         return;
     }
+
     if !entity.world.isAuthority()
     {
         return;
     }
+
     match ai
     {
         Ai::Plain =>
@@ -489,7 +534,7 @@ pub fn tick(ai: Ai, entity: Entity, info: &EntityInfo)
     }
 }
 
-pub fn forget(entity: Entity)
+pub(crate) fn forget(entity: Entity)
 {
     super::redcap::forget(entity);
     super::goblin::forget(entity);

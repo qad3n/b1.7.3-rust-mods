@@ -1,7 +1,7 @@
 // draft from ComponentTFCloudCastle.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(index: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
+pub(crate) fn new(index: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::CloudCastle);
     init(&this, index, x, y, z);
@@ -9,7 +9,7 @@ pub fn new(index: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFCloudCastle constructor
-pub fn init(this: &Piece, index: i32, mut x: i32, mut y: i32, mut z: i32)
+pub(crate) fn init(this: &Piece, index: i32, mut x: i32, mut y: i32, mut z: i32)
 {
     this.m_depth.set(index);
     this.m_minerPlaced.set(false);
@@ -23,7 +23,7 @@ pub fn init(this: &Piece, index: i32, mut x: i32, mut y: i32, mut z: i32)
 }
 
 // ComponentTFCloudCastle.func_74861_a
-pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
+pub(crate) fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let mut plus: bool = random.nextBoolean();
     let mut offset: i32 = random.nextIntBounded(5) - random.nextIntBounded(5);
@@ -48,13 +48,14 @@ pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFCloudCastle.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fillMeta(world, sbb, 0, -4, 0, 15, -1, 15, blk("tf:fluffyCloud"), 0, blk("tf:fluffyCloud"), 0, false);
     this.fillMeta(world, sbb, 0, 0, 0, 15, 11, 15, blk("tf:giantCobble"), 0, blk("tf:giantCobble"), 0, false);
     this.fillMeta(world, sbb, 0, 12, 0, 15, 15, 15, blk("tf:giantLog"), 0, blk("tf:giantLog"), 0, false);
     this.fillAir(world, sbb, 4, 0, 4, 11, 11, 11);
     this.fillAir(world, sbb, 0, 0, 4, 4, 7, 7);
+
     if !this.m_minerPlaced.get()
     {
         let bx: i32 = this.xAt(6, 6);
@@ -66,6 +67,7 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             spawnHome(world, "twilightforest:giant_miner", bx, by, bz, false);
         }
     }
+
     if !this.m_warriorPlaced.get()
     {
         let bx: i32 = this.xAt(9, 9);
@@ -77,5 +79,6 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
             spawnHome(world, "twilightforest:armored_giant", bx, by, bz, false);
         }
     }
-    return true;
+
+    true
 }

@@ -8,7 +8,7 @@ const NATURAL: u8 = 0;
 const PLACED_VALUES: [&str; 2] = ["false", "true"];
 
 // blocks that remember being placed by a player save that as placed=true instead of bare metadata
-pub fn registerStates(ctx: &mut RegisterCtx, names: &[&str]) -> Result<()>
+pub(crate) fn registerStates(ctx: &mut RegisterCtx, names: &[&str]) -> Result<()>
 {
     for name in names
     {
@@ -16,6 +16,7 @@ pub fn registerStates(ctx: &mut RegisterCtx, names: &[&str]) -> Result<()>
             PropertySpec { name: "placed".to_owned(), values: PLACED_VALUES.map(str::to_owned).to_vec() };
         ctx.blocks().states(name, BlockStatesSpec { properties: vec![property], ..BlockStatesSpec::default() })?;
     }
+
     Ok(())
 }
 // BlockAetherLog: the stronger axes chip one or two golden amber out of golden oak
@@ -46,16 +47,16 @@ fn placedByPlayer(ctx: &mut BlockCtx, entity: Entity)
 }
 
 // DoubleDropHelper.dropBlock: the matching skyroot tool drops a grown block twice
-pub fn doubled(ctx: &mut BlockCtx, player: Player, class: &str)
+pub(crate) fn doubled(ctx: &mut BlockCtx, player: Player, class: &str)
 {
     let twice: bool = ctx.meta() == NATURAL && holds(player, &skyroot(class));
     drop(ctx, if twice { TWICE } else { ONCE });
 }
 
-pub fn placed(ctx: &mut BlockCtx, entity: Entity) { placedByPlayer(ctx, entity) }
+pub(crate) fn placed(ctx: &mut BlockCtx, entity: Entity) { placedByPlayer(ctx, entity) }
 
 // holystone, aether dirt and quicksoil
-pub struct DoubleDrop
+pub(crate) struct DoubleDrop
 {
     pub m_tool: &'static str,
 }
@@ -69,7 +70,7 @@ impl BlockBehavior for DoubleDrop
 }
 
 // BlockAetherOre.harvestBlock: a skyroot pickaxe drops the ore twice, placed or not
-pub struct Ore;
+pub(crate) struct Ore;
 
 #[block_behavior]
 impl BlockBehavior for Ore
@@ -91,7 +92,7 @@ impl BlockBehavior for Ore
 }
 
 // BlockAetherLog.harvestBlock: skyroot axes double grown logs, strong axes free amber from golden oak
-pub struct Log;
+pub(crate) struct Log;
 
 #[block_behavior]
 impl BlockBehavior for Log
@@ -111,6 +112,7 @@ impl BlockBehavior for Log
                 ItemStack::of(item::GOLDEN_AMBER, amber),
             );
         }
+
         let twice: bool = ctx.meta() == NATURAL && holds(player, &skyroot("axe"));
         drop(ctx, if twice { TWICE } else { ONCE });
     }

@@ -1,7 +1,7 @@
 // draft from ComponentTFHollowTreeRoot.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle: f64, tilt: f64, leafy: bool) -> Rc<Piece>
+pub(crate) fn new(i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle: f64, tilt: f64, leafy: bool) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::HollowTreeRoot);
     init(&this, i, sx, sy, sz, length, angle, tilt, leafy);
@@ -9,7 +9,7 @@ pub fn new(i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle: f64, tilt: f64
 }
 
 // ComponentTFHollowTreeRoot constructor
-pub fn init(this: &Piece, i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle: f64, tilt: f64, leafy: bool)
+pub(crate) fn init(this: &Piece, i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle: f64, tilt: f64, leafy: bool)
 {
     hollow_tree_med_branch::init(this, i, sx, sy, sz, length, angle, tilt, leafy);
     this.m_groundLevel.set(-1);
@@ -28,23 +28,28 @@ pub fn init(this: &Piece, i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle:
 }
 
 // ComponentTFHollowTreeRoot.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     if this.m_groundLevel.get() < 0
     {
         let _rootHeight: i32 = this.m_box.get().m_max[1] - this.m_box.get().m_min[1];
+
         this.m_groundLevel.set(this.dirtLevel(world, sbb));
+
         if this.m_groundLevel.get() < 0
         {
             return true;
         }
+
         this.m_src.get()[1] = this.m_groundLevel.get() + 5;
     }
+
     let rSrc: [i32; 3] = [
         this.m_src.get()[0] - this.m_box.get().m_min[0],
         this.m_src.get()[1] - this.m_box.get().m_min[1],
         this.m_src.get()[2] - this.m_box.get().m_min[2],
     ];
+
     let rDest: [i32; 3] = [
         this.m_dest.get()[0] - this.m_box.get().m_min[0],
         this.m_dest.get()[1] - this.m_box.get().m_min[1],
@@ -76,11 +81,11 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
         blk("tf:root"),
         0,
     );
-    return true;
+    true
 }
 
 // ComponentTFHollowTreeRoot.drawRootLine
-pub fn drawRootLine(
+pub(crate) fn drawRootLine(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,
@@ -95,10 +100,10 @@ pub fn drawRootLine(
 )
 {
     let lineCoords: Vec<[i32; 3]> = bresenham(x1, y1, z1, x2, y2, z2);
-    for coords in lineCoords.clone()
+    for coords in lineCoords
     {
         let block: Blk = this.getBlock(world, coords[0], coords[1], coords[2], sbb);
-        if block.isNormalCube(world, coords[0], coords[1], coords[2])
+        if block.normalCube(world, coords[0], coords[1], coords[2])
             && ((false) || (block.material() != Material::Grass))
         {
             if (false) || (block.material() != Material::Wood)

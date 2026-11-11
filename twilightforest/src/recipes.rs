@@ -303,10 +303,12 @@ const GEAR: [GearSet; 7] = [
 fn build(ctx: &mut RegisterCtx, name: &str, result: ItemStack, pattern: &[&str], keys: &[Key]) -> Result<()>
 {
     let mut builder: ShapedBuilder = ctx.recipes().shaped(name, result).rows(pattern);
+
     for (symbol, item) in keys
     {
         builder = builder.key(*symbol, *item);
     }
+
     builder.build()
 }
 
@@ -319,11 +321,13 @@ fn gear(ctx: &mut RegisterCtx) -> Result<()>
             let piece: String = armorName(set.m_set, slot);
             build(ctx, &piece, ItemStack::of(piece.as_str(), 1), pattern, &[('#', set.m_material)])?;
         }
+
         for (tool, pattern) in set.m_tools
         {
             build(ctx, tool, ItemStack::of(*tool, 1), pattern, &[('#', set.m_material), ('X', set.m_handle)])?;
         }
     }
+
     build(
         ctx,
         item::GIANT_PICK,
@@ -333,17 +337,19 @@ fn gear(ctx: &mut RegisterCtx) -> Result<()>
     )
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &SHAPED
     {
         build(ctx, row.m_name, ItemStack::of(row.m_result, row.m_count), row.m_pattern, row.m_keys)?;
     }
+
     for row in &SHAPELESS
     {
         let ingredients: Vec<ItemStack> = row.m_ingredients.iter().map(|name| ItemStack::of(*name, 1)).collect();
         ctx.recipes().shapeless(row.m_name, ItemStack::of(row.m_result, row.m_count), &ingredients)?;
     }
+
     // TFRecipes makes a blank ore map from a filled or blank maze map, a filled one of any number
     for (name, base, damage) in
         [("ore_map_from_maze_map", item::MAZE_MAP, ANY_DAMAGE), ("ore_map", item::EMPTY_MAZE_MAP, 0)]
@@ -352,10 +358,12 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
         ingredients.extend(ORE_BLOCKS.map(|block| ItemStack::of(block, 1)));
         ctx.recipes().shapeless(name, ItemStack::of(item::EMPTY_ORE_MAP, 1), &ingredients)?;
     }
+
     for (input, output, count) in SMELTING
     {
         ctx.recipes().smelting(&format!("smelt_{input}"), input, ItemStack::of(output, count))?;
     }
+
     for (log, planks) in LOGS
     {
         ctx.recipes().shapeless(
@@ -369,6 +377,7 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             ItemStack::of("minecraft:coal", 1).withDamage(CHARCOAL),
         )?;
     }
+
     gear(ctx)
 }
 
@@ -377,10 +386,12 @@ fn fits(want: Option<&StackData>, have: Option<&ItemStack>) -> bool
     match (want, have)
     {
         (None, None) => true,
+
         (Some(want), Some(have)) =>
         {
             have.item.id().is_ok_and(|id| id == want.id) && (want.damage < 0 || want.damage == have.damage)
         }
+
         _ => false,
     }
 }
@@ -391,6 +402,7 @@ const GRID: i32 = 3;
 fn shapedMatch(width: i32, inputs: &[Option<StackData>], grid: &[Option<ItemStack>]) -> bool
 {
     let height: i32 = inputs.len() as i32 / width.max(1);
+
     for ox in 0..=GRID - width
     {
         for oy in 0..=GRID - height
@@ -402,6 +414,7 @@ fn shapedMatch(width: i32, inputs: &[Option<StackData>], grid: &[Option<ItemStac
                     let (x, y): (i32, i32) = (cell % GRID - ox, cell / GRID - oy);
                     let inside: bool = (0..width).contains(&x) && (0..height).contains(&y);
                     let column: i32 = if mirror { width - 1 - x } else { x };
+
                     let want: Option<&StackData> = if inside
                     {
                         inputs[(column + y * width) as usize].as_ref()
@@ -419,6 +432,7 @@ fn shapedMatch(width: i32, inputs: &[Option<StackData>], grid: &[Option<ItemStac
             }
         }
     }
+
     false
 }
 
@@ -426,6 +440,7 @@ fn shapedMatch(width: i32, inputs: &[Option<StackData>], grid: &[Option<ItemStac
 fn shapelessMatch(inputs: &[StackData], grid: &[Option<ItemStack>]) -> bool
 {
     let mut left: Vec<&StackData> = inputs.iter().collect();
+
     for have in grid.iter().flatten()
     {
         let Some(index) = left.iter().position(|want| fits(Some(want), Some(have)))
@@ -433,13 +448,15 @@ fn shapelessMatch(inputs: &[StackData], grid: &[Option<ItemStack>]) -> bool
         {
             return false;
         };
+
         left.remove(index);
     }
+
     left.is_empty()
 }
 
 // CraftingManager.findMatchingRecipe over a three by three grid
-pub fn craft(grid: &[Option<ItemStack>]) -> Option<ItemStack>
+pub(crate) fn craft(grid: &[Option<ItemStack>]) -> Option<ItemStack>
 {
     recipeList()
         .into_iter()
@@ -453,15 +470,17 @@ pub fn craft(grid: &[Option<ItemStack>]) -> Option<ItemStack>
 }
 
 // the smelting result of the input, FurnaceRecipes.getSmeltingResult
-pub fn smelt(input: &ItemStack) -> Option<ItemStack>
+pub(crate) fn smelt(input: &ItemStack) -> Option<ItemStack>
 {
     let id: i32 = input.item.id().ok()?;
+
     recipeList().into_iter().find_map(|recipe| match recipe.shape
     {
         RecipeShape::Smelting { input: want } if want.id == id && (want.damage < 0 || want.damage == input.damage) =>
         {
             Some(ItemStack::fromRaw(recipe.output))
         }
+
         _ => None,
     })
 }

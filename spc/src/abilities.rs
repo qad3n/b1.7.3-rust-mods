@@ -11,19 +11,20 @@ mod flight
 }
 
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
-pub struct Abilities
+pub(crate) struct Abilities
 {
     pub m_fly: bool,
     pub m_god: bool,
 }
 
-thread_local! {
+thread_local!
+{
     static LOCAL_FLY: Cell<bool> = const { Cell::new(false) };
 }
 
-pub fn of(player: Player) -> Abilities { player.data(DATA_KEY) }
+pub(crate) fn of(player: Player) -> Abilities { player.data(DATA_KEY) }
 
-pub fn set(player: Player, abilities: Abilities) -> Result<()>
+pub(crate) fn set(player: Player, abilities: Abilities) -> Result<()>
 {
     player.setData(DATA_KEY, &abilities)?;
     send(FLY_CHANNEL, Target::Player(player.id), &abilities.m_fly)
@@ -50,12 +51,14 @@ fn localFlight()
     {
         return;
     };
+
     let vertical: f64 = match (entity.flag(EntityField::Jumping), entity.flag(EntityField::Sneaking))
     {
         (true, false) => flight::VERTICAL,
         (false, true) => -flight::VERTICAL,
         _ => 0.0,
     };
+
     let forward: f64 = entity.field(EntityField::MoveForward);
     let strafe: f64 = entity.field(EntityField::MoveStrafe);
     let yaw: f64 = (info.yaw as f64).to_radians();
@@ -74,6 +77,7 @@ fn serverFlight()
         {
             continue;
         };
+
         if of(player).m_fly
         {
             entity.setField(EntityField::FallDistance, 0.0);
@@ -88,6 +92,7 @@ fn shielded(event: &mut Event)
     {
         return;
     };
+
     if entity.player.is_some() && of(Player { id: entity.id }).m_god
     {
         event.cancel();
@@ -102,16 +107,20 @@ fn login(event: &mut Event)
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.channels().register::<bool>(FLY_CHANNEL, Direction::ToClient, |fly, _| LOCAL_FLY.set(fly))?;
-    ctx.events().on::<TickPost>(Priority::Normal, |_| {
+
+    ctx.events().on::<TickPost>(Priority::Normal, |_|
+    {
         if isClient()
         {
             localFlight();
         }
+
         serverFlight();
     })?;
+
     ctx.events().on::<LivingAttack>(Priority::High, shielded)?;
     ctx.events().on::<PlayerLogin>(Priority::Normal, login)?;
     Ok(())

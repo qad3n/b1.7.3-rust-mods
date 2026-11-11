@@ -1,7 +1,7 @@
 // draft from ComponentTFDarkTowerBeard.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
+pub(crate) fn new(i: i32, wing: &Piece) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::DarkTowerBeard);
     init(&this, i, wing);
@@ -9,7 +9,7 @@ pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFDarkTowerBeard constructor
-pub fn init(this: &Piece, i: i32, wing: &Piece)
+pub(crate) fn init(this: &Piece, i: i32, wing: &Piece)
 {
     this.m_depth.set(i);
     this.setMode(wing.mode());
@@ -22,7 +22,7 @@ pub fn init(this: &Piece, i: i32, wing: &Piece)
 }
 
 // ComponentTFDarkTowerBeard.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
+pub(crate) fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     dark_tower_beard::makeDarkBeard(
         this,
@@ -35,11 +35,11 @@ pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) 
         this.m_height.get() - 1,
         this.m_size.get() - 1,
     );
-    return true;
+    true
 }
 
 // ComponentTFDarkTowerBeard.makeDarkBeard
-pub fn makeDarkBeard(
+pub(crate) fn makeDarkBeard(
     this: &Piece,
     world: &GenWorld,
     sbb: StructureBox,
@@ -53,6 +53,7 @@ pub fn makeDarkBeard(
 {
     let frameID: Blk = blk("tf:towerWood");
     let frameMeta: i32 = 1;
+
     for x in minX..=maxX
     {
         for z in minZ..=maxZ
@@ -64,10 +65,12 @@ pub fn makeDarkBeard(
                 {
                     length += 1;
                 }
+
                 if length == (-1)
                 {
                     length = 1;
                 }
+
                 for y in (this.m_height.get() - length..=maxY).rev()
                 {
                     this.placeBlock(world, frameID, frameMeta, x, y, z, sbb);

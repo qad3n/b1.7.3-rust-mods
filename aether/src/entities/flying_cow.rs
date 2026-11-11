@@ -19,6 +19,7 @@ const WING_LIFT: f32 = -10.0 * 0.0625;
 fn cowPose(program: &mut Program, base: u16, pivots: &[[f32; 3]], input: &PoseInput)
 {
     quadrupedPose(program, base, pivots, input, None);
+
     let head: [f32; 3] = [input.head_pitch.to_radians(), input.head_yaw.to_radians(), 0.0];
     program.part(base + flying_cow::HORN1, head, pivots[flying_cow::HORN1 as usize]);
     program.part(base + flying_cow::HORN2, head, pivots[flying_cow::HORN2 as usize]);
@@ -41,8 +42,10 @@ impl EntityBehavior for FlyingCow
             {
                 let _ = player.setHeld(Some(ItemStack::of(MILK_BUCKET, 1)));
             }
+
             return true;
         }
+
         saddleInteract(entity, player)
     }
 
@@ -74,32 +77,38 @@ impl EntityBehavior for FlyingCow
         body.texture(WINGS).push().translate(0.0, WING_LIFT, 0.0);
         wingPose(&mut body, WING_BASE, &flying_cow_wing::ROTATIONS, input);
         body.pop();
+
         if saddle.m_saddled
         {
             body.texture(SADDLE_TEXTURE);
             cowPose(&mut body, SADDLE_BASE, &flying_cow_saddle::PIVOTS, input);
         }
+
         Pose { pre: Vec::new(), model: body.take() }
     }
 }
 
-pub fn register(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.entities().register(
         NAME,
-        EntitySpec {
+        EntitySpec
+        {
             template: Identifier::parse("minecraft:cow").ok(),
             texture: Some(TEXTURE.to_owned()),
             size: Some([0.9, 1.3]),
             health: Some(10),
             spawn: creature(8),
             drops: Some(vec![drop("minecraft:leather", [0, 2])]),
-            sounds: Some(EntitySounds {
+            sounds: Some(EntitySounds
+            {
                 living: Some("mob.cow".to_owned()),
                 hurt: Some("mob.cowhurt".to_owned()),
                 death: Some("mob.cowhurt".to_owned()),
             }),
-            model: Some(EntityModelSpec {
+
+            model: Some(EntityModelSpec
+            {
                 shadow: 0.7,
                 ..combine(vec![flying_cow::model(), flying_cow_wing::model(), flying_cow_saddle::model()])
             }),
