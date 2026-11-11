@@ -158,6 +158,7 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
   moved off `onDeath`, the zephyr now drops its cold aercloud (the port dropped nothing) and the moa three
   feathers (the port dropped none to two). Drops that depend on state (swet type, sheepuff fleece, saddles, boss
   keys that float up) stay in code.
+- Aether grass joins the `minecraft:flower_soil` tag, so flowers and saplings stay on it as BlockAetherGrass allows.
 - The phoenix bow draws while the use key is held (bow pose, the three `bow_pulling` icons after 0, 13 and 17
   ticks) and looses its flaming arrow on release at three times the draw power, as ItemPhoenixBow. Power, Punch,
   Flame and Infinity and the full draw critical have no beta counterpart.

@@ -595,7 +595,11 @@ fn aercloud(name: &str, bounce: bool) -> BlockSpecBuilder
 fn registerSpecial(ctx: &mut RegisterCtx) -> Result<()>
 {
     let blocks = ctx.blocks();
-    blocks.register(block::AETHER_GRASS, cube(&AETHER_GRASS)?.tickRandomly().behavior(AetherGrass))?;
+    // BlockAetherGrass.canSustainPlant takes the plains plants, flowers and saplings
+    blocks.register(
+        block::AETHER_GRASS,
+        cube(&AETHER_GRASS)?.tickRandomly().tag("minecraft:flower_soil").behavior(AetherGrass),
+    )?;
     blocks.register(
         block::QUICKSOIL,
         BlockSpecBuilder::template("minecraft:block")
