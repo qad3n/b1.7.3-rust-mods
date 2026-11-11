@@ -298,6 +298,26 @@ Left numeric, by the loader's design:
 Name, tag and state checks hit the SDK's per epoch caches without allocating, so ticks and generation call them
 freely. Not verified in game: every change above is checked by build and code review only.
 
+## Done (loader API 1.40, every subsystem through loader registries)
+
+| Subsystem | Registers | Where |
+|---|---|---|
+| Blocks, items, block states | `ctx.blocks()`, `ctx.items()`, named states | `blocks.rs`, `items.rs`, `shapes.rs`, `harvest.rs`, `machines.rs` |
+| Tags | `ctx.tags()`: soil, amber axes, gravitite and valkyrie tools, dungeon stone, dungeon loot rarity, undead and pig entities, shared vanilla and `c:` tags, `c:accessories/*` | `tags.rs`, `accessories.rs`, `items.rs` |
+| Crafting | `ctx.recipes()` | `recipes.rs` |
+| Enchanter, freezer, incubator | machine jobs and fuels (`ctx.machines().job/fuel`), run with `matchJob` and `machineFuel`, so other mods add enchanter or freezer work and fuels | `machines.rs` |
+| Container leftovers | item `container_item` (skyroot buckets), read with `containerItem` | `items.rs`, `machines.rs` |
+| Dungeon chest loot | weighted chest pools `aether:bronze_room`, `bronze_treasure`, `silver_room`, `silver_treasure`, `gold_treasure`; each weight gives the source's nested odds exactly; a pick draws one seed from the generator, so a seed builds other chests than before | `world/dungeons/loot.rs` |
+| Accessories | eight loader accessory slots (`aether:pendant`, `cape`, `shield`, `misc`, `ring`, `second_ring`, `gloves`, `second_misc`) taking `c:accessories/<kind>`, saved and synced by the loader; the panel overlay swaps through `swapAccessory`. Old saves move their slots into the loader on first read | `accessories.rs` |
+| Dimension, biome, terrain | `ctx.dimensions()` | `world/mod.rs` |
+| Dungeons | `ctx.structures()` | `world/dungeons/mod.rs` |
+| Spawns | `SpawnSpec` on each entity | `entities/mod.rs` |
+| Effects, particles, achievements, config, text | `ctx.effects()`, `ctx.particles()`, `ctx.achievements()`, `ctx.config()`, lang file | `effects.rs`, `particles.rs`, `progress.rs`, `config.rs` |
+
+Kept in the port on purpose: ores stay in the Aether decorator, since moving them to `ctx.worldgen()` would change the
+random order that places clouds, plants and trees after them. The silver treasure's cape and feather follow the
+config as it stands when the game starts. Not verified in game.
+
 ## Todo, in order
 
 1. Aether main menu and menu button (config, off by default in the source).
