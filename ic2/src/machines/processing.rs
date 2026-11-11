@@ -8,6 +8,10 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+const SCRAP: &str = "ic2:scrap";
+// items the recycler refuses, sticks and scrap in IC2
+const RECYCLER_BLACKLIST: &str = "ic2:recycler_blacklist";
+
 // the slots of a processing machine: input, fuel or battery, output, and the canner's can
 mod slot
 {
@@ -341,9 +345,6 @@ pub(crate) fn provide(slots: &(World, BlockPos), slot: i32, energy: &mut i32, ca
 // TileEntityElectricMachine.canOperate for the result machines and the recycler
 fn canOperate(process: &Process, slots: &Slots) -> bool
 {
-    const STICK: &str = "minecraft:stick";
-    const SCRAP: &str = "ic2:scrap";
-
     let Some(input) = slots.get(slot::INPUT)
     else
     {
@@ -359,7 +360,7 @@ fn canOperate(process: &Process, slots: &Slots) -> bool
                 None => true,
                 Some(out) => out.item.is(SCRAP) && out.count < stacks::maxStack(&out),
             };
-            room && !input.item.is(STICK) && !input.item.is(SCRAP)
+            room && findJob(process.m_name, &[Some(input)], &[]).is_some()
         }
 
         Kind::Canner => canning::possible(slots.m_world, slots.m_pos, &input, process),
@@ -385,7 +386,7 @@ fn operate(process: &Process, slots: &Slots, work: &mut Work)
             slots.set(slot::INPUT, stacks::less(input, 1));
             if slots.m_world.random(RECYCLE_CHANCE) == 0
             {
-                slots.set(slot::OUTPUT, Some(stacks::merged(slots.get(slot::OUTPUT), &ItemStack::of("ic2:scrap", 1))));
+                slots.set(slot::OUTPUT, Some(stacks::merged(slots.get(slot::OUTPUT), &ItemStack::of(SCRAP, 1))));
             }
         }
 
@@ -412,11 +413,38 @@ fn loopSound(process: &Process, world: World, pos: BlockPos, work: &mut Work)
     }
 }
 
+// the matched job's length and draw, so a job any mod adds runs at its own pace; IC2's own jobs carry IC2's rates
+// and the furnaces and the canner, which run no jobs, keep them
+fn pace(process: &Process, slots: &Slots) -> Rates
+{
+    let Some(job) = slots.get(slot::INPUT).and_then(|input| findJob(process.m_name, &[Some(input)], &[]))
+    else
+    {
+        return process.m_rates;
+    };
+    let Some(energy) = job.energy_in.as_ref().filter(|_| job.duration > 0)
+    else
+    {
+        return process.m_rates;
+    };
+
+    let perTick: i64 = if energy.per_tick
+    {
+        energy.amount
+    }
+    else
+    {
+        energy.amount / i64::from(job.duration)
+    };
+    let consume: i32 = i32::try_from(perTick).unwrap_or(process.m_rates.m_consume);
+    Rates { m_consume: consume, m_length: job.duration, ..process.m_rates }
+}
+
 // TileEntityElectricMachine.updateEntity
 fn electricTick(process: &Process, world: World, pos: BlockPos, work: &mut Work)
 {
     let slots: Slots = Slots { m_world: world, m_pos: pos };
-    let rates: Rates = process.m_rates;
+    let rates: Rates = pace(process, &slots);
     let operating: bool = work.m_energy > 0 && canOperate(process, &slots);
 
     if operating
@@ -1057,11 +1085,14 @@ fn registerPages(ctx: &mut RegisterCtx, process: &Process) -> Result<()>
         Kind::Compressor => registerJobs(ctx, process, &COMPRESSOR, &rates),
         Kind::Recycler =>
         {
+            // any mod may add to the blacklist, the recycler takes every item outside it
+            ctx.tags().add(RegistryKind::Item, RECYCLER_BLACKLIST, &["minecraft:stick", SCRAP])?;
             ctx.machines().register(process.m_name, None, &[process.m_name])?;
             ctx.machines()
-                .recipe(process.m_name)
-                .chance(ItemStack::of("ic2:scrap", 1), SCRAP_CHANCE)
-                .note("Takes any item but sticks and scrap")
+                .job(process.m_name, length)
+                .inputAny(1, Some(RECYCLER_BLACKLIST))
+                .chance(SCRAP, 1, SCRAP_CHANCE)
+                .energyIn(crate::energy::KIND, i64::from(consume), true)
                 .note(&rates)
                 .build()
         }
