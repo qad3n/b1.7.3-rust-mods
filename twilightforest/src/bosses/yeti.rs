@@ -5,7 +5,7 @@ use crate::items::{put, texture};
 use crate::math::look;
 use crate::models::{Program, bipedPose, tf_yeti_alpha};
 use crate::progress::{self, Gate};
-use b173_api::math::{blockOf, distance, floor, length, sub};
+use b173_api::math::{blockOf, distance, flatLength, floor, length, sub};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -189,7 +189,7 @@ fn target(entity: Entity, info: &EntityInfo) -> Option<EntityInfo>
 // EntityTFYetiAlpha.attackEntityWithRangedAttack, an ice bomb lobbed at the target
 fn throwBomb(world: World, from: [f64; 3], to: [f64; 3], owner: Option<i32>)
 {
-    let flat: f64 = ((to[0] - from[0]).powi(2) + (to[2] - from[2]).powi(2)).sqrt();
+    let flat: f64 = flatLength(to[0] - from[0], to[2] - from[2]);
     let aim: [f64; 3] = [to[0], to[1] - 1.1 + flat * 0.2, to[2]];
 
     let Ok(bomb) = world.spawnEntity(&format!("twilightforest:{ICE_BOMB}"), from)
@@ -320,7 +320,7 @@ fn hunt(entity: Entity, info: &EntityInfo, goal: Option<&EntityInfo>, brain: &mu
     if let Some(to) = walkTo
     {
         let (dx, dz): (f64, f64) = (to[0] - info.pos[0], to[2] - info.pos[2]);
-        let flat: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-4);
+        let flat: f64 = flatLength(dx, dz).max(1.0e-4);
         let _ = entity.setMotion([dx / flat * yeti::WALK, info.motion[1], dz / flat * yeti::WALK]);
 
         face(entity, info.pos, to);

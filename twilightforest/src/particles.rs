@@ -44,10 +44,10 @@ const KINDS: [Kind; 19] = [
     Kind { m_lifetime: Some(40), m_gravity: Some(2.0), ..kind("bosstear", "snowballpoof") },
     // the 1.7 vanilla particles beta has no texture for
     Kind { m_color: Some(WHITE), ..kind("crit", "snowshovel") },
-    Kind { m_color: Some(0x9966FF), ..kind("magicCrit", "snowshovel") },
+    Kind { m_color: Some(0x9966FF), ..kind("magic_crit", "snowshovel") },
     Kind { m_scale: Some(4.0), ..kind("largeexplode", "explode") },
     Kind { m_scale: Some(6.0), ..kind("hugeexplosion", "largesmoke") },
-    Kind { m_gravity: Some(0.06), ..kind("dripWater", "splash") },
+    Kind { m_gravity: Some(0.06), ..kind("drip_water", "splash") },
     Kind { m_color: Some(0x8B8B8B), ..kind("iconcrack_20_0", "snowballpoof") },
     Kind { m_color: Some(0xCCCCCC), ..kind("townaura", "smoke") },
 ];

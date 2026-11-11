@@ -6,7 +6,7 @@ use crate::models::{Program, cuboid, part};
 use crate::progress::{self, Gate};
 use crate::treasure::{self, Table};
 use crate::world::generate::GenWorld;
-use b173_api::math::{blockOf, distance, floor, length, sub};
+use b173_api::math::{blockOf, distance, flatLength, floor, length, sub};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -437,7 +437,7 @@ fn tantrumRain(world: World, info: &EntityInfo, entity: Entity)
             continue;
         };
 
-        let flat: f64 = ((found.pos[0] - info.pos[0]).powi(2) + (found.pos[2] - info.pos[2]).powi(2)).sqrt();
+        let flat: f64 = flatLength(found.pos[0] - info.pos[0], found.pos[2] - info.pos[2]);
         let below: bool = found.pos[1] <= info.pos[1] && found.pos[1] >= info.pos[1] - boss::RAIN_DEPTH * 2.0;
         let [x, y, z] = found.pos.map(floor);
         if flat <= width / 2.0 && below && world.height(x, z) <= y
@@ -716,7 +716,7 @@ impl EntityBehavior for UrGhast
             info.pos[1] + f64::from(ids::fraction(world)) * height - 0.25,
             info.pos[2] + (f64::from(ids::fraction(world)) - 0.5) * width,
         ];
-        crate::particles::spawn(world, "dripWater", at, [0.0; 3]);
+        crate::particles::spawn(world, "drip_water", at, [0.0; 3]);
     }
 
     // EntityTFUrGhast.attackEntityFrom, tantrums soften blows and every 48 damage flips the phase

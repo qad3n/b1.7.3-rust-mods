@@ -5,7 +5,7 @@ use crate::models::
     DEGREES_PER_RADIAN, Program, WALK_RATE, biped, bipedPose, tf_goblin_knight_lower, tf_goblin_knight_upper,
 };
 use b173_api::math;
-use b173_api::math::distance;
+use b173_api::math::{distance, flatLength};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -164,7 +164,7 @@ fn shieldHit(upper: Entity, info: &EntityInfo, attacker: &EntityInfo, amount: i3
     }
     let pushed: Entity = upper.riding().map_or(upper, |mount| Entity { world: upper.world, id: mount });
     let (dx, dz): (f64, f64) = (info.pos[0] - attacker.pos[0], info.pos[2] - attacker.pos[2]);
-    let flat: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-3);
+    let flat: f64 = flatLength(dx, dz).max(1.0e-3);
     let _ = pushed.setMotion([dx / flat * tuning::KNOCK, tuning::KNOCK, dz / flat * tuning::KNOCK]);
 }
 

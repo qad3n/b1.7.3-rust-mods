@@ -3,7 +3,7 @@ use crate::entities::ai::face;
 use crate::ids::{self, item};
 use crate::models::{Program, tf_naga};
 use crate::progress::{self, Gate};
-use b173_api::math::{distance, floor, normalize, sqrt, sub};
+use b173_api::math::{distance, flatLength, floor, normalize, sqrt, sub};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -375,7 +375,7 @@ fn steer(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         return;
     };
     let (dx, dz): (f64, f64) = (goal[0] - info.pos[0], goal[2] - info.pos[2]);
-    let flat: f64 = (dx * dx + dz * dz).sqrt();
+    let flat: f64 = flatLength(dx, dz);
     if flat < naga::ARRIVE
     {
         brain.m_goal = None;

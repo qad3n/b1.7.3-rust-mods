@@ -57,7 +57,7 @@ impl ItemBehavior for Powder
         for _ in 0..SPARKS
         {
             let at: [f64; 3] = center.map(|value| value + f64::from(ids::fraction(world)) * 2.0 - 1.0);
-            crate::particles::spawn(world, "magicCrit", at, [0.0; 3]);
+            crate::particles::spawn(world, "magic_crit", at, [0.0; 3]);
         }
 
         Use::Pass

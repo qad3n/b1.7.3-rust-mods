@@ -4,7 +4,7 @@ use crate::entities::ai::face;
 use crate::entities::shots::{self, WAND_BOLT};
 use crate::ids::{self, item};
 use crate::math::look;
-use b173_api::math::{add, distance};
+use b173_api::math::{add, distance, flatLength};
 use b173_api::prelude::*;
 use std::rc::Rc;
 
@@ -327,7 +327,7 @@ impl EntityBehavior for LoyalZombie
         if let Some(goal) = goal.filter(|goal| distance(*goal, info.pos) > zombie::NEAR)
         {
             let (dx, dz): (f64, f64) = (goal[0] - info.pos[0], goal[2] - info.pos[2]);
-            let flat: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-4);
+            let flat: f64 = flatLength(dx, dz).max(1.0e-4);
 
             let up: f64 = if entity.flag(EntityField::Collided) && entity.flag(EntityField::OnGround)
             {

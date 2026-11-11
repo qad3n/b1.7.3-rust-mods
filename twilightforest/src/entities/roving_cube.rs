@@ -1,6 +1,6 @@
 use crate::ids;
 use crate::models::{Program, tf_cube_of_annihilation};
-use b173_api::math::floor;
+use b173_api::math::{flatLength, floor};
 use b173_api::prelude::*;
 
 // EntityTFRovingCube with EntityAICubeMoveToRedstoneSymbols and EntityAICubeCenterOnSymbol, it drifts to the middle
@@ -102,7 +102,7 @@ impl EntityBehavior for Cube
 
         let goal: [f64; 3] = [f64::from(x) + 0.5, f64::from(y), f64::from(z) + 0.5];
         let (dx, dz): (f64, f64) = (goal[0] - info.pos[0], goal[2] - info.pos[2]);
-        let gap: f64 = (dx * dx + dz * dz).sqrt();
+        let gap: f64 = flatLength(dx, dz);
         if gap < tuning::CENTERED || gap > tuning::GIVE_UP
         {
             return;

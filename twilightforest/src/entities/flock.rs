@@ -1,6 +1,6 @@
 use super::ai::target;
 use crate::ids;
-use b173_api::math::{blockOf, distance, floor};
+use b173_api::math::{blockOf, distance, flatLength, floor};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -136,7 +136,7 @@ fn leap(entity: Entity, info: &EntityInfo) -> bool
     }
 
     let (dx, dz): (f64, f64) = (goal.pos[0] - info.pos[0], goal.pos[2] - info.pos[2]);
-    let flat: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-3);
+    let flat: f64 = flatLength(dx, dz).max(1.0e-3);
 
     let push = |delta: f64, motion: f64|
     {

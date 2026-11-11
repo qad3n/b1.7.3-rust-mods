@@ -1,5 +1,5 @@
 use super::shots;
-use b173_api::math::{distance, floor, yawTowards};
+use b173_api::math::{distance, flatLength, floor, yawTowards};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -153,7 +153,7 @@ fn shoot(entity: Entity, info: &EntityInfo, shot: &str, period: i32, sound: &str
     }
 
     let start: [f64; 3] = [from[0], from[1] - tuning::LET_GO, from[2]];
-    let flat: f64 = ((goal.pos[0] - info.pos[0]).powi(2) + (goal.pos[2] - info.pos[2]).powi(2)).sqrt();
+    let flat: f64 = flatLength(goal.pos[0] - info.pos[0], goal.pos[2] - info.pos[2]);
     let aim: [f64; 3] = [
         goal.pos[0],
         eyes(Entity { world: entity.world, id: goal.id }, &goal)[1] - tuning::AIM_DROP + flat * tuning::ARC,
@@ -204,7 +204,7 @@ fn flee(entity: Entity, info: &EntityInfo, hop: bool)
         return;
     };
     let (dx, dz): (f64, f64) = (info.pos[0] - player.pos[0], info.pos[2] - player.pos[2]);
-    let length: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-3);
+    let length: f64 = flatLength(dx, dz).max(1.0e-3);
 
     let up: f64 = if hop && entity.flag(EntityField::OnGround)
     {

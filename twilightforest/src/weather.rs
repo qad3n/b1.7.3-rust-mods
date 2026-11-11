@@ -1,6 +1,6 @@
 use crate::progress::{self, Gate};
 use crate::world::biomes::{self, Biome};
-use b173_api::math::floor;
+use b173_api::math::{flatLength, floor};
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 use b173_api::terrain::structure::StructureBox;
@@ -234,7 +234,7 @@ fn spanAround(y: i32) -> [i32; 2] { [(y - tuning::RANGE).max(0), (y + tuning::RA
 fn fade(at: [i32; 2], pos: [f64; 3]) -> f32
 {
     let (dx, dz): (f64, f64) = (f64::from(at[0]) + 0.5 - pos[0], f64::from(at[1]) + 0.5 - pos[2]);
-    let distance: f32 = (dx * dx + dz * dz).sqrt() as f32 / tuning::RANGE as f32;
+    let distance: f32 = flatLength(dx, dz) as f32 / tuning::RANGE as f32;
     1.0 - distance * distance
 }
 

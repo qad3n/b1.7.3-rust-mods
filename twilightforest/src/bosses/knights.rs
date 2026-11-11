@@ -6,7 +6,7 @@ use crate::models::{Program, bipedPose, combine, tf_knight_phantom, tf_phantom_a
 use crate::progress::{self, Gate};
 use crate::treasure::{self, Table};
 use crate::world::generate::GenWorld;
-use b173_api::math::{distance, floor, length, sub};
+use b173_api::math::{distance, flatLength, floor, length, sub};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -186,7 +186,7 @@ fn destination(state: &Knight, info: &EntityInfo, home: [f64; 3]) -> [f64; 3]
     let hover = ||
     {
         let (ox, oz): (f64, f64) = (home[0] - info.pos[0], home[2] - info.pos[2]);
-        let reach: f64 = (ox * ox + oz * oz).sqrt();
+        let reach: f64 = flatLength(ox, oz);
         let (x, z): (f64, f64) = if reach > knight::LARGE_CIRCLE
         {
             (home[0] + ox / reach * knight::LARGE_CIRCLE, home[2] + oz / reach * knight::LARGE_CIRCLE)

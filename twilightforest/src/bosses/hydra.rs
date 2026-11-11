@@ -3,7 +3,7 @@ use crate::ids::{self, item};
 use crate::math::look;
 use crate::models::{Program, tf_hydra, tf_hydra_head, tf_hydra_mortar, tf_hydra_neck};
 use crate::progress::{self, Gate};
-use b173_api::math::{distance, floor, length, sub, yawTowards};
+use b173_api::math::{distance, flatLength, floor, length, sub, yawTowards};
 use b173_api::prelude::*;
 use std::cell::{Cell, RefCell, RefMut};
 use std::collections::HashMap;
@@ -513,7 +513,7 @@ fn faceToward(head: &mut Head, at: [f64; 3], to: [f64; 3], step: f32)
 {
     let (dx, dz): (f64, f64) = (to[0] - at[0], to[2] - at[2]);
     let dy: f64 = at[1] + 1.0 - to[1];
-    let flat: f64 = (dx * dx + dz * dz).sqrt();
+    let flat: f64 = flatLength(dx, dz);
     let yaw: f32 = (dz.atan2(dx).to_degrees() - 90.0) as f32;
     let pitch: f32 = -(dy.atan2(flat).to_degrees() as f32);
     head.m_pitch = -approach(head.m_pitch, pitch, hydra::PITCH_LIMIT);
