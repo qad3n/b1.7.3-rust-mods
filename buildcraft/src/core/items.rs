@@ -1,12 +1,33 @@
 use b173_api::prelude::*;
 
-// BuildCraftCore's gears and wrench: names, sprites and the shared tag other mods' gears join
-pub(crate) const WOODEN_GEAR: &str = "buildcraft:wooden_gear";
-pub(crate) const STONE_GEAR: &str = "buildcraft:stone_gear";
-pub(crate) const IRON_GEAR: &str = "buildcraft:iron_gear";
-pub(crate) const GOLD_GEAR: &str = "buildcraft:gold_gear";
-pub(crate) const DIAMOND_GEAR: &str = "buildcraft:diamond_gear";
 pub(crate) const WRENCH: &str = "buildcraft:wrench";
+
+// the shared tags BuildCraft's gears join, recipes take any mod's gear of the tier
+pub(crate) mod gear
+{
+    pub const WOOD: &str = "c:gears/wood";
+    pub const STONE: &str = "c:gears/stone";
+    pub const IRON: &str = "c:gears/iron";
+    pub const GOLD: &str = "c:gears/gold";
+    pub const DIAMOND: &str = "c:gears/diamond";
+}
+
+// the vanilla materials recipes take by tag, so other mods' equivalents work too
+pub(crate) mod material
+{
+    pub const PLANKS: &str = "minecraft:planks";
+    pub const STONE: &str = "minecraft:base_stone_overworld";
+    pub const COBBLESTONE: &str = "c:cobblestones";
+    pub const IRON: &str = "c:ingots/iron";
+    pub const GOLD: &str = "c:ingots/gold";
+    pub const DIAMOND: &str = "c:gems/diamond";
+    pub const OBSIDIAN: &str = "c:obsidians";
+    pub const STICK: &str = "c:rods/wooden";
+    pub const REDSTONE: &str = "c:dusts/redstone";
+    pub const GLASS: &str = "c:glass_blocks";
+    pub const CHEST: &str = "c:chests";
+    pub const CRAFTING_TABLE: &str = "c:player_workstations/crafting_tables";
+}
 
 struct Gear
 {
@@ -19,26 +40,17 @@ struct Gear
 
 // BuildCraftCore.initializeGears in crafting order
 const GEARS: [Gear; 5] = [
-    Gear { m_name: "wooden_gear", m_tag: "c:gears/wood", m_ring: "minecraft:stick", m_core: None },
-    Gear { m_name: "stone_gear", m_tag: "c:gears/stone", m_ring: "minecraft:cobblestone", m_core: Some(WOODEN_GEAR) },
-    Gear { m_name: "iron_gear", m_tag: "c:gears/iron", m_ring: "minecraft:iron_ingot", m_core: Some(STONE_GEAR) },
-    Gear { m_name: "gold_gear", m_tag: "c:gears/gold", m_ring: "minecraft:gold_ingot", m_core: Some(IRON_GEAR) },
-    Gear { m_name: "diamond_gear", m_tag: "c:gears/diamond", m_ring: "minecraft:diamond", m_core: Some(GOLD_GEAR) },
+    Gear { m_name: "wooden_gear", m_tag: gear::WOOD, m_ring: material::STICK, m_core: None },
+    Gear { m_name: "stone_gear", m_tag: gear::STONE, m_ring: material::COBBLESTONE, m_core: Some(gear::WOOD) },
+    Gear { m_name: "iron_gear", m_tag: gear::IRON, m_ring: material::IRON, m_core: Some(gear::STONE) },
+    Gear { m_name: "gold_gear", m_tag: gear::GOLD, m_ring: material::GOLD, m_core: Some(gear::IRON) },
+    Gear { m_name: "diamond_gear", m_tag: gear::DIAMOND, m_ring: material::DIAMOND, m_core: Some(gear::GOLD) },
 ];
 
 // any mod's wrench in the shared tag turns machines, as BuildCraft's own does
 const WRENCHES: &str = "c:tools/wrench";
 
-pub(crate) fn holdsWrench(player: Player) -> bool
-{
-    let Some(held) = player.held().and_then(|stack| stack.item.name())
-    else
-    {
-        return false;
-    };
-
-    tagValues(RegistryKind::Item, WRENCHES).contains(&held)
-}
+pub(crate) fn holdsWrench(player: Player) -> bool { player.held().is_some_and(|stack| stack.item.tagged(WRENCHES)) }
 
 fn registerGear(ctx: &mut RegisterCtx, gear: &Gear) -> Result<()>
 {
@@ -48,14 +60,17 @@ fn registerGear(ctx: &mut RegisterCtx, gear: &Gear) -> Result<()>
     let result: ItemStack = ItemStack::of(format!("buildcraft:{}", gear.m_name).as_str(), 1);
     match gear.m_core
     {
-        None => ctx.recipes().shaped(gear.m_name, result).pattern([" S ", "S S", " S "]).key('S', gear.m_ring).build(),
+        None =>
+        {
+            ctx.recipes().shaped(gear.m_name, result).pattern([" S ", "S S", " S "]).keyTag('S', gear.m_ring).build()
+        }
 
         Some(core) => ctx
             .recipes()
             .shaped(gear.m_name, result)
             .pattern([" I ", "IGI", " I "])
-            .key('I', gear.m_ring)
-            .key('G', core)
+            .keyTag('I', gear.m_ring)
+            .keyTag('G', core)
             .build(),
     }
 }
@@ -71,7 +86,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     ctx.recipes()
         .shaped("wrench", ItemStack::of(WRENCH, 1))
         .pattern(["I I", " G ", " I "])
-        .key('I', "minecraft:iron_ingot")
-        .key('G', STONE_GEAR)
+        .keyTag('I', material::IRON)
+        .keyTag('G', gear::STONE)
         .build()
 }

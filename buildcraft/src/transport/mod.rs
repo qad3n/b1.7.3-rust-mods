@@ -6,6 +6,7 @@ mod pipe;
 mod render;
 mod travel;
 
+use crate::core::items::material;
 use crate::core::{dir, state};
 use b173_api::prelude::*;
 pub(crate) use pipe::toRandomPipe;
@@ -58,7 +59,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_name: "wooden_pipe",
         m_material: "wood",
         m_sound: "wood",
-        m_ingredient: "minecraft:planks",
+        m_ingredient: material::PLANKS,
         m_refuses: Some(Kind::Wooden),
         m_state: Some((property::SOURCE, &property::SOURCES)),
     },
@@ -68,7 +69,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_name: "stone_pipe",
         m_material: "rock",
         m_sound: "stone",
-        m_ingredient: "minecraft:stone",
+        m_ingredient: material::STONE,
         m_refuses: Some(Kind::Cobblestone),
         m_state: None,
     },
@@ -78,7 +79,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_name: "iron_pipe",
         m_material: "iron",
         m_sound: "metal",
-        m_ingredient: "minecraft:iron_ingot",
+        m_ingredient: material::IRON,
         m_refuses: None,
         m_state: Some((property::OUTPUT, &dir::NAMES)),
     },
@@ -88,7 +89,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_name: "golden_pipe",
         m_material: "iron",
         m_sound: "metal",
-        m_ingredient: "minecraft:gold_ingot",
+        m_ingredient: material::GOLD,
         m_refuses: Some(Kind::Golden),
         m_state: Some((property::POWERED, &property::POWER)),
     },
@@ -98,7 +99,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_name: "diamond_pipe",
         m_material: "iron",
         m_sound: "metal",
-        m_ingredient: "minecraft:diamond",
+        m_ingredient: material::DIAMOND,
         m_refuses: None,
         m_state: None,
     },
@@ -108,7 +109,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_name: "obsidian_pipe",
         m_material: "iron",
         m_sound: "metal",
-        m_ingredient: "minecraft:obsidian",
+        m_ingredient: material::OBSIDIAN,
         m_refuses: Some(Kind::Obsidian),
         m_state: None,
     },
@@ -118,7 +119,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_name: "cobblestone_pipe",
         m_material: "rock",
         m_sound: "stone",
-        m_ingredient: "minecraft:cobblestone",
+        m_ingredient: material::COBBLESTONE,
         m_refuses: Some(Kind::Stone),
         m_state: None,
     },
@@ -356,8 +357,8 @@ fn registerPipe(ctx: &mut RegisterCtx, row: &'static Pipe) -> Result<()>
     ctx.recipes()
         .shaped(row.m_name, ItemStack::of(format!("buildcraft:{}", row.m_name).as_str(), 8))
         .pattern(["   ", "PGP", "   "])
-        .key('P', row.m_ingredient)
-        .key('G', "minecraft:glass")
+        .keyTag('P', row.m_ingredient)
+        .keyTag('G', material::GLASS)
         .build()
 }
 

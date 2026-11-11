@@ -21,18 +21,23 @@ pub(crate) mod dye
     pub fn stack(damage: i32) -> ItemStack { ItemStack::of("minecraft:dye", 1).withDamage(damage) }
 
     // the filler, builder and template table share one shape around a landmark and a crafting table
-    pub fn recipe(ctx: &mut RegisterCtx, name: &str, gear: &str, chest: &str) -> Result<()>
+    pub fn recipe(
+        ctx: &mut RegisterCtx,
+        name: &str,
+        gear: &str,
+        chest: impl FnOnce(ShapedBuilder) -> ShapedBuilder,
+    ) -> Result<()>
     {
-        ctx.recipes()
+        let shape: ShapedBuilder = ctx
+            .recipes()
             .shaped(name, ItemStack::of(format!("buildcraft:{name}").as_str(), 1))
             .pattern(["btb", "ycy", "gCg"])
             .keyStack('b', stack(INK))
             .key('t', "buildcraft:marker")
             .keyStack('y', stack(YELLOW))
-            .key('c', "minecraft:crafting_table")
-            .key('g', gear)
-            .key('C', chest)
-            .build()
+            .keyTag('c', crate::core::items::material::CRAFTING_TABLE)
+            .keyTag('g', gear);
+        chest(shape).build()
     }
 }
 

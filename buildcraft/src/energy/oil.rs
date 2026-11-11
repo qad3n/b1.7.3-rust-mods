@@ -7,6 +7,8 @@ use b173_api::terrain::Random;
 pub(crate) const OIL: &str = "buildcraft:oil";
 // both oil blocks, so pumps and generators take any mod's oil
 pub(crate) const OIL_TAG: &str = "c:oil";
+// any mod's oil bucket, the combustion engine burns them all
+pub(crate) const OIL_BUCKETS: &str = "c:buckets/oil";
 const STILL: &str = "buildcraft:oil_still";
 const BUCKET: &str = "buildcraft:oil_bucket";
 const HARDNESS: f32 = 100.0;
@@ -295,21 +297,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 
     ctx.items().register(
         "oil_bucket",
-        ItemSpecBuilder::template("minecraft:water_bucket").texture("buildcraft:item/oil_bucket").tag("c:buckets/oil"),
+        ItemSpecBuilder::template("minecraft:water_bucket").texture("buildcraft:item/oil_bucket").tag(OIL_BUCKETS),
     )?;
 
-    ctx.events().on::<ChunkPopulate>(Priority::Normal, |event|
-    {
-        let EventData::Chunk { world, x, z } = *event.data()
-        else
-        {
-            return;
-        };
-        let world: World = World { dimension: world };
-
-        if world.dimension == World::OVERWORLD.dimension && world.isAuthority()
-        {
-            populate(world, x, z);
-        }
-    })
+    // the loader runs the overworld's registered generators once per populated chunk on the side that owns it
+    ctx.dimensions()
+        .generator("minecraft:overworld", |chunk| populate(World { dimension: chunk.world }, chunk.x, chunk.z))
 }

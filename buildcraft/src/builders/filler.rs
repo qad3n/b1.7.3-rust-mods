@@ -669,5 +669,5 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     }
     ctx.screens().register(NAME, screen, FillerScreen { m_pos: None })?;
 
-    dye::recipe(ctx, NAME, items::GOLD_GEAR, "minecraft:chest")
+    dye::recipe(ctx, NAME, items::gear::GOLD, |shape| shape.keyTag('C', items::material::CHEST))
 }

@@ -1,9 +1,10 @@
 use super::well::MachineBlock;
 use super::{FRAME, Faces, soft, unbreakable};
 use crate::core::area::Area;
+use crate::core::items::{gear, material};
 use crate::core::power::{Provider, Setup};
 use crate::core::render::{self, Laser, Scene};
-use crate::core::{dir, items, stacks, state};
+use crate::core::{dir, stacks, state};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -753,10 +754,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     ctx.recipes()
         .shaped(NAME, ItemStack::of("buildcraft:quarry", 1))
         .pattern(["ipi", "gig", "dDd"])
-        .key('i', items::IRON_GEAR)
-        .key('p', "minecraft:redstone")
-        .key('g', items::GOLD_GEAR)
-        .key('d', items::DIAMOND_GEAR)
+        .keyTag('i', gear::IRON)
+        .keyTag('p', material::REDSTONE)
+        .keyTag('g', gear::GOLD)
+        .keyTag('d', gear::DIAMOND)
         .key('D', "minecraft:diamond_pickaxe")
         .build()
 }

@@ -269,7 +269,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     ctx.recipes()
         .shaped(NAME, ItemStack::of("buildcraft:auto_workbench", 1))
         .pattern([" g ", "gwg", " g "])
-        .key('w', "minecraft:crafting_table")
-        .key('g', items::WOODEN_GEAR)
+        .keyTag('w', items::material::CRAFTING_TABLE)
+        .keyTag('g', items::gear::WOOD)
         .build()
 }

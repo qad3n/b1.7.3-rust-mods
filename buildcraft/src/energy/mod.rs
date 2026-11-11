@@ -171,9 +171,9 @@ fn registerEngine(ctx: &mut RegisterCtx, row: &'static EngineRow) -> Result<()>
     ctx.recipes()
         .shaped(row.m_name, ItemStack::of(format!("buildcraft:{}", row.m_name).as_str(), 1))
         .pattern(["www", " g ", "GpG"])
-        .key('w', row.m_ingredient)
-        .key('g', "minecraft:glass")
-        .key('G', row.m_gear)
+        .keyTag('w', row.m_ingredient)
+        .keyTag('g', crate::core::items::material::GLASS)
+        .keyTag('G', row.m_gear)
         .key('p', "minecraft:piston")
         .build()?;
 

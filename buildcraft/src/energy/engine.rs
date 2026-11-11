@@ -1,5 +1,6 @@
+use crate::core::dir;
+use crate::core::items::{self, gear, material};
 use crate::core::power::{self, Provider, Tracker};
-use crate::core::{dir, items};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -39,8 +40,8 @@ pub(crate) const ENGINES: [EngineRow; 3] = [
         m_maxReceived: 50,
         m_explosion: 1.0,
         m_speeds: [0.01, 0.02, 0.04, 0.08],
-        m_ingredient: "minecraft:planks",
-        m_gear: items::WOODEN_GEAR,
+        m_ingredient: material::PLANKS,
+        m_gear: gear::WOOD,
     },
     EngineRow
     {
@@ -52,8 +53,8 @@ pub(crate) const ENGINES: [EngineRow; 3] = [
         m_maxReceived: 200,
         m_explosion: 4.0,
         m_speeds: [0.02, 0.04, 0.08, 0.16],
-        m_ingredient: "minecraft:cobblestone",
-        m_gear: items::STONE_GEAR,
+        m_ingredient: material::COBBLESTONE,
+        m_gear: gear::STONE,
     },
     EngineRow
     {
@@ -65,8 +66,8 @@ pub(crate) const ENGINES: [EngineRow; 3] = [
         m_maxReceived: 2000,
         m_explosion: 8.0,
         m_speeds: [0.04, 0.08, 0.16, 0.32],
-        m_ingredient: "minecraft:iron_ingot",
-        m_gear: items::IRON_GEAR,
+        m_ingredient: material::IRON,
+        m_gear: gear::IRON,
     },
 ];
 
@@ -80,7 +81,6 @@ mod fuel
     pub const COMBUSTION_PER_TICK: i32 = 2;
     pub const SCALE: i32 = 1000;
     pub const OIL: &str = "buildcraft:oil";
-    pub const OIL_BUCKET: &str = "buildcraft:oil_bucket";
     pub const LAVA_BUCKET: &str = "minecraft:lava_bucket";
     pub const EMPTY_BUCKET: &str = "minecraft:bucket";
 }
@@ -366,7 +366,7 @@ fn burnOil(world: World, pos: BlockPos, state: &mut EngineState, powered: bool, 
         addEnergy(row, world, pos, state, fuel::COMBUSTION_PER_TICK);
     }
 
-    let bucket: bool = world.tileSlot(pos, SLOT).is_some_and(|stack| stack.item.is(fuel::OIL_BUCKET));
+    let bucket: bool = world.tileSlot(pos, SLOT).is_some_and(|stack| stack.item.tagged(super::oil::OIL_BUCKETS));
     if !bucket
     {
         return;
@@ -628,7 +628,7 @@ pub(crate) fn registerPages(ctx: &mut RegisterCtx) -> Result<()>
     let per: i32 = fuel::COMBUSTION_PER_TICK;
     ctx.machines()
         .recipe(combustion)
-        .input(ItemStack::of(fuel::OIL_BUCKET, 1))
+        .inputTag(super::oil::OIL_BUCKETS, 1)
         .output(ItemStack::of(fuel::EMPTY_BUCKET, 1))
         .note(&format!("{} MJ at {per} MJ/t", fuel::OIL_BUCKET_TIME * per))
         .note(&format!("Oil by pipe too, the chamber holds {} buckets", fuel::CHAMBER_BUCKETS))

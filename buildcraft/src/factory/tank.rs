@@ -233,6 +233,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     ctx.recipes()
         .shaped(NAME, ItemStack::of("buildcraft:tank", 1))
         .pattern(["ggg", "g g", "ggg"])
-        .key('g', "minecraft:glass")
+        .keyTag('g', crate::core::items::material::GLASS)
         .build()
 }

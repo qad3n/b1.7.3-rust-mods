@@ -652,6 +652,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     }
     ctx.screens().register(BUILDER, builder, BuilderScreen)?;
 
-    dye::recipe(ctx, BUILDER, items::DIAMOND_GEAR, "minecraft:chest")?;
-    dye::recipe(ctx, TABLE, items::DIAMOND_GEAR, TEMPLATE)
+    dye::recipe(ctx, BUILDER, items::gear::DIAMOND, |shape| shape.keyTag('C', items::material::CHEST))?;
+    dye::recipe(ctx, TABLE, items::gear::DIAMOND, |shape| shape.key('C', TEMPLATE))
 }

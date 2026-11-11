@@ -1,6 +1,7 @@
 use super::{Faces, MINING_PIPE, facePlacer, registerFacing, unbreakable};
+use crate::core::items::{gear, material};
 use crate::core::power::{Provider, Setup};
-use crate::core::{items, stacks};
+use crate::core::stacks;
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -235,9 +236,9 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     ctx.recipes()
         .shaped(NAME, ItemStack::of("buildcraft:mining_well", 1))
         .pattern(["ipi", "igi", "iPi"])
-        .key('p', "minecraft:redstone")
-        .key('i', "minecraft:iron_ingot")
-        .key('g', items::IRON_GEAR)
+        .keyTag('p', material::REDSTONE)
+        .keyTag('i', material::IRON)
+        .keyTag('g', gear::IRON)
         .key('P', "minecraft:iron_pickaxe")
         .build()
 }
