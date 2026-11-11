@@ -269,7 +269,7 @@ fn twilight(field: &str, meta: i32) -> Resolved
             block::SHIELD,
             if meta > 5
             {
-                crate::blocks::SHIELD_LATENT
+                crate::blocks::LATENT_META
             }
             else
             {

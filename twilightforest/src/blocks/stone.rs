@@ -1,6 +1,6 @@
 use super::{Cube, Kind, Look, base, cube, faces, property, texture, tough, when};
 use crate::colors;
-use crate::names::{block, item};
+use crate::names::{self, block, item};
 use b173_api::math::{Face, add, floor, offset, scale};
 use b173_api::prelude::*;
 
@@ -262,7 +262,11 @@ impl BlockBehavior for AuroraTint
         if !self.m_pale
         {
             let pos: BlockPos = ctx.pos();
-            ctx.setMeta(((pos.x + pos.z).abs() % aurora::PHASES) as u8);
+            let phase: i32 = (pos.x + pos.z).abs() % aurora::PHASES;
+            if let Err(error) = ctx.setState(names::state(block::AURORA_BRICK).with("phase", phase))
+            {
+                warn(&format!("aurora brick at {pos:?}: {}", error.0));
+            }
         }
     }
 
@@ -347,7 +351,9 @@ fn registerAurora(ctx: &mut RegisterCtx) -> Result<()>
 // BlockTFShield: unbreakable, the face it was placed against shows the inside
 // the six facings, then the latent shield the stronghold access chamber lays, outside on every face
 const SIDES: [&str; 7] = ["down", "up", "north", "south", "west", "east", "none"];
-pub(crate) const SHIELD_LATENT: i32 = 6;
+pub(crate) const SHIELD_LATENT: &str = SIDES[6];
+// the 1.7 shield metadata the structures name the latent shield by
+pub(crate) const LATENT_META: i32 = 6;
 
 // BlockTFShield, only the inside face can be dug, as fast as the player digs stone and a third slower
 struct Shield;
@@ -379,7 +385,7 @@ impl BlockBehavior for Shield
         let close: bool = (info.pos[0] - f64::from(pos.x)).abs() < shield::NEAR
             && (info.pos[2] - f64::from(pos.z)).abs() < shield::NEAR;
         let eye: f64 = info.pos[1] + shield::EYE_RISE;
-        let facing: u8 = if close && eye - f64::from(pos.y) > shield::ABOVE
+        let facing: usize = if close && eye - f64::from(pos.y) > shield::ABOVE
         {
             1
         }
@@ -392,7 +398,10 @@ impl BlockBehavior for Shield
             let quarter: usize = (floor(f64::from(info.yaw) * 4.0 / 360.0 + 0.5) & 3) as usize;
             [2, 5, 3, 4][quarter]
         };
-        ctx.setMeta(facing);
+        if let Err(error) = ctx.setState(names::state(block::SHIELD).with("facing", SIDES[facing]))
+        {
+            warn(&format!("shield at {pos:?}: {}", error.0));
+        }
     }
 
     fn strength(&self, ctx: &mut BlockCtx, player: Player) -> Option<f32>
@@ -401,7 +410,8 @@ impl BlockBehavior for Shield
         let aim: [f64; 3] = crate::math::look(info.yaw, info.pitch);
         let to: [f64; 3] = add(info.pos, scale(aim, shield::REACH));
         let face: Option<i32> = ctx.world().rayTrace(info.pos, to, false).map(|hit| hit.face);
-        if face != Some(i32::from(ctx.meta()))
+        let facing: Option<i32> = names::pick(names::stateIn(ctx), "facing", &SIDES).map(|index| index as i32);
+        if face != facing
         {
             return Some(0.0);
         }

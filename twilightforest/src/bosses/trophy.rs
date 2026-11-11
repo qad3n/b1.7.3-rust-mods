@@ -3,6 +3,7 @@ use crate::names::{self, block, item};
 use crate::progress::{self, Gate};
 use b173_api::math::{distance, floor};
 use b173_api::prelude::*;
+use std::rc::Rc;
 
 // ItemTFTrophy and BlockTFTrophy: boss trophies placed as small heads, and BlockTFTrophyPedestal, which opens the
 // knight stronghold for players worthy of it when a trophy sits on top
@@ -32,9 +33,11 @@ mod pedestal
     pub const SHIELDS: i32 = 5;
     pub const HARDNESS: f32 = 2.0;
     pub const RESISTANCE: f32 = 2000.0;
-    // the low two bits turn the boss faces, the latent bit waits for a trophy and lights the faces
+    // the turn of the boss faces, the latent state waits for a trophy and lights the faces, a spare property keeps
+    // the stored metadata the source's so the model's cuboids still pick by it
     pub const TURNS: i32 = 4;
     pub const LATENT: i32 = 8;
+    pub const TURN_VALUES: [&str; 4] = ["0", "1", "2", "3"];
     // RenderBlockTFPedestal's base, column and cap in pixels
     pub const BOXES: [[[f32; 3]; 2]; 3] = [
         [[1.0, 0.0, 1.0], [15.0, 3.0, 15.0]],
@@ -49,7 +52,13 @@ mod pedestal
 
 fn texture(name: &str) -> String { format!("twilightforest:item/{name}") }
 
-fn latent(meta: i32) -> bool { meta & pedestal::LATENT != 0 }
+fn lit(meta: i32) -> bool { meta >= pedestal::LATENT }
+
+// any state but the plain unturned one, which the pedestal treats as placed by a player
+fn guarded(state: Option<Rc<StateData>>) -> bool
+{
+    state.is_some_and(|state| state.flag("latent") || state.flag("spare") || state.get("turn") != Some("0"))
+}
 
 fn trophyOnTop(world: World, pos: BlockPos) -> bool { world.is(pos.offset(0, 1, 0), BLOCK) }
 
@@ -69,15 +78,14 @@ fn crown(world: World, pos: BlockPos)
         progress::grant(*player, Gate::Trophy);
     }
 
-    let meta: i32 = world.meta(pos);
-    if !latent(meta)
+    if !names::flag(names::stateAt(world, pos), "latent")
     {
         return;
     }
 
     if near.iter().any(|player| progress::has(*player, Gate::Trophy))
     {
-        open(world, pos, meta);
+        open(world, pos);
     }
 
     for player in near.iter().filter(|player| !progress::has(**player, Gate::Trophy))
@@ -87,7 +95,7 @@ fn crown(world: World, pos: BlockPos)
 }
 
 // BlockTFTrophyPedestal.doPedestalEffect, only the latent shields the access chamber lays under its floor vanish
-fn open(world: World, pos: BlockPos, meta: i32)
+fn open(world: World, pos: BlockPos)
 {
     let reach: i32 = pedestal::SHIELDS;
     for x in -reach..=reach
@@ -97,17 +105,19 @@ fn open(world: World, pos: BlockPos, meta: i32)
             for z in -reach..=reach
             {
                 let at: BlockPos = pos.offset(x, y, z);
-                let shield: i32 = world.block(at);
-                if blockIs(shield, block::SHIELD) && world.meta(at) == crate::blocks::SHIELD_LATENT
+                let (shield, meta): (i32, i32) = (world.block(at), world.meta(at));
+                let state: Option<Rc<StateData>> = stateOf(shield, meta);
+                let latent: bool = state.is_some_and(|state| state.get("facing") == Some(crate::blocks::SHIELD_LATENT));
+                if blockIs(shield, block::SHIELD) && latent
                 {
                     let _ = world.setBlock(at, 0, 0);
-                    let _ = world.breakEffect(at, shield, crate::blocks::SHIELD_LATENT);
+                    let _ = world.breakEffect(at, shield, meta);
                 }
             }
         }
     }
 
-    let _ = world.setBlockState(pos, names::state(block::TROPHY_PEDESTAL).with(names::META, meta & !pedestal::LATENT));
+    let _ = names::setProperty(world, pos, "latent", false);
 
     world.playSound(crate::math::center(pos), "mob.zombie.infect", 4.0, 0.1);
 }
@@ -127,17 +137,23 @@ impl BlockBehavior for Pedestal
         };
 
         let quarter: i32 = floor(f64::from(info.yaw) * 4.0 / 360.0 + 0.5) & 3;
-        let turn: i32 = [0, 1, 3, 2][quarter as usize];
-        ctx.setMeta((turn | i32::from(ctx.meta()) & pedestal::LATENT) as u8);
+        let turn: usize = [0, 1, 3, 2][quarter as usize];
+        if let Err(error) = names::setProperty(ctx.world(), ctx.pos(), "turn", pedestal::TURN_VALUES[turn])
+        {
+            warn(&format!("trophy pedestal at {:?}: {}", ctx.pos(), error.0));
+        }
     }
 
     // BlockTFTrophyPedestal.getPlayerRelativeBlockHardness, any meta but the plain first one cannot be broken
-    fn strength(&self, ctx: &mut BlockCtx, _player: Player) -> Option<f32> { (ctx.meta() > 0).then_some(0.0) }
+    fn strength(&self, ctx: &mut BlockCtx, _player: Player) -> Option<f32>
+    {
+        guarded(names::stateIn(ctx)).then_some(0.0)
+    }
 
     fn onNeighborChanged(&self, ctx: &mut BlockCtx, _neighbor: i32)
     {
         let (world, pos): (World, BlockPos) = (ctx.world(), ctx.pos());
-        if ctx.isAuthority() && ctx.meta() > 0 && trophyOnTop(world, pos)
+        if ctx.isAuthority() && guarded(names::stateIn(ctx)) && trophyOnTop(world, pos)
         {
             let _ = world.scheduleTick(pos, ctx.block(), 1);
         }
@@ -191,7 +207,7 @@ fn pedestalModel() -> Vec<Cuboid>
 
         for meta in 0..pedestal::LATENT * 2
         {
-            let lit: bool = latent(meta);
+            let lit: bool = lit(meta);
 
             if meta % pedestal::LATENT == 0
             {
@@ -244,7 +260,18 @@ fn registerPedestal(ctx: &mut RegisterCtx) -> Result<()>
             .model(BlockModelSpec { cuboids: pedestalModel(), ..BlockModelSpec::default() })
             .behavior(Pedestal),
     )?;
-    Ok(())
+    ctx.blocks().states(
+        block::TROPHY_PEDESTAL,
+        BlockStatesSpec
+        {
+            properties: vec![
+                crate::blocks::property("latent", &["false", "true"]),
+                crate::blocks::property("spare", &["false", "true"]),
+                crate::blocks::property("turn", &pedestal::TURN_VALUES),
+            ],
+            ..BlockStatesSpec::default()
+        },
+    )
 }
 
 // BlockTFTrophy and TileEntityTFTrophy: the block's meta says where it sits, 1 on the floor and 2 to 5 on a wall
@@ -252,6 +279,8 @@ fn registerPedestal(ctx: &mut RegisterCtx) -> Result<()>
 mod head
 {
     pub const FLOOR: i32 = 1;
+    // the face a trophy sits against in BlockSkull metadata order, the model's cuboids pick by that metadata
+    pub const FACINGS: [&str; 6] = ["down", "up", "north", "south", "west", "east"];
     pub const TURNS: i32 = 16;
     pub const FULL_TURN: f32 = 360.0;
     pub const TILE: &str = "trophy_head";
@@ -303,7 +332,7 @@ impl ItemBehavior for TrophyItem
             {
                 0
             };
-            let _ = world.setBlockState(at, names::state(BLOCK).with(names::META, face));
+            let _ = world.setBlockState(at, names::state(BLOCK).with("facing", head::FACINGS[face as usize]));
             let state: Head = Head { m_kind: self.m_kind as u8, m_turn: turn as u8 };
             if let Err(error) = world.setTileData(at, &state)
             {
@@ -400,15 +429,15 @@ impl TileBehavior for HeadTile
     fn pose(&self, ctx: &mut BlockCtx, partial: f32, ticks: i32) -> Pose
     {
         let state: Head = ctx.tileData();
-        let meta: i32 = i32::from(ctx.meta()) & 7;
-        let floor: bool = meta == head::FLOOR;
+        let facing: Option<usize> = names::pick(names::stateIn(ctx), "facing", &head::FACINGS);
+        let floor: bool = facing == Some(head::FLOOR as usize);
 
-        let turn: f32 = match meta
+        let turn: f32 = match facing.map(|facing| head::FACINGS[facing])
         {
-            2 => 0.0,
-            3 => 180.0,
-            4 => 270.0,
-            5 => 90.0,
+            Some("north") => 0.0,
+            Some("south") => 180.0,
+            Some("west") => 270.0,
+            Some("east") => 90.0,
             _ => f32::from(state.m_turn) * head::FULL_TURN / head::TURNS as f32,
         };
 
@@ -511,6 +540,14 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .tileEntity(head::TILE)
             .drops(Vec::new())
             .behavior(TrophyBlock),
+    )?;
+    ctx.blocks().states(
+        BLOCK,
+        BlockStatesSpec
+        {
+            properties: vec![crate::blocks::property("facing", &head::FACINGS)],
+            ..BlockStatesSpec::default()
+        },
     )?;
 
     for (kind, trophy) in TROPHIES.iter().enumerate()

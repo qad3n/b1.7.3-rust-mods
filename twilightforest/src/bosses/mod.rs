@@ -60,7 +60,8 @@ impl TileBehavior for SpawnerTile
     // TileEntityTFBossSpawner.updateEntity
     fn onTick(&self, ctx: &mut BlockCtx)
     {
-        let Some(boss) = BOSSES.get(ctx.meta() as usize)
+        let kind: Option<usize> = crate::names::pick(crate::names::stateIn(ctx), "boss", &KINDS);
+        let Some(boss) = kind.and_then(|kind| BOSSES.get(kind))
         else
         {
             return;
@@ -80,7 +81,7 @@ impl TileBehavior for SpawnerTile
             return;
         }
 
-        if i32::from(ctx.meta()) == kind::KNIGHTS
+        if kind == Some(kind::KNIGHTS as usize)
         {
             knights::spawnGroup(world, pos);
 

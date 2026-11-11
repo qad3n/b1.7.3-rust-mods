@@ -11,7 +11,7 @@ pub(crate) mod wood;
 use b173_api::prelude::*;
 pub(crate) use nagastone::{bodyMeta, headMeta};
 pub(crate) use plants::{AXES, PAD_PIECES, QUARTERS, axisOf, padTurn, plantStays};
-pub(crate) use stone::SHIELD_LATENT;
+pub(crate) use stone::{LATENT_META, SHIELD_LATENT};
 
 pub(crate) enum Look
 {

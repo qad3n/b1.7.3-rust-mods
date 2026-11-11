@@ -1,5 +1,5 @@
 use super::{Kind, Look, base, faces, property, texture, when};
-use crate::names::block;
+use crate::names::{self, block};
 use b173_api::math::{Face, blockOf, distance};
 use b173_api::prelude::*;
 use std::rc::Rc;
@@ -38,6 +38,7 @@ mod slide
 // the axis values in BlockRotatedPillar meta order, the stagger fills the low two bits
 const AXES: [&str; 3] = ["y", "x", "z"];
 const DELAYS: [&str; 4] = ["0", "1", "2", "3"];
+// stored metadata of each axis, the model cuboids still pick by it
 const AXIS_STEP: i32 = 4;
 
 // where the slide may run along each axis, in BlockTFSlider meta order, tried before any open way
@@ -47,12 +48,14 @@ const WAYS: [[[i32; 3]; 4]; 3] = [
     [[0, -1, 0], [0, 1, 0], [-1, 0, 0], [1, 0, 0]],
 ];
 
-fn axis(meta: i32) -> usize { (meta / AXIS_STEP).clamp(0, AXES.len() as i32 - 1) as usize }
+fn axis(state: Option<Rc<StateData>>) -> usize { names::pick(state, "axis", &AXES).unwrap_or(0) }
+
+fn delay(state: Option<Rc<StateData>>) -> usize { names::pick(state, "delay", &DELAYS).unwrap_or(0) }
 
 // the direction an axis runs, the column of sliders that share a trap lies along it
-fn along(meta: i32) -> [i32; 3]
+fn along(axis: usize) -> [i32; 3]
 {
-    match axis(meta)
+    match axis
     {
         1 => [1, 0, 0],
         2 => [0, 0, 1],
@@ -71,20 +74,19 @@ fn playerNear(world: World, pos: BlockPos) -> bool
 }
 
 // BlockTFSlider.isConnectedInRange, a player near this slider or any matching one in a straight run along its axis
-fn awake(world: World, pos: BlockPos, meta: i32) -> bool
+fn awake(world: World, pos: BlockPos, state: Option<Rc<StateData>>) -> bool
 {
     if playerNear(world, pos)
     {
         return true;
     }
 
-    let [dx, dy, dz] = along(meta);
-    let me: i32 = world.block(pos);
+    let [dx, dy, dz] = along(axis(state.clone()));
 
     [1, -1].into_iter().any(|sign|
     {
         let mut at: BlockPos = pos.offset(dx * sign, dy * sign, dz * sign);
-        while world.block(at) == me && world.meta(at) == meta
+        while names::stateAt(world, at) == state
         {
             if playerNear(world, at)
             {
@@ -99,9 +101,9 @@ fn awake(world: World, pos: BlockPos, meta: i32) -> bool
 }
 
 // BlockTFSlider.scheduleBlockUpdate, every slider fires on the same beat shifted by its stagger
-fn schedule(world: World, pos: BlockPos, meta: i32)
+fn schedule(world: World, pos: BlockPos, delay: usize)
 {
-    let offset: i64 = i64::from(meta % slider::DELAYS) * slider::OFFSET;
+    let offset: i64 = delay as i64 * slider::OFFSET;
     let delay: i64 = slider::PERIOD - (world.time() - offset).rem_euclid(slider::PERIOD);
     if let Err(error) = world.scheduleTick(pos, world.block(pos), delay as i32)
     {
@@ -132,21 +134,23 @@ impl BlockBehavior for Slider
     {
         if ctx.isAuthority()
         {
-            schedule(ctx.world(), ctx.pos(), i32::from(ctx.meta()));
+            schedule(ctx.world(), ctx.pos(), delay(names::stateIn(ctx)));
         }
     }
 
     // BlockRotatedPillar.onBlockPlaced lays the pillar along the clicked face's axis
     fn onPlaced(&self, ctx: &mut BlockCtx, face: i32)
     {
-        let axis: i32 = match Face::fromIndex(face)
+        let axis: usize = match Face::fromIndex(face)
         {
             Some(Face::North | Face::South) => 2,
             Some(Face::West | Face::East) => 1,
             _ => 0,
         };
-        let meta: i32 = axis * AXIS_STEP + i32::from(ctx.meta()) % slider::DELAYS;
-        ctx.setMeta(meta as u8);
+        if let Err(error) = names::setProperty(ctx.world(), ctx.pos(), "axis", AXES[axis])
+        {
+            warn(&format!("slider at {:?}: {}", ctx.pos(), error.0));
+        }
     }
 
     fn onUpdateTick(&self, ctx: &mut BlockCtx)
@@ -157,13 +161,13 @@ impl BlockBehavior for Slider
         }
 
         let (world, pos): (World, BlockPos) = (ctx.world(), ctx.pos());
-        let meta: i32 = i32::from(ctx.meta());
-        if awake(world, pos, meta)
+        let state: Option<Rc<StateData>> = names::stateIn(ctx);
+        if awake(world, pos, state.clone())
         {
-            launch(world, pos, meta);
+            launch(world, pos, axis(state.clone()));
         }
 
-        schedule(world, pos, meta);
+        schedule(world, pos, delay(state));
     }
 
     fn onEntityCollided(&self, ctx: &mut BlockCtx, entity: Entity)
@@ -201,9 +205,9 @@ impl Slide
 }
 
 // EntityTFSlideBlock.determineMoveDirection, toward open space away from a wall, else any open way
-fn way(world: World, pos: BlockPos, meta: i32) -> [i32; 3]
+fn way(world: World, pos: BlockPos, axis: usize) -> [i32; 3]
 {
-    let ways: &[[i32; 3]; 4] = &WAYS[axis(meta)];
+    let ways: &[[i32; 3]; 4] = &WAYS[axis];
     let open = |step: [i32; 3]| world.isAir(pos.offset(step[0], step[1], step[2]));
 
     for pair in ways.chunks(2)
@@ -223,9 +227,11 @@ fn way(world: World, pos: BlockPos, meta: i32) -> [i32; 3]
     ways.iter().copied().find(|step| open(*step)).unwrap_or([0; 3])
 }
 
-fn launch(world: World, pos: BlockPos, meta: i32)
+// the slide carries the stored id and metadata, as the moving block entity draws and places them back
+fn launch(world: World, pos: BlockPos, axis: usize)
 {
-    let state: Slide = Slide { m_block: world.block(pos), m_meta: meta, m_ticks: 0, m_way: way(world, pos, meta) };
+    let state: Slide =
+        Slide { m_block: world.block(pos), m_meta: world.meta(pos), m_ticks: 0, m_way: way(world, pos, axis) };
 
     let entity: Entity = match world.spawnEntity(&format!("twilightforest:{}", slide::NAME), crate::math::center(pos))
     {
