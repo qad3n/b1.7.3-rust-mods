@@ -16,7 +16,7 @@ pub(crate) mod gear
 pub(crate) mod material
 {
     pub const PLANKS: &str = "minecraft:planks";
-    pub const STONE: &str = "minecraft:base_stone_overworld";
+    pub const STONE: &str = "c:stones";
     pub const COBBLESTONE: &str = "c:cobblestones";
     pub const IRON: &str = "c:ingots/iron";
     pub const GOLD: &str = "c:ingots/gold";
