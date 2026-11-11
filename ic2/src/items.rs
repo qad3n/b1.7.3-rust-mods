@@ -9,11 +9,18 @@ struct Plain
     m_stack: Option<i32>,
     m_damage: Option<i32>,
     m_tags: &'static [&'static str],
+    // the item whose sprite it draws with, as the source gives both one icon index
+    m_sprite: Option<&'static str>,
 }
 
 const fn plainItem(name: &'static str, tags: &'static [&'static str]) -> Plain
 {
-    Plain { m_name: name, m_stack: None, m_damage: None, m_tags: tags }
+    Plain { m_name: name, m_stack: None, m_damage: None, m_tags: tags, m_sprite: None }
+}
+
+const fn sharing(name: &'static str, sprite: &'static str) -> Plain
+{
+    Plain { m_name: name, m_stack: None, m_damage: None, m_tags: &[], m_sprite: Some(sprite) }
 }
 
 // ItemGradual holds one and wears down over ten thousand points, the reactor counts its life in them
@@ -21,10 +28,13 @@ const fn gradual(name: &'static str) -> Plain
 {
     const LIFE: i32 = 10000;
 
-    Plain { m_name: name, m_stack: Some(1), m_damage: Some(LIFE), m_tags: &[] }
+    Plain { m_name: name, m_stack: Some(1), m_damage: Some(LIFE), m_tags: &[], m_sprite: None }
 }
 
-const fn single(name: &'static str) -> Plain { Plain { m_name: name, m_stack: Some(1), m_damage: None, m_tags: &[] } }
+const fn single(name: &'static str) -> Plain
+{
+    Plain { m_name: name, m_stack: Some(1), m_damage: None, m_tags: &[], m_sprite: None }
+}
 
 const PLAIN: [Plain; 54] = [
     plainItem("coal_dust", &["c:dusts/coal"]),
@@ -46,8 +56,8 @@ const PLAIN: [Plain; 54] = [
     plainItem("fuel_can_empty", &[]),
     plainItem("coal_cell", &[]),
     plainItem("bio_cell", &[]),
-    plainItem("coalfuel_cell", &[]),
-    plainItem("biofuel_cell", &[]),
+    sharing("coalfuel_cell", "coal_cell"),
+    sharing("biofuel_cell", "bio_cell"),
     plainItem("hydrated_coal_dust", &[]),
     plainItem("hydrated_coal", &[]),
     plainItem("plantball", &[]),
@@ -87,7 +97,8 @@ fn registerPlain(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &PLAIN
     {
-        let mut spec: ItemSpecBuilder = ItemSpecBuilder::new().texture(&itemTexture(row.m_name));
+        let mut spec: ItemSpecBuilder =
+            ItemSpecBuilder::new().texture(&itemTexture(row.m_sprite.unwrap_or(row.m_name)));
 
         if let Some(stack) = row.m_stack
         {
