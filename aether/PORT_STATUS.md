@@ -236,10 +236,24 @@ Still differs or unverified:
   3503004): the pickaxe, axe and shovel reach eight blocks for blocks, they and the lance point at entities eight
   blocks off. The source's extended attack picks the nearest entity in a narrow cone by line of sight and wears the
   item one more; the port uses the normal pick ray and wear.
-- Creative players' darts (pickup mode 2) are picked up like survival ones and the pickup has no item fly animation.
+- A dart pickup has no item fly animation (beta has no creative players, so the source's pickup mode 2 never
+  applies).
 - The slider's crush shows the break effect and smoke the source spawns only on the server, where 1.7 never draws
   them.
 - Everything above is checked by build and code review only, not in a game.
+
+Second pass (every entity, ability and machine class against the port by its numbers and logic):
+- Fixed: the enchanter turns skyroot poison buckets into remedy buckets (1000 ticks); zephyrs, sentries and mini
+  clouds have 1.7's default 20 health; sentries never fall asleep again once awake, search every ninth tick and keep
+  a target they can see within 16 blocks, with a random hop pitch; whirlwinds that swallow another turn evil with
+  half their life and fizz, tear leaves with mob griefing on, lose 50 life for each entity they hold while inside a
+  block, and spit creepers with a little drift; aerbunny jumps puff five clouds spread over the bunny; a moa jumping
+  by itself rises 0.05 more each tick.
+- Needs a loader feature (not yet, the SDK's API 1.35 is still uncommitted): phygs, flying cows and moas seat their
+  rider at 0.65, 1.15 and 1.25 (getMountedYOffset); the port seats them where the pig template does.
+- Checked and matching: every other mob's health, size, speed and attack, the valkyrie (whose teleport never
+  succeeds in the source), queen, slider, sun spirit (its body parts only take player hits, which it ignores), fire
+  minion, crystals, armor abilities, repulsion, accessories and the freezer table.
 
 ## Todo, in order
 

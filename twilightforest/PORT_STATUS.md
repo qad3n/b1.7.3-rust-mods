@@ -260,6 +260,15 @@ Still differs or unverified:
   flames and smokes.
 - Everything above is checked by build and code review only, not in a game.
 
+Second pass (every entity, boss, item, block and tile entity class against the port by its numbers and logic):
+- Fixed: knight phantom picks fall at their own 0.015; the lich's hand sparkles with spell specks tinted by its next
+  attack (on the client, where the source draws them); mobile fireflies and fire beetles while breathing draw full
+  bright.
+- Still differs: the mobile firefly draws the firefly block model instead of TF's pulsing camera facing glow sprite;
+  the lich turns its sparkles with its head's yaw, the SDK has no body yaw.
+- Checked and matching: every other mob and boss, magic leaves tints, trollsteinn's lit faces, force fields, lily
+  pads, castle runes, the uncrafting table and the tower devices.
+
 ## Bugs to check at the end
 
 - TFClientProxy.spawnParticle classes are loader mod particles (api 1.24, `particles.rs`): a beta particle recolored, resized, retimed or weighted toward each EntityFX; their own textures and animated fading are not reproduced.
