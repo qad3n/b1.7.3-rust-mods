@@ -1,4 +1,5 @@
 use crate::combat::kind;
+use crate::ids;
 use crate::models::Program;
 use b173_api::math::{blockOf, distance, length, sub};
 use b173_api::prelude::*;
@@ -14,9 +15,33 @@ pub(crate) struct Shot
     pub m_kind: &'static str,
     pub m_impact: Impact,
     pub m_icon: Icon,
-    pub m_puff: &'static str,
+    pub m_puff: Puff,
     // an entity kind the shot flies through, the knight phantoms' own axes and picks pass them
     pub m_passes: Option<&'static str>,
+    // makeTrail, what the shot leaves behind each tick on the client
+    pub m_trail: Trail,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum Trail
+{
+    None,
+    // a few specks of one particle within half a block
+    Specks(&'static str, i32),
+    // EntityTFLichBolt and EntityTFTwilightWandBolt, five pale green spell specks
+    Spell,
+    // EntityTFLichBomb, a flame drawn back toward the bomb
+    Ember,
+    // EntityFireball, a puff of smoke above it
+    Smoke,
+}
+
+// what bursts where a shot lands, a named particle or bits of a block
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum Puff
+{
+    Named(&'static str),
+    Crack(&'static str),
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -51,6 +76,16 @@ mod sheet
     pub const PAPER: i32 = 58;
     pub const FIRE: i32 = 26;
     pub const CELLS: f32 = 16.0;
+}
+
+mod trail
+{
+    pub const SPREAD: f64 = 0.5;
+    pub const SPELL_SPECKS: i32 = 5;
+    // the spell's red green and blue, each scaled by a random half to whole
+    pub const SPELL: [f32; 3] = [0.17, 0.8, 0.69];
+    pub const EMBER_PULL: f64 = -0.25;
+    pub const SMOKE_RISE: f64 = 0.5;
 }
 
 mod flight
@@ -92,8 +127,9 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::MAGIC,
         m_impact: Impact::Nature,
         m_icon: Icon::Sheet(sheet::SEEDS),
-        m_puff: "snowballpoof",
+        m_puff: Puff::Crack("minecraft:leaves"),
         m_passes: None,
+        m_trail: Trail::Specks("happyVillager", 5),
     },
     Shot
     {
@@ -103,8 +139,9 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::THROWN,
         m_impact: Impact::Tome,
         m_icon: Icon::Sheet(sheet::PAPER),
-        m_puff: "snowballpoof",
+        m_puff: Puff::Named("snowballpoof"),
         m_passes: None,
+        m_trail: Trail::Specks("crit", 5),
     },
     Shot
     {
@@ -114,8 +151,9 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::MAGIC,
         m_impact: Impact::Plain,
         m_icon: Icon::Texture(TWILIGHT_ORB),
-        m_puff: "portal",
+        m_puff: Puff::Named("portal"),
         m_passes: None,
+        m_trail: Trail::Spell,
     },
     Shot
     {
@@ -125,8 +163,9 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::THROWN,
         m_impact: Impact::Plain,
         m_icon: Icon::Sheet(sheet::SLIME_BALL),
-        m_puff: "slime",
+        m_puff: Puff::Named("slime"),
         m_passes: None,
+        m_trail: Trail::Specks("slime", 2),
     },
     Shot
     {
@@ -136,8 +175,9 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::THROWN,
         m_impact: Impact::Plain,
         m_icon: Icon::Sheet(sheet::SNOWBALL),
-        m_puff: "snowballpoof",
+        m_puff: Puff::Named("snowballpoof"),
         m_passes: None,
+        m_trail: Trail::Specks("snowballpoof", 2),
     },
     Shot
     {
@@ -147,8 +187,9 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::MAGIC,
         m_impact: Impact::Plain,
         m_icon: Icon::Texture(TWILIGHT_ORB),
-        m_puff: "portal",
+        m_puff: Puff::Named("portal"),
         m_passes: None,
+        m_trail: Trail::Spell,
     },
     // beta has no magma cream, the bomb shows the fire charge cell
     Shot
@@ -159,8 +200,9 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::THROWN,
         m_impact: Impact::Bomb,
         m_icon: Icon::Sheet(sheet::FIRE),
-        m_puff: "smoke",
+        m_puff: Puff::Named("smoke"),
         m_passes: None,
+        m_trail: Trail::Ember,
     },
     Shot
     {
@@ -170,8 +212,9 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::THROWN,
         m_impact: Impact::Plain,
         m_icon: Icon::Texture("twilightforest:item/knightlyaxe"),
-        m_puff: "crit",
+        m_puff: Puff::Named("crit"),
         m_passes: Some(KNIGHT_PHANTOM),
+        m_trail: Trail::None,
     },
     Shot
     {
@@ -181,8 +224,9 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::THROWN,
         m_impact: Impact::Plain,
         m_icon: Icon::Texture("twilightforest:item/knightlypick"),
-        m_puff: "crit",
+        m_puff: Puff::Named("crit"),
         m_passes: Some(KNIGHT_PHANTOM),
+        m_trail: Trail::None,
     },
     Shot
     {
@@ -192,8 +236,9 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::FIREBALL,
         m_impact: Impact::Fireball,
         m_icon: Icon::Sheet(sheet::FIRE),
-        m_puff: "smoke",
+        m_puff: Puff::Named("smoke"),
         m_passes: None,
+        m_trail: Trail::Smoke,
     },
     Shot
     {
@@ -203,8 +248,9 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::THROWN,
         m_impact: Impact::Moonworm,
         m_icon: Icon::Texture("twilightforest:block/tfmoonworm"),
-        m_puff: "slime",
+        m_puff: Puff::Crack(crate::ids::block::MOONWORM),
         m_passes: None,
+        m_trail: Trail::None,
     },
 ];
 
@@ -256,6 +302,46 @@ pub(crate) fn wobble(world: World, spread: f64) -> f64
 {
     let (steps, scale, inaccuracy): (i32, f64, f64) = (2001, 1000.0, 0.0075);
     (f64::from(world.random(steps)) / scale - 1.0) * inaccuracy * spread
+}
+
+fn jitter(world: World) -> f64 { trail::SPREAD * f64::from(ids::fraction(world) - ids::fraction(world)) }
+
+fn leaveTrail(kind: Trail, world: World, info: &EntityInfo)
+{
+    let near = || [0, 1, 2].map(|axis| info.pos[axis] + jitter(world));
+
+    match kind
+    {
+        Trail::None =>
+        {}
+
+        Trail::Specks(name, count) =>
+        {
+            for _ in 0..count
+            {
+                crate::particles::spawn(world, name, near(), [0.0; 3]);
+            }
+        }
+
+        Trail::Spell =>
+        {
+            for _ in 0..trail::SPELL_SPECKS
+            {
+                let color: [f64; 3] =
+                    trail::SPELL.map(|channel| f64::from((ids::fraction(world) * 0.5 + 0.5) * channel));
+                crate::particles::spawn(world, "mobSpell", near(), color);
+            }
+        }
+
+        Trail::Ember =>
+        {
+            let step: [f64; 3] = [0, 1, 2].map(|axis| jitter(world) + info.motion[axis]);
+            let at: [f64; 3] = [0, 1, 2].map(|axis| info.pos[axis] + step[axis]);
+            world.particle("flame", at, step.map(|axis| axis * trail::EMBER_PULL));
+        }
+
+        Trail::Smoke => world.particle("smoke", [info.pos[0], info.pos[1] + trail::SMOKE_RISE, info.pos[2]], [0.0; 3]),
+    }
 }
 
 struct Thrown
@@ -322,7 +408,11 @@ fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, 
 
     for _ in 0..flight::PUFFS
     {
-        crate::particles::spawn(world, shot.m_puff, at, [0.0; 3]);
+        match shot.m_puff
+        {
+            Puff::Named(name) => crate::particles::spawn(world, name, at, [0.0; 3]),
+            Puff::Crack(block) => crate::particles::crack(world, block, 0, at, [0.0; 3]),
+        }
     }
 
     entity.kill();
@@ -336,6 +426,7 @@ impl EntityBehavior for Thrown
     {
         if !entity.world.isAuthority()
         {
+            leaveTrail(self.m_shot.m_trail, entity.world, info);
             return;
         }
 

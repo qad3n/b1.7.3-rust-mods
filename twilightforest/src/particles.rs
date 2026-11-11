@@ -20,7 +20,7 @@ const fn kind(name: &'static str, base: &'static str) -> Kind
 
 const WHITE: u32 = 0xFFFFFF;
 
-const KINDS: [Kind; 19] = [
+const KINDS: [Kind; 20] = [
     // EntitySmokeFX at eight times the size
     Kind { m_scale: Some(8.0), ..kind("hugesmoke", "smoke") },
     // EntityTFLargeFlameFX, a white flame five times the size
@@ -48,8 +48,10 @@ const KINDS: [Kind; 19] = [
     Kind { m_scale: Some(4.0), ..kind("largeexplode", "explode") },
     Kind { m_scale: Some(6.0), ..kind("hugeexplosion", "largesmoke") },
     Kind { m_gravity: Some(0.06), ..kind("drip_water", "splash") },
-    Kind { m_color: Some(0x8B8B8B), ..kind("iconcrack_20_0", "snowballpoof") },
     Kind { m_color: Some(0xCCCCCC), ..kind("townaura", "smoke") },
+    // EntitySpellParticleFX takes its colour from the motion as beta's red dust does
+    kind("mobSpell", "reddust"),
+    Kind { m_color: Some(0x55FF55), ..kind("happyVillager", "reddust") },
 ];
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
@@ -78,6 +80,12 @@ pub(crate) fn spawn(world: World, name: &str, at: [f64; 3], motion: [f64; 3])
         Some(row) => world.particle(&format!("twilightforest:{}", row.m_name), at, motion),
         None => world.particle(name, at, motion),
     }
+}
+
+// blockcrack_<id>_<meta>, bits of a block as 1.7 names its digging particle
+pub(crate) fn crack(world: World, block: &str, meta: i32, at: [f64; 3], motion: [f64; 3])
+{
+    world.particle(&format!("blockcrack_{}_{meta}", ids::blockId(block)), at, motion);
 }
 
 // BlockTFTowerDevice.sparkle, a speck just outside every face that is not covered
