@@ -15,6 +15,8 @@ pub(crate) enum Category
     Blocks,
     Chests,
     Tags,
+    // a mod machine by its index in the catalog, its tabs sit between smelting and the drops
+    Machine(usize),
 }
 
 pub(crate) struct CategoryRow
@@ -74,6 +76,11 @@ impl CategoryRow
 pub(crate) enum Display
 {
     Recipe(usize),
+    Machine
+    {
+        machine: usize,
+        recipe: usize,
+    },
     Loot
     {
         table: usize,
@@ -89,8 +96,59 @@ pub(crate) enum Display
 #[derive(Clone)]
 pub(crate) struct Tab
 {
-    pub m_row: &'static CategoryRow,
+    pub m_category: Category,
     pub m_displays: Vec<Display>,
+}
+
+impl Tab
+{
+    // a machine tab shows its first workstation and title
+    pub(crate) fn icon(&self, catalog: &Catalog) -> ItemStack
+    {
+        match self.m_category
+        {
+            Category::Machine(machine) => catalog.m_machines[machine]
+                .workstations
+                .first()
+                .map_or_else(|| ItemStack::of(CRAFTING_ICON, 1), |stack| ItemStack::fromRaw(stack.clone())),
+            category => ItemStack::of(row(category).m_icon, 1),
+        }
+    }
+
+    pub(crate) fn label(&self, catalog: &Catalog) -> String
+    {
+        match self.m_category
+        {
+            Category::Machine(machine) => catalog.m_machines[machine].title.clone(),
+            category => row(category).label(),
+        }
+    }
+}
+
+const CRAFTING_ICON: &str = "minecraft:crafting_table";
+
+fn row(category: Category) -> &'static CategoryRow
+{
+    CATEGORIES.iter().find(|row| row.m_category == category).unwrap_or(&CATEGORIES[0])
+}
+
+// tab order: crafting and smelting, every machine as registered, then drops and tags
+fn order(catalog: &Catalog) -> Vec<Category>
+{
+    let (recipes, rest): (Vec<&CategoryRow>, Vec<&CategoryRow>) =
+        CATEGORIES.iter().partition(|row| matches!(row.m_category, Category::Crafting | Category::Smelting));
+    let machines = (0..catalog.m_machines.len()).map(Category::Machine);
+
+    recipes.iter().map(|row| row.m_category).chain(machines).chain(rest.iter().map(|row| row.m_category)).collect()
+}
+
+fn recipeCategory(recipe: &RecipeView) -> Category
+{
+    match recipe.shape
+    {
+        RecipeShape::Smelting { .. } => Category::Smelting,
+        _ => Category::Crafting,
+    }
 }
 
 // how to get the item, or with usages what it makes, drops or holds, one tab per category with anything to show
@@ -114,16 +172,36 @@ pub(crate) fn tabs(catalog: &Catalog, key: Key, usages: bool) -> Vec<Tab>
         catalog.lootFor(key)
     };
 
+    let machines: Vec<(usize, usize)> = if usages
+    {
+        catalog.machineUsagesOf(key)
+    }
+    else
+    {
+        catalog.machineRecipesFor(key)
+    };
+
     let mut displays: Vec<(Category, Display)> = Vec::new();
 
     for index in recipes
     {
-        let category: Category = match catalog.m_recipes[index].shape
+        displays.push((recipeCategory(&catalog.m_recipes[index]), Display::Recipe(index)));
+    }
+
+    // a workstation of crafting or smelting lists every recipe it runs
+    if usages
+    {
+        for category in catalog.vanillaStations(key)
         {
-            RecipeShape::Smelting { .. } => Category::Smelting,
-            _ => Category::Crafting,
-        };
-        displays.push((category, Display::Recipe(index)));
+            let all =
+                (0..catalog.m_recipes.len()).filter(|index| recipeCategory(&catalog.m_recipes[*index]) == category);
+            displays.extend(all.map(|index| (category, Display::Recipe(index))));
+        }
+    }
+
+    for (machine, recipe) in machines
+    {
+        displays.push((Category::Machine(machine), Display::Machine { machine, recipe }));
     }
 
     for table in loot
@@ -146,14 +224,14 @@ pub(crate) fn tabs(catalog: &Catalog, key: Key, usages: bool) -> Vec<Tab>
         displays.extend(pages.map(|display| (Category::Tags, display)));
     }
 
-    CATEGORIES
-        .iter()
-        .map(|row| Tab
+    order(catalog)
+        .into_iter()
+        .map(|category| Tab
         {
-            m_row: row,
+            m_category: category,
             m_displays: displays
                 .iter()
-                .filter(|(category, _)| *category == row.m_category)
+                .filter(|(shown, _)| *shown == category)
                 .map(|(_, display)| display.clone())
                 .collect(),
         })

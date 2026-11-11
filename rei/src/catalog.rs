@@ -1,3 +1,4 @@
+use crate::display::Category;
 use crate::spawner;
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
@@ -59,6 +60,7 @@ pub(crate) struct Catalog
     pub m_entries: Vec<Entry>,
     pub m_recipes: Vec<RecipeView>,
     pub m_loot: Vec<LootView>,
+    pub m_machines: Vec<MachineView>,
     m_byKey: HashMap<Key, usize>,
     m_origins: HashMap<i32, String>,
     m_mods: HashMap<String, String>,
@@ -126,6 +128,7 @@ impl Catalog
             m_entries: entries,
             m_recipes: recipeList(),
             m_loot: lootList(),
+            m_machines: machineList(),
             m_byKey: byKey,
             m_origins: origins,
             m_mods: mods,
@@ -222,6 +225,57 @@ impl Catalog
     }
 
     // tables dropping the item, as a mob, a broken block or a chest
+    // machine recipes giving the item, as machine and recipe indices
+    pub(crate) fn machineRecipesFor(&self, key: Key) -> Vec<(usize, usize)>
+    {
+        self.machineRecipes(|recipe| slotsAccept(&recipe.outputs, key))
+    }
+
+    // machine recipes taking the item, every recipe of a machine the item runs
+    pub(crate) fn machineUsagesOf(&self, key: Key) -> Vec<(usize, usize)>
+    {
+        let stations: Vec<usize> =
+            (0..self.m_machines.len()).filter(|machine| station(&self.m_machines[*machine], key)).collect();
+        let mut found: Vec<(usize, usize)> = Vec::new();
+
+        for (machine, view) in self.m_machines.iter().enumerate()
+        {
+            let all: bool = stations.contains(&machine);
+            let recipes = view.recipes.iter().enumerate().filter(|(_, recipe)| all || slotsAccept(&recipe.inputs, key));
+            found.extend(recipes.map(|(recipe, _)| (machine, recipe)));
+        }
+
+        found
+    }
+
+    // crafting or smelting when a mod named the item one of their workstations
+    pub(crate) fn vanillaStations(&self, key: Key) -> Vec<Category>
+    {
+        self.m_machines
+            .iter()
+            .filter(|view| station(view, key))
+            .filter_map(|view| match (view.id.isVanilla(), view.id.path())
+            {
+                (true, CRAFTING) => Some(Category::Crafting),
+                (true, SMELTING) => Some(Category::Smelting),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn machineRecipes(&self, wanted: impl Fn(&MachineRecipeView) -> bool) -> Vec<(usize, usize)>
+    {
+        let mut found: Vec<(usize, usize)> = Vec::new();
+
+        for (machine, view) in self.m_machines.iter().enumerate()
+        {
+            let recipes = view.recipes.iter().enumerate().filter(|(_, recipe)| wanted(recipe));
+            found.extend(recipes.map(|(recipe, _)| (machine, recipe)));
+        }
+
+        found
+    }
+
     pub(crate) fn lootFor(&self, key: Key) -> Vec<usize>
     {
         (0..self.m_loot.len())
@@ -389,4 +443,17 @@ fn covers(held: &[(Key, i32)], needed: &[Key]) -> bool
             None => false,
         }
     })
+}
+
+const CRAFTING: &str = "crafting";
+const SMELTING: &str = "smelting";
+
+fn slotsAccept(slots: &[MachineSlot], key: Key) -> bool
+{
+    slots.iter().flat_map(|slot| slot.stacks.iter()).any(|stack| Key::of(stack).accepts(key))
+}
+
+fn station(view: &MachineView, key: Key) -> bool
+{
+    view.workstations.iter().any(|stack| Key::of(stack).m_id == key.m_id)
 }

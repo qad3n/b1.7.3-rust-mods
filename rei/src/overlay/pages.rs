@@ -1,4 +1,4 @@
-use super::{Painter, View, clip, color, inside, layout, page, tab, tabRect};
+use super::{Painter, View, clip, color, inside, layout, page, tab, tabRect, timing};
 use crate::catalog::{Catalog, Key};
 use crate::display::{LOOT_PAGE, TAG_PAGE};
 use crate::spawner;
@@ -16,6 +16,16 @@ mod loot
     pub const TEXT_ROOM: i32 = 38;
 }
 
+// positions on a machine page from the page's corner
+mod machine
+{
+    pub const COLUMNS: usize = 2;
+    pub const INPUT_LEFT: i32 = 30;
+    pub const ARROW_LEFT: i32 = 78;
+    pub const OUTPUT_LEFT: i32 = 112;
+    pub const NOTES_GAP: i32 = 4;
+    pub const NOTES_ROOM: i32 = 160;
+}
 const TAG_COLUMNS: usize = 8;
 const PERCENT: f32 = 100.0;
 // the mark on a drop with a condition its tooltip names
@@ -25,7 +35,7 @@ impl Painter<'_>
 {
     pub(crate) fn tab(&mut self, view: &View, index: usize)
     {
-        let row: &crate::display::CategoryRow = view.m_tabs[index].m_row;
+        let category: &crate::display::Tab = &view.m_tabs[index];
         let [x, y, w, h] = tabRect(index);
         self.m_draw.panel(x, y, w, h);
 
@@ -36,11 +46,11 @@ impl Painter<'_>
             self.m_draw.rect(x + w - seam, y + tab::RIM, seam, h - tab::RIM * 2, color::PANEL_FACE);
         }
 
-        self.m_draw.item(x + tab::ICON_INSET, y + (h - layout::ICON) / 2, &ItemStack::of(row.m_icon, 1));
+        self.m_draw.item(x + tab::ICON_INSET, y + (h - layout::ICON) / 2, &category.icon(self.m_catalog));
 
         if inside(self.m_mouse, [x, y, w - tab::OVERLAP, h])
         {
-            self.m_hint = Some(row.label());
+            self.m_hint = Some(category.label(self.m_catalog));
         }
     }
 
@@ -73,6 +83,74 @@ impl Painter<'_>
         }
 
         (title(catalog, view), Some(sourceLine(view)))
+    }
+
+    // the inputs in up to two columns, an arrow, the outputs with their chance, then the machine's notes
+    pub(crate) fn machinePage(
+        &mut self,
+        machine: usize,
+        recipe: usize,
+        span: [i32; 2],
+        width: i32,
+    ) -> (String, Option<String>)
+    {
+        let catalog: &Catalog = self.m_catalog;
+        let view: &MachineView = &catalog.m_machines[machine];
+        let recipe: &MachineRecipeView = &view.recipes[recipe];
+        let rows: i32 = recipe.inputs.len().max(recipe.outputs.len()).div_ceil(machine::COLUMNS).max(1) as i32;
+        let noteRows: i32 = recipe.notes.len() as i32;
+        let height: i32 = rows * layout::CELL + noteRows * layout::LINE;
+        let bodyTop: i32 = (span[0] + span[1] - height) / 2;
+        let middle: i32 = bodyTop + (rows * layout::CELL - layout::ICON) / 2;
+
+        for (offset, slot) in recipe.inputs.iter().enumerate()
+        {
+            let x: i32 = machine::INPUT_LEFT + (offset % machine::COLUMNS) as i32 * layout::CELL;
+            let y: i32 = bodyTop + (offset / machine::COLUMNS) as i32 * layout::CELL;
+            self.machineSlot(x, y, slot);
+        }
+
+        self.texture(machine::ARROW_LEFT, middle, page::ARROW_UV);
+
+        for (offset, slot) in recipe.outputs.iter().enumerate()
+        {
+            let y: i32 = bodyTop + offset as i32 * layout::CELL;
+            self.machineSlot(machine::OUTPUT_LEFT, y, slot);
+
+            if slot.chance < 1.0
+            {
+                let label: String = percent(slot.chance, false);
+                let textTop: i32 = y + (layout::ICON - layout::FONT_HEIGHT) / 2;
+                let textLeft: i32 = machine::OUTPUT_LEFT + layout::ICON + loot::TEXT_GAP;
+                self.m_draw.plain(textLeft, textTop, &label, color::TITLE);
+            }
+        }
+
+        let notesTop: i32 = bodyTop + rows * layout::CELL + machine::NOTES_GAP;
+        for (row, note) in recipe.notes.iter().enumerate()
+        {
+            let room: i32 = machine::NOTES_ROOM;
+            let line: &str = clip(note, room, false);
+            let x: i32 = (width - textWidth(line)) / 2;
+            self.m_draw.plain(x, notesTop + row as i32 * layout::LINE, line, color::TITLE);
+        }
+
+        (view.title.clone(), Some(view.id.to_string()))
+    }
+
+    // a slot a tag fills shows each of its items in turn
+    fn machineSlot(&mut self, x: i32, y: i32, slot: &MachineSlot)
+    {
+        self.slot(x, y, layout::ICON);
+
+        let count: usize = slot.stacks.len();
+        if count == 0
+        {
+            return;
+        }
+
+        let stack: &StackData = &slot.stacks[(self.m_ticks / timing::CYCLE) as usize % count];
+        self.stack(x, y, Key::of(stack), stack.count);
     }
 
     // every item the tag holds in a grid, members with subtypes cycling through them

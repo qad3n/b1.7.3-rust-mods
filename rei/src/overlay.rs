@@ -997,6 +997,7 @@ impl Painter<'_>
         let (title, id): (String, Option<String>) = match view.display()
         {
             Display::Recipe(index) => self.recipePage(*index, bodyTop, idTop),
+            Display::Machine { machine, recipe } => self.machinePage(*machine, *recipe, [bodyTop, idTop], w),
             Display::Loot { table, start } => self.lootPage(*table, *start, bodyTop, idTop),
             Display::Tag { tag, start } => self.tagPage(tag, *start, [bodyTop, idTop], w),
         };
