@@ -4,7 +4,7 @@ Source: BuildCraft 2.1.1 for b1.7.3 (ModLoader and Forge): Core, Transport, Ener
 into one jar, remapped to MCP names with tiny-remapper and the decomp mappings, decompiled with Vineflower into
 `reference/src` (never committed). `reference/src_obf` holds the obfuscated decompile, `reference/textures` the raw
 sheets.
-Target: b1.7.3_rewrite loader API 1.33, one `buildcraft-2.1.1.bmod` for client and server.
+Target: b1.7.3_rewrite loader API 1.39, one `buildcraft-2.1.1.bmod` for client and server.
 Assets: `python3 -I tools/extract_assets.py "<folder with the BuildCraft zips>"` fills `assets/buildcraft`. It cuts the
 block and item sheets, copies the guis and engine textures, and writes a first oil frame the live effect paints over.
 Build: `./build.sh`. Test: `../../tools/modport/test.sh deploy ports/buildcraft --game` (the loader changed).
@@ -82,6 +82,42 @@ Fixed:
 Still unverified: the pump's survey of a very large oil lake runs in one guest call (three host calls a block), so a
 lake of tens of thousands of blocks could near the 500 ms budget; checked by code review only.
 
+## Names, tags and states (2026-11-11, API 1.39)
+
+The port names content instead of carrying numeric ids or metadata:
+
+- Identity by name (`world.is`, `blockIs`), groups by tag. No private id caches: `core/ids.rs` and the item id cache
+  in `core/stacks.rs` are gone. The SDK's `resolve`, `named` and `tagMembers` answer cache hits without allocating.
+- Tags BuildCraft adds: `c:oil` (both oil blocks, read by the pump and oil generation), `buildcraft:pipes`,
+  `buildcraft:engines`, `buildcraft:machines` (IMachine: quarry, mining well, pump) and `buildcraft:pipe_connections`
+  (IPipeConnection blocks besides pipes: frame, mining pipe, engines, quarry, mining well).
+- Vanilla groups use the loader's tags: `minecraft:water`, `minecraft:lava`, `minecraft:sand`, `minecraft:leaves`,
+  `minecraft:logs`. Bedrock, grass, snow layers and the vanilla chest (double chest joining) stay by name, since a tag
+  would widen them.
+- Named states, listed in the order 2.1.1 stored them as metadata so existing worlds read the same: `facing` on the
+  quarry, mining well, builder and template table (an unplaced item faces down and shows its front south), `source`
+  on the wooden pipe (six faces or `none`), `output` on the iron pipe, `powered` on the golden pipe and `support` on
+  the landmark. Reads go through the SDK's per epoch state cache (`stateAt`, `stateOf`), writes through
+  `setBlockState`, which keeps tile entities.
+- The engine heat stage travels as a named `Stage` in the view packet. Engine facing and stage stay in tile data, as
+  in TileEngine.
+- Steam engine recipe pages list every furnace fuel in the item catalog instead of a fixed list, so other mods' fuels
+  show too.
+- Wooden pipe exclusions in the config take block names, paths or `#tags`. Numeric ids no longer match.
+
+Not converted, and why:
+
+- Model cuboids still pick states through `Cuboid.metas`, the loader's model API. `core/state.rs` derives them from
+  the state value order. Choosing cuboids by state would need a new loader spec struct.
+- `World::dropBlockItems` takes the numeric id and metadata read back from the world. There is no name based call.
+- `stacks::info` caches item info by numeric id per content generation. The SDK has no item info cache.
+- Pipes and engines still load and save their whole tile data every tick, and wooden pipe exclusions read the config
+  string on each check. Both predate this pass. Reading an iron or wooden pipe's state costs a block and a metadata
+  host call where the port used to read only metadata. The state lookup itself is cached and allocation free.
+- Oil generation places blocks by name, one name parse per block, only while a deposit generates.
+- Deposit wells still look down through grass only, not `minecraft:dirt`: that tag holds dirt too and would sink
+  every pool down to stone.
+
 ## Bugs to check at the end
 
 - Checked live on the test server: a redstone engine powers a wooden pipe that pulls from a chest into stone pipes
@@ -94,5 +130,6 @@ lake of tens of thousands of blocks could near the 500 ms budget; checked by cod
 1. Deploy with `--game` (the loader gained `blockDropStack`), then console runs of: wooden pipe to chest chains and
    double chests, iron, golden, diamond and obsidian pipes, steam and combustion engines with fuel, mining well and
    quarry output into chests and pipes, pump draining an oil pool, tank columns, auto workbench fed by a pipe,
-   filler patterns, builder with a template, landmarks, oil generation in a fresh world.
+   filler patterns, builder with a template, landmarks, oil generation in a fresh world, wrench turns of iron
+   and wooden pipes and machines after the move to named states, and a world saved before it.
 2. Client visual check of pipes and items in them, engines, quarry, pump tube, landmark lasers and the screens.

@@ -1,4 +1,4 @@
-use super::{Kind, diamond, joins, kindAt};
+use super::{Kind, diamond, joins, kindAt, output};
 use crate::core::stacks::Stored;
 use crate::core::{dir, random};
 use b173_api::prelude::*;
@@ -100,11 +100,14 @@ pub(crate) fn exits(kind: Kind, world: World, pos: BlockPos, item: &Traveler) ->
     {
         Kind::Iron =>
         {
-            let output: i32 = world.meta(pos);
+            let Some(output) = output(world, pos)
+            else
+            {
+                return Vec::new();
+            };
             let target: BlockPos = dir::step(pos, output);
-            let open: bool = (0..dir::COUNT).contains(&output)
-                && (kindAt(world, target).is_some()
-                    || world.capabilities(target, dir::reverse(output)) & capability::ITEMS != 0);
+            let open: bool = kindAt(world, target).is_some()
+                || world.capabilities(target, dir::reverse(output)) & capability::ITEMS != 0;
             if open { vec![output] } else { Vec::new() }
         }
 

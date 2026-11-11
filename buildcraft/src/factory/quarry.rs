@@ -3,7 +3,7 @@ use super::{FRAME, Faces, soft, unbreakable};
 use crate::core::area::Area;
 use crate::core::power::{Provider, Setup};
 use crate::core::render::{self, Laser, Scene};
-use crate::core::{dir, ids, items, stacks};
+use crate::core::{dir, items, stacks, state};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -237,8 +237,6 @@ fn frameArea(pos: BlockPos, area: &Area) -> Area
 // BluePrintBuilder.findNextBlock for the frame blueprint: a block in the way, or a missing frame piece
 fn nextFrameBlock(world: World, area: &Area) -> Option<(BlockPos, bool)>
 {
-    let frame: i32 = ids::block(FRAME)?;
-
     for y in area.m_min[1]..=area.m_max[1]
     {
         for x in area.m_min[0]..=area.m_max[0]
@@ -254,7 +252,7 @@ fn nextFrameBlock(world: World, area: &Area) -> Option<(BlockPos, bool)>
                 let wanted: bool = frameAt(area, x, y, z);
                 let blocked: bool = if wanted
                 {
-                    world.block(pos) != frame
+                    !world.is(pos, FRAME)
                 }
                 else
                 {
@@ -273,7 +271,7 @@ fn nextFrameBlock(world: World, area: &Area) -> Option<(BlockPos, bool)>
 
 fn canDig(world: World, pos: BlockPos) -> bool
 {
-    !unbreakable(world, pos) && !soft(world, pos) && !ids::is(world, pos, "minecraft:snow_layer")
+    !unbreakable(world, pos) && !soft(world, pos) && !world.is(pos, "minecraft:snow_layer")
 }
 
 // TileQuarry.findTarget, sweeping each layer back and forth from three above the quarry down to bedrock
@@ -346,7 +344,7 @@ fn boundaries(world: World, pos: BlockPos, defaults: bool) -> Area
     let Some(mut area) = usable
     else
     {
-        let facing: i32 = dir::reverse(world.meta(pos));
+        let facing: i32 = dir::reverse(state::faceAt(world, pos, state::FACING).unwrap_or(dir::DOWN));
         let (x, z): (i32, i32) = match facing
         {
             dir::EAST => (pos.x + 1, pos.z - bounds::HALF),
@@ -456,9 +454,7 @@ fn buildFrame(world: World, pos: BlockPos, state: &mut QuarryState, area: &Area)
     {
         stacks::breakBlock(world, target);
     }
-    else if frame
-        && let Some(frame) = ids::block(FRAME)
-        && let Err(error) = world.setBlock(target, frame, 0)
+    else if frame && let Err(error) = world.place(target, FRAME)
     {
         warn(&format!("the quarry at {pos:?} could not place a frame: {error}"));
     }
@@ -537,7 +533,7 @@ fn reached(world: World, pos: BlockPos, state: &mut QuarryState)
         stacks::output(world, pos, stack);
     }
 
-    if let Err(error) = world.setBlock(target, 0, 0)
+    if let Err(error) = world.clear(target)
     {
         warn(&format!("the quarry at {pos:?} could not clear {target:?}: {error}"));
     }
@@ -742,8 +738,11 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .resistance(RESISTANCE)
             .texture(FACES.m_front)
             .tileEntity(NAME)
-            .behavior(MachineBlock { m_faces: &FACES }),
+            .tag(crate::machines::MACHINES)
+            .tag(crate::machines::CONNECTORS)
+            .behavior(MachineBlock { m_faces: &FACES, m_block: StateHandle::named(NAME)? }),
     )?;
+    super::registerFacing(ctx, NAME)?;
     ctx.channels().register(VIEW_CHANNEL, Direction::ToClient, |packet: ViewPacket, _player| onView(packet))?;
 
     if !super::mining()

@@ -1,6 +1,6 @@
 use crate::core::area::Area;
 use crate::core::render::{self, Laser, Scene};
-use crate::core::{dir, ids};
+use crate::core::{dir, stacks, state};
 use b173_api::prelude::*;
 use std::rc::Rc;
 
@@ -49,7 +49,7 @@ impl Origin
     }
 }
 
-fn isMarker(world: World, pos: BlockPos) -> bool { ids::is(world, pos, BLOCK) }
+fn isMarker(world: World, pos: BlockPos) -> bool { world.is(pos, BLOCK) }
 
 fn origin(world: World, pos: BlockPos) -> Origin { world.tileData(pos) }
 
@@ -177,9 +177,7 @@ pub(crate) fn remove(world: World, pos: BlockPos)
 
     for member in current.members()
     {
-        let block: i32 = world.block(member);
-        let _ = world.dropBlockItems(member, block, world.meta(member));
-        let _ = world.setBlock(member, 0, 0);
+        stacks::breakBlock(world, member);
     }
 }
 
@@ -230,7 +228,8 @@ impl TileBehavior for MarkerTile
         let mut draw: Scene = Scene::new();
 
         // a lit marker draws at full brightness, as the block renderer does for any light giving block
-        draw.quads(super::landmark::quads(world.meta(pos)), 1.0);
+        let support: i32 = state::face(ctx.stateAt(), super::landmark::SUPPORT).unwrap_or(dir::UP);
+        draw.quads(super::landmark::quads(support), 1.0);
         signals(&mut draw, world, pos, &current, light);
 
         // the origin marker draws the box once for the whole group
@@ -294,6 +293,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .tileEntity(NAME)
             .behavior(MarkerBlock),
     )?;
+    super::landmark::register(ctx, NAME)?;
 
     ctx.recipes()
         .shaped(NAME, ItemStack::of(BLOCK, 1))

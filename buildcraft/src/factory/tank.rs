@@ -28,7 +28,7 @@ pub(crate) struct TankState
     pub(crate) m_stored: i32,
 }
 
-fn isTank(world: World, pos: BlockPos) -> bool { crate::core::ids::is(world, pos, "buildcraft:tank") }
+fn isTank(world: World, pos: BlockPos) -> bool { world.is(pos, NAME) }
 
 fn state(world: World, pos: BlockPos) -> TankState { world.tileData(pos) }
 

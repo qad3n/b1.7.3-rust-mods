@@ -1,4 +1,4 @@
-use super::{Kind, joins, kindAt};
+use super::{Kind, joins, kindAt, output};
 use crate::core::dir;
 use b173_api::prelude::*;
 
@@ -43,7 +43,7 @@ impl Liquid
         simulate: bool,
     ) -> i32
     {
-        if kind == Kind::Iron && face == world.meta(pos)
+        if kind == Kind::Iron && output(world, pos) == Some(face)
         {
             return 0;
         }
@@ -75,7 +75,7 @@ impl Liquid
     // TilePipe.canReceiveLiquid, the iron pipe only lets liquid out of its output face
     fn receives(&self, kind: Kind, world: World, pos: BlockPos, face: i32) -> bool
     {
-        if kind == Kind::Iron && face != world.meta(pos)
+        if kind == Kind::Iron && output(world, pos) != Some(face)
         {
             return false;
         }

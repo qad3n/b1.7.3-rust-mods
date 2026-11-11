@@ -6,9 +6,11 @@ mod oil_fx;
 use b173_api::prelude::*;
 pub(crate) use engine::acceptsPipe;
 use engine::{ENGINES, EngineRow, Kind};
+pub(crate) use oil::OIL_TAG;
 use std::rc::Rc;
 
 const TILE: &str = "engine";
+const TAG: &str = "buildcraft:engines";
 const HARDNESS: f32 = 0.5;
 
 mod gui
@@ -57,7 +59,7 @@ const COMBUSTION_GAUGE: Gauge = Gauge
     m_width: 16,
 };
 
-pub(crate) fn isEngine(world: World, pos: BlockPos) -> bool { engine::rowOf(world, pos).is_some() }
+pub(crate) fn isEngine(world: World, pos: BlockPos) -> bool { world.tagged(pos, TAG) }
 
 struct EngineScreen
 {
@@ -151,7 +153,8 @@ fn registerEngine(ctx: &mut RegisterCtx, row: &'static EngineRow) -> Result<()>
             .model(BlockModelSpec { cuboids: Vec::new(), ..BlockModelSpec::default() })
             .collision(vec![crate::core::render::fullCuboid()])
             .tileEntity(TILE)
-            .tag("buildcraft:engines")
+            .tag(TAG)
+            .tag(crate::machines::CONNECTORS)
             .behavior(EngineBlock),
     )?;
 

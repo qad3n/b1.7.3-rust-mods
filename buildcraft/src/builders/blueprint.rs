@@ -2,8 +2,8 @@ use super::{TEMPLATE, dye, takeArea};
 use crate::core::area::Area;
 use crate::core::power::{Provider, Setup};
 use crate::core::render::{self, Laser, Scene};
-use crate::core::{dir, items, stacks};
-use crate::factory::{Faces, facePlacer, soft, unbreakable};
+use crate::core::{AIR, dir, items, stacks, state};
+use crate::factory::{Faces, facePlacer, registerFacing, soft, unbreakable};
 use b173_api::prelude::*;
 use std::collections::BTreeMap;
 use std::rc::Rc;
@@ -107,11 +107,14 @@ fn save(blueprint: Blueprint) -> i32
     id
 }
 
-// the quarter turns that face a blueprint along a machine's metadata, counted as BuildCraft's rotateLeft calls
-fn quarters(meta: i32, saving: bool) -> usize
+// the face a builder or template table points at, down for one never placed by a player
+fn facing(world: World, pos: BlockPos) -> i32 { state::faceAt(world, pos, state::FACING).unwrap_or(dir::DOWN) }
+
+// the quarter turns that face a blueprint along a machine's facing, counted as BuildCraft's rotateLeft calls
+fn quarters(front: i32, saving: bool) -> usize
 {
-    let facing: i32 = dir::reverse(meta);
-    let turns: usize = match facing
+    let toward: i32 = dir::reverse(front);
+    let turns: usize = match toward
     {
         dir::SOUTH => 1,
         dir::WEST => 2,
@@ -125,15 +128,15 @@ fn quarters(meta: i32, saving: bool) -> usize
 // BlockBuilder and BlockTemplate turn a quarter with a wrench
 fn wrenchTurn(world: World, pos: BlockPos)
 {
-    let next: i32 = match world.meta(pos)
+    let next: i32 = match facing(world, pos)
     {
         dir::WEST => dir::SOUTH,
         dir::EAST => dir::NORTH,
         dir::NORTH => dir::WEST,
         dir::SOUTH => dir::EAST,
-        meta => meta,
+        face => face,
     };
-    let _ = world.setMeta(pos, next);
+    state::set(world, pos, state::FACING, dir::name(next));
     world.markBlockForRender(pos);
 }
 
@@ -171,14 +174,14 @@ fn draw(world: World, pos: BlockPos, area: &Area, last: i32) -> (i32, Blueprint)
             for z in 0..size[2]
             {
                 let solid: bool =
-                    world.block(BlockPos::new(area.m_min[0] + x, area.m_min[1] + y, area.m_min[2] + z)) != 0;
+                    !world.is(BlockPos::new(area.m_min[0] + x, area.m_min[1] + y, area.m_min[2] + z), AIR);
                 let index: usize = blueprint.index(x, y, z);
                 blueprint.m_mask[index] = solid != inverted;
             }
         }
     }
 
-    let blueprint: Blueprint = blueprint.turned(quarters(world.meta(pos), true));
+    let blueprint: Blueprint = blueprint.turned(quarters(facing(world, pos), true));
     if store().get(&last) == Some(&blueprint)
     {
         return (last, blueprint);
@@ -340,7 +343,7 @@ fn current(world: World, pos: BlockPos, state: &mut BuilderState) -> Option<Blue
         return None;
     };
 
-    let blueprint: Blueprint = store().get(&template.damage)?.turned(quarters(world.meta(pos), false));
+    let blueprint: Blueprint = store().get(&template.damage)?.turned(quarters(facing(world, pos), false));
     if state.m_blueprint != template.damage
     {
         state.m_blueprint = template.damage;
@@ -458,6 +461,7 @@ impl TileBehavior for BuilderTile
 struct TurnableBlock
 {
     m_faces: &'static Faces,
+    m_block: StateHandle,
     m_screen: &'static str,
     m_poweredTop: bool,
 }
@@ -465,7 +469,7 @@ struct TurnableBlock
 #[block_behavior]
 impl BlockBehavior for TurnableBlock
 {
-    fn texture(&self, face: i32, meta: i32) -> i32 { self.m_faces.slot(face, meta) }
+    fn texture(&self, face: i32, meta: i32) -> i32 { self.m_faces.slot(face, &self.m_block, meta) }
 
     fn faceTexture(&self, ctx: &mut BlockCtx, face: i32) -> Option<i32>
     {
@@ -607,9 +611,15 @@ fn registerMachine(
             .hardness(hardness)
             .texture(faces.m_front)
             .tileEntity(name)
-            .behavior(TurnableBlock { m_faces: faces, m_screen: name, m_poweredTop: poweredTop }),
+            .behavior(TurnableBlock
+            {
+                m_faces: faces,
+                m_block: StateHandle::named(name)?,
+                m_screen: name,
+                m_poweredTop: poweredTop,
+            }),
     )?;
-    Ok(())
+    registerFacing(ctx, name)
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>

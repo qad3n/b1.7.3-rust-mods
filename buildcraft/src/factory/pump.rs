@@ -1,6 +1,6 @@
 use crate::core::power::{Provider, Setup};
 use crate::core::render::{self, Scene};
-use crate::core::{dir, ids};
+use crate::core::{AIR, dir};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
@@ -17,7 +17,6 @@ const TUBE_SPEED: f64 = 0.01;
 const RESCAN: i64 = 100;
 const HARDNESS: f32 = 5.0;
 const OIL: &str = "buildcraft:oil";
-const OIL_STILL: &str = "buildcraft:oil_still";
 const VIEW_CHANNEL: &str = "pump";
 const TOP: &str = "buildcraft:block/pump_top";
 const BOTTOM: &str = "buildcraft:block/pump_bottom";
@@ -54,9 +53,12 @@ thread_local!
     static TUBES: RefCell<HashMap<(i32, BlockPos), f64>> = RefCell::new(HashMap::new());
 }
 
-fn isOil(world: World, pos: BlockPos) -> bool { ids::is(world, pos, OIL) || ids::is(world, pos, OIL_STILL) }
+fn isOil(world: World, pos: BlockPos) -> bool { world.tagged(pos, crate::energy::OIL_TAG) }
 
-fn pumpable(world: World, pos: BlockPos) -> bool { isOil(world, pos) && world.meta(pos) == 0 }
+fn pumpable(world: World, pos: BlockPos) -> bool
+{
+    isOil(world, pos) && world.fluidAt(pos).is_some_and(|fluid| fluid.source)
+}
 
 // getNextIndexToPump: the highest layer that still has oil, its last entry to look at, its first to take
 fn next(world: World, pump: BlockPos, take: bool) -> Option<BlockPos>
@@ -172,7 +174,7 @@ fn pumpOrSearch(world: World, pos: BlockPos, state: &mut PumpState, provider: &m
         }
 
         if let Some(index) = next(world, pos, true)
-            && world.setBlock(index, 0, 0).is_ok()
+            && world.clear(index).is_ok()
         {
             state.m_internal += BUCKET;
         }
@@ -202,7 +204,7 @@ fn pumpOrSearch(world: World, pos: BlockPos, state: &mut PumpState, provider: &m
             return;
         }
 
-        if world.block(below) != 0
+        if !world.is(below, AIR)
         {
             return;
         }
@@ -227,8 +229,7 @@ fn push(world: World, pos: BlockPos, state: &mut PumpState)
         }
 
         let target: BlockPos = dir::step(pos, face);
-        let ours: bool =
-            nameOf(RegistryKind::Block, world.block(target)).is_some_and(|name| name.namespace() == "buildcraft");
+        let ours: bool = world.blockName(target).is_some_and(|name| name.namespace() == "buildcraft");
         let open: bool = crate::transport::isPipe(world, target)
             || (!ours && world.capabilities(target, dir::reverse(face)) & capability::FLUIDS != 0);
         if !open
@@ -379,6 +380,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .hardness(HARDNESS)
             .texture(SIDE)
             .tileEntity(NAME)
+            .tag(crate::machines::MACHINES)
             .behavior(PumpBlock),
     )?;
     ctx.channels().register(VIEW_CHANNEL, Direction::ToClient, |packet: ViewPacket, _player| onView(packet))?;

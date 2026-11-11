@@ -1,10 +1,12 @@
-use crate::core::ids;
+use crate::core::AIR;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
 // BuildCraftEnergy's oil: a slow water-like fluid with no infinite sources, its bucket and the deposits OilPopulate
 // scatters through the overworld
 pub(crate) const OIL: &str = "buildcraft:oil";
+// both oil blocks, so pumps and generators take any mod's oil
+pub(crate) const OIL_TAG: &str = "c:oil";
 const STILL: &str = "buildcraft:oil_still";
 const BUCKET: &str = "buildcraft:oil_bucket";
 const HARDNESS: f32 = 100.0;
@@ -37,45 +39,39 @@ mod deposit
 
 const DESERT: &str = "minecraft:desert";
 const SAND: &str = "minecraft:sand";
-const OPEN_ABOVE: [&str; 3] = ["minecraft:leaves", "minecraft:log", "minecraft:grass"];
-const WATER: [&str; 2] = ["minecraft:flowing_water", "minecraft:water"];
+const WATER: &str = "minecraft:water";
+// a deposit's well looks down through trees and grass for the ground, dirt already counts as ground
+const TREES: [&str; 2] = ["minecraft:leaves", "minecraft:logs"];
+const GRASS: &str = "minecraft:grass";
 
 struct Placer
 {
     m_world: World,
     m_random: Random,
-    m_still: i32,
-    m_flowing: i32,
 }
 
 impl Placer
 {
     fn block(&self, x: i32, y: i32, z: i32) -> i32 { self.m_world.block(BlockPos::new(x, y, z)) }
 
-    fn set(&self, x: i32, y: i32, z: i32, block: i32)
+    fn air(&self, x: i32, y: i32, z: i32) -> bool { blockIs(self.block(x, y, z), AIR) }
+
+    fn set(&self, x: i32, y: i32, z: i32, block: &str)
     {
-        if let Err(error) = self.m_world.setBlock(BlockPos::new(x, y, z), block, 0)
+        if let Err(error) = self.m_world.place(BlockPos::new(x, y, z), block)
         {
             warn(&format!("could not place oil at {x} {y} {z}: {error}"));
         }
     }
 
-    fn isOil(&self, x: i32, y: i32, z: i32) -> bool
-    {
-        let block: i32 = self.block(x, y, z);
-        block == self.m_still || block == self.m_flowing
-    }
+    fn isOil(&self, x: i32, y: i32, z: i32) -> bool { blockTagged(self.block(x, y, z), OIL_TAG) }
 
-    fn isWater(&self, x: i32, y: i32, z: i32) -> bool
-    {
-        let block: i32 = self.block(x, y, z);
-        WATER.iter().any(|name| ids::block(name) == Some(block))
-    }
+    fn isWater(&self, x: i32, y: i32, z: i32) -> bool { blockTagged(self.block(x, y, z), WATER) }
 
     // OilPopulate.setOilWithProba: a pool cell sinks one block into oil next to oil already there
     fn cell(&self, chance: f32, x: i32, y: i32, z: i32, force: bool)
     {
-        let rolled: bool = self.m_random.nextFloat() <= chance && self.block(x, y - 2, z) != 0;
+        let rolled: bool = self.m_random.nextFloat() <= chance && !self.air(x, y - 2, z);
         if !rolled && !force
         {
             return;
@@ -93,16 +89,16 @@ impl Placer
             return;
         }
 
-        let keep: i32 = if self.isWater(x, y, z) || self.isOil(x, y, z)
+        let keep: &str = if self.isWater(x, y, z) || self.isOil(x, y, z)
         {
-            self.m_still
+            STILL
         }
         else
         {
-            0
+            AIR
         };
         self.set(x, y, z, keep);
-        self.set(x, y - 1, z, self.m_still);
+        self.set(x, y - 1, z, STILL);
     }
 
     // OilPopulate.generateSurfaceDeposit, a pool whose edges thin out with distance
@@ -127,7 +123,7 @@ impl Placer
         {
             for dz in z - radius..=z + radius
             {
-                let enclosed: bool = self.block(dx, y - 1, dz) != self.m_still
+                let enclosed: bool = !blockIs(self.block(dx, y - 1, dz), STILL)
                     && self.isOil(dx + 1, y - 1, dz)
                     && self.isOil(dx - 1, y - 1, dz)
                     && self.isOil(dx, y - 1, dz + 1)
@@ -154,12 +150,12 @@ impl Placer
         for y in (deposit::DESERT_FLOOR + 1..=deposit::TOP).rev()
         {
             let block: i32 = self.block(column, y, row);
-            if block == 0
+            if blockIs(block, AIR)
             {
                 continue;
             }
 
-            if ids::block(SAND) == Some(block)
+            if blockTagged(block, SAND)
             {
                 self.pool(column, y, row, deposit::DESERT_RADIUS);
             }
@@ -196,7 +192,7 @@ impl Placer
                 {
                     if dx * dx + dy * dy + dz * dz <= radius * radius
                     {
-                        self.set(dx + x, dy + depth, dz + z, self.m_still);
+                        self.set(dx + x, dy + depth, dz + z, STILL);
                     }
                 }
             }
@@ -208,18 +204,18 @@ impl Placer
     fn well(&self, x: i32, z: i32, depth: i32, large: bool)
     {
         let mut started: bool = false;
-        let open: Vec<i32> = OPEN_ABOVE.iter().filter_map(|name| ids::block(name)).collect();
 
         for y in (depth..=deposit::TOP).rev()
         {
             if started
             {
-                self.set(x, y, z, self.m_still);
+                self.set(x, y, z, STILL);
                 continue;
             }
 
             let block: i32 = self.block(x, y, z);
-            if block == 0 || open.contains(&block)
+            let open: bool = blockIs(block, GRASS) || TREES.iter().any(|tag| blockTagged(block, tag));
+            if blockIs(block, AIR) || open
             {
                 continue;
             }
@@ -239,7 +235,7 @@ impl Placer
             // BuildCraft cast the top to a byte so a geyser reaching 128 vanished, here it stops at the last layer
             for height in y + 1..=(y + geyser).min(deposit::TOP - 1)
             {
-                self.set(x, height, z, self.m_still);
+                self.set(x, height, z, STILL);
             }
         }
     }
@@ -257,18 +253,7 @@ fn seed(world: World, chunkX: i32, chunkZ: i32) -> i64
 
 fn populate(world: World, chunkX: i32, chunkZ: i32)
 {
-    let (Some(still), Some(flowing)) = (ids::block(STILL), ids::block(OIL))
-    else
-    {
-        return;
-    };
-    let placer: Placer = Placer
-    {
-        m_world: world,
-        m_random: Random::withSeed(seed(world, chunkX, chunkZ)),
-        m_still: still,
-        m_flowing: flowing,
-    };
+    let placer: Placer = Placer { m_world: world, m_random: Random::withSeed(seed(world, chunkX, chunkZ)) };
     let (x, z): (i32, i32) = (chunkX * 16, chunkZ * 16);
 
     placer.desert(x, z);
@@ -299,7 +284,12 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     {
         ctx.blocks().register(
             name,
-            BlockSpecBuilder::template(template).material(OIL).texture(texture).hardness(HARDNESS).opacity(OPACITY),
+            BlockSpecBuilder::template(template)
+                .material(OIL)
+                .texture(texture)
+                .hardness(HARDNESS)
+                .opacity(OPACITY)
+                .tag(OIL_TAG),
         )?;
     }
 

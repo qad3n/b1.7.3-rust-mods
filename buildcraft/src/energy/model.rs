@@ -1,4 +1,4 @@
-use super::engine::{self, ENGINES, EngineRow, View};
+use super::engine::{self, ENGINES, EngineRow, Stage, View};
 use crate::core::dir;
 use b173_api::prelude::*;
 use std::f32::consts::{FRAC_PI_2, PI};
@@ -7,12 +7,6 @@ use std::f32::consts::{FRAC_PI_2, PI};
 const TEXTURE_SIZE: [i32; 2] = [64, 32];
 const PIVOT: [f32; 3] = [8.0, 8.0, 8.0];
 const CHAMBER: &str = "buildcraft:model/engine_chamber";
-const TRUNKS: [&str; 4] = [
-    "buildcraft:model/engine_trunk_blue",
-    "buildcraft:model/engine_trunk_green",
-    "buildcraft:model/engine_trunk_yellow",
-    "buildcraft:model/engine_trunk_red",
-];
 // the stroke of a full piston push in pixels, and the gap between chamber plates in blocks
 const STROKE: f32 = 7.99;
 const PIXEL: f32 = 1.0 / 16.0;
@@ -74,6 +68,18 @@ fn facing(face: i32) -> ([f32; 3], [f32; 3])
 
 fn scaled(direction: [f32; 3], amount: f32) -> [f32; 3] { direction.map(|value| value * amount) }
 
+// the trunk's heat color
+fn trunk(stage: Stage) -> &'static str
+{
+    match stage
+    {
+        Stage::Blue => "buildcraft:model/engine_trunk_blue",
+        Stage::Green => "buildcraft:model/engine_trunk_green",
+        Stage::Yellow => "buildcraft:model/engine_trunk_yellow",
+        Stage::Red | Stage::Explosion => "buildcraft:model/engine_trunk_red",
+    }
+}
+
 // RenderEngine.render for one engine's stage, stroke and output face
 fn ops(row: &EngineRow, view: &View) -> Vec<ModelOp>
 {
@@ -89,7 +95,7 @@ fn ops(row: &EngineRow, view: &View) -> Vec<ModelOp>
     let (rotation, direction) = facing(view.m_orientation);
     let lift: [f32; 3] = scaled(direction, step * PIXEL);
     let chambers: usize = (step + CHAMBER_SPACING as f32).max(0.0) as usize / CHAMBER_SPACING + 1;
-    let trunk: &str = TRUNKS[usize::from(view.m_stage).min(TRUNKS.len() - 1)];
+    let trunk: &str = trunk(view.m_stage);
     let mut ops: Vec<ModelOp> = vec![
         ModelOp::Lighting(false),
         ModelOp::Texture(row.m_base.to_owned()),

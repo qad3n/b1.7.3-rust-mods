@@ -1,15 +1,15 @@
-use crate::core::{dir, render};
+use crate::core::{dir, render, state};
 use b173_api::prelude::*;
 
 // BlockMarker's placement on any full block face, ceilings included, and mod_BuildCraftCore.renderMarkerWithMeta
 pub(crate) const SPRITE: &str = "buildcraft:block/marker";
 const INVISIBLE: &str = "buildcraft:block/laser_transparent";
 
-// the attachment each metadata means: the face of the support, as BlockMarker numbers it
-// 0 hangs from above, 1 west, 2 east, 3 north, 4 south, 5 stands on the floor
-const SUPPORT: [i32; 6] = [dir::UP, dir::WEST, dir::EAST, dir::NORTH, dir::SOUTH, dir::DOWN];
-// onBlockAdded's search order, as metadata
-const ADDED_ORDER: [i32; 6] = [1, 2, 3, 4, 5, 0];
+// the face of the block a landmark leans on, its states in BlockMarker's metadata order
+pub(crate) const SUPPORT: &str = "support";
+const SUPPORTS: [&str; 6] = ["up", "west", "east", "north", "south", "down"];
+// onBlockAdded's search order
+const ADDED_ORDER: [i32; 6] = [dir::WEST, dir::EAST, dir::NORTH, dir::SOUTH, dir::DOWN, dir::UP];
 
 mod shape
 {
@@ -27,15 +27,16 @@ mod shape
     pub const TILES: i32 = 16;
 }
 
-fn supported(world: World, pos: BlockPos) -> bool
-{
-    let block: i32 = world.block(pos);
-    block != 0 && World::blockInfo(block).opaque
-}
+// air answers with the default block info, which is not opaque
+fn supported(world: World, pos: BlockPos) -> bool { World::blockInfo(world.block(pos)).opaque }
 
-fn holds(world: World, pos: BlockPos, meta: i32) -> bool
+fn holds(world: World, pos: BlockPos, support: i32) -> bool { supported(world, dir::step(pos, support)) }
+
+fn lean(world: World, pos: BlockPos, support: i32) { state::set(world, pos, SUPPORT, dir::name(support)); }
+
+pub(crate) fn register(ctx: &mut RegisterCtx, block: &str) -> Result<()>
 {
-    SUPPORT.get(meta as usize).is_some_and(|face| supported(world, dir::step(pos, *face)))
+    state::register(ctx, block, SUPPORT, &SUPPORTS)
 }
 
 // canPlaceBlockAt: any neighbour drawn as a full block
@@ -49,27 +50,12 @@ pub(crate) fn placed(ctx: &mut BlockCtx, face: i32)
 {
     let world: World = ctx.world();
     let pos: BlockPos = ctx.pos();
-    let meta: i32 = match face
-    {
-        dir::UP => 5,
-        dir::NORTH => 4,
-        dir::SOUTH => 3,
-        dir::WEST => 2,
-        dir::EAST => 1,
-        _ => 0,
-    };
+    let support: i32 = dir::reverse(face.clamp(dir::DOWN, dir::EAST));
 
-    if holds(world, pos, meta)
+    if holds(world, pos, support)
     {
-        ctx.setMeta(meta as u8);
+        lean(world, pos, support);
     }
-}
-
-fn drop(world: World, pos: BlockPos)
-{
-    let block: i32 = world.block(pos);
-    let _ = world.dropBlockItems(pos, block, world.meta(pos));
-    let _ = world.setBlock(pos, 0, 0);
 }
 
 // onBlockAdded: the first support in BlockMarker's order, gone when there is none
@@ -82,13 +68,13 @@ pub(crate) fn added(ctx: &mut BlockCtx)
         return;
     }
 
-    if let Some(meta) = ADDED_ORDER.iter().copied().find(|meta| holds(world, pos, *meta))
+    if let Some(support) = ADDED_ORDER.iter().copied().find(|support| holds(world, pos, *support))
     {
-        ctx.setMeta(meta as u8);
+        lean(world, pos, support);
         return;
     }
 
-    drop(world, pos);
+    crate::core::stacks::breakBlock(world, pos);
 }
 
 // onNeighborBlockChange: a marker whose support went away drops
@@ -101,13 +87,14 @@ pub(crate) fn neighborChanged(ctx: &mut BlockCtx)
         return;
     }
 
-    if !canPlace(world, pos) || !holds(world, pos, i32::from(ctx.meta()))
+    let support: i32 = state::face(ctx.stateAt(), SUPPORT).unwrap_or(dir::UP);
+    if !canPlace(world, pos) || !holds(world, pos, support)
     {
-        drop(world, pos);
+        crate::core::stacks::breakBlock(world, pos);
     }
 }
 
-// the selection stick per metadata, drawn invisibly so only the tile's marker model shows
+// the selection stick per support, drawn invisibly so only the tile's marker model shows
 pub(crate) fn cuboids() -> Vec<Cuboid>
 {
     let boxes: [([f32; 3], [f32; 3]); 6] = [
@@ -121,13 +108,13 @@ pub(crate) fn cuboids() -> Vec<Cuboid>
 
     boxes
         .into_iter()
-        .enumerate()
-        .map(|(meta, (from, to))| Cuboid
+        .zip(SUPPORTS)
+        .map(|((from, to), support)| Cuboid
         {
             from,
             to,
             texture: Some(INVISIBLE.to_owned()),
-            metas: vec![meta as i32],
+            metas: state::metas(&SUPPORTS, |value| value == support),
             connect: None,
         })
         .collect()
@@ -149,11 +136,11 @@ fn turned(base: Face, turns: usize) -> Face
     face
 }
 
-// a face's four corners as x, y and z rows, one per metadata or None where it draws none
+// a face's four corners as x, y and z rows, one per support or None where it draws none
 type Face = [[f64; 4]; 3];
 type Faces = [Option<Face>; 6];
 
-// initializeMarkerMatrix: the cross pieces' corners for each metadata
+// initializeMarkerMatrix: the cross pieces' corners for each support
 fn frames() -> (Faces, Faces, Faces)
 {
     let x: Face = [[-0.0625; 4], [1.0, 0.0, 0.0, 1.0], [-0.5, -0.5, 0.5, 0.5]];
@@ -167,7 +154,7 @@ fn frames() -> (Faces, Faces, Faces)
 }
 
 // renderMarkerWithMeta: the glowing tip and two crossed planes, in block space from the lower corner
-pub(crate) fn quads(meta: i32) -> Vec<[f32; 5]>
+pub(crate) fn quads(support: i32) -> Vec<[f32; 5]>
 {
     let slot: i32 = render::slot(SPRITE);
     let left: f64 = f64::from((slot & (shape::TILES - 1)) * shape::TILES) / shape::SHEET;
@@ -179,33 +166,33 @@ pub(crate) fn quads(meta: i32) -> Vec<[f32; 5]>
     let s: f64 = shape::HALF;
     let mut out: Vec<[f64; 5]> = Vec::new();
 
-    let tip: [[f64; 3]; 4] = match meta
+    let tip: [[f64; 3]; 4] = match support
     {
-        5 => [
+        dir::DOWN => [
             [x - s, y + 0.5 + s, z - s],
             [x - s, y + 0.5 + s, z + s],
             [x + s, y + 0.5 + s, z + s],
             [x + s, y + 0.5 + s, z - s],
         ],
-        0 => [
+        dir::UP => [
             [x + s, y + 0.5 - s, z - s],
             [x + s, y + 0.5 - s, z + s],
             [x - s, y + 0.5 - s, z + s],
             [x - s, y + 0.5 - s, z - s],
         ],
-        2 => [
+        dir::EAST => [
             [x - s, y + 0.5 - s, z - s],
             [x - s, y + 0.5 - s, z + s],
             [x - s, y + 0.5 + s, z + s],
             [x - s, y + 0.5 + s, z - s],
         ],
-        1 => [
+        dir::WEST => [
             [x + s, y + 0.5 + s, z - s],
             [x + s, y + 0.5 + s, z + s],
             [x + s, y + 0.5 - s, z + s],
             [x + s, y + 0.5 - s, z - s],
         ],
-        3 => [
+        dir::NORTH => [
             [x - s, y + 0.5 - s, z + s],
             [x + s, y + 0.5 - s, z + s],
             [x + s, y + 0.5 + s, z + s],
@@ -222,7 +209,7 @@ pub(crate) fn quads(meta: i32) -> Vec<[f32; 5]>
 
     let uvs: [[f64; 2]; 4] = [[left, top], [left, bottom], [right, bottom], [right, top]];
     let (frontX, frontZ, frontY) = frames();
-    let index: usize = meta.clamp(0, 5) as usize;
+    let index: usize = SUPPORTS.iter().position(|name| *name == dir::name(support)).unwrap_or(0);
 
     if let Some(face) = frontX[index]
     {

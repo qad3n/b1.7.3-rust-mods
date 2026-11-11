@@ -6,7 +6,7 @@ mod pipe;
 mod render;
 mod travel;
 
-use crate::core::dir;
+use crate::core::{dir, state};
 use b173_api::prelude::*;
 pub(crate) use pipe::toRandomPipe;
 use std::rc::Rc;
@@ -36,6 +36,19 @@ pub(crate) struct Pipe
     m_ingredient: &'static str,
     // the block a pipe of the same kind refuses to join, as BlockWoodenPipe.isPipeConnected and friends
     m_refuses: Option<Kind>,
+    // the named state a pipe keeps where BuildCraft kept metadata, values in that metadata's order
+    m_state: Option<(&'static str, &'static [&'static str])>,
+}
+
+// the wooden pipe's source, the iron pipe's output and the golden pipe's power
+pub(crate) mod property
+{
+    pub const SOURCE: &str = "source";
+    pub const OUTPUT: &str = "output";
+    pub const POWERED: &str = "powered";
+    pub const NONE: &str = "none";
+    pub const SOURCES: [&str; 7] = ["down", "up", "north", "south", "west", "east", NONE];
+    pub const POWER: [&str; 2] = ["false", "true"];
 }
 
 pub(crate) const PIPES: [Pipe; 7] = [
@@ -47,6 +60,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_sound: "wood",
         m_ingredient: "minecraft:planks",
         m_refuses: Some(Kind::Wooden),
+        m_state: Some((property::SOURCE, &property::SOURCES)),
     },
     Pipe
     {
@@ -56,6 +70,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_sound: "stone",
         m_ingredient: "minecraft:stone",
         m_refuses: Some(Kind::Cobblestone),
+        m_state: None,
     },
     Pipe
     {
@@ -65,6 +80,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_sound: "metal",
         m_ingredient: "minecraft:iron_ingot",
         m_refuses: None,
+        m_state: Some((property::OUTPUT, &dir::NAMES)),
     },
     Pipe
     {
@@ -74,6 +90,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_sound: "metal",
         m_ingredient: "minecraft:gold_ingot",
         m_refuses: Some(Kind::Golden),
+        m_state: Some((property::POWERED, &property::POWER)),
     },
     Pipe
     {
@@ -83,6 +100,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_sound: "metal",
         m_ingredient: "minecraft:diamond",
         m_refuses: None,
+        m_state: None,
     },
     Pipe
     {
@@ -92,6 +110,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_sound: "metal",
         m_ingredient: "minecraft:obsidian",
         m_refuses: Some(Kind::Obsidian),
+        m_state: None,
     },
     Pipe
     {
@@ -101,6 +120,7 @@ pub(crate) const PIPES: [Pipe; 7] = [
         m_sound: "stone",
         m_ingredient: "minecraft:cobblestone",
         m_refuses: Some(Kind::Stone),
+        m_state: None,
     },
 ];
 
@@ -113,19 +133,14 @@ mod shape
     pub const HARDNESS: f32 = 0.5;
 }
 
-// the gold pipe keeps its power in its metadata so the model shows it, BlockGoldenPipe reads it at draw time
-pub(crate) const GOLD_POWERED: u8 = 1;
-// wooden pipe metadata past the six faces means it pulls from nowhere
-pub(crate) const NO_SOURCE: u8 = 6;
-
-pub(crate) fn byBlock(block: i32) -> Option<&'static Pipe>
+pub(crate) fn kindAt(world: World, pos: BlockPos) -> Option<Kind>
 {
-    PIPES.iter().find(|pipe| blockId(&format!("buildcraft:{}", pipe.m_name)) == Some(block))
+    let block: i32 = world.block(pos);
+    PIPES.iter().find(|pipe| blockIs(block, pipe.m_name)).map(|pipe| pipe.m_kind)
 }
 
-pub(crate) fn blockId(name: &str) -> Option<i32> { crate::core::ids::block(name) }
-
-pub(crate) fn kindAt(world: World, pos: BlockPos) -> Option<Kind> { byBlock(world.block(pos)).map(|pipe| pipe.m_kind) }
+// the face an iron pipe sends items and liquid out of
+pub(crate) fn output(world: World, pos: BlockPos) -> Option<i32> { state::faceAt(world, pos, property::OUTPUT) }
 
 pub(crate) fn isPipe(world: World, pos: BlockPos) -> bool { kindAt(world, pos).is_some() }
 
@@ -196,54 +211,46 @@ pub(crate) fn arm(face: i32) -> ([f32; 3], [f32; 3])
 
 fn texture(name: &str) -> String { format!("buildcraft:block/{name}") }
 
-// each arm's sprite: IBlockPipe.getTextureForConnection by face and metadata
+// the states whose value is or is not the one given, for cuboids drawn only in them
+fn when(values: &[&str], value: &str, equal: bool) -> Vec<i32>
+{
+    state::metas(values, |known| (known == value) == equal)
+}
+
+// each arm's sprite: IBlockPipe.getTextureForConnection by face and state
 fn arms(kind: Kind, name: &str) -> Vec<Cuboid>
 {
     let mut cuboids: Vec<Cuboid> = Vec::new();
     let plain: String = texture(name);
-    let all: Vec<i32> = (0..16).collect();
 
     for face in dir::all()
     {
         let (from, to) = arm(face);
-        let others: Vec<i32> = all.iter().copied().filter(|meta| *meta != face).collect();
+        let side: &str = dir::name(face);
 
         match kind
         {
             Kind::Wooden =>
             {
-                cuboids.push(cuboid(from, to, &texture("wooden_pipe_plain"), vec![face], Some(face)));
-                cuboids.push(cuboid(from, to, &plain, others, Some(face)));
+                let sources: &[&str] = &property::SOURCES;
+                cuboids.push(cuboid(from, to, &texture("wooden_pipe_plain"), when(sources, side, true), Some(face)));
+                cuboids.push(cuboid(from, to, &plain, when(sources, side, false), Some(face)));
             }
 
             Kind::Iron =>
             {
-                cuboids.push(cuboid(from, to, &plain, vec![face], Some(face)));
-                cuboids.push(cuboid(from, to, &texture("iron_pipe_plain"), others, Some(face)));
+                cuboids.push(cuboid(from, to, &plain, when(&dir::NAMES, side, true), Some(face)));
+                cuboids.push(cuboid(from, to, &texture("iron_pipe_plain"), when(&dir::NAMES, side, false), Some(face)));
             }
 
             Kind::Diamond =>
             {
-                const FACES: [&str; 6] = ["down", "up", "north", "south", "west", "east"];
-                cuboids.push(cuboid(
-                    from,
-                    to,
-                    &texture(&format!("diamond_pipe_{}", FACES[face as usize])),
-                    Vec::new(),
-                    Some(face),
-                ));
+                cuboids.push(cuboid(from, to, &texture(&format!("diamond_pipe_{side}")), Vec::new(), Some(face)));
             }
 
             Kind::Golden =>
             {
-                cuboids.push(cuboid(
-                    from,
-                    to,
-                    &texture("golden_pipe_powered"),
-                    vec![i32::from(GOLD_POWERED)],
-                    Some(face),
-                ));
-                cuboids.push(cuboid(from, to, &plain, vec![0], Some(face)));
+                cuboids.extend(powered(from, to, &plain, Some(face)));
             }
 
             _ => cuboids.push(cuboid(from, to, &plain, Vec::new(), Some(face))),
@@ -253,16 +260,23 @@ fn arms(kind: Kind, name: &str) -> Vec<Cuboid>
     cuboids
 }
 
+// BlockGoldenPipe draws its powered sprite while redstone reaches it
+fn powered(from: [f32; 3], to: [f32; 3], plain: &str, connect: Option<i32>) -> [Cuboid; 2]
+{
+    let [off, on] = property::POWER;
+    [
+        cuboid(from, to, &texture("golden_pipe_powered"), when(&property::POWER, on, true), connect),
+        cuboid(from, to, plain, when(&property::POWER, off, true), connect),
+    ]
+}
+
 fn model(kind: Kind, name: &str) -> BlockModelSpec
 {
     let core: [f32; 3] = [shape::MIN; 3];
     let far: [f32; 3] = [shape::MAX; 3];
     let mut cuboids: Vec<Cuboid> = match kind
     {
-        Kind::Golden => vec![
-            cuboid(core, far, &texture("golden_pipe_powered"), vec![i32::from(GOLD_POWERED)], None),
-            cuboid(core, far, &texture(name), vec![0], None),
-        ],
+        Kind::Golden => powered(core, far, &texture(name), None).to_vec(),
         _ => vec![cuboid(core, far, &texture(name), Vec::new(), None)],
     };
     cuboids.extend(arms(kind, name));
@@ -301,6 +315,11 @@ impl BlockBehavior for PipeBlock
 
 fn registerPipe(ctx: &mut RegisterCtx, row: &'static Pipe) -> Result<()>
 {
+    if let Some((name, values)) = row.m_state
+    {
+        state::register(ctx, row.m_name, name, values)?;
+    }
+
     let tile: Rc<dyn TileBehavior> = Rc::new(pipe::PipeTile { m_kind: row.m_kind });
     let slots: i32 = if row.m_kind == Kind::Diamond
     {

@@ -4,7 +4,7 @@ mod tank;
 mod well;
 mod workbench;
 
-use crate::core::{dir, render};
+use crate::core::{AIR, dir, render, state};
 use b173_api::prelude::*;
 
 pub(crate) const FRAME: &str = "buildcraft:frame";
@@ -33,16 +33,17 @@ impl Faces
         }
     }
 
-    // the item shows its front to the south, a placed machine toward its metadata face
-    pub(crate) fn slot(&self, face: i32, meta: i32) -> i32
+    // the item faces down and shows its front to the south, a placed machine shows it toward its facing
+    pub(crate) fn slot(&self, face: i32, block: &StateHandle, meta: i32) -> i32
     {
+        let facing: i32 = state::face(stateOf(block.block(), meta), state::FACING).unwrap_or(dir::UNKNOWN);
         let sprite: &'static str = match face
         {
-            face if face == dir::SOUTH && meta == 0 => self.m_front,
+            face if face == dir::SOUTH && facing == dir::DOWN => self.m_front,
             dir::UP => self.m_top,
             dir::DOWN if self.m_bottom.is_some() => self.m_bottom.unwrap_or(self.m_side),
-            face if face == meta => self.m_front,
-            face if (0..dir::COUNT).contains(&meta) && dir::reverse(meta) == face && self.m_back.is_some() =>
+            face if face == facing => self.m_front,
+            face if facing != dir::UNKNOWN && dir::reverse(facing) == face && self.m_back.is_some() =>
             {
                 self.m_back.unwrap_or(self.m_side)
             }
@@ -62,28 +63,29 @@ pub(crate) fn facePlacer(ctx: &mut BlockCtx, entity: Entity)
     };
 
     let toward: i32 = dir::flat(info.pos, render::corner(ctx.pos()));
-    ctx.setMeta(dir::reverse(toward) as u8);
+    state::set(ctx.world(), ctx.pos(), state::FACING, dir::name(dir::reverse(toward)));
+}
+
+// a facing machine's named states, in the face order BuildCraft stored as metadata
+pub(crate) fn registerFacing(ctx: &mut RegisterCtx, block: &str) -> Result<()>
+{
+    state::register(ctx, block, state::FACING, &dir::NAMES)
 }
 
 // MangoPackUtils.isBlockUnbreakable, missing from the BuildCraft zips, read as Utils.unbreakableBlock's bedrock and
 // lava plus any block that cannot be mined
 pub(crate) fn unbreakable(world: World, pos: BlockPos) -> bool
 {
-    const LISTED: [&str; 3] = ["minecraft:bedrock", "minecraft:lava", "minecraft:flowing_lava"];
-
     let block: i32 = world.block(pos);
-    block != 0
-        && (LISTED.iter().any(|name| crate::core::ids::block(name) == Some(block))
-            || World::blockInfo(block).hardness < 0.0)
+    let listed: bool = blockIs(block, "minecraft:bedrock") || blockTagged(block, "minecraft:lava");
+    !blockIs(block, AIR) && (listed || World::blockInfo(block).hardness < 0.0)
 }
 
 // Utils.softBlock: air, water and unknown blocks are open space
 pub(crate) fn soft(world: World, pos: BlockPos) -> bool
 {
     let block: i32 = world.block(pos);
-    let water: bool =
-        ["minecraft:water", "minecraft:flowing_water"].iter().any(|name| crate::core::ids::block(name) == Some(block));
-    block == 0 || water
+    blockIs(block, AIR) || blockTagged(block, "minecraft:water")
 }
 
 fn cuboid(from: [f32; 3], to: [f32; 3], texture: &str, connect: Option<i32>) -> Cuboid
@@ -100,10 +102,7 @@ impl BlockBehavior for FrameBlock
     fn connections(&self, ctx: &mut BlockCtx) -> u8
     {
         let world: World = ctx.world();
-        let frame: i32 = ctx.block();
-        dir::all()
-            .filter(|face| world.block(dir::step(ctx.pos(), *face)) == frame)
-            .fold(0, |mask, face| mask | 1 << face)
+        dir::all().filter(|face| world.is(dir::step(ctx.pos(), *face), FRAME)).fold(0, |mask, face| mask | 1 << face)
     }
 }
 
@@ -132,6 +131,7 @@ fn registerFrames(ctx: &mut RegisterCtx) -> Result<()>
             .texture(frame)
             .opacity(0)
             .drops(Vec::new())
+            .tag(crate::machines::CONNECTORS)
             .model(BlockModelSpec { cuboids, ..BlockModelSpec::default() })
             .behavior(FrameBlock),
     )?;
@@ -148,6 +148,7 @@ fn registerFrames(ctx: &mut RegisterCtx) -> Result<()>
             .texture(shaft)
             .opacity(0)
             .drops(Vec::new())
+            .tag(crate::machines::CONNECTORS)
             .model(BlockModelSpec
             {
                 cuboids: vec![cuboid(PIPE_FROM, PIPE_TO, shaft, None)],

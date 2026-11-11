@@ -11,6 +11,8 @@ pub(crate) const WEST: i32 = 4;
 pub(crate) const EAST: i32 = 5;
 
 const OFFSETS: [[i32; 3]; 6] = [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]];
+// the names block states give the faces
+pub(crate) const NAMES: [&str; 6] = ["down", "up", "north", "south", "west", "east"];
 
 pub(crate) fn offset(face: i32) -> [i32; 3] { OFFSETS[face.rem_euclid(COUNT) as usize] }
 
@@ -32,6 +34,10 @@ pub(crate) fn reverse(face: i32) -> i32
 }
 
 pub(crate) fn all() -> std::ops::Range<i32> { 0..COUNT }
+
+pub(crate) fn name(face: i32) -> &'static str { NAMES[face.rem_euclid(COUNT) as usize] }
+
+pub(crate) fn named(name: &str) -> Option<i32> { NAMES.iter().position(|known| *known == name).map(|face| face as i32) }
 
 // Position.moveForwards on a double position
 pub(crate) fn forward(pos: [f64; 3], face: i32, step: f64) -> [f64; 3]

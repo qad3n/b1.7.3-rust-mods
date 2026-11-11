@@ -1,6 +1,6 @@
-use super::{Faces, MINING_PIPE, facePlacer, unbreakable};
+use super::{Faces, MINING_PIPE, facePlacer, registerFacing, unbreakable};
 use crate::core::power::{Provider, Setup};
-use crate::core::{ids, items, stacks};
+use crate::core::{items, stacks};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -80,14 +80,9 @@ fn dig(world: World, pos: BlockPos, state: &mut WellState)
         return;
     }
 
-    let Some(shaft) = ids::block(MINING_PIPE)
-    else
-    {
-        return;
-    };
     let mut depth: BlockPos = pos.offset(0, -1, 0);
 
-    while world.block(depth) == shaft
+    while world.is(depth, MINING_PIPE)
     {
         depth = depth.offset(0, -1, 0);
     }
@@ -98,16 +93,16 @@ fn dig(world: World, pos: BlockPos, state: &mut WellState)
         return;
     }
 
-    let mined: i32 = world.block(depth);
+    let mined: bool = !world.is(depth, crate::core::AIR);
     let drop: Option<ItemStack> = world.blockDropStack(depth);
 
-    if let Err(error) = world.setBlock(depth, shaft, 0)
+    if let Err(error) = world.place(depth, MINING_PIPE)
     {
         warn(&format!("the mining well at {pos:?} could not extend its shaft: {error}"));
         return;
     }
 
-    if mined == 0
+    if !mined
     {
         return;
     }
@@ -178,12 +173,13 @@ impl TileBehavior for WellTile
 pub(crate) struct MachineBlock
 {
     pub(crate) m_faces: &'static Faces,
+    pub(crate) m_block: StateHandle,
 }
 
 #[block_behavior]
 impl BlockBehavior for MachineBlock
 {
-    fn texture(&self, face: i32, meta: i32) -> i32 { self.m_faces.slot(face, meta) }
+    fn texture(&self, face: i32, meta: i32) -> i32 { self.m_faces.slot(face, &self.m_block, meta) }
 
     fn onPlacedBy(&self, ctx: &mut BlockCtx, entity: Entity) { facePlacer(ctx, entity); }
 
@@ -225,8 +221,11 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .resistance(RESISTANCE)
             .texture(FACES.m_front)
             .tileEntity(NAME)
-            .behavior(MachineBlock { m_faces: &FACES }),
+            .tag(crate::machines::MACHINES)
+            .tag(crate::machines::CONNECTORS)
+            .behavior(MachineBlock { m_faces: &FACES, m_block: StateHandle::named(NAME)? }),
     )?;
+    registerFacing(ctx, NAME)?;
 
     if !super::mining()
     {

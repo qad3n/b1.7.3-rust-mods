@@ -1,9 +1,9 @@
 use super::liquids::{FLOW_RATE, Liquid};
 use super::travel::{self, Traveler};
-use super::{EXCLUSION, GOLD_POWERED, Kind, NO_SOURCE, joins, kindAt};
+use super::{EXCLUSION, Kind, joins, kindAt, property};
 use crate::core::power::{Provider, Setup};
 use crate::core::stacks::{self, Stored};
-use crate::core::{dir, items};
+use crate::core::{dir, items, state};
 use b173_api::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -302,27 +302,36 @@ fn moveItems(kind: Kind, world: World, pos: BlockPos, state: &mut PipeState)
     state.m_items = kept;
 }
 
+// the config names blocks by full name, by path in any namespace, or by tag as #namespace:path
 fn excluded(world: World, pos: BlockPos) -> bool
 {
     let list: String = configValue(EXCLUSION);
     let block: i32 = world.block(pos);
-    let name: Option<Identifier> = nameOf(RegistryKind::Block, block);
 
-    list.split(',').map(str::trim).filter(|entry| !entry.is_empty()).any(|entry|
+    list.split(',').map(str::trim).filter(|entry| !entry.is_empty()).any(|entry| match entry.strip_prefix('#')
     {
-        entry == block.to_string()
-            || name.as_ref().is_some_and(|name| name.to_string() == entry || name.path() == entry)
+        Some(tag) => blockTagged(block, tag),
+        None if entry.contains(':') => blockIs(block, entry),
+        None => nameOf(RegistryKind::Block, block).is_some_and(|name| name.path() == entry),
     })
 }
+
+// the face a wooden pipe pulls from, None while it has no source
+fn source(world: World, pos: BlockPos) -> Option<i32> { state::faceAt(world, pos, property::SOURCE) }
 
 // TileWoodenPipe.doWork: pull a stack the stored energy pays for, or a bucket of liquid
 fn woodenWork(world: World, pos: BlockPos, state: &mut PipeState, power: &mut Provider)
 {
-    let source: i32 = world.meta(pos);
-    if power.m_stored <= 0 || source >= i32::from(NO_SOURCE)
+    if power.m_stored <= 0
     {
         return;
     }
+
+    let Some(source) = source(world, pos)
+    else
+    {
+        return;
+    };
 
     let from: BlockPos = dir::step(pos, source);
     let face: i32 = dir::reverse(source);
@@ -359,11 +368,16 @@ fn woodenWork(world: World, pos: BlockPos, state: &mut PipeState, power: &mut Pr
 // TileWoodenPipe.updateEntity: the liquid it paid for comes in a flow rate at a time
 fn woodenLiquid(world: World, pos: BlockPos, state: &mut PipeState)
 {
-    let source: i32 = world.meta(pos);
-    if state.m_liquidToExtract <= 0 || source >= i32::from(NO_SOURCE)
+    if state.m_liquidToExtract <= 0
     {
         return;
     }
+
+    let Some(source) = source(world, pos)
+    else
+    {
+        return;
+    };
 
     let from: BlockPos = dir::step(pos, source);
     let face: i32 = dir::reverse(source);
@@ -392,28 +406,29 @@ fn inventory(world: World, pos: BlockPos, face: i32) -> bool
 // TileWoodenPipe.switchSource, the next face after the current one with an inventory or tank that is no pipe
 pub(crate) fn switchSource(world: World, pos: BlockPos)
 {
-    let meta: i32 = world.meta(pos);
-    let pick: Option<i32> = (meta + 1..=meta + dir::COUNT).map(|step| step % dir::COUNT).find(|face|
+    let current: Option<i32> = source(world, pos);
+    let start: i32 = current.unwrap_or(dir::UNKNOWN);
+    let pick: Option<i32> = (start + 1..=start + dir::COUNT).map(|step| step % dir::COUNT).find(|face|
     {
         let from: BlockPos = dir::step(pos, *face);
         let tank: bool =
             kindAt(world, from).is_none() && world.capabilities(from, dir::reverse(*face)) & capability::FLUIDS != 0;
         (inventory(world, from, dir::reverse(*face)) || tank) && joins(world, pos, *face) && !excluded(world, from)
     });
-    let next: i32 = pick.unwrap_or(i32::from(NO_SOURCE));
-
-    if next != meta
+    if pick == current
     {
-        let _ = world.setMeta(pos, next);
-        world.markBlockForRender(pos);
+        return;
     }
+
+    state::set(world, pos, property::SOURCE, pick.map_or(property::NONE, dir::name));
+    world.markBlockForRender(pos);
 }
 
 // TileIronPipe.switchPosition, the next face with a pipe that is not wooden or an inventory
 pub(crate) fn switchOutput(world: World, pos: BlockPos)
 {
-    let meta: i32 = world.meta(pos);
-    let pick: Option<i32> = (1..=dir::COUNT).map(|step| (meta + step) % dir::COUNT).find(|face|
+    let current: i32 = super::output(world, pos).unwrap_or(dir::DOWN);
+    let pick: Option<i32> = (1..=dir::COUNT).map(|step| (current + step) % dir::COUNT).find(|face|
     {
         let target: BlockPos = dir::step(pos, *face);
         match kindAt(world, target)
@@ -425,7 +440,7 @@ pub(crate) fn switchOutput(world: World, pos: BlockPos)
 
     if let Some(face) = pick
     {
-        let _ = world.setMeta(pos, face);
+        state::set(world, pos, property::OUTPUT, dir::name(face));
         world.markBlockForRender(pos);
     }
 }
@@ -440,8 +455,7 @@ fn neighborChange(kind: Kind, world: World, pos: BlockPos, state: &mut PipeState
     }
 
     // TileWoodenPipe.neighborChange keeps a source that is still an inventory
-    let meta: i32 = world.meta(pos);
-    let kept: bool = meta < i32::from(NO_SOURCE) && inventory(world, dir::step(pos, meta), dir::reverse(meta));
+    let kept: bool = source(world, pos).is_some_and(|face| inventory(world, dir::step(pos, face), dir::reverse(face)));
     if !kept
     {
         switchSource(world, pos);
@@ -648,11 +662,7 @@ pub(crate) fn placed(kind: Kind, ctx: &mut BlockCtx)
         return;
     }
 
-    if let Err(error) = ctx.world().setMeta(ctx.pos(), dir::UP)
-    {
-        warn(&format!("an iron pipe at {:?} could not face up: {error}", ctx.pos()));
-    }
-
+    state::set(ctx.world(), ctx.pos(), property::OUTPUT, dir::name(dir::UP));
     switchOutput(ctx.world(), ctx.pos());
 }
 
@@ -683,17 +693,10 @@ pub(crate) fn neighborChanged(kind: Kind, ctx: &mut BlockCtx)
 
         Kind::Golden =>
         {
-            let lit: u8 = if world.isPowered(pos)
+            let lit: bool = world.isPowered(pos);
+            if ctx.stateAt().is_some_and(|shown| shown.flag(property::POWERED)) != lit
             {
-                GOLD_POWERED
-            }
-            else
-            {
-                0
-            };
-            if ctx.meta() != lit
-            {
-                ctx.setMeta(lit);
+                state::set(world, pos, property::POWERED, &lit.to_string());
             }
 
             state.m_neighborChange = true;

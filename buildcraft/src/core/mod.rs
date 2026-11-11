@@ -1,13 +1,15 @@
 pub(crate) mod area;
 pub(crate) mod dir;
-pub(crate) mod ids;
 pub(crate) mod items;
 pub(crate) mod power;
 pub(crate) mod random;
 pub(crate) mod render;
 pub(crate) mod stacks;
+pub(crate) mod state;
 
 use b173_api::prelude::*;
+
+pub(crate) const AIR: &str = "minecraft:air";
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {

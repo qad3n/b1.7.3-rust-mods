@@ -1,4 +1,4 @@
-use crate::core::{dir, ids, random};
+use crate::core::{AIR, dir, random};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -14,8 +14,6 @@ pub(crate) struct Stored
 
 thread_local!
 {
-    // numeric ids by name for the current content generation, pipes draw and move many stacks a tick
-    static NUMERIC: RefCell<(i32, HashMap<Identifier, i32>)> = RefCell::new((-1, HashMap::new()));
     // what each item is, pipes draw blocks and items at different heights every frame
     static INFO: RefCell<(i32, HashMap<i32, Option<ItemInfo>>)> = RefCell::new((-1, HashMap::new()));
 }
@@ -39,29 +37,6 @@ pub(crate) fn info(stack: &ItemStack) -> Option<ItemInfo>
 
 pub(crate) fn isBlock(stack: &ItemStack) -> bool { info(stack).is_some_and(|info| info.block) }
 
-fn numeric(item: &Identifier) -> Option<i32>
-{
-    let generation: i32 = contentGeneration();
-
-    NUMERIC.with(|cache|
-    {
-        let mut cache = cache.borrow_mut();
-        if cache.0 != generation
-        {
-            *cache = (generation, HashMap::new());
-        }
-
-        if let Some(id) = cache.1.get(item)
-        {
-            return Some(*id);
-        }
-
-        let id: i32 = ItemRef::Named(item.clone()).id().ok()?;
-        cache.1.insert(item.clone(), id);
-        Some(id)
-    })
-}
-
 impl Stored
 {
     pub(crate) fn of(stack: &ItemStack) -> Option<Stored>
@@ -71,10 +46,11 @@ impl Stored
 
     pub(crate) fn stack(&self) -> ItemStack
     {
-        let item: ItemRef = match numeric(&self.m_item)
+        // pipes draw and move many stacks a tick, the resolved id saves cloning the name
+        let item: ItemRef = match resolve(RegistryKind::Item, &self.m_item)
         {
-            Some(id) => ItemRef::Numeric(id),
-            None => ItemRef::Named(self.m_item.clone()),
+            Ok(id) => ItemRef::Numeric(id),
+            Err(_) => ItemRef::Named(self.m_item.clone()),
         };
         ItemStack { item, count: self.m_count, damage: self.m_damage }
     }
@@ -186,15 +162,13 @@ pub(crate) fn output(world: World, pos: BlockPos, stack: ItemStack)
 // Utils.breakBlock: the block drops what it would when mined, then turns to air
 pub(crate) fn breakBlock(world: World, pos: BlockPos)
 {
-    let block: i32 = world.block(pos);
-
-    if block != 0
-        && let Err(error) = world.dropBlockItems(pos, block, world.meta(pos))
+    if !world.is(pos, AIR)
+        && let Err(error) = world.dropBlockItems(pos, world.block(pos), world.meta(pos))
     {
         warn(&format!("could not drop the block at {pos:?}: {error}"));
     }
 
-    if let Err(error) = world.setBlock(pos, 0, 0)
+    if let Err(error) = world.clear(pos)
     {
         warn(&format!("could not clear {pos:?}: {error}"));
     }
@@ -239,8 +213,8 @@ pub(crate) fn slotsOf(world: World, pos: BlockPos) -> Vec<(BlockPos, i32)>
     let own = |at: BlockPos| (0..world.inventorySize(at)).map(move |slot| (at, slot));
     let mut slots: Vec<(BlockPos, i32)> = own(pos).collect();
 
-    if ids::is(world, pos, CHEST)
-        && let Some(other) = SIDES.iter().map(|face| dir::step(pos, *face)).rfind(|at| ids::is(world, *at, CHEST))
+    if world.is(pos, CHEST)
+        && let Some(other) = SIDES.iter().map(|face| dir::step(pos, *face)).rfind(|at| world.is(*at, CHEST))
     {
         slots.extend(own(other));
     }

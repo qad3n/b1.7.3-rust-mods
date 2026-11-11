@@ -2,7 +2,7 @@ use crate::core::power::{self, Provider, Tracker};
 use crate::core::{dir, items};
 use b173_api::prelude::*;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 // buildcraft.energy.Engine and its three kinds, by the block's row
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -96,9 +96,10 @@ mod timing
 }
 
 // Engine.EnergyStage, a quarter of the store each, past full the engine blows up
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(crate) enum Stage
 {
+    #[default]
     Blue,
     Green,
     Yellow,
@@ -137,7 +138,7 @@ pub(crate) struct EngineState
 pub(crate) struct View
 {
     pub(crate) m_orientation: i32,
-    pub(crate) m_stage: u8,
+    pub(crate) m_stage: Stage,
     pub(crate) m_progress: f32,
     pub(crate) m_progressPart: i32,
     pub(crate) m_speed: f32,
@@ -164,10 +165,19 @@ thread_local!
 pub(crate) fn rowOf(world: World, pos: BlockPos) -> Option<&'static EngineRow>
 {
     let block: i32 = world.block(pos);
-    ENGINES.iter().find(|row| crate::core::ids::block(&format!("buildcraft:{}", row.m_name)) == Some(block))
+    ENGINES.iter().find(|row| blockIs(block, row.m_name))
 }
 
 // an exploding engine still draws red
+fn shownStage(row: &EngineRow, energy: i32) -> Stage
+{
+    match stageOf(row, energy)
+    {
+        Stage::Explosion => Stage::Red,
+        stage => stage,
+    }
+}
+
 fn stageIndex(stage: Stage) -> usize { STAGES.iter().position(|shown| *shown == stage).unwrap_or(STAGES.len() - 1) }
 
 pub(crate) fn stageOf(row: &EngineRow, energy: i32) -> Stage
@@ -217,7 +227,7 @@ fn view(row: &EngineRow, world: World, pos: BlockPos, state: &EngineState) -> Vi
     View
     {
         m_orientation: state.m_orientation,
-        m_stage: stageIndex(stageOf(row, state.m_energy)) as u8,
+        m_stage: shownStage(row, state.m_energy),
         m_progress: state.m_progress,
         m_progressPart: state.m_progressPart,
         m_speed: speed(row, state.m_energy),
@@ -582,25 +592,6 @@ fn onView(packet: ViewPacket)
 // the engines as recipe viewers show them, what each burns and the energy it gives
 pub(crate) fn registerPages(ctx: &mut RegisterCtx) -> Result<()>
 {
-    // beta's furnace fuels, read through the loader so the burn times stay the furnace's own
-    const STEAM_FUELS: [&str; 15] = [
-        "minecraft:coal",
-        "minecraft:log",
-        "minecraft:planks",
-        "minecraft:stick",
-        "minecraft:sapling",
-        "minecraft:lava_bucket",
-        "minecraft:oak_stairs",
-        "minecraft:fence",
-        "minecraft:chest",
-        "minecraft:crafting_table",
-        "minecraft:bookshelf",
-        "minecraft:noteblock",
-        "minecraft:jukebox",
-        "minecraft:wooden_pressure_plate",
-        "minecraft:trapdoor",
-    ];
-
     for row in &ENGINES
     {
         ctx.machines().register(row.m_name, None, &[row.m_name])?;
@@ -613,14 +604,17 @@ pub(crate) fn registerPages(ctx: &mut RegisterCtx) -> Result<()>
         .note(&format!("1 MJ every {} ticks while redstone powered", timing::REDSTONE_PERIOD))
         .build()?;
 
-    for name in STEAM_FUELS
+    // every furnace fuel known while BuildCraft registers, read through the loader so burn times stay the furnace's
+    let mut listed: HashSet<ItemRef> = HashSet::new();
+    for stack in itemCatalog()
     {
-        let stack: ItemStack = ItemStack::of(name, 1);
         let ticks: i32 = fuelTicks(&stack);
-        if ticks <= 0
+        if ticks <= 0 || !listed.insert(stack.item.clone())
         {
             continue;
         }
+
+        let stack: ItemStack = ItemStack::of(stack.item, 1);
 
         let per: i32 = fuel::STEAM_PER_TICK;
         ctx.machines()
