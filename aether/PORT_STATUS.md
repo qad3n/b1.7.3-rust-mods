@@ -212,6 +212,33 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
   - The `thread_local` maps are runtime AI state, not saved data.
 - Not verified in game: chunk palettes with these states, and an old world loading with this build.
 
+## Audit against 1.1.2.5 (2026-11-11)
+
+Checked one to one with `reference/src`: every ItemsAether and BlocksAether registration and every entity; tool and
+sword materials, damage, speed, harvest level and durability (beta's sword formula, as for vanilla beta swords); zanite
+wear bands for speed and attack; gravitite lift, holystone shards, elemental, vampire, pig slayer and candy cane hits;
+armor values; darts, phoenix bow and lightning knife; present crates; slider block crushing; machine particles; every
+`aether_legacy` sound key.
+
+Fixed:
+- Presents set off a primed TNT present (`tnt_present`, a moving block drawing the present) that pops up, falls,
+  bounces, smokes for ten ticks and explodes at power 0.4; before, a power 1 blast went off at once. The candy cane
+  sword chance belongs to the gingerbread crate only.
+- Phoenix arrows trail flames, two a tick in flight and one every fifth tick once stuck.
+- Darts and phoenix arrows play bowhit where they strike or stick, slow to 0.8 drag with bubbles in water and put out
+  their fire, and a player who shot one picks it back up once it stops quivering (seven ticks) if it fits, with the
+  pop sound.
+- The slider drops the blocks it crushes, as destroyBlock calls dropBlockAsItem.
+- The lightning knife plays the mod's own `projectile.shoot` sound instead of the bow's.
+
+Still differs or unverified:
+- Valkyrie tools reach eight blocks for blocks and entities in the source (PlayerAether block reach and the client's
+  extended attack); the loader has no per item reach yet, so they reach as far as any tool.
+- Creative players' darts (pickup mode 2) are picked up like survival ones and the pickup has no item fly animation.
+- The slider's crush shows the break effect and smoke the source spawns only on the server, where 1.7 never draws
+  them.
+- Everything above is checked by build and code review only, not in a game.
+
 ## Todo, in order
 
 1. Aether main menu and menu button (config, off by default in the source).
