@@ -311,7 +311,7 @@ impl ItemBehavior for BedItem
     }
 }
 
-// BlockPresent.harvestBlock: one of four surprises, three of them a little bang
+// BlockPresent.harvestBlock: one of four surprises, two of them a primed present
 struct Present;
 
 mod present
@@ -320,7 +320,6 @@ mod present
     pub const SPREAD: i32 = 4;
     pub const CRATES: i32 = 4;
     pub const SWORD_ODDS: i32 = 9;
-    pub const BANG: f32 = 1.0;
 }
 
 #[block_behavior]
@@ -341,12 +340,17 @@ impl BlockBehavior for Present
         match world.random(present::CRATES)
         {
             // b1.7.3 has no experience orbs, the orb crate gives gingerbread men instead
-            0 | 1 if world.random(present::SWORD_ODDS) == 0 =>
+            0 =>
+            {
+                let _ = world.spawnItem(at, ItemStack::of("gingerbread_man", amount));
+            }
+
+            1 if world.random(present::SWORD_ODDS) == 0 =>
             {
                 let _ = world.spawnItem(at, ItemStack::of("candy_cane_sword", 1));
             }
 
-            0 | 1 =>
+            1 =>
             {
                 let _ = world.spawnItem(at, ItemStack::of("gingerbread_man", amount));
             }
@@ -354,8 +358,7 @@ impl BlockBehavior for Present
             _ =>
             {
                 world.playSound(at, "random.fuse", 1.0, 1.0);
-
-                let _ = world.explode(at, present::BANG);
+                crate::entities::present::prime(world, pos);
             }
         }
     }

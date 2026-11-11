@@ -13,6 +13,7 @@ pub(crate) mod mini_cloud;
 pub(crate) mod moa;
 mod mount;
 mod phyg;
+pub(crate) mod present;
 pub(crate) mod projectile;
 mod sentry;
 mod sheepuff;
@@ -113,6 +114,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     valkyrie::register(ctx)?;
     fire_minion::register(ctx)?;
     floating_block::register(ctx)?;
+    present::register(ctx)?;
     crystal::register(ctx)?;
     mini_cloud::register(ctx)?;
     bosses::register(ctx)
