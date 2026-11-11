@@ -551,25 +551,27 @@ struct Burn
     m_cook: i32,
 }
 
-// TileEntityTFCinderFurnace.getItemBurnTime is 1.7's furnace fuel, beta's furnace answers everything but the wooden
-// slab and wooden tools it added
+// the wooden tools 1.7's furnace burns and beta's does not, cinder furnace fuels in the machine registry so other
+// mods add their own
+const WOODEN_TOOLS: [&str; 5] = [
+    "minecraft:wooden_pickaxe",
+    "minecraft:wooden_axe",
+    "minecraft:wooden_shovel",
+    "minecraft:wooden_sword",
+    "minecraft:wooden_hoe",
+];
+
+// TileEntityTFCinderFurnace.getItemBurnTime is 1.7's furnace fuel: the machine's own fuels over beta's furnace
+// fuels, and the wooden slab, which beta keeps as a stone slab's metadata the fuel registry cannot name
 fn burnTime(stack: &ItemStack) -> i32
 {
-    let name: String = stack.item.name().map(|name| name.to_string()).unwrap_or_default();
-    let tools: [&str; 5] = [
-        "minecraft:wooden_pickaxe",
-        "minecraft:wooden_axe",
-        "minecraft:wooden_shovel",
-        "minecraft:wooden_sword",
-        "minecraft:wooden_hoe",
-    ];
-
-    match name.as_str()
+    let slab: bool = stack.item.is("minecraft:stone_slab") && stack.damage == furnace::WOODEN_SLAB;
+    if slab
     {
-        "minecraft:stone_slab" if stack.damage == furnace::WOODEN_SLAB => furnace::SLAB_FUEL,
-        _ if tools.contains(&name.as_str()) => furnace::TOOL_FUEL,
-        _ => fuelTicks(stack),
+        return furnace::SLAB_FUEL;
     }
+
+    machineFuel(FURNACE_NAME, stack, true)
 }
 
 // the source's logWood ore dictionary entry, any mod's logs included
@@ -966,7 +968,20 @@ fn registerPages(ctx: &mut RegisterCtx) -> Result<()>
         .note("Takes a crafted item apart into its recipe")
         .note("Off when the server config disables uncrafting")
         .build()?;
-    ctx.machines().workstation("minecraft:smelting", FURNACE_NAME)
+    ctx.machines().workstation("minecraft:smelting", FURNACE_NAME)?;
+
+    ctx.machines().register(FURNACE_NAME, Some(FURNACE_TITLE), &[FURNACE_NAME])?;
+    ctx.machines()
+        .recipe(FURNACE_NAME)
+        .note("Smelts as a furnace does, ores and logs come out multiplied beside cinder logs")
+        .build()?;
+
+    for tool in WOODEN_TOOLS
+    {
+        ctx.machines().fuel(FURNACE_NAME, tool, furnace::TOOL_FUEL)?;
+    }
+
+    Ok(())
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
