@@ -122,14 +122,15 @@ impl ItemBehavior for Bow
         }
 
         let speed: f64 = self.m_speed * power;
-        let mut fired: bool = arrows::shoot(world, self.m_arrow, &info, speed, 0.0, 0.0).is_some();
+        let critical: bool = power == 1.0;
+        let mut fired: bool = arrows::shoot(world, self.m_arrow, &info, speed, 0.0, 0.0, critical).is_some();
 
         if self.m_triple
         {
             for side in [1.0, -1.0]
             {
                 let (lift, rise): (f64, f64) = (side * bow::SIDE_LIFT, side * bow::SIDE_RISE);
-                fired |= arrows::shoot(world, SIDE, &info, speed, lift, rise).is_some();
+                fired |= arrows::shoot(world, SIDE, &info, speed, lift, rise, critical).is_some();
             }
         }
 

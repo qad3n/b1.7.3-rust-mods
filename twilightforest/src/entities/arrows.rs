@@ -1,15 +1,17 @@
 use crate::ids::item;
 use crate::math::{heading, turn};
-use b173_api::math::{add, distance, dot, length, normalize, sub};
+use b173_api::math::{add, blockOf, distance, dot, length, normalize, sub};
 use b173_api::prelude::*;
 use std::rc::Rc;
 
 // the twilight bows fire EntityArrow and its EntityIceArrow and EntitySeekerArrow subclasses, all drawn by RenderArrow
-pub(crate) const PLAIN: &str = "minecraft:arrow";
+// their plain arrow is a mod kind on the vanilla template so it can draw the crit trail
+const VANILLA: &str = "minecraft:arrow";
+pub(crate) const PLAIN: &str = "twilightforest:arrow";
 pub(crate) const ICE: &str = "twilightforest:ice_arrow";
 pub(crate) const SEEKER: &str = "twilightforest:seeker_arrow";
 pub(crate) const SIDE: &str = "twilightforest:side_arrow";
-const KINDS: [&str; 4] = [PLAIN, ICE, SEEKER, SIDE];
+const KINDS: [&str; 5] = [VANILLA, PLAIN, ICE, SEEKER, SIDE];
 
 mod launch
 {
@@ -41,8 +43,24 @@ mod tracking
     pub const PERIOD: i32 = 20;
 }
 
+// EntityArrow.onUpdate's crit trail, four specks a tick drifting back and up
+mod crit
+{
+    pub const SPECKS: i32 = 4;
+    pub const RISE: f64 = 0.2;
+    // a stuck arrow sits this far short of the block it hit
+    pub const PROBE: f64 = 0.1;
+}
+
 // the ender bow's arrow reached its target within this many blocks of where it stood when the hit landed
 const HIT_REACH: f64 = 6.0;
+
+// EntityArrow's critical flag, set on a full draw and mirrored to every client
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
+struct Shot
+{
+    m_critical: bool,
+}
 
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Homing
@@ -58,8 +76,15 @@ fn fromEyes(world: World, arrow: [f64; 3], target: &EntityInfo) -> [f64; 3]
 }
 
 // EntityArrow(world, player, velocity) with setArrowHeading, the triple bow's side arrows lift and rise a little
-pub(crate) fn shoot(world: World, kind: &str, shooter: &EntityInfo, speed: f64, lift: f64, rise: f64)
--> Option<Entity>
+pub(crate) fn shoot(
+    world: World,
+    kind: &str,
+    shooter: &EntityInfo,
+    speed: f64,
+    lift: f64,
+    rise: f64,
+    critical: bool,
+) -> Option<Entity>
 {
     let yaw: f64 = f64::from(shooter.yaw).to_radians();
     let from: [f64; 3] = [
@@ -92,7 +117,48 @@ pub(crate) fn shoot(world: World, kind: &str, shooter: &EntityInfo, speed: f64, 
     entity.setField(EntityField::Yaw, yaw);
     entity.setField(EntityField::Pitch, pitch);
     entity.setField(EntityField::Shooter, f64::from(shooter.id));
+
+    if let Err(error) = entity.setSynced(&Shot { m_critical: critical })
+    {
+        warn(&format!("arrow crit: {}", error.0));
+    }
+
     Some(entity)
+}
+
+// a block ahead along the flight that the arrow is stuck in
+fn stuck(world: World, info: &EntityInfo) -> bool
+{
+    let ahead: [f64; 3] = add(info.pos, normalize(info.motion).map(|axis| axis * crit::PROBE));
+    let block: i32 = world.block(blockOf(ahead));
+    block != 0 && World::blockInfo(block).solid
+}
+
+// a critical arrow trails crit specks on the client while it flies, 1.7 clears the flag once it sticks
+fn trail(entity: Entity, info: &EntityInfo)
+{
+    let world: World = entity.world;
+    if !isClient() || !entity.synced::<Shot>().m_critical || stuck(world, info)
+    {
+        return;
+    }
+
+    for i in 0..crit::SPECKS
+    {
+        let along: f64 = f64::from(i) / f64::from(crit::SPECKS) - 1.0;
+        let at: [f64; 3] = add(info.pos, info.motion.map(|axis| axis * along));
+        let [x, y, z]: [f64; 3] = info.motion;
+        crate::particles::spawn(world, "crit", at, [-x, -y + crit::RISE, -z]);
+    }
+}
+
+// the plain and ice arrows add only the trail
+struct Trail;
+
+#[entity_behavior]
+impl EntityBehavior for Trail
+{
+    fn onTick(&self, entity: Entity, info: &EntityInfo) { trail(entity, info); }
 }
 
 // where a side arrow stood last tick, it stays put once stuck
@@ -111,6 +177,8 @@ impl EntityBehavior for Side
 {
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
+        trail(entity, info);
+
         let mut state: Resting = entity.data();
         if !entity.world.isAuthority() || state.m_stuck
         {
@@ -182,6 +250,8 @@ impl EntityBehavior for Seeker
     // EntitySeekerArrow.onUpdate, after EntityArrow moved it here rather than before
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
+        trail(entity, info);
+
         if !entity.world.isAuthority() || length(info.motion) <= seek::FLYING
         {
             return;
@@ -277,11 +347,12 @@ fn hurt(event: &mut Event)
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    let rows: [(&str, Option<Rc<dyn EntityBehavior>>, i32, i32, bool); 3] = [
-        // EntityIceArrow has no entity registration upstream, it tracks as a vanilla arrow
-        ("ice_arrow", None, tracking::RANGE, tracking::PERIOD, false),
-        ("side_arrow", Some(Rc::new(Side)), tracking::RANGE, tracking::PERIOD, false),
-        ("seeker_arrow", Some(Rc::new(Seeker)), seek::TRACKING, 1, true),
+    let rows: [(&str, Rc<dyn EntityBehavior>, i32, i32, bool); 4] = [
+        // EntityIceArrow has no entity registration upstream, it and the plain arrow track as a vanilla arrow
+        ("arrow", Rc::new(Trail), tracking::RANGE, tracking::PERIOD, false),
+        ("ice_arrow", Rc::new(Trail), tracking::RANGE, tracking::PERIOD, false),
+        ("side_arrow", Rc::new(Side), tracking::RANGE, tracking::PERIOD, false),
+        ("seeker_arrow", Rc::new(Seeker), seek::TRACKING, 1, true),
     ];
 
     for (name, behavior, range, frequency, velocity) in rows
@@ -296,7 +367,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 send_velocity: Some(velocity),
                 ..EntitySpec::default()
             },
-            behavior,
+            Some(behavior),
         )?;
     }
 
