@@ -1,5 +1,5 @@
 use super::{Faces, Look, Machine, registerBlock, screen, setActive};
-use crate::core::{blockTexture, dir, own, random, sound, stacks};
+use crate::core::{blockTexture, dir, random, sound, stacks};
 use crate::energy::{self, EnergyTile, net};
 use crate::explosives;
 use b173_api::prelude::*;
@@ -854,7 +854,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     const CHAMBER_HARDNESS: f32 = 3.0;
 
     registerBlock(ctx, &MACHINE, Rc::new(ReactorTile), true)?;
-    energy::add(own(MACHINE.m_name), &REACTOR);
+    energy::add(MACHINE.m_name, &REACTOR);
 
     // ContainerNuclearReactor lays out the columns the reactor has, centered
     for width in grid::BASE..=MAX_SIZE
@@ -892,7 +892,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .tool(ToolClass::Pickaxe, 0)
             .behavior(ChamberBlock),
     )?;
-    energy::add(CHAMBER.to_owned(), &REACTOR);
+    energy::add(CHAMBER, &REACTOR);
     Ok(())
 }
 

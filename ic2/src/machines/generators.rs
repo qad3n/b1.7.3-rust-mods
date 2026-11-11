@@ -1,7 +1,7 @@
 use super::processing::burnValue;
 use super::screen::{self, Bar};
 use super::{Faces, Look, Machine, registerBlock, setActive};
-use crate::core::{dir, own, sound, stacks};
+use crate::core::{dir, sound, stacks};
 use crate::electric;
 use crate::energy::{self, EnergyTile, net};
 use b173_api::prelude::*;
@@ -723,7 +723,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 
         registerBlock(ctx, machine, Rc::new(SourceTile { m_source: source }), true)?;
         registerScreen(ctx, source)?;
-        energy::add(own(source.m_name), source);
+        energy::add(source.m_name, source);
     }
 
     ctx.events().on::<TickPost>(Priority::Normal, |_|

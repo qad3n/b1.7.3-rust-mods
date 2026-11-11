@@ -705,7 +705,7 @@ impl ItemBehavior for BlueprintItem
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerBlock(ctx, &MACHINE, Rc::new(TerraTile), false)?;
-    energy::add(own(MACHINE.m_name), &TERRAFORMER);
+    energy::add(MACHINE.m_name, &TERRAFORMER);
 
     for row in &BLUEPRINTS
     {

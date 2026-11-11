@@ -67,6 +67,8 @@ Not in a registry yet, and why:
   `Explosion` does. Used for `ExplosionIC2`, `PointExplosion` and the mining laser.
 - `minecraft:door` block template (`BlockDoor`), used by the reinforced door.
 - API 1.40 (Aether's): machine jobs and `matchJob`, per machine fuels and `machineFuel`, weighted loot pools.
+- SDK only: `findJob` and `machineFuel` answer from a per epoch cache, and `nameWith` reads a block's name without
+  copying it, so every machine tick and energy packet costs a hash lookup instead of a host round trip.
 - SDK only, no API bump: `machineRecipe` / `machineRecipes` (registered machine recipes by machine, cached per
   epoch and content generation), and the loader now seeds item tags `c:ores/*`, `c:storage_blocks/*`, `c:gravels` and
   `minecraft:ice` like their block tags.

@@ -64,10 +64,14 @@ const SIXTEENTHS: f32 = 16.0;
 const COLOR: &str = "color";
 const UNPAINTED: &str = "none";
 
+// one cached name read, then the row by its name
 fn cableAt(world: World, pos: BlockPos) -> Option<&'static Cable>
 {
-    let block: i32 = world.block(pos);
-    CABLES.iter().find(|row| blockIs(block, row.m_name))
+    nameWith(RegistryKind::Block, world.block(pos), |name|
+    {
+        let name: &Identifier = name.filter(|name| name.namespace() == crate::core::NAMESPACE)?;
+        CABLES.iter().find(|row| row.m_name == name.path())
+    })
 }
 
 // the color state values in painter order, so a painter's color index is its value's index
@@ -305,7 +309,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .behavior(CableBlock),
         )?;
         ctx.blocks().states(row.m_name, colorStates(row.m_name))?;
-        super::add(own(row.m_name), row);
+        super::add(row.m_name, row);
     }
 
     Ok(())

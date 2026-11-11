@@ -1,6 +1,6 @@
 use super::screen::{self, Bar};
 use super::{Faces, Look, Machine, registerBlock, setActive};
-use crate::core::{dir, own, sound, stacks};
+use crate::core::{dir, sound, stacks};
 use crate::electric;
 use crate::energy::{self, EnergyTile, net};
 use b173_api::prelude::*;
@@ -267,9 +267,9 @@ pub(crate) fn smelted(input: &ItemStack) -> Option<ItemStack>
 // the loader's job for the input, so jobs other mods add for a machine run in it too
 fn registered(machine: &str, input: &ItemStack) -> Option<ItemStack>
 {
-    let job: JobMatch = matchJob(machine, &[Some(input.clone())], &[])?;
-    let output: JobOutput = job.outputs.into_iter().next()?;
-    output.stack.map(|stack| ItemStack { count: output.count, ..ItemStack::fromRaw(stack) })
+    let job: std::rc::Rc<JobMatch> = findJob(machine, &[Some(input.clone())], &[])?;
+    let output: &JobOutput = job.outputs.first()?;
+    output.stack.clone().map(|stack| ItemStack { count: output.count, ..ItemStack::fromRaw(stack) })
 }
 
 // TileEntityElectricMachine.getResultFor per machine
@@ -661,7 +661,7 @@ mod canning
     fn food(world: World, pos: BlockPos, input: &ItemStack) -> Option<(i32, i32)>
     {
         let can: Option<ItemStack> = world.tileSlot(pos, slot::CAN);
-        let job: JobMatch = matchJob(rules::NAME, &[Some(input.clone()), can], &[])?;
+        let job: std::rc::Rc<JobMatch> = findJob(rules::NAME, &[Some(input.clone()), can], &[])?;
         Some((job.outputs.first()?.count, job.duration))
     }
 
@@ -1086,7 +1086,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 
         if process.m_kind != Kind::IronFurnace
         {
-            energy::add(own(process.m_name), process);
+            energy::add(process.m_name, process);
         }
     }
 

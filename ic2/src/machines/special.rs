@@ -2,7 +2,7 @@ use super::processing::{provide, smelted};
 use super::screen::{self, Bar};
 use super::{Faces, Look, Machine, registerBlock, setActive};
 use crate::blocks::{IRON_FENCE, fenceCharge, setFenceCharge};
-use crate::core::{dir, own, sound, stacks};
+use crate::core::{dir, sound, stacks};
 use crate::energy::storage::{Bank, bankAt, bankEnergy, setBankEnergy};
 use crate::energy::{self, EnergyTile, net};
 use crate::explosives;
@@ -117,10 +117,11 @@ fn bank(world: World, pos: BlockPos) -> Option<Bank>
 // the electrolyzer job a cell matches with its output and the energy the picked side carries
 fn cellJob(cell: ItemStack, energy: impl Fn(&JobMatch) -> Option<&JobEnergySpec>) -> Option<(ItemStack, i64)>
 {
-    let job: JobMatch = matchJob(electrolyzer::NAME, &[Some(cell)], &[])?;
+    let job: std::rc::Rc<JobMatch> = findJob(electrolyzer::NAME, &[Some(cell)], &[])?;
     let amount: i64 = energy(&job)?.amount;
-    let output: JobOutput = job.outputs.into_iter().next()?;
-    let made: ItemStack = output.stack.map(|stack| ItemStack { count: output.count, ..ItemStack::fromRaw(stack) })?;
+    let output: &JobOutput = job.outputs.first()?;
+    let made: ItemStack =
+        output.stack.clone().map(|stack| ItemStack { count: output.count, ..ItemStack::fromRaw(stack) })?;
     Some((made, amount))
 }
 
@@ -860,7 +861,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 
         registerBlock(ctx, machine, Rc::new(SpecialTile { m_special: special }), true)?;
         registerScreen(ctx, special)?;
-        energy::add(own(special.m_name), special);
+        energy::add(special.m_name, special);
     }
 
     let frame: &Machine = &MACHINES[MACHINES.len() - 1];

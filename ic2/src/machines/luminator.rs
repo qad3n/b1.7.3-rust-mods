@@ -1,4 +1,4 @@
-use crate::core::{blockTexture, dir, own};
+use crate::core::{blockTexture, dir};
 use crate::energy::{self, Conductor, EnergyTile, net};
 use crate::explosives;
 use b173_api::prelude::*;
@@ -256,6 +256,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             ..BlockStatesSpec::default()
         },
     )?;
-    energy::add(own(NAME), &LUMINATOR);
+    energy::add(NAME, &LUMINATOR);
     Ok(())
 }

@@ -1,5 +1,5 @@
 use super::{EnergyTile, net};
-use crate::core::{own, stacks};
+use crate::core::stacks;
 use crate::electric;
 use crate::machines::screen::{self, Bar};
 use crate::machines::{Faces, Look, Machine, facingAt, registerBlock};
@@ -407,7 +407,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
 
         registerBlock(ctx, machine, Rc::new(StoreTile { m_store: store }), true)?;
-        super::add(own(store.m_name), store);
+        super::add(store.m_name, store);
         let builder: ScreenBuilder = screen::container("electricblock")
             .slot(slot::CHARGE, CHARGE_AT[0], CHARGE_AT[1])
             .slot(slot::DISCHARGE, DISCHARGE_AT[0], DISCHARGE_AT[1]);
@@ -423,7 +423,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         };
 
         registerBlock(ctx, machine, Rc::new(TransformerTile { m_transformer: transformer }), true)?;
-        super::add(own(transformer.m_name), transformer);
+        super::add(transformer.m_name, transformer);
     }
 
     Ok(())

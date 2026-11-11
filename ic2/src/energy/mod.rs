@@ -4,6 +4,7 @@ pub(crate) mod storage;
 
 use b173_api::prelude::*;
 use std::cell::RefCell;
+use std::collections::HashMap;
 
 pub(crate) const KIND: &str = "ic2:eu";
 
@@ -37,19 +38,26 @@ pub(crate) trait EnergyTile
 
 thread_local!
 {
-    static TILES: RefCell<Vec<(String, &'static dyn EnergyTile)>> = const { RefCell::new(Vec::new()) };
+    // by block name without the namespace, the net asks for every target on every tick
+    static TILES: RefCell<HashMap<String, &'static dyn EnergyTile>> = RefCell::new(HashMap::new());
 }
 
 // the blocks of this mod that take part in the energy net, each with its rules
-pub(crate) fn add(block: String, tile: &'static dyn EnergyTile)
+pub(crate) fn add(block: &str, tile: &'static dyn EnergyTile)
 {
-    TILES.with(|tiles| tiles.borrow_mut().push((block, tile)));
+    let name: &str =
+        block.strip_prefix(crate::core::NAMESPACE).and_then(|rest| rest.strip_prefix(':')).unwrap_or(block);
+    TILES.with(|tiles| tiles.borrow_mut().insert(name.to_owned(), tile));
 }
 
+// one cached name read and one map lookup, no matter how many IC2 blocks take part
 pub(crate) fn tileAt(world: World, pos: BlockPos) -> Option<&'static dyn EnergyTile>
 {
-    let block: i32 = world.block(pos);
-    TILES.with(|tiles| tiles.borrow().iter().find(|(name, _)| blockIs(block, name)).map(|(_, tile)| *tile))
+    nameWith(RegistryKind::Block, world.block(pos), |name|
+    {
+        let name: &Identifier = name.filter(|name| name.namespace() == crate::core::NAMESPACE)?;
+        TILES.with(|tiles| tiles.borrow().get(name.path()).copied())
+    })
 }
 
 // a block of another mod that takes EU through the loader's energy registry

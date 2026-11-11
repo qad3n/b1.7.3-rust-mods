@@ -2,7 +2,7 @@ use super::processing::provide;
 use super::screen::{self, Bar};
 use super::{Faces, Look, Machine, registerBlock, setActive};
 use crate::blocks::{MINING_PIPE, MINING_TIP};
-use crate::core::{dir, own, sound, stacks};
+use crate::core::{dir, sound, stacks};
 use crate::electric;
 use crate::energy::{self, EnergyTile, net};
 use b173_api::prelude::*;
@@ -928,7 +928,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         [(&MACHINES[0], &MINER, &MINER_SLOTS[..], "miner"), (&MACHINES[1], &PUMP, &PUMP_SLOTS[..], "pump")]
     {
         registerBlock(ctx, machine, Rc::new(DiggerTile { m_digger: digger }), true)?;
-        energy::add(own(machine.m_name), digger);
+        energy::add(machine.m_name, digger);
 
         let mut builder: ScreenBuilder = screen::container(sheet);
         for (slot, [x, y]) in slots
