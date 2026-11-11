@@ -20,14 +20,14 @@ time and gamemode buttons are left out.
 | `Left` / `Right` arrow keys | recipe on a recipe page, else list page |
 | `Esc` / `Backspace` / Back button on a recipe page | close / back to the page an ingredient was opened from, else close. Any screen change closes the page, so the inventory always reopens on the plain container |
 | `O` | hides or shows the panel |
-| Search field | words match the name, `@word` the mod id, right click clears |
+| Search field | words match the name, `@word` the mod id or name, right click clears |
 | Crafting table button | craftable filter, from the 36 inventory slots |
 | `R` button | REI's cheat toggle as recipe mode and give mode, the R turns red in give mode and its tooltip names the mode. The server grants it only to ops and checks op again on every grab and delete |
 
 ## Done
 
 - [x] Item list beside every vanilla container screen (`REIRuntimeImpl`, `EntryListWidget` concept), paged grid sized to the screen
-- [x] Search filter with name words and `@modid` (`SearchFilter` concept)
+- [x] Search filter with name words and `@mod` id or name (`SearchFilter` concept)
 - [x] Craftable filter (`CraftableFilter`), greedy ingredient match with exact damages first
 - [x] Recipe and usage pages for crafting, shapeless and smelting (`DefaultCraftingDisplay`, `DefaultCookingDisplay`), history with back, wildcard ingredients cycle their subtypes
 - [x] Cheat mode, grab method (`RoughlyEnoughItemsNetwork` create item and delete item packets), op checked server side on toggle, grab and delete

@@ -51,6 +51,7 @@ pub(crate) struct Catalog
     pub m_recipes: Vec<RecipeView>,
     m_byKey: HashMap<Key, usize>,
     m_origins: HashMap<i32, String>,
+    m_mods: HashMap<String, String>,
     pub m_generation: i32,
 }
 
@@ -93,7 +94,10 @@ impl Catalog
         let entries: Vec<Entry> = itemCatalog().into_iter().filter_map(Self::listed).collect();
         let byKey: HashMap<Key, usize> =
             entries.iter().enumerate().map(|(index, entry)| (entry.m_key, index)).collect();
-        let origins: HashMap<i32, String> = origins(&entries);
+        let names: HashMap<String, String> = names(&entries);
+        let origins: HashMap<i32, String> = origins(&entries, &names);
+        let mods: HashMap<String, String> =
+            names.into_iter().map(|(namespace, name)| (namespace, name.to_lowercase())).collect();
 
         Self
         {
@@ -101,6 +105,7 @@ impl Catalog
             m_recipes: recipeList(),
             m_byKey: byKey,
             m_origins: origins,
+            m_mods: mods,
             m_generation: generation,
         }
     }
@@ -159,7 +164,7 @@ impl Catalog
             .collect()
     }
 
-    // a search matches every word against the name, @word against the owning mod id
+    // a search matches every word against the name, @word against the owning mod id or name
     pub(crate) fn search(&self, query: &str) -> Vec<usize>
     {
         let lowered: String = query.to_lowercase();
@@ -171,11 +176,17 @@ impl Catalog
 
                 words.iter().all(|word| match word.strip_prefix('@')
                 {
-                    Some(namespace) => entry.m_namespace.contains(namespace),
+                    Some(owner) => self.owned(entry, owner),
                     None => entry.m_search.contains(word),
                 })
             })
             .collect()
+    }
+
+    fn owned(&self, entry: &Entry, owner: &str) -> bool
+    {
+        entry.m_namespace.contains(owner)
+            || self.m_mods.get(&entry.m_namespace).is_some_and(|name| name.contains(owner))
     }
 
     // outputs of crafting recipes the held items cover right now, smelting needs a furnace and is left out
@@ -198,26 +209,42 @@ impl Catalog
     }
 }
 
-// one tooltip line per item id, asking the host once per namespace
-fn origins(entries: &[Entry]) -> HashMap<i32, String>
+// the shown name of every namespace with listed items, asking the host once per namespace
+fn names(entries: &[Entry]) -> HashMap<String, String>
 {
-    let mut lines: HashMap<&str, String> = HashMap::new();
-    let mut origins: HashMap<i32, String> = HashMap::new();
+    let mut names: HashMap<String, String> = HashMap::new();
 
     for entry in entries.iter().filter(|entry| !entry.m_namespace.is_empty())
     {
-        let line: &String = lines.entry(&entry.m_namespace).or_insert_with(|| origin(&entry.m_namespace));
-        origins.insert(entry.m_key.m_id, line.clone());
+        names.entry(entry.m_namespace.clone()).or_insert_with(|| shown(&entry.m_namespace));
     }
 
-    origins
+    names
 }
 
-fn origin(namespace: &str) -> String
+fn shown(namespace: &str) -> String
 {
     let name: String = modName(namespace);
-    let shown: &str = if name.is_empty() { namespace } else { &name };
-    format!("{ORIGIN_STYLE}{shown}")
+    if name.is_empty()
+    {
+        namespace.to_owned()
+    }
+    else
+    {
+        name
+    }
+}
+
+// one tooltip line per item id
+fn origins(entries: &[Entry], names: &HashMap<String, String>) -> HashMap<i32, String>
+{
+    entries
+        .iter()
+        .filter_map(|entry|
+        {
+            names.get(&entry.m_namespace).map(|name| (entry.m_key.m_id, format!("{ORIGIN_STYLE}{name}")))
+        })
+        .collect()
 }
 
 // greedy, exact damages first so a wildcard ingredient never takes the one stack an exact ingredient needs
