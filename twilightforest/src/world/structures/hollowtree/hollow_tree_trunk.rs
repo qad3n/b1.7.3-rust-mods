@@ -9,7 +9,7 @@ pub fn new(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32
 }
 
 // ComponentTFHollowTreeTrunk constructor
-pub fn init(this: &Piece, world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32)
+pub fn init(this: &Piece, _world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32)
 {
     this.m_depth.set(index);
     this.m_groundLevel.set(-1);
@@ -23,7 +23,7 @@ pub fn init(this: &Piece, world: &GenWorld, random: &Random, index: i32, x: i32,
 }
 
 // ComponentTFHollowTreeTrunk.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
 {
     let index: i32 = this.depth();
     let numBranches: i32 = random.nextIntBounded(3) + 3;
@@ -102,7 +102,7 @@ pub fn buildFullCrown(this: &Piece, list: &mut Pieces, random: &Random, mut inde
         2,
         true,
     );
-    index += hollow_tree_trunk::buildBranchRing(
+    hollow_tree_trunk::buildBranchRing(
         this,
         list,
         random,
@@ -129,9 +129,9 @@ pub fn buildBranchRing(
     branchHeight: i32,
     heightVar: i32,
     length: i32,
-    lengthVar: i32,
+    _lengthVar: i32,
     tilt: f64,
-    tiltVar: f64,
+    _tiltVar: f64,
     minBranches: i32,
     maxBranches: i32,
     size: i32,
@@ -143,7 +143,7 @@ pub fn buildBranchRing(
     let branchOffset: f64 = random.nextDouble();
     for i in 0..=numBranches
     {
-        let mut dHeight: i32;
+        let dHeight: i32;
         if heightVar > 0
         {
             dHeight = (branchHeight - heightVar) + random.nextIntBounded(2 * heightVar);
@@ -375,7 +375,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     }
     let numInsects: i32 =
         (random.nextIntBounded(3 * this.m_radius.get()) + random.nextIntBounded(3 * this.m_radius.get())) + 10;
-    for i in 0..=numInsects
+    for _i in 0..=numInsects
     {
         let fHeight: i32 =
             ((((this.m_height.get()) as f64 * random.nextDouble()) * 0.9) as i32) + (this.m_height.get() / 10);

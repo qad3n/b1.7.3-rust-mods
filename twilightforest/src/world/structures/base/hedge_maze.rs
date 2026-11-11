@@ -14,7 +14,7 @@ pub fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) ->
 }
 
 // ComponentTFHedgeMaze constructor
-pub fn init(this: &Piece, world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32)
+pub fn init(this: &Piece, _world: &GenWorld, _random: &Random, i: i32, x: i32, y: i32, z: i32)
 {
     this.m_depth.set(i);
     this.setMode(0);
@@ -22,9 +22,9 @@ pub fn init(this: &Piece, world: &GenWorld, random: &Random, i: i32, x: i32, y: 
 }
 
 // ComponentTFHedgeMaze.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
-    let mut maze: Rc<Maze> = Rc::new(Maze::new(MSIZE, MSIZE));
+    let maze: Rc<Maze> = Rc::new(Maze::new(MSIZE, MSIZE));
     maze.m_oddBias.set(2);
     maze.m_torchBlockID.set(blk("tf:firefly"));
     maze.m_wallBlockID.set(blk("tf:hedge"));
@@ -75,7 +75,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFHedgeMaze.isNearRoom
-pub fn isNearRoom(this: &Piece, dx: i32, dz: i32, rcoords: &[i32]) -> bool
+pub fn isNearRoom(_this: &Piece, dx: i32, dz: i32, rcoords: &[i32]) -> bool
 {
     if (dx == 1) && (dz == 1)
     {
@@ -128,7 +128,7 @@ pub fn roomSpawner(this: &Piece, world: &GenWorld, random: &Random, x: i32, z: i
 {
     let rx: i32 = (x + random.nextIntBounded(diameter)) - (diameter / 2);
     let rz: i32 = (z + random.nextIntBounded(diameter)) - (diameter / 2);
-    let mut var10000: &'static str;
+    let var10000: &'static str;
     match random.nextIntBounded(3)
     {
         1 =>

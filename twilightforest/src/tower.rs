@@ -584,7 +584,6 @@ impl TileBehavior for ReverterTile
 mod trap
 {
     pub const CHARGES: i32 = 3;
-    pub const REACH: [f64; 3] = [10.0, 16.0, 10.0];
     pub const PULL_REACH: [f64; 3] = [6.0, 16.0, 6.0];
     pub const PULL_HEIGHT: f64 = 16.0;
     pub const PULL: f64 = -0.1;
@@ -609,31 +608,6 @@ pub fn trapCharged(world: World, pos: BlockPos) -> bool { world.tileData::<Charg
 fn within(at: [f64; 3], center: [f64; 3], reach: [f64; 3]) -> bool
 {
     (0..3).all(|axis| (at[axis] - center[axis]).abs() <= reach[axis] + 0.5)
-}
-
-// a mini ghast died here, every inactive trap in reach takes a charge
-pub fn ghastDied(world: World, at: [f64; 3])
-{
-    let trapBlock: i32 = deviceId(Device::GhastTrap);
-    let base: BlockPos = BlockPos::new(at[0].floor() as i32, at[1].floor() as i32, at[2].floor() as i32);
-    let [rx, ry, rz] = trap::REACH.map(|reach| reach as i32 + 1);
-    for dx in -rx..=rx
-    {
-        for dy in -ry..=ry
-        {
-            for dz in -rz..=rz
-            {
-                let pos: BlockPos = base.offset(dx, dy, dz);
-                if world.block(pos) != trapBlock || !within(at, ids::center(pos), trap::REACH)
-                {
-                    continue;
-                }
-                let mut charge: Charge = world.tileData(pos);
-                charge.m_charges += 1;
-                let _ = world.setTileData(pos, &charge);
-            }
-        }
-    }
 }
 
 struct TrapTile;

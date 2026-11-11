@@ -27,13 +27,13 @@ pub fn init(this: &Piece, i: i32, wing: &Piece, pHang: f32)
 }
 
 // ComponentTFTowerRoofMushroom.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFTowerRoofMushroom.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for y in 0..=this.m_height.get()
     {

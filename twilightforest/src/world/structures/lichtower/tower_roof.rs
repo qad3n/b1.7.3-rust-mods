@@ -2,7 +2,7 @@
 use crate::world::structures::prelude::*;
 
 // ComponentTFTowerRoof constructor
-pub fn init(this: &Piece, i: i32, wing: &Piece)
+pub fn init(this: &Piece, i: i32, _wing: &Piece)
 {
     this.m_depth.set(i);
     this.m_spawnListIndex.set(-1);
@@ -81,10 +81,10 @@ pub fn makeOverhangBB(this: &Piece, wing: &Piece)
 }
 
 // ComponentTFTowerRoof.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool { return false; }
+pub fn add(_this: &Piece, _world: &GenWorld, _random: &Random, _sbb: StructureBox) -> bool { return false; }
 
 // ComponentTFTowerRoof.fits
-pub fn fits(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random) -> bool
+pub fn fits(this: &Piece, parent: &Piece, list: &mut Pieces, _random: &Random) -> bool
 {
     return same(&intersecting(list, this.m_box.get()), &parent);
 }

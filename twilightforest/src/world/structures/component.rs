@@ -315,7 +315,6 @@ pub struct Deco
     pub m_accentID: Blk,
     pub m_accentMeta: i32,
     pub m_stairID: Blk,
-    pub m_stairMeta: i32,
     pub m_fenceID: Blk,
     pub m_fenceMeta: i32,
     pub m_pillarID: Blk,
@@ -340,7 +339,6 @@ impl Default for Deco
             m_accentID: blk("cobblestone"),
             m_accentMeta: 0,
             m_stairID: AIR,
-            m_stairMeta: 0,
             m_fenceID: AIR,
             m_fenceMeta: 0,
             m_pillarID: AIR,
@@ -461,7 +459,6 @@ pub enum Stones
     Stronghold,
     TowerWoods,
     AuroraBricks,
-    MazeStones,
     KnightStones,
     CastleBlocks,
 }
@@ -469,16 +466,6 @@ pub enum Stones
 impl Stones
 {
     pub fn stronghold() -> Stones { Stones::Stronghold }
-
-    pub fn tower_woods() -> Stones { Stones::TowerWoods }
-
-    pub fn aurora_bricks() -> Stones { Stones::AuroraBricks }
-
-    pub fn maze_stones() -> Stones { Stones::MazeStones }
-
-    pub fn knight_stones() -> Stones { Stones::KnightStones }
-
-    pub fn castle_blocks() -> Stones { Stones::CastleBlocks }
 
     // BlockSelector.selectBlocks
     pub fn select(self, random: &Random, x: i32, _y: i32, z: i32, wall: bool)
@@ -526,25 +513,6 @@ impl Stones
                 (blk("tf:towerWood"), meta)
             }
             Stones::AuroraBricks => (blk("tf:auroraBlock"), (x + z).abs() % 16),
-            Stones::MazeStones =>
-            {
-                let roll: f32 = random.nextFloat();
-                (
-                    blk("tf:mazestone"),
-                    if roll < 0.2
-                    {
-                        5
-                    }
-                    else if roll < 0.5
-                    {
-                        4
-                    }
-                    else
-                    {
-                        1
-                    },
-                )
-            }
             Stones::KnightStones =>
             {
                 let roll: f32 = random.nextFloat();
@@ -598,8 +566,6 @@ pub fn sqrtF(value: f32) -> f32 { value.sqrt() }
 pub fn floorF(value: f32) -> i32 { floor(f64::from(value)) }
 
 pub fn floor(value: f64) -> i32 { b173_api::terrain::math::floor(value) }
-
-pub fn ceil(value: f64) -> i32 { value.ceil() as i32 }
 
 // StructureComponent and StructureTFComponent, the helpers every piece builds with
 #[allow(clippy::too_many_arguments)]
@@ -927,22 +893,6 @@ impl Piece
         }
     }
 
-    // StructureComponent.clearCurrentPositionBlocksUpwards
-    pub fn clearUp(&self, world: &GenWorld, x: i32, y: i32, z: i32, sbb: StructureBox)
-    {
-        let (wx, mut wy, wz): (i32, i32, i32) = (self.xAt(x, z), self.yAt(y), self.zAt(x, z));
-        if !sbb.contains(wx, wy, wz)
-        {
-            return;
-        }
-
-        while !world.isAir(wx, wy, wz) && wy < crate::world::WORLD_HEIGHT - 1
-        {
-            world.clear(wx, wy, wz);
-            wy += 1;
-        }
-    }
-
     // StructureComponent.isLiquidInStructureBoundingBox
     pub fn liquidIn(&self, world: &GenWorld, sbb: StructureBox) -> bool
     {
@@ -1207,16 +1157,6 @@ impl Piece
         }
     }
 
-    // StructureTFComponent.getOffsetAsIfRotated
-    pub fn offsetTurned(&self, src: &[i32], turn: i32) -> Vec<i32>
-    {
-        let saved: i32 = self.mode();
-        self.setMode(turn);
-        let dest: Vec<i32> = vec![self.xAt(src[0], src[2]), self.yAt(src[1]), self.zAt(src[0], src[2])];
-        self.setMode(saved);
-        dest
-    }
-
     // StructureTFComponent.getStairMeta
     pub fn stairMeta(&self, dir: i32) -> i32 { [0, 2, 1, 3][((self.mode() + dir) % 4) as usize] }
 
@@ -1229,8 +1169,6 @@ impl Piece
     pub fn darken(&self, _world: &GenWorld) {}
 
     pub fn darkenAt(&self, _world: &GenWorld, _sx: i32, _sy: i32, _sz: i32, _dx: i32, _dy: i32, _dz: i32) {}
-
-    pub fn darkenWorld(&self, _world: &GenWorld, _sx: i32, _sy: i32, _sz: i32, _dx: i32, _dy: i32, _dz: i32) {}
 
     // StructureTFComponent.getAverageGroundLevel, which the labyrinth entrance pieces override
     pub fn groundLevel(&self, world: &GenWorld, sbb: StructureBox) -> i32 { self.getAverageGroundLevel(world, sbb) }

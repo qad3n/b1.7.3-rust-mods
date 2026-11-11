@@ -8,20 +8,6 @@ pub fn new(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32
     Rc::new(this)
 }
 
-pub fn new7(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32, rotation: i32) -> Rc<Piece>
-{
-    let this: Piece = Piece::blank(Kind::IceTowerMain);
-    init7(&this, world, random, index, x, y, z, rotation);
-    Rc::new(this)
-}
-
-pub fn new7b(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
-{
-    let this: Piece = Piece::blank(Kind::IceTowerMain);
-    init7b(&this, i, x, y, z, pSize, pHeight, direction);
-    Rc::new(this)
-}
-
 // ComponentTFIceTowerMain constructor
 pub fn init(this: &Piece, world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32)
 {
@@ -30,18 +16,11 @@ pub fn init(this: &Piece, world: &GenWorld, random: &Random, index: i32, x: i32,
 }
 
 // ComponentTFIceTowerMain constructor
-pub fn init7(this: &Piece, world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32, rotation: i32)
+pub fn init7(this: &Piece, _world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32, rotation: i32)
 {
     ice_tower_wing::init(this, index, x, y, z, 11, 31 + (random.nextIntBounded(3) * 10), rotation);
     this.m_hasBossWing.set(false);
     this.m_deco.set(Deco::ice_tower());
-}
-
-// ComponentTFIceTowerMain constructor
-pub fn init7b(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
-{
-    ice_tower_wing::init(this, i, x, y, z, pSize, pHeight, direction);
-    this.m_hasBossWing.set(false);
 }
 
 // ComponentTFIceTowerMain.func_74861_a

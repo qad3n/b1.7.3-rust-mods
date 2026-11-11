@@ -15,13 +15,13 @@ pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, size: i32, height:
 }
 
 // ComponentTFIceTowerStairs.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFIceTowerStairs.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for x in 1..this.m_size.get()
     {
@@ -45,7 +45,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFIceTowerStairs.placeStairs
-pub fn placeStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, x: i32, y: i32, z: i32, stairMeta: i32)
+pub fn placeStairs(this: &Piece, world: &GenWorld, sbb: StructureBox, x: i32, y: i32, z: i32, _stairMeta: i32)
 {
     if this.getBlock(world, x, y, z, sbb).isReplaceable(world, x, y, z)
     {

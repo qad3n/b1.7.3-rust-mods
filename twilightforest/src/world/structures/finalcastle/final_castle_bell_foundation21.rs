@@ -19,13 +19,13 @@ pub fn init(this: &Piece, random: &Random, i: i32, sideTower: &Piece)
 }
 
 // ComponentTFFinalCastleBellFoundation21.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     if this.m_groundLevel.get() < 0
     {
         this.m_groundLevel.set(final_castle_foundation13::getDeadrockLevel(this, world, sbb));
     }
-    let height: i32 = this.m_box.get().m_max[1] - this.m_groundLevel.get();
+    let _height: i32 = this.m_box.get().m_max[1] - this.m_groundLevel.get();
     let mid: i32 = 16;
     let low: i32 = 32;
     let size: i32 = this.m_box.get().m_max[0] - this.m_box.get().m_min[0];

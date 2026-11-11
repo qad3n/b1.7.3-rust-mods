@@ -8,8 +8,6 @@ mod vanilla;
 use b173_api::terrain::math;
 use b173_api::{EntityModelSpec, ModelBox, ModelOp, ModelPart, PoseInput};
 pub use generated::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 pub use vanilla::{ghastModel, ghastPose, spiderPose, wolfPose};
 
 // builders the generated models call, kept short so each generated part stays on one line
@@ -200,28 +198,6 @@ pub fn quadrupedPose(program: &mut Program, base: u16, pivots: &[[f32; 3]], inpu
     for (leg, angle) in quadruped::LEGS.iter().zip([swing, back, back, swing])
     {
         program.part(base + leg, [angle, 0.0, 0.0], pivot(*leg));
-    }
-}
-
-// a per entity angle a Java entity steps once a tick for its renderer, kept on the client by the last tick seen
-#[derive(Default)]
-pub struct Phases
-{
-    m_phases: RefCell<HashMap<i32, (f32, i32)>>,
-}
-
-impl Phases
-{
-    pub fn advance(&self, id: i32, tick: i32, step: f32, wrap: f32) -> f32
-    {
-        let mut phases = self.m_phases.borrow_mut();
-        let entry: &mut (f32, i32) = phases.entry(id).or_insert((0.0, tick));
-        while entry.1 < tick
-        {
-            entry.0 = (entry.0 + step) % wrap;
-            entry.1 += 1;
-        }
-        entry.0
     }
 }
 

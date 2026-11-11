@@ -9,7 +9,7 @@ pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: 
 }
 
 // ComponentTFDarkTowerMainBridge constructor
-pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32)
+pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, _pSize: i32, pHeight: i32, direction: i32)
 {
     dark_tower_bridge::init(this, i, x, y, z, 15, pHeight, direction);
 }
@@ -23,8 +23,8 @@ pub fn makeTowerWing(
     x: i32,
     y: i32,
     z: i32,
-    wingSize: i32,
-    wingHeight: i32,
+    _wingSize: i32,
+    _wingHeight: i32,
     rotation: i32,
 ) -> bool
 {

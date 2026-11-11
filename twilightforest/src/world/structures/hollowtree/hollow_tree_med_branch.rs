@@ -69,34 +69,13 @@ pub fn makeExpandedBB(this: &Piece, outVar: f64, branchLength: f64, branchAngle:
 }
 
 // ComponentTFHollowTreeMedBranch.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _structurecomponent: &Piece, _list: &mut Pieces, _random: &Random)
 {
-    let index: i32 = this.depth();
-}
-
-// ComponentTFHollowTreeMedBranch.makeSmallBranch
-pub fn makeSmallBranch10(
-    this: &Piece,
-    list: &mut Pieces,
-    random: &Random,
-    index: i32,
-    x: i32,
-    y: i32,
-    z: i32,
-    branchLength: f64,
-    branchRotation: f64,
-    branchAngle: f64,
-    leafy: bool,
-)
-{
-    let branch: Rc<Piece> =
-        hollow_tree_small_branch::new(index, x, y, z, branchLength, branchRotation, branchAngle, leafy);
-    list.push(Rc::clone(&branch));
-    branch.build(this, list, random);
+    let _index: i32 = this.depth();
 }
 
 // ComponentTFHollowTreeMedBranch.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     let rSrc: [i32; 3] = [
         this.m_src.get()[0] - this.m_box.get().m_min[0],
@@ -144,7 +123,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     {
         let angleVar: f64 = (angleInc * (i) as f64) - 0.4;
         let outVar: f64 = (decoRNG.nextDouble() * 0.8) + 0.2;
-        let tiltVar: f64 = (decoRNG.nextDouble() * 0.75) + 0.15;
+        let _tiltVar: f64 = (decoRNG.nextDouble() * 0.75) + 0.15;
         let bSrc: [i32; 3] = translateCoords(
             rSrc[0],
             rSrc[1],
@@ -153,7 +132,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             this.m_angle.get(),
             this.m_tilt.get(),
         );
-        let slength: f64 = this.m_length.get() * 0.4;
+        let _slength: f64 = this.m_length.get() * 0.4;
         hollow_tree_med_branch::drawSmallBranch(
             this,
             world,
@@ -170,7 +149,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     if this.m_leafy.get()
     {
         let numLeafBalls: i32 = (decoRNG.nextIntBounded(3) + 1).min((this.m_length.get() / 5.0) as i32);
-        for i in 0..numLeafBalls
+        for _i in 0..numLeafBalls
         {
             let slength: f64 = (((decoRNG.nextFloat() * 0.6) + 0.2) as f64) * this.m_length.get();
             let bdst: [i32; 3] =
@@ -221,19 +200,18 @@ pub fn makeLeafBlob(this: &Piece, world: &GenWorld, sbb: StructureBox, sx: i32, 
         {
             for dz in 0..=radius
             {
-                let mut dist: i32 = 0;
-                if (dx >= dy) && (dx >= dz)
+                let dist: i32 = if (dx >= dy) && (dx >= dz)
                 {
-                    dist = ((dx) as f32 + (((dy.max(dz)) as f32 * 0.5) + ((dy.min(dz)) as f32 * 0.25))) as i32;
+                    ((dx) as f32 + (((dy.max(dz)) as f32 * 0.5) + ((dy.min(dz)) as f32 * 0.25))) as i32
                 }
                 else if (dy >= dx) && (dy >= dz)
                 {
-                    dist = ((dy) as f32 + (((dx.max(dz)) as f32 * 0.5) + ((dx.min(dz)) as f32 * 0.25))) as i32;
+                    ((dy) as f32 + (((dx.max(dz)) as f32 * 0.5) + ((dx.min(dz)) as f32 * 0.25))) as i32
                 }
                 else
                 {
-                    dist = ((dz) as f32 + (((dx.max(dy)) as f32 * 0.5) + ((dx.min(dy)) as f32 * 0.25))) as i32;
-                }
+                    ((dz) as f32 + (((dx.max(dy)) as f32 * 0.5) + ((dx.min(dy)) as f32 * 0.25))) as i32
+                };
                 if dist <= radius
                 {
                     this.placeLeafBlock(world, blk("tf:leaves"), 0, sx + dx, sy + dy, sz + dz, sbb);
@@ -286,7 +264,7 @@ pub fn drawSmallBranch(
     branchLength: f64,
     branchAngle: f64,
     branchTilt: f64,
-    leafy: bool,
+    _leafy: bool,
 )
 {
     let branchDest: [i32; 3] = translateCoords(sx, sy, sz, branchLength, branchAngle, branchTilt);

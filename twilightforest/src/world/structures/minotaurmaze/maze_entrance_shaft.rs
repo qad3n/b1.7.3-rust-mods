@@ -18,10 +18,10 @@ pub fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
 }
 
 // ComponentTFMazeEntranceShaft.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn build(_this: &Piece, _structurecomponent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFMazeEntranceShaft.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     if this.m_averageGroundLevel.get() < 0
     {
@@ -37,9 +37,9 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     }
     this.fillMeta(world, sbb, 0, -10, 0, 5, 30, 5, blk("tf:mazestone"), 1, blk("air"), 0, true);
     this.fillAir(world, sbb, 1, -10, 1, 4, 30, 4);
-    let var8: i32 = this.xAt(0, 0);
-    let var9: i32 = this.yAt(0);
-    let var10: i32 = this.zAt(0, 0);
+    let _var8: i32 = this.xAt(0, 0);
+    let _var9: i32 = this.yAt(0);
+    let _var10: i32 = this.zAt(0, 0);
     return true;
 }
 

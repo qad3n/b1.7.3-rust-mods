@@ -15,7 +15,7 @@ pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 }
 
 // ComponentTFStrongholdTreasureRoom.generateBoundingBox
-pub fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
     return Some(vanillaBox(x, y, z, -4, -1, 0, 9, 7, 18, facing));
 }
@@ -59,7 +59,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFStrongholdTreasureRoom.placeDoorwayAt
-pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, sbb: StructureBox)
+pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, _random: &Random, x: i32, y: i32, z: i32, sbb: StructureBox)
 {
     if (x != 0) && (x != stronghold_component::getXSize(this))
     {

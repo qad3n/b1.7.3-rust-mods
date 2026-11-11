@@ -131,4 +131,4 @@ pub fn makePlatformAt(this: &Piece, world: &GenWorld, y: i32, z: i32, sbb: Struc
 }
 
 // ComponentTFStrongholdUpperAscender.isComponentProtected
-pub fn isComponentProtected(this: &Piece) -> bool { return false; }
+pub fn isComponentProtected(_this: &Piece) -> bool { return false; }

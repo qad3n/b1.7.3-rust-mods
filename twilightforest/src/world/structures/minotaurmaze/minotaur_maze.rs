@@ -1,8 +1,6 @@
 // draft from ComponentTFMinotaurMaze.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub const FLOOR_LEVEL: i32 = 1;
-
 pub fn new7(index: i32, x: i32, y: i32, z: i32, entranceX: i32, entranceZ: i32, level: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MinotaurMaze);
@@ -86,7 +84,7 @@ pub fn setFixedMazeSeed(this: &Piece)
 // ComponentTFMinotaurMaze.makeRoom
 pub fn makeRoom(this: &Piece, random: &Random, i: i32, dx: i32, dz: i32) -> Rc<Piece>
 {
-    let mut room: Option<Rc<Piece>> = None;
+    let room: Option<Rc<Piece>>;
     let worldX: i32 = (this.m_box.get().m_min[0] + (dx * 5)) - 4;
     let worldY: i32 = this.m_box.get().m_min[1];
     let worldZ: i32 = (this.m_box.get().m_min[2] + (dz * 5)) - 4;
@@ -179,7 +177,7 @@ pub fn decorateDeadEndsCorridors(this: &Piece, random: &Random, list: &mut Piece
                 && this.m_maze.borrow().clone().isWall(x + 1, z, x + 1, z - 1))
                 && this.m_maze.borrow().clone().isWall(x + 1, z, x + 1, z + 1)
             {
-                component = (minotaur_maze::makeCorridor(this, random, x, z, 1));
+                component = minotaur_maze::makeCorridor(this, random, x, z, 1);
             }
             if (((((((!this.m_maze.borrow().clone().isWall(x, z, x, z - 1))
                 && (!this.m_maze.borrow().clone().isWall(x, z, x, z + 1)))
@@ -190,7 +188,7 @@ pub fn decorateDeadEndsCorridors(this: &Piece, random: &Random, list: &mut Piece
                 && this.m_maze.borrow().clone().isWall(x, z + 1, x - 1, z + 1))
                 && this.m_maze.borrow().clone().isWall(x, z + 1, x + 1, z + 1)
             {
-                component = (minotaur_maze::makeCorridor(this, random, x, z, 0));
+                component = minotaur_maze::makeCorridor(this, random, x, z, 0);
             }
             if component.is_some()
             {
@@ -208,7 +206,7 @@ pub fn makeDeadEnd(this: &Piece, random: &Random, dx: i32, dz: i32, rotation: i3
     let worldY: i32 = this.m_box.get().m_min[1];
     let worldZ: i32 = (this.m_box.get().m_min[2] + (dz * 5)) + 1;
     let decorationType: i32 = random.nextIntBounded(8);
-    let mut var10000: Rc<Piece>;
+    let var10000: Rc<Piece>;
     match decorationType
     {
         1 =>
@@ -261,7 +259,7 @@ pub fn makeCorridor(this: &Piece, random: &Random, dx: i32, dz: i32, rotation: i
     let worldY: i32 = this.m_box.get().m_min[1];
     let worldZ: i32 = (this.m_box.get().m_min[2] + (dz * 5)) + 1;
     let decorationType: i32 = random.nextIntBounded(5);
-    let mut var10000: Option<Rc<Piece>>;
+    let var10000: Option<Rc<Piece>>;
     match decorationType
     {
         1 =>
@@ -298,7 +296,7 @@ pub fn makeCorridor(this: &Piece, random: &Random, dx: i32, dz: i32, rotation: i
 }
 
 // ComponentTFMinotaurMaze.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
 {
     if this.m_level.get() == 1
     {
@@ -328,7 +326,7 @@ pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random
 }
 
 // ComponentTFMinotaurMaze.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     if this.m_level.get() == 2
     {
@@ -398,7 +396,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFMinotaurMaze.getMazeSize
-pub fn getMazeSize(this: &Piece) -> i32 { return 22; }
+pub fn getMazeSize(_this: &Piece) -> i32 { return 22; }
 
 // ComponentTFMinotaurMaze.getRadius
 pub fn getRadius(this: &Piece) -> i32 { return ((this.getMazeSize()) as f64 * 2.5) as i32; }
@@ -407,7 +405,7 @@ pub fn getRadius(this: &Piece) -> i32 { return ((this.getMazeSize()) as f64 * 2.
 pub fn getDiameter(this: &Piece) -> i32 { return this.getMazeSize() * 5; }
 
 // ComponentTFMinotaurMaze.isNearRoom
-pub fn isNearRoom4(this: &Piece, dx: i32, dz: i32, rcoords: &[i32], range: i32) -> bool
+pub fn isNearRoom4(_this: &Piece, dx: i32, dz: i32, rcoords: &[i32], range: i32) -> bool
 {
     if (dx == 1) && (dz == 1)
     {

@@ -9,7 +9,7 @@ pub fn new(world: &GenWorld, random: &Random, i: i32, size: i32, x: i32, y: i32,
 }
 
 // ComponentTFHollowHill constructor
-pub fn init(this: &Piece, world: &GenWorld, random: &Random, i: i32, size: i32, x: i32, y: i32, z: i32)
+pub fn init(this: &Piece, _world: &GenWorld, _random: &Random, i: i32, size: i32, x: i32, y: i32, z: i32)
 {
     this.m_depth.set(i);
     this.setMode(0);
@@ -30,7 +30,7 @@ pub fn init(this: &Piece, world: &GenWorld, random: &Random, i: i32, size: i32, 
 }
 
 // ComponentTFHollowHill.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn build(_this: &Piece, _structurecomponent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFHollowHill.func_74875_a
 pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
@@ -41,28 +41,28 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     let mg: i32 = mga[(this.m_hillSize.get()) as usize];
     let tca: Vec<i32> = vec![0, 2, 6, 12];
     let tc: i32 = tca[(this.m_hillSize.get()) as usize];
-    for i in 0..mg
+    for _i in 0..mg
     {
         let dest: Vec<i32> = hollow_hill::getCoordsInHill2D(this, random);
         let mobID: &'static str = hollow_hill::getMobID(this, random);
         this.placeSpawner(world, random, dest[0], random.nextIntBounded(4), dest[1], mobID, sbb);
     }
-    for i in 0..tc
+    for _i in 0..tc
     {
         let dest: Vec<i32> = hollow_hill::getCoordsInHill2D(this, random);
         hollow_hill::generateTreasureChest(this, world, dest[0], 0, dest[1], sbb);
     }
-    for i in 0..sn
+    for _i in 0..sn
     {
         let dest: Vec<i32> = hollow_hill::getCoordsInHill2D(this, random);
         hollow_hill::generateOreStalactite(this, world, dest[0], 1, dest[1], sbb);
     }
-    for i in 0..sn
+    for _i in 0..sn
     {
         let dest: Vec<i32> = hollow_hill::getCoordsInHill2D(this, random);
         hollow_hill::generateBlockStalactite(this, world, blk("stone"), 1.0, true, dest[0], 1, dest[1], sbb);
     }
-    for i in 0..sn
+    for _i in 0..sn
     {
         let dest: Vec<i32> = hollow_hill::getCoordsInHill2D(this, random);
         hollow_hill::generateBlockStalactite(this, world, blk("stone"), 0.9, false, dest[0], 1, dest[1], sbb);
@@ -150,16 +150,6 @@ pub fn isInHill(this: &Piece, cx: i32, cz: i32) -> bool
     return dist < this.m_radius.get();
 }
 
-// ComponentTFHollowHill.isInHill
-pub fn isInHill3(this: &Piece, mapX: i32, mapY: i32, mapZ: i32) -> bool
-{
-    let dx: i32 = (this.m_box.get().m_min[0] + this.m_radius.get()) - mapX;
-    let dy: i32 = (this.m_box.get().m_min[1] - mapY) * 2;
-    let dz: i32 = (this.m_box.get().m_min[2] + this.m_radius.get()) - mapZ;
-    let dist: i32 = ((dx * dx) + (dy * dy)) + (dz * dz);
-    return dist < (this.m_radius.get() * this.m_radius.get());
-}
-
 // ComponentTFHollowHill.getCoordsInHill2D
 pub fn getCoordsInHill2D(this: &Piece, random: &Random) -> Vec<i32>
 {
@@ -192,7 +182,7 @@ pub fn getMobID(this: &Piece, random: &Random) -> &'static str
 // ComponentTFHollowHill.getMobID
 pub fn getMobID2(this: &Piece, random: &Random, level: i32) -> &'static str
 {
-    let mut var10000: &'static str;
+    let var10000: &'static str;
     match level
     {
         1 =>
@@ -216,9 +206,9 @@ pub fn getMobID2(this: &Piece, random: &Random, level: i32) -> &'static str
 }
 
 // ComponentTFHollowHill.getLevel1Mob
-pub fn getLevel1Mob(this: &Piece, random: &Random) -> &'static str
+pub fn getLevel1Mob(_this: &Piece, random: &Random) -> &'static str
 {
-    let mut var10000: &'static str;
+    let var10000: &'static str;
     match random.nextIntBounded(10)
     {
         0 | 1 | 2 =>
@@ -250,9 +240,9 @@ pub fn getLevel1Mob(this: &Piece, random: &Random) -> &'static str
 }
 
 // ComponentTFHollowHill.getLevel2Mob
-pub fn getLevel2Mob(this: &Piece, random: &Random) -> &'static str
+pub fn getLevel2Mob(_this: &Piece, random: &Random) -> &'static str
 {
-    let mut var10000: &'static str;
+    let var10000: &'static str;
     match random.nextIntBounded(10)
     {
         0 | 1 | 2 =>
@@ -284,9 +274,9 @@ pub fn getLevel2Mob(this: &Piece, random: &Random) -> &'static str
 }
 
 // ComponentTFHollowHill.getLevel3Mob
-pub fn getLevel3Mob(this: &Piece, random: &Random) -> &'static str
+pub fn getLevel3Mob(_this: &Piece, random: &Random) -> &'static str
 {
-    let mut var10000: &'static str;
+    let var10000: &'static str;
     match random.nextIntBounded(11)
     {
         0 =>

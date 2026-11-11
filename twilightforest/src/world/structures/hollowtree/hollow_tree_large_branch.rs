@@ -1,8 +1,6 @@
 // draft from ComponentTFHollowTreeLargeBranch.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub const LEAF_DUNGEON_CHANCE: i32 = 8;
-
 pub fn new(i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle: f64, tilt: f64, leafy: bool) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::HollowTreeLargeBranch);
@@ -18,7 +16,7 @@ pub fn init(this: &Piece, i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle:
 }
 
 // ComponentTFHollowTreeLargeBranch.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
 {
     let index: i32 = this.depth();
     let numMedBranches: i32 =
@@ -94,7 +92,7 @@ pub fn makeMedBranch10(
 }
 
 // ComponentTFHollowTreeLargeBranch.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     let rsrc: [i32; 3] = [
         this.m_src.get()[0] - this.m_box.get().m_min[0],

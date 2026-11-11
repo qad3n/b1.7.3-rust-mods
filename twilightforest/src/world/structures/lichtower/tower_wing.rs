@@ -1,13 +1,6 @@
 // draft from ComponentTFTowerWing.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32) -> Rc<Piece>
-{
-    let this: Piece = Piece::blank(Kind::TowerWing);
-    init(&this, i);
-    Rc::new(this)
-}
-
 pub fn new7(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::TowerWing);
@@ -206,7 +199,7 @@ pub fn makeABeard(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Rand
 {
     let attached: bool = parent.bounds().m_min[1] < this.m_box.get().m_min[1];
     let index: i32 = this.depth();
-    let mut beard: Rc<Piece>;
+    let beard: Rc<Piece>;
     if attached
     {
         beard = tower_beard_attached::new(index + 1, this);
@@ -327,36 +320,8 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     return true;
 }
 
-// ComponentTFTowerWing.makeOpeningMarkers
-pub fn makeOpeningMarkers(this: &Piece, world: &GenWorld, random: &Random, numMarkers: i32, sbb: StructureBox)
-{
-    if this.m_size.get() > 4
-    {
-        for i in 0..numMarkers
-        {
-            let spot: Vec<i32> = this.getValidOpening(random, 0);
-            this.placeBlock(world, blk("wool"), 0, spot[0], spot[1], spot[2], sbb);
-        }
-        for i in 0..numMarkers
-        {
-            let spot: Vec<i32> = this.getValidOpening(random, 1);
-            this.placeBlock(world, blk("wool"), 1, spot[0], spot[1], spot[2], sbb);
-        }
-        for i in 0..numMarkers
-        {
-            let spot: Vec<i32> = this.getValidOpening(random, 2);
-            this.placeBlock(world, blk("wool"), 2, spot[0], spot[1], spot[2], sbb);
-        }
-        for i in 0..numMarkers
-        {
-            let spot: Vec<i32> = this.getValidOpening(random, 3);
-            this.placeBlock(world, blk("wool"), 3, spot[0], spot[1], spot[2], sbb);
-        }
-    }
-}
-
 // ComponentTFTowerWing.decorateThisTower
-pub fn decorateThisTower(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
+pub fn decorateThisTower(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox)
 {
     let decoRNG: Random = Random::withSeed(
         world.seed() + ((((this.m_box.get().m_min[0] * 321534781) * this.m_box.get().m_min[2]) * 756839) as i64),
@@ -392,18 +357,13 @@ pub fn decorateDeadEnd(this: &Piece, world: &GenWorld, random: &Random, sbb: Str
     if floors > 1
     {
         let mut ladderDir: i32 = 3;
-        let mut downLadderDir: i32 = -1;
         this.decorateFloor8(world, random, 0, 1, floorHeight, ladderDir, -1, sbb);
         for i in 1..(floors - 1)
         {
             let bottom: i32 = 1 + (floorHeight * i);
             let top: i32 = floorHeight * (i + 1);
-            downLadderDir =
-            {
-                let old = ladderDir;
-                ladderDir += 1;
-                old
-            };
+            let downLadderDir: i32 = ladderDir;
+            ladderDir += 1;
             ladderDir %= 4;
             this.decorateFloor8(world, random, i, bottom, top, ladderDir, downLadderDir, sbb);
         }
@@ -429,7 +389,7 @@ pub fn decorateFloor8(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
-    floor: i32,
+    _floor: i32,
     bottom: i32,
     top: i32,
     ladderUpDir: i32,
@@ -501,9 +461,9 @@ pub fn decorateWell(
     world: &GenWorld,
     random: &Random,
     bottom: i32,
-    top: i32,
-    ladderUpDir: i32,
-    ladderDownDir: i32,
+    _top: i32,
+    _ladderUpDir: i32,
+    _ladderDownDir: i32,
     sbb: StructureBox,
 )
 {
@@ -552,7 +512,7 @@ pub fn decorateSkeletonRoom(
     this.placeSpawner(world, random, this.m_size.get() / 2, bottom + 2, this.m_size.get() / 2, "Skeleton", sbb);
     let mut chainList: Vec<[i32; 3]> = Vec::new();
     chainList.push([this.m_size.get() / 2, bottom + 2, this.m_size.get() / 2]);
-    for i in 0..(this.m_size.get() + 2)
+    for _i in 0..(this.m_size.get() + 2)
     {
         let chain: [i32; 3] = [
             2 + random.nextIntBounded(this.m_size.get() - 4),
@@ -588,7 +548,7 @@ pub fn decorateZombieRoom(
     world: &GenWorld,
     random: &Random,
     bottom: i32,
-    top: i32,
+    _top: i32,
     ladderUpDir: i32,
     ladderDownDir: i32,
     sbb: StructureBox,
@@ -609,7 +569,7 @@ pub fn decorateZombieRoom(
     }
     let mut slabList: Vec<[i32; 3]> = Vec::new();
     slabList.push([this.m_size.get() / 2, bottom + 2, this.m_size.get() / 2]);
-    for i in 0..(this.m_size.get() - 1)
+    for _i in 0..(this.m_size.get() - 1)
     {
         let slab: [i32; 3] = [
             2 + random.nextIntBounded(this.m_size.get() - 4),
@@ -653,7 +613,7 @@ pub fn decorateCactusRoom(
     }
     let mut cactusList: Vec<[i32; 3]> = Vec::new();
     cactusList.push([this.m_size.get() / 2, bottom + 2, this.m_size.get() / 2]);
-    for i in 0..(this.m_size.get() + 12)
+    for _i in 0..(this.m_size.get() + 12)
     {
         let cactus: [i32; 3] = [
             2 + random.nextIntBounded(this.m_size.get() - 4),
@@ -678,8 +638,8 @@ pub fn decorateTreasureChest(
     random: &Random,
     bottom: i32,
     top: i32,
-    ladderUpDir: i32,
-    ladderDownDir: i32,
+    _ladderUpDir: i32,
+    _ladderDownDir: i32,
     sbb: StructureBox,
 )
 {
@@ -756,7 +716,7 @@ pub fn decorateSpiderWebs(
     }
     if random.nextIntBounded(5) == 0
     {
-        let mut var10000: &'static str;
+        let var10000: &'static str;
         match random.nextIntBounded(4)
         {
             1 =>
@@ -928,7 +888,7 @@ pub fn decorateLibraryTreasure(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
-    bottom: i32,
+    _bottom: i32,
     top: i32,
     ladderUpDir: i32,
     ladderDownDir: i32,
@@ -1029,37 +989,6 @@ pub fn decorateFullLibrary(
     if (random.nextIntBounded(2) == 0) && (this.m_size.get() > 5)
     {
         tower_wing::decorateLibraryTreasure(this, world, random, bottom, top, ladderUpDir, ladderDownDir, sbb);
-    }
-}
-
-// ComponentTFTowerWing.decorateTrap
-pub fn decorateTrap(
-    this: &Piece,
-    world: &GenWorld,
-    random: &Random,
-    bottom: i32,
-    top: i32,
-    ladderUpDir: i32,
-    ladderDownDir: i32,
-    sbb: StructureBox,
-)
-{
-    for dx in 2..=(this.m_size.get() - 3)
-    {
-        for dz in 2..=(this.m_size.get() - 3)
-        {
-            if (((dx == 2) || (dx == (this.m_size.get() - 3))) || (dz == 2)) || (dz == (this.m_size.get() - 3))
-            {
-                this.placeBlock(world, blk("tnt"), 0, dx, -1, dz, sbb);
-            }
-        }
-    }
-    for dy in bottom - 2..(top - 2)
-    {
-        this.placeBlock(world, blk("tnt"), 0, 1, dy, 1, sbb);
-        this.placeBlock(world, blk("tnt"), 0, 1, dy, this.m_size.get() - 2, sbb);
-        this.placeBlock(world, blk("tnt"), 0, this.m_size.get() - 2, dy, 1, sbb);
-        this.placeBlock(world, blk("tnt"), 0, this.m_size.get() - 2, dy, this.m_size.get() - 2, sbb);
     }
 }
 
@@ -1166,7 +1095,7 @@ pub fn isLadderPos(this: &Piece, x: i32, z: i32, ladderUpDir: i32, ladderDownDir
 // ComponentTFTowerWing.getLadderX
 pub fn getLadderX(this: &Piece, ladderDir: i32) -> i32
 {
-    let mut var10000: i32;
+    let var10000: i32;
     match ladderDir
     {
         0 =>
@@ -1196,7 +1125,7 @@ pub fn getLadderX(this: &Piece, ladderDir: i32) -> i32
 // ComponentTFTowerWing.getLadderZ
 pub fn getLadderZ(this: &Piece, ladderDir: i32) -> i32
 {
-    let mut var10000: i32;
+    let var10000: i32;
     match ladderDir
     {
         0 =>
@@ -1242,7 +1171,6 @@ pub fn decorateStairTower(this: &Piece, world: &GenWorld, random: &Random, sbb: 
             }
         }
         let mut ladderDir: i32 = 3;
-        let mut downLadderDir: i32 = -1;
         let meta: i32 = this.ladderMeta(ladderDir);
         let dx: i32 = tower_wing::getLadderX(this, ladderDir);
         let dz: i32 = tower_wing::getLadderZ(this, ladderDir);
@@ -1254,12 +1182,8 @@ pub fn decorateStairTower(this: &Piece, world: &GenWorld, random: &Random, sbb: 
         {
             let bottom: i32 = (base + 1) + (floorHeight * i);
             let top: i32 = base + (floorHeight * (i + 1));
-            downLadderDir =
-            {
-                let old = ladderDir;
-                ladderDir += 1;
-                old
-            };
+            let downLadderDir: i32 = ladderDir;
+            ladderDir += 1;
             ladderDir %= 4;
             this.decorateFloor8(world, random, i, bottom, top, ladderDir, downLadderDir, sbb);
         }
@@ -1390,7 +1314,7 @@ pub fn decorateChandelier(this: &Piece, world: &GenWorld, random: &Random, decoT
 pub fn decorateHangingChains(this: &Piece, world: &GenWorld, random: &Random, decoTop: i32, sbb: StructureBox)
 {
     let mut chainList: Vec<[i32; 3]> = Vec::new();
-    for i in 0..(this.m_size.get() + 2)
+    for _i in 0..(this.m_size.get() + 2)
     {
         let filled: i32 = if this.m_size.get() < 15 { 2 } else { 4 };
         let chain: [i32; 3] = [
@@ -1408,9 +1332,9 @@ pub fn decorateHangingChains(this: &Piece, world: &GenWorld, random: &Random, de
 }
 
 // ComponentTFTowerWing.chainCollides
-pub fn chainCollides(this: &Piece, coords: [i32; 3], list: &[[i32; 3]]) -> bool
+pub fn chainCollides(_this: &Piece, coords: [i32; 3], list: &[[i32; 3]]) -> bool
 {
-    for existing in list.clone()
+    for existing in list
     {
         if (coords[2] == existing[2]) && ((coords[0] - existing[0]).abs() <= 1)
         {
@@ -1440,8 +1364,8 @@ pub fn decorateOneChain(
     {
         this.placeBlock(world, blk("iron_bars"), 0, dx, (decoTop - y) - 1, dz, sbb);
     }
-    let mut ballMeta: i32;
-    let mut ballBlock: Blk;
+    let ballMeta: i32;
+    let ballBlock: Blk;
     match random.nextIntBounded(10)
     {
         0 =>
@@ -1492,7 +1416,7 @@ pub fn decorateOneChain(
 pub fn decorateFloatingBooks(this: &Piece, world: &GenWorld, random: &Random, decoTop: i32, sbb: StructureBox)
 {
     let mut shelfList: Vec<[i32; 3]> = Vec::new();
-    for i in 0..(this.m_size.get() + 2)
+    for _i in 0..(this.m_size.get() + 2)
     {
         let filled: i32 = if this.m_size.get() < 15 { 2 } else { 4 };
         let shelf: [i32; 3] = [
@@ -1517,7 +1441,7 @@ pub fn decorateFloatingBooks(this: &Piece, world: &GenWorld, random: &Random, de
 pub fn decorateFloatingVines(this: &Piece, world: &GenWorld, random: &Random, decoTop: i32, sbb: StructureBox)
 {
     let mut mossList: Vec<[i32; 3]> = Vec::new();
-    for i in 0..(this.m_size.get() + 2)
+    for _i in 0..(this.m_size.get() + 2)
     {
         let filled: i32 = if this.m_size.get() < 15 { 2 } else { 4 };
         let moss: [i32; 3] = [
@@ -1602,7 +1526,7 @@ pub fn decorateFloatingVines(this: &Piece, world: &GenWorld, random: &Random, de
 // ComponentTFTowerWing.getVineMeta
 pub fn getVineMeta(this: &Piece, vineDir: i32) -> i32
 {
-    let mut var10000: i32;
+    let var10000: i32;
     match (this.mode() + vineDir) % 4
     {
         0 =>
@@ -1646,8 +1570,8 @@ pub fn decoratePlanter(this: &Piece, world: &GenWorld, random: &Random, sbb: Str
         this.placeBlock(world, blk("double_stone_slab"), 0, cx - 1, 1, cz + 1, sbb);
     }
     this.placeBlock(world, blk("grass"), 0, cx + 0, 1, cz + 0, sbb);
-    let mut planterBlock: Blk;
-    let mut planterMeta: i32;
+    let planterBlock: Blk;
+    let planterMeta: i32;
     match random.nextIntBounded(6)
     {
         0 =>
@@ -1743,27 +1667,6 @@ pub fn decorateStairWell(this: &Piece, world: &GenWorld, random: &Random, sbb: S
 // ComponentTFTowerWing.isDeadEnd
 pub fn isDeadEnd(this: &Piece) -> bool { return (this.m_openings.borrow().len() as i32) == 1; }
 
-// ComponentTFTowerWing.hasExitsOnAllWalls
-pub fn hasExitsOnAllWalls(this: &Piece) -> bool
-{
-    let mut exits: i32 = 0;
-    for i in 0..4
-    {
-        exits += if this.m_openingTowards.borrow()[(i) as usize]
-        {
-            1
-        }
-        else
-        {
-            0
-        };
-    }
-    return exits == 4;
-}
-
-// ComponentTFTowerWing.hasStairs
-pub fn hasStairs(this: &Piece) -> bool { return this.m_highestOpening.get() > 1; }
-
 // ComponentTFTowerWing.makeOpenings
 pub fn makeOpenings(this: &Piece, world: &GenWorld, sbb: StructureBox)
 {
@@ -1805,7 +1708,7 @@ pub fn makeDoorOpening(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32
 }
 
 // ComponentTFTowerWing.updateLight
-pub fn updateLight(this: &Piece, world: &GenWorld, dx: i32, dy: i32, dz: i32) {}
+pub fn updateLight(_this: &Piece, _world: &GenWorld, _dx: i32, _dy: i32, _dz: i32) {}
 
 // ComponentTFTowerWing.getValidOpening
 pub fn getValidOpening(this: &Piece, random: &Random, direction: i32) -> Vec<i32>
@@ -1895,7 +1798,7 @@ pub fn getYByStairs(this: &Piece, rx: i32, random: &Random, direction: i32) -> i
     if this.m_size.get() == 5
     {
         rise = 4;
-        let mut var10000: i32;
+        let var10000: i32;
         match direction
         {
             0 =>
@@ -1961,7 +1864,7 @@ pub fn getYByStairs(this: &Piece, rx: i32, random: &Random, direction: i32) -> i
 }
 
 // ComponentTFTowerWing.makeWindows
-pub fn makeWindows(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox, real: bool)
+pub fn makeWindows(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox, real: bool)
 {
     for i in 0..4
     {
@@ -2084,7 +1987,7 @@ pub fn makeStairs5(this: &Piece, world: &GenWorld, random: &Random, sbb: Structu
 pub fn makeStairs5flight(
     this: &Piece,
     world: &GenWorld,
-    random: &Random,
+    _random: &Random,
     sbb: StructureBox,
     height: i32,
     rotation: i32,
@@ -2135,7 +2038,7 @@ pub fn makeStairs7(this: &Piece, world: &GenWorld, random: &Random, sbb: Structu
 pub fn makeStairs7flight(
     this: &Piece,
     world: &GenWorld,
-    random: &Random,
+    _random: &Random,
     sbb: StructureBox,
     height: i32,
     rotation: i32,
@@ -2188,7 +2091,7 @@ pub fn makeStairs9(this: &Piece, world: &GenWorld, random: &Random, sbb: Structu
 pub fn makeStairs9flight(
     this: &Piece,
     world: &GenWorld,
-    random: &Random,
+    _random: &Random,
     sbb: StructureBox,
     height: i32,
     rotation: i32,
@@ -2450,7 +2353,7 @@ pub fn getRandomWallSpot(
         _ =>
         {}
     }
-    for i in 0..30
+    for _i in 0..30
     {
         let cx: i32 = minX
             + (if maxX > minX

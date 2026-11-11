@@ -23,7 +23,7 @@ pub fn init(this: &Piece, i: i32, wing: &Piece)
 }
 
 // ComponentTFIceTowerBeard.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for x in 0..this.m_size.get()
     {

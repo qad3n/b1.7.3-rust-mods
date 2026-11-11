@@ -864,11 +864,6 @@ impl Palette
             m_grass: self.m_grass,
             m_water: self.m_water,
             m_flowingWater: ids::blockId("minecraft:flowing_water"),
-            m_lava: ids::blockId("minecraft:lava"),
-            m_gravel: self.m_gravel,
-            m_sand: self.m_sand,
-            m_sandstone: self.m_sandstone,
-            m_ice: self.m_ice,
             m_deadrock: [self.m_weathered, self.m_cracked, self.m_solid],
             m_height: TALL,
         }
@@ -876,5 +871,3 @@ impl Palette
 }
 
 pub fn height() -> i32 { HEIGHT }
-
-pub fn biomeOf(world: World, x: i32, z: i32) -> Biome { biomes::at(world.seed(), x, z) }

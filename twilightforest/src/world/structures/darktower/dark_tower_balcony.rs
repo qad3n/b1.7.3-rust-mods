@@ -15,13 +15,13 @@ pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, direction: i32)
 }
 
 // ComponentTFDarkTowerBalcony.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFDarkTowerBalcony.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fillMeta(
         world,

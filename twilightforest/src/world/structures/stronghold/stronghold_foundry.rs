@@ -113,7 +113,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             }
         }
     }
-    for i in 0..400
+    for _i in 0..400
     {
         let dx: i32 = massRandom.nextIntBounded(9) + 5;
         let dz: i32 = massRandom.nextIntBounded(9) + 5;
@@ -126,37 +126,37 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             }
         }
     }
-    for i in 0..8
+    for _i in 0..8
     {
         let blockID: Blk = blk("redstone_ore");
         let blockMeta: i32 = 0;
         stronghold_foundry::addOreToMass(this, world, sbb, &massRandom, blockID, blockMeta);
     }
-    for i in 0..8
+    for _i in 0..8
     {
         let blockID: Blk = blk("iron_ore");
         let blockMeta: i32 = 0;
         stronghold_foundry::addOreToMass(this, world, sbb, &massRandom, blockID, blockMeta);
     }
-    for i in 0..6
+    for _i in 0..6
     {
         let blockID: Blk = blk("gold_ore");
         let blockMeta: i32 = 0;
         stronghold_foundry::addOreToMass(this, world, sbb, &massRandom, blockID, blockMeta);
     }
-    for i in 0..2
+    for _i in 0..2
     {
         let blockID: Blk = blk("glowstone");
         let blockMeta: i32 = 0;
         stronghold_foundry::addOreToMass(this, world, sbb, &massRandom, blockID, blockMeta);
     }
-    for i in 0..2
+    for _i in 0..2
     {
         let blockID: Blk = blk("emerald_ore");
         let blockMeta: i32 = 0;
         stronghold_foundry::addOreToMass(this, world, sbb, &massRandom, blockID, blockMeta);
     }
-    for i in 0..4
+    for _i in 0..4
     {
         let blockID: Blk = blk("diamond_ore");
         let blockMeta: i32 = 0;
@@ -176,7 +176,7 @@ pub fn addOreToMass(
     blockMeta: i32,
 )
 {
-    for i in 0..10
+    for _i in 0..10
     {
         let dx: i32 = massRandom.nextIntBounded(9) + 5;
         let dz: i32 = massRandom.nextIntBounded(9) + 5;

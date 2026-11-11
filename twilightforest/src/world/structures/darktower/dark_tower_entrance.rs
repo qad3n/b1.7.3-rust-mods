@@ -23,10 +23,10 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFDarkTowerEntrance.makeABeard
-pub fn makeABeard(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn makeABeard(_this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFDarkTowerEntrance.makeARoof
-pub fn makeARoof(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn makeARoof(_this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFDarkTowerEntrance.func_74875_a
 pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool

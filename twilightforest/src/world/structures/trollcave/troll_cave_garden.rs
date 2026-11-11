@@ -34,7 +34,7 @@ pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, caveSize: i32, cav
 }
 
 // ComponentTFTrollCaveGarden.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn build(_this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFTrollCaveGarden.func_74875_a
 pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
@@ -60,17 +60,17 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             ^ ((this.m_box.get().m_min[2] * 756839) as i64),
     );
     troll_cave_main::makeTreasureCrate(this, world, random, sbb);
-    for i in 0..24
+    for _i in 0..24
     {
         let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
         troll_cave_garden::generate(this, world, this.m_dirtGen.get(), &decoRNG, dest[0], 1, dest[2], sbb);
     }
-    for i in 0..16
+    for _i in 0..16
     {
         let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
         troll_cave_garden::generate(this, world, this.m_myceliumBlobGen.get(), &decoRNG, dest[0], 1, dest[2], sbb);
     }
-    for i in 0..16
+    for _i in 0..16
     {
         let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
         troll_cave_garden::generate(this, world, troll_cave_main::UBEROUS_GEN, &decoRNG, dest[0], 1, dest[2], sbb);
@@ -85,17 +85,17 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             sbb,
         );
     }
-    for i in 0..32
+    for _i in 0..32
     {
         let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
         troll_cave_garden::generate(this, world, this.m_bigMushgloomGen.get(), &decoRNG, dest[0], 1, dest[2], sbb);
     }
-    for i in 0..64
+    for _i in 0..64
     {
         let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
         troll_cave_garden::generate(this, world, this.m_bigMushroomGen.get(), &decoRNG, dest[0], 1, dest[2], sbb);
     }
-    for i in 0..128
+    for _i in 0..128
     {
         let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
         troll_cave_main::generateBlockStalactite9(

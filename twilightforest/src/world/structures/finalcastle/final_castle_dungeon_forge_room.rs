@@ -9,7 +9,7 @@ pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32) -> R
 }
 
 // ComponentTFFinalCastleDungeonForgeRoom constructor
-pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32)
+pub fn init(this: &Piece, _random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32)
 {
     this.m_depth.set(i);
     this.m_spawnListIndex.set(3);
@@ -18,7 +18,7 @@ pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, direc
 }
 
 // ComponentTFFinalCastleDungeonForgeRoom.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fillAir(world, sbb, 0, 0, 0, 50, 30, 50);
     this.placeSign(world, 25, 0, 25, "Mini-boss 2", "Gives talisman", sbb);

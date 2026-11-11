@@ -9,7 +9,7 @@ pub fn new(index: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 }
 
 // ComponentTFCloudTree constructor
-pub fn init(this: &Piece, index: i32, mut x: i32, mut y: i32, mut z: i32)
+pub fn init(this: &Piece, _index: i32, mut x: i32, mut y: i32, mut z: i32)
 {
     this.setMode(0);
     x = (x >> 2) << 2;
@@ -20,7 +20,7 @@ pub fn init(this: &Piece, index: i32, mut x: i32, mut y: i32, mut z: i32)
 }
 
 // ComponentTFCloudTree.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fillMeta(world, sbb, 0, 12, 0, 19, 19, 19, blk("tf:giantLeaves"), 0, blk("tf:giantLeaves"), 0, false);
     this.fillMeta(world, sbb, 4, 20, 4, 15, 23, 15, blk("tf:giantLeaves"), 0, blk("tf:giantLeaves"), 0, false);

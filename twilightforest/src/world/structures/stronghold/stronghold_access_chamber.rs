@@ -15,7 +15,7 @@ pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 }
 
 // ComponentTFStrongholdAccessChamber.generateBoundingBox
-pub fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
     return Some(vanillaBox(x, y, z, -4, 1, 0, 9, 5, 9, facing));
 }
@@ -51,4 +51,4 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFStrongholdAccessChamber.isComponentProtected
-pub fn isComponentProtected(this: &Piece) -> bool { return false; }
+pub fn isComponentProtected(_this: &Piece) -> bool { return false; }

@@ -18,7 +18,7 @@ pub fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
 }
 
 // ComponentTFMazeUpperEntrance.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn build(_this: &Piece, _structurecomponent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFMazeUpperEntrance.func_74875_a
 pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool

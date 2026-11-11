@@ -1,8 +1,6 @@
 // draft from ComponentTFMazeMound.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub const DIAMETER: i32 = 35;
-
 pub fn new(i: i32, random: &Random, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MazeMound);
@@ -20,7 +18,7 @@ pub fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
 }
 
 // ComponentTFMazeMound.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
 {
     *this.m_mazeAbove.borrow_mut() = Some(maze_upper_entrance::new(
         3,
@@ -34,7 +32,7 @@ pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random
 }
 
 // ComponentTFMazeMound.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     if this.m_averageGroundLevel.get() < 0
     {

@@ -16,7 +16,7 @@ pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, direc
 }
 
 // ComponentTFFinalCastleDungeonEntrance.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     this.m_deco.set(Deco::decorator_castle());
     this.m_deco.get().m_blockID = blk("tf:castleMagic");
@@ -71,7 +71,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFFinalCastleDungeonEntrance.getForceFieldMeta
-pub fn getForceFieldMeta(this: &Piece, decoRNG: &Random) -> i32 { return 1; }
+pub fn getForceFieldMeta(_this: &Piece, _decoRNG: &Random) -> i32 { return 1; }
 
 // ComponentTFFinalCastleDungeonEntrance.getRuneMeta
-pub fn getRuneMeta(this: &Piece, fieldMeta: i32) -> i32 { return 0; }
+pub fn getRuneMeta(_this: &Piece, _fieldMeta: i32) -> i32 { return 0; }

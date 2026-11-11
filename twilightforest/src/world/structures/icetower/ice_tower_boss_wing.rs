@@ -16,7 +16,7 @@ pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, wingSize: i32, win
 }
 
 // ComponentTFIceTowerBossWing.shouldHaveBase
-pub fn shouldHaveBase(this: &Piece, random: &Random) -> bool { return false; }
+pub fn shouldHaveBase(_this: &Piece, _random: &Random) -> bool { return false; }
 
 // ComponentTFIceTowerBossWing.placeFloor
 pub fn placeFloor5(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox, floorHeight: i32, floor: i32)
@@ -47,10 +47,10 @@ pub fn decorateFloor8(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
-    floor: i32,
+    _floor: i32,
     bottom: i32,
-    top: i32,
-    ladderUpDir: i32,
+    _top: i32,
+    _ladderUpDir: i32,
     ladderDownDir: i32,
     sbb: StructureBox,
 )
@@ -131,11 +131,11 @@ pub fn decorateTopFloor(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
-    floor: i32,
-    bottom: i32,
+    _floor: i32,
+    _bottom: i32,
     top: i32,
-    ladderUpDir: i32,
-    ladderDownDir: i32,
+    _ladderUpDir: i32,
+    _ladderDownDir: i32,
     sbb: StructureBox,
 )
 {

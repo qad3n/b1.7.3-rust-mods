@@ -110,7 +110,7 @@ pub fn spawnATree(this: &Piece, world: &GenWorld, treeNum: i32, x: i32, y: i32, 
     if sbb.contains(dx, dy, dz)
     {
         let minHeight: i32 = 8;
-        let mut var10000: Gen;
+        let var10000: Gen;
         match treeNum
         {
             1 =>

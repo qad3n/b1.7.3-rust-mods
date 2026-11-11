@@ -18,7 +18,7 @@ pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, radius: i32)
 }
 
 // ComponentTFHollowTreeLeafDungeon.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _structurecomponent: &Piece, _list: &mut Pieces, random: &Random)
 {
     this.setMode(random.nextIntBounded(4));
 }
@@ -103,19 +103,18 @@ pub fn drawBlockBlob(
         {
             for dz in 0..=blobRadius
             {
-                let mut dist: i32 = 0;
-                if (dx >= dy) && (dx >= dz)
+                let dist: i32 = if (dx >= dy) && (dx >= dz)
                 {
-                    dist = dx + ((((dy.max(dz)) as f64 * 0.5) + ((dy.min(dz)) as f64 * 0.25)) as i32);
+                    dx + ((((dy.max(dz)) as f64 * 0.5) + ((dy.min(dz)) as f64 * 0.25)) as i32)
                 }
                 else if (dy >= dx) && (dy >= dz)
                 {
-                    dist = dy + ((((dx.max(dz)) as f64 * 0.5) + ((dx.min(dz)) as f64 * 0.25)) as i32);
+                    dy + ((((dx.max(dz)) as f64 * 0.5) + ((dx.min(dz)) as f64 * 0.25)) as i32)
                 }
                 else
                 {
-                    dist = dz + ((((dx.max(dy)) as f64 * 0.5) + ((dx.min(dy)) as f64 * 0.25)) as i32);
-                }
+                    dz + ((((dx.max(dy)) as f64 * 0.5) + ((dx.min(dy)) as f64 * 0.25)) as i32)
+                };
                 if dist <= blobRadius
                 {
                     if isLeaves

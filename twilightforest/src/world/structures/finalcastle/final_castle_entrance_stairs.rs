@@ -9,20 +9,20 @@ pub fn new(index: i32, x: i32, y: i32, z: i32, direction: i32) -> Rc<Piece>
 }
 
 // ComponentTFFinalCastleEntranceStairs constructor
-pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, direction: i32)
+pub fn init(this: &Piece, _index: i32, x: i32, y: i32, z: i32, direction: i32)
 {
     this.setMode(direction);
     this.m_box.set(boxFor2(x, y, z, 0, -1, -5, 12, 0, 12, direction));
 }
 
 // ComponentTFFinalCastleEntranceStairs.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFFinalCastleEntranceStairs.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     let size: i32 = 13;
     for x in 1..size

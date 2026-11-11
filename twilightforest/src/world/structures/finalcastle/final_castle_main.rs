@@ -9,15 +9,15 @@ pub fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) ->
 }
 
 // ComponentTFFinalCastleMain constructor
-pub fn init(this: &Piece, world: &GenWorld, random: &Random, i: i32, mut x: i32, y: i32, mut z: i32)
+pub fn init(this: &Piece, _world: &GenWorld, _random: &Random, _i: i32, mut x: i32, y: i32, mut z: i32)
 {
     this.setMode(0);
     this.m_spawnListIndex.set(1);
     x = ((x + 127) >> 8) << 8;
     z = ((z + 127) >> 8) << 8;
     this.m_box.set(boxFor(x, y, z, -24, 120, -24, 48, 40, 48, 0));
-    let cx: i32 = (x >> 8) << 8;
-    let cz: i32 = (z >> 8) << 8;
+    let _cx: i32 = (x >> 8) << 8;
+    let _cz: i32 = (z >> 8) << 8;
     this.m_deco.set(Deco::decorator_castle());
 }
 
@@ -90,7 +90,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
     let steps1: Rc<Piece> = final_castle_dungeon_steps::buildMoreStepsTowards(&steps0, &parent, list, random, 3);
     let steps2: Rc<Piece> = final_castle_dungeon_steps::buildMoreStepsTowards(&steps1, &parent, list, random, 3);
     let steps3: Rc<Piece> = final_castle_dungeon_steps::buildMoreStepsTowards(&steps2, &parent, list, random, 3);
-    let dRoom: Rc<Piece> = final_castle_dungeon_steps::buildLevelUnder(&steps3, &parent, list, random, 1);
+    let _dRoom: Rc<Piece> = final_castle_dungeon_steps::buildLevelUnder(&steps3, &parent, list, random, 1);
     let mc: [i32; 3] = this.offsetTowerAt(48, 23, 25, 1, 0);
     let ComponentTFFinalCastleMural0: Rc<Piece> = final_castle_mural::new(random, 7, mc[0], mc[1], mc[2], 35, 30, 0);
     list.push(Rc::clone(&ComponentTFFinalCastleMural0));
@@ -137,7 +137,7 @@ pub fn buildTowerMaze(
 }
 
 // ComponentTFFinalCastleMain.isMazeComplete
-pub fn isMazeComplete(this: &Piece, list: &mut Pieces, r#type: i32) -> bool
+pub fn isMazeComplete(_this: &Piece, list: &mut Pieces, r#type: i32) -> bool
 {
     for structurecomponent in list.clone()
     {
@@ -197,7 +197,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         final_castle_main::makeMezzTopStairs(this, world, sbb, y, 10 + i, 3);
         final_castle_main::makeMezzTopStairs(this, world, sbb, y, 38 - i, 1);
         y = 25 - i;
-        let mut x: i32 = 37 - i;
+        let x: i32 = 37 - i;
         this.fillMeta(
             world,
             sbb,

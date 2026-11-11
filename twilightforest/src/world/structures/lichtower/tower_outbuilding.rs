@@ -15,7 +15,7 @@ pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i
 }
 
 // ComponentTFTowerOutbuilding.makeABeard
-pub fn makeABeard(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn makeABeard(_this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFTowerOutbuilding.makeTowerWing
 pub fn makeTowerWing(

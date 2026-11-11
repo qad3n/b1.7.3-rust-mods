@@ -19,14 +19,14 @@ pub fn init(this: &Piece, i: i32, wing: &Piece)
 }
 
 // ComponentTFTowerRoofGableForwards.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     let slabMeta: i32 = 2;
     let slopeChange: i32 = this.slopeChangeForSize(this.m_size.get());
     for y in 0..=this.m_height.get()
     {
-        let mut min: i32;
-        let mut max: i32;
+        let min: i32;
+        let max: i32;
         if y < slopeChange
         {
             min = y;
@@ -64,7 +64,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFTowerRoofGableForwards.slopeChangeForSize
-pub fn slopeChangeForSize(this: &Piece, pSize: i32) -> i32
+pub fn slopeChangeForSize(this: &Piece, _pSize: i32) -> i32
 {
     if this.m_size.get() > 10
     {

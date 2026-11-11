@@ -15,7 +15,7 @@ pub fn init(this: &Piece, i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle:
 }
 
 // ComponentTFHollowTreeSmallBranch.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn build(_this: &Piece, _structurecomponent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFHollowTreeSmallBranch.func_74875_a
 pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool

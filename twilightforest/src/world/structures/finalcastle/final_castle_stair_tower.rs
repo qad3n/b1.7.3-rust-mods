@@ -9,7 +9,7 @@ pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, rotation: i32) -> Rc
 }
 
 // ComponentTFFinalCastleStairTower constructor
-pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, rotation: i32)
+pub fn init(this: &Piece, _random: &Random, i: i32, x: i32, y: i32, z: i32, rotation: i32)
 {
     tower_wing::init(this, i);
     this.setMode(rotation);
@@ -36,7 +36,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     );
     this.fillSelected(world, sbb, 0, 0, 0, 8, 49, 8, false, random, this.m_deco.get().m_randomBlocks);
     let numBranches: i32 = 6 + decoRNG.nextIntBounded(4);
-    for i in 0..numBranches
+    for _i in 0..numBranches
     {
         tower_wing::makeGlyphBranches(this, world, &decoRNG, this.getGlyphMeta(), sbb);
     }
@@ -297,4 +297,4 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFFinalCastleStairTower.getGlyphMeta
-pub fn getGlyphMeta(this: &Piece) -> i32 { return 1; }
+pub fn getGlyphMeta(_this: &Piece) -> i32 { return 1; }

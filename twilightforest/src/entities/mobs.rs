@@ -8,7 +8,7 @@ use b173_api::prelude::*;
 use std::rc::Rc;
 
 // how the generated model moves, ModelBiped and ModelQuadruped setRotationAngles or standing still
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy)]
 pub enum Look
 {
     Rest,
@@ -1323,7 +1323,7 @@ impl EntityBehavior for Posed
             Look::Zombie => models::zombiePose(&mut body, mob.m_pivots, mob.m_rotations, input),
             Look::Quadruped | Look::Upright =>
             {
-                let pitch: f32 = if mob.m_look == Look::Upright
+                let pitch: f32 = if matches!(mob.m_look, Look::Upright)
                 {
                     0.0
                 }

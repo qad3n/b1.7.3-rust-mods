@@ -38,12 +38,7 @@ const KINDS: [&str; 6] = ["naga", "lich", "hydra", "ur_ghast", "knights", "snow_
 
 pub mod kind
 {
-    pub const NAGA: i32 = 0;
-    pub const LICH: i32 = 1;
-    pub const HYDRA: i32 = 2;
-    pub const UR_GHAST: i32 = 3;
     pub const KNIGHTS: i32 = 4;
-    pub const SNOW_QUEEN: i32 = 5;
 }
 
 fn ready(world: World, pos: BlockPos, boss: &Boss) -> bool

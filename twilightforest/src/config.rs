@@ -64,8 +64,6 @@ pub fn adminPortals() -> bool { Config.getBool(ADMIN_PORTALS) }
 
 pub fn otherDimensions() -> bool { Config.getBool(OTHER_DIMENSIONS) }
 
-pub fn silentCicadas() -> bool { Config.getBool(SILENT_CICADAS) }
-
 pub fn canopy() -> f32 { Config.getFloat(CANOPY) as f32 }
 
 pub fn uncraftingDisabled() -> bool { Config.getBool(UNCRAFTING) }

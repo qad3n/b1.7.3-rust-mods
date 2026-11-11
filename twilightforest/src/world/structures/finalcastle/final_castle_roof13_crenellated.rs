@@ -9,7 +9,7 @@ pub fn new(random: &Random, i: i32, sideTower: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFFinalCastleRoof13Crenellated constructor
-pub fn init(this: &Piece, random: &Random, i: i32, sideTower: &Piece)
+pub fn init(this: &Piece, _random: &Random, i: i32, sideTower: &Piece)
 {
     this.m_depth.set(i);
     let height: i32 = 5;
@@ -21,13 +21,13 @@ pub fn init(this: &Piece, random: &Random, i: i32, sideTower: &Piece)
 }
 
 // ComponentTFFinalCastleRoof13Crenellated.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFFinalCastleRoof13Crenellated.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     let size: i32 = this.m_box.get().m_max[0] - this.m_box.get().m_min[0];
     for rotation in 0..4

@@ -1,11 +1,6 @@
 // draft from TFMaze.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub const OUT_OF_BOUNDS: i32 = i32::MIN;
-pub const OOB: i32 = i32::MIN;
-pub const ROOM: i32 = 5;
-pub const DOOR: i32 = 6;
-
 pub struct Maze
 {
     pub m_width: Cell<i32>,
@@ -15,9 +10,6 @@ pub struct Maze
     pub m_tall: Cell<i32>,
     pub m_head: Cell<i32>,
     pub m_roots: Cell<i32>,
-    pub m_worldX: Cell<i32>,
-    pub m_worldY: Cell<i32>,
-    pub m_worldZ: Cell<i32>,
     pub m_type: Cell<i32>,
     pub m_wallBlockID: Cell<Blk>,
     pub m_wallBlockMeta: Cell<i32>,
@@ -55,9 +47,6 @@ impl Maze
             m_tall: Cell::new(0),
             m_head: Cell::new(0),
             m_roots: Cell::new(0),
-            m_worldX: Cell::new(0),
-            m_worldY: Cell::new(0),
-            m_worldZ: Cell::new(0),
             m_type: Cell::new(0),
             m_wallBlockID: Cell::new(AIR),
             m_wallBlockMeta: Cell::new(0),
@@ -194,150 +183,6 @@ impl Maze
 
     // TFMaze.setSeed
     pub fn setSeed(&self, newSeed: i64) { self.m_rand.setSeed(newSeed); }
-
-    // TFMaze.copyToWorld
-    pub fn copyToWorld(&self, world: &GenWorld, dx: i32, dy: i32, dz: i32)
-    {
-        self.m_worldX.set(dx);
-        self.m_worldY.set(dy);
-        self.m_worldZ.set(dz);
-        for x in 0..self.m_rawWidth.get()
-        {
-            for z in 0..self.m_rawDepth.get()
-            {
-                if self.getRaw(x, z) == 0
-                {
-                    let mdx: i32 = dx + ((x / 2) * (self.m_evenBias.get() + self.m_oddBias.get()));
-                    let mdz: i32 = dz + ((z / 2) * (self.m_evenBias.get() + self.m_oddBias.get()));
-                    if self.isEven(x) && self.isEven(z)
-                    {
-                        if (self.m_type.get() == 4) && self.shouldTree(x, z)
-                        {
-                            Gen::Canopy.generate(world, &self.m_rand, mdx, dy, mdz);
-                        }
-                        else
-                        {
-                            for y in 0..self.m_head.get()
-                            {
-                                self.putHeadBlock(world, mdx, (dy + self.m_tall.get()) + y, mdz);
-                            }
-                            for y in 0..self.m_tall.get()
-                            {
-                                self.putWallBlock(world, mdx, dy + y, mdz);
-                            }
-                            for y in 1..=self.m_roots.get()
-                            {
-                                self.putRootBlock(world, mdx, dy - y, mdz);
-                            }
-                        }
-                    }
-                    if self.isEven(x) && (!self.isEven(z))
-                    {
-                        for even in 0..self.m_evenBias.get()
-                        {
-                            for odd in 1..=self.m_oddBias.get()
-                            {
-                                for y in 0..self.m_head.get()
-                                {
-                                    self.putHeadBlock(world, mdx + even, (dy + self.m_tall.get()) + y, mdz + odd);
-                                }
-                                for y in 0..self.m_tall.get()
-                                {
-                                    self.putWallBlock(world, mdx + even, dy + y, mdz + odd);
-                                }
-                                for y in 1..=self.m_roots.get()
-                                {
-                                    self.putRootBlock(world, mdx + even, dy - y, mdz + odd);
-                                }
-                            }
-                        }
-                    }
-                    if (!self.isEven(x)) && self.isEven(z)
-                    {
-                        for even in 0..self.m_evenBias.get()
-                        {
-                            for odd in 1..=self.m_oddBias.get()
-                            {
-                                for y in 0..self.m_head.get()
-                                {
-                                    self.putHeadBlock(world, mdx + odd, (dy + self.m_tall.get()) + y, mdz + even);
-                                }
-                                for y in 0..self.m_tall.get()
-                                {
-                                    self.putWallBlock(world, mdx + odd, dy + y, mdz + even);
-                                }
-                                for y in 1..=self.m_roots.get()
-                                {
-                                    self.putRootBlock(world, mdx + odd, dy - y, mdz + even);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        self.placeTorches(world);
-    }
-
-    // TFMaze.carveToWorld
-    pub fn carveToWorld(&self, world: &GenWorld, dx: i32, dy: i32, dz: i32)
-    {
-        self.m_worldX.set(dx);
-        self.m_worldY.set(dy);
-        self.m_worldZ.set(dz);
-        for x in 0..self.m_rawWidth.get()
-        {
-            for z in 0..self.m_rawDepth.get()
-            {
-                if self.getRaw(x, z) != 0
-                {
-                    let mdx: i32 = dx + ((x / 2) * (self.m_evenBias.get() + self.m_oddBias.get()));
-                    let mdz: i32 = dz + ((z / 2) * (self.m_evenBias.get() + self.m_oddBias.get()));
-                    if self.isEven(x) && self.isEven(z)
-                    {
-                        for y in 0..self.m_tall.get()
-                        {
-                            self.carveBlock(world, mdx, dy + y, mdz);
-                        }
-                    }
-                    else if self.isEven(x) && (!self.isEven(z))
-                    {
-                        for i in 1..=self.m_oddBias.get()
-                        {
-                            for y in 0..self.m_tall.get()
-                            {
-                                self.carveBlock(world, mdx, dy + y, mdz + i);
-                            }
-                        }
-                    }
-                    else if (!self.isEven(x)) && self.isEven(z)
-                    {
-                        for i in 1..=self.m_oddBias.get()
-                        {
-                            for y in 0..self.m_tall.get()
-                            {
-                                self.carveBlock(world, mdx + i, dy + y, mdz);
-                            }
-                        }
-                    }
-                    else if (!self.isEven(x)) && (!self.isEven(z))
-                    {
-                        for mx in 1..=self.m_oddBias.get()
-                        {
-                            for mz in 1..=self.m_oddBias.get()
-                            {
-                                for y in 0..self.m_tall.get()
-                                {
-                                    self.carveBlock(world, mdx + mx, dy + y, mdz + mz);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        self.placeTorches(world);
-    }
 
     // TFMaze.copyToStructure
     pub fn copyToStructure(&self, world: &GenWorld, dx: i32, dy: i32, dz: i32, component: &Piece, sbb: StructureBox)
@@ -499,9 +344,9 @@ impl Maze
             {
                 if self.getRaw(x, z) == 0
                 {
-                    let mut mdx: i32 = dx + ((x / 2) * (self.m_evenBias.get() + self.m_oddBias.get()));
+                    let mdx: i32 = dx + ((x / 2) * (self.m_evenBias.get() + self.m_oddBias.get()));
                     let mdy: i32 = dy + 1;
-                    let mut mdz: i32 = dz + ((z / 2) * (self.m_evenBias.get() + self.m_oddBias.get()));
+                    let mdz: i32 = dz + ((z / 2) * (self.m_evenBias.get() + self.m_oddBias.get()));
                     if ((self.isEven(x) && self.isEven(z)) && self.shouldTorch(x, z))
                         && (component.getBlock(world, mdx, mdy, mdz, sbb) == self.m_wallBlockID.get())
                     {
@@ -554,12 +399,6 @@ impl Maze
     }
 
     // TFMaze.putWallBlock
-    pub fn putWallBlock(&self, world: &GenWorld, x: i32, y: i32, z: i32)
-    {
-        world.setBlock(x, y, z, self.m_wallBlockID.get(), self.m_wallBlockMeta.get(), 2);
-    }
-
-    // TFMaze.putWallBlock
     pub fn putWallBlock6(&self, world: &GenWorld, x: i32, y: i32, z: i32, component: &Piece, sbb: StructureBox)
     {
         if (self.m_wallVarRarity.get() > 0.0) && (self.m_rand.nextFloat() < self.m_wallVarRarity.get())
@@ -578,25 +417,10 @@ impl Maze
         component.placeBlock(world, self.m_doorBlockID.get(), self.m_doorBlockMeta.get(), x, y, z, sbb);
     }
 
-    // TFMaze.carveBlock
-    pub fn carveBlock(&self, world: &GenWorld, x: i32, y: i32, z: i32) { world.setBlock(x, y, z, blk("air"), 0, 2); }
-
-    // TFMaze.putHeadBlock
-    pub fn putHeadBlock(&self, world: &GenWorld, x: i32, y: i32, z: i32)
-    {
-        world.setBlock(x, y, z, self.m_headBlockID.get(), self.m_headBlockMeta.get(), 2);
-    }
-
     // TFMaze.putHeadBlock
     pub fn putHeadBlock6(&self, world: &GenWorld, x: i32, y: i32, z: i32, component: &Piece, sbb: StructureBox)
     {
         component.placeBlock(world, self.m_headBlockID.get(), self.m_headBlockMeta.get(), x, y, z, sbb);
-    }
-
-    // TFMaze.putRootBlock
-    pub fn putRootBlock(&self, world: &GenWorld, x: i32, y: i32, z: i32)
-    {
-        world.setBlock(x, y, z, self.m_rootBlockID.get(), self.m_rootBlockMeta.get(), 2);
     }
 
     // TFMaze.putRootBlock
@@ -619,29 +443,6 @@ impl Maze
 
     // TFMaze.isEven
     pub fn isEven(&self, n: i32) -> bool { return (n % 2) == 0; }
-
-    // TFMaze.placeTorches
-    pub fn placeTorches(&self, world: &GenWorld)
-    {
-        let torchHeight: i32 = 1;
-        for x in 0..self.m_rawWidth.get()
-        {
-            for z in 0..self.m_rawDepth.get()
-            {
-                if self.getRaw(x, z) == 0
-                {
-                    let mdx: i32 = self.m_worldX.get() + ((x / 2) * (self.m_evenBias.get() + self.m_oddBias.get()));
-                    let mdy: i32 = self.m_worldY.get() + torchHeight;
-                    let mdz: i32 = self.m_worldZ.get() + ((z / 2) * (self.m_evenBias.get() + self.m_oddBias.get()));
-                    if ((self.isEven(x) && self.isEven(z)) && self.shouldTorch(x, z))
-                        && (world.getBlock(mdx, mdy, mdz) == self.m_wallBlockID.get())
-                    {
-                        world.setBlock(mdx, mdy, mdz, self.m_torchBlockID.get(), self.m_torchBlockMeta.get(), 2);
-                    }
-                }
-            }
-        }
-    }
 
     // TFMaze.shouldTorch
     pub fn shouldTorch(&self, rx: i32, rz: i32) -> bool
@@ -709,32 +510,6 @@ impl Maze
         {
             return true;
         }
-    }
-
-    // TFMaze.getWorldX
-    pub fn getWorldX(&self, x: i32) -> i32
-    {
-        return (self.m_worldX.get() + (x * (self.m_evenBias.get() + self.m_oddBias.get()))) + 1;
-    }
-
-    // TFMaze.getWorldZ
-    pub fn getWorldZ(&self, z: i32) -> i32
-    {
-        return (self.m_worldZ.get() + (z * (self.m_evenBias.get() + self.m_oddBias.get()))) + 1;
-    }
-
-    // TFMaze.carveRoom0
-    pub fn carveRoom0(&self, cx: i32, cz: i32)
-    {
-        self.putCell(cx, cz, 5);
-        self.putCell(cx + 1, cz, 5);
-        self.putWall(cx, cz, cx + 1, cz, 5);
-        self.putCell(cx - 1, cz, 5);
-        self.putWall(cx, cz, cx - 1, cz, 5);
-        self.putCell(cx, cz + 1, 5);
-        self.putWall(cx, cz, cx, cz + 1, 5);
-        self.putCell(cx, cz - 1, 5);
-        self.putWall(cx, cz, cx, cz - 1, 5);
     }
 
     // TFMaze.carveRoom1

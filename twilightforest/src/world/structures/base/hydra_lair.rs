@@ -15,24 +15,24 @@ pub fn init(this: &Piece, world: &GenWorld, random: &Random, i: i32, x: i32, y: 
 }
 
 // ComponentTFHydraLair.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn build(_this: &Piece, _structurecomponent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFHydraLair.func_74875_a
 pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     let stalacts: i32 = 64;
     let stalags: i32 = 8;
-    for i in 0..stalacts
+    for _i in 0..stalacts
     {
         let dest: Vec<i32> = hollow_hill::getCoordsInHill2D(this, random);
         hollow_hill::generateOreStalactite(this, world, dest[0], 1, dest[1], sbb);
     }
-    for i in 0..stalacts
+    for _i in 0..stalacts
     {
         let dest: Vec<i32> = hollow_hill::getCoordsInHill2D(this, random);
         hollow_hill::generateBlockStalactite(this, world, blk("stone"), 1.0, true, dest[0], 1, dest[1], sbb);
     }
-    for i in 0..stalags
+    for _i in 0..stalags
     {
         let dest: Vec<i32> = hollow_hill::getCoordsInHill2D(this, random);
         hollow_hill::generateBlockStalactite(this, world, blk("stone"), 0.9, false, dest[0], 1, dest[1], sbb);

@@ -23,7 +23,7 @@ pub fn init(this: &Piece, index: i32, mut x: i32, mut y: i32, mut z: i32)
 }
 
 // ComponentTFCloudCastle.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let mut plus: bool = random.nextBoolean();
     let mut offset: i32 = random.nextIntBounded(5) - random.nextIntBounded(5);
@@ -48,7 +48,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFCloudCastle.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fillMeta(world, sbb, 0, -4, 0, 15, -1, 15, blk("tf:fluffyCloud"), 0, blk("tf:fluffyCloud"), 0, false);
     this.fillMeta(world, sbb, 0, 0, 0, 15, 11, 15, blk("tf:giantCobble"), 0, blk("tf:giantCobble"), 0, false);

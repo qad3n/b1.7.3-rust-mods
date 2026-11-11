@@ -22,7 +22,7 @@ pub fn init(this: &Piece, i: i32, wing: &Piece)
 }
 
 // ComponentTFDarkTowerBeard.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     dark_tower_beard::makeDarkBeard(
         this,
@@ -44,7 +44,7 @@ pub fn makeDarkBeard(
     world: &GenWorld,
     sbb: StructureBox,
     minX: i32,
-    minY: i32,
+    _minY: i32,
     minZ: i32,
     maxX: i32,
     maxY: i32,

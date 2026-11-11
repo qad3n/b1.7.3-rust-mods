@@ -17,7 +17,7 @@ pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i
 }
 
 // ComponentTFTowerBridge.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let dest: Vec<i32> = vec![2, 1, 1];
     this.makeTowerWing(list, random, 1, dest[0], dest[1], dest[2], this.m_dSize.get(), this.m_dHeight.get(), 0);
@@ -42,7 +42,7 @@ pub fn getWingBB(this: &Piece) -> StructureBox
 }
 
 // ComponentTFTowerBridge.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for x in 0..3
     {

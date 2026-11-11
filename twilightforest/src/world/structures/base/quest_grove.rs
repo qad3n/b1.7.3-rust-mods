@@ -1,8 +1,6 @@
 // draft from ComponentTFQuestGrove.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub const RADIUS: i32 = 13;
-
 pub fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::QuestGrove);
@@ -11,7 +9,7 @@ pub fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) ->
 }
 
 // ComponentTFQuestGrove constructor
-pub fn init(this: &Piece, world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32)
+pub fn init(this: &Piece, _world: &GenWorld, _random: &Random, i: i32, x: i32, y: i32, z: i32)
 {
     this.m_depth.set(i);
     this.m_beastPlaced.set(false);
@@ -93,7 +91,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFQuestGrove.makeWallSide
-pub fn makeWallSide(this: &Piece, world: &GenWorld, random: &Random, direction: i32, sbb: StructureBox)
+pub fn makeWallSide(this: &Piece, world: &GenWorld, _random: &Random, direction: i32, sbb: StructureBox)
 {
     let temp: i32 = this.mode();
     this.setMode(direction);

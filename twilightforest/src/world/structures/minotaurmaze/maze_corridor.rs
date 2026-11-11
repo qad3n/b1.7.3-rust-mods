@@ -17,7 +17,7 @@ pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, rotation: i32)
 }
 
 // ComponentTFMazeCorridor.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fillMeta(world, sbb, 1, 1, 2, 4, 4, 3, blk("fence"), 0, blk("air"), 0, false);
     this.fillAir(world, sbb, 2, 1, 2, 3, 3, 3);

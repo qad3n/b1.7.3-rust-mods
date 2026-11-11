@@ -5,7 +5,6 @@ use crate::world::structures::prelude::*;
 pub enum Kind
 {
     HedgeMaze,
-    HillMaze,
     HollowHill,
     HydraLair,
     NagaCourtyard,
@@ -20,7 +19,6 @@ pub enum Kind
     DarkTowerEntranceBridge,
     DarkTowerMain,
     DarkTowerMainBridge,
-    DarkTowerRoof,
     DarkTowerRoofAntenna,
     DarkTowerRoofCactus,
     DarkTowerRoofFourPost,
@@ -60,7 +58,6 @@ pub enum Kind
     HollowTreeRoot,
     HollowTreeSmallBranch,
     HollowTreeTrunk,
-    LeafSphere,
     IceTowerBeard,
     IceTowerBossWing,
     IceTowerBridge,
@@ -74,11 +71,9 @@ pub enum Kind
     TowerBridge,
     TowerMain,
     TowerOutbuilding,
-    TowerRoof,
     TowerRoofAttachedSlab,
     TowerRoofFence,
     TowerRoofGableForwards,
-    TowerRoofPointy,
     TowerRoofPointyOverhang,
     TowerRoofSlab,
     TowerRoofSlabForwards,
@@ -136,14 +131,11 @@ pub enum Kind
     StrongholdUpperLeftTurn,
     StrongholdUpperRightTurn,
     StrongholdUpperTIntersection,
-    StrongholdComponent,
-    StrongholdShield,
     CloudCastle,
     CloudTree,
     TrollCaveConnect,
     TrollCaveGarden,
     TrollCaveMain,
-    TrollCloud,
     TrollVault,
 }
 
@@ -283,7 +275,6 @@ impl Piece
         match self.m_kind
         {
             Kind::HedgeMaze => hedge_maze::add(self, world, random, sbb),
-            Kind::HillMaze => hill_maze::add(self, world, random, sbb),
             Kind::HollowHill => hollow_hill::add(self, world, random, sbb),
             Kind::HydraLair => hydra_lair::add(self, world, random, sbb),
             Kind::NagaCourtyard => naga_courtyard::add(self, world, random, sbb),
@@ -298,7 +289,6 @@ impl Piece
             Kind::DarkTowerBossTrap => dark_tower_boss_trap::add(self, world, random, sbb),
             Kind::DarkTowerEntrance => dark_tower_entrance::add(self, world, random, sbb),
             Kind::DarkTowerMain => dark_tower_main::add(self, world, random, sbb),
-            Kind::DarkTowerRoof => dark_tower_roof::add(self, world, random, sbb),
             Kind::DarkTowerRoofAntenna => dark_tower_roof_antenna::add(self, world, random, sbb),
             Kind::DarkTowerRoofCactus => dark_tower_roof_cactus::add(self, world, random, sbb),
             Kind::DarkTowerRoofFourPost => dark_tower_roof_four_post::add(self, world, random, sbb),
@@ -340,7 +330,6 @@ impl Piece
             Kind::HollowTreeRoot => hollow_tree_root::add(self, world, random, sbb),
             Kind::HollowTreeSmallBranch => hollow_tree_small_branch::add(self, world, random, sbb),
             Kind::HollowTreeTrunk => hollow_tree_trunk::add(self, world, random, sbb),
-            Kind::LeafSphere => leaf_sphere::add(self, world, random, sbb),
             Kind::IceTowerBeard => ice_tower_beard::add(self, world, random, sbb),
             Kind::IceTowerBossWing | Kind::IceTowerEntrance | Kind::IceTowerMain | Kind::IceTowerWing =>
             {
@@ -354,11 +343,10 @@ impl Piece
             Kind::TowerBridge => tower_bridge::add(self, world, random, sbb),
             Kind::TowerMain => tower_main::add(self, world, random, sbb),
             Kind::TowerOutbuilding => tower_outbuilding::add(self, world, random, sbb),
-            Kind::TowerRoof => tower_roof::add(self, world, random, sbb),
             Kind::TowerRoofAttachedSlab => tower_roof_attached_slab::add(self, world, random, sbb),
             Kind::TowerRoofFence => tower_roof_fence::add(self, world, random, sbb),
             Kind::TowerRoofGableForwards => tower_roof_gable_forwards::add(self, world, random, sbb),
-            Kind::TowerRoofPointy | Kind::TowerRoofPointyOverhang => tower_roof_pointy::add(self, world, random, sbb),
+            Kind::TowerRoofPointyOverhang => tower_roof_pointy::add(self, world, random, sbb),
             Kind::TowerRoofSlab => tower_roof_slab::add(self, world, random, sbb),
             Kind::TowerRoofSlabForwards => tower_roof_slab_forwards::add(self, world, random, sbb),
             Kind::TowerRoofStairs => tower_roof_stairs::add(self, world, random, sbb),
@@ -416,15 +404,12 @@ impl Piece
             Kind::StrongholdUpperLeftTurn => stronghold_upper_left_turn::add(self, world, random, sbb),
             Kind::StrongholdUpperRightTurn => stronghold_upper_right_turn::add(self, world, random, sbb),
             Kind::StrongholdUpperTIntersection => stronghold_upper_tintersection::add(self, world, random, sbb),
-            Kind::StrongholdShield => stronghold_shield::add(self, world, random, sbb),
             Kind::CloudCastle => cloud_castle::add(self, world, random, sbb),
             Kind::CloudTree => cloud_tree::add(self, world, random, sbb),
             Kind::TrollCaveConnect => troll_cave_connect::add(self, world, random, sbb),
             Kind::TrollCaveGarden => troll_cave_garden::add(self, world, random, sbb),
             Kind::TrollCaveMain => troll_cave_main::add(self, world, random, sbb),
-            Kind::TrollCloud => troll_cloud::add(self, world, random, sbb),
             Kind::TrollVault => troll_vault::add(self, world, random, sbb),
-            _ => true,
         }
     }
 
@@ -506,8 +491,7 @@ impl Piece
             Kind::DarkTowerBossTrap => dark_tower_boss_trap::build(self, structurecomponent, list, random),
             Kind::DarkTowerEntrance => dark_tower_entrance::build(self, structurecomponent, list, random),
             Kind::DarkTowerMain => dark_tower_main::build(self, structurecomponent, list, random),
-            Kind::DarkTowerRoof
-            | Kind::DarkTowerRoofAntenna
+            Kind::DarkTowerRoofAntenna
             | Kind::DarkTowerRoofCactus
             | Kind::DarkTowerRoofFourPost
             | Kind::DarkTowerRoofRings => dark_tower_roof::build(self, structurecomponent, list, random),
@@ -637,10 +621,6 @@ impl Piece
             {
                 stronghold_upper_tintersection::build(self, structurecomponent, list, random)
             }
-            Kind::StrongholdComponent | Kind::StrongholdShield =>
-            {
-                stronghold_component::build(self, structurecomponent, list, random)
-            }
             Kind::CloudCastle => cloud_castle::build(self, structurecomponent, list, random),
             Kind::TrollCaveConnect => troll_cave_connect::build(self, structurecomponent, list, random),
             Kind::TrollCaveGarden => troll_cave_garden::build(self, structurecomponent, list, random),
@@ -656,7 +636,6 @@ impl Piece
         match self.m_kind
         {
             Kind::HedgeMaze => hedge_maze::decorate3x3Room(self, world, x, z, sbb),
-            Kind::HillMaze => hill_maze::decorate3x3Room(self, world, x, z, sbb),
             _ => unreachable!("decorate3x3Room on {:?}", self.m_kind),
         }
     }
@@ -666,7 +645,6 @@ impl Piece
         match self.m_kind
         {
             Kind::HedgeMaze => hedge_maze::decorate3x3Rooms(self, world, rcoords, sbb),
-            Kind::HillMaze => hill_maze::decorate3x3Rooms(self, world, rcoords, sbb),
             _ => unreachable!("decorate3x3Rooms on {:?}", self.m_kind),
         }
     }
@@ -846,7 +824,6 @@ impl Piece
             {
                 stronghold_upper_tintersection::generateBoundingBox(self, facing, x, y, z)
             }
-            Kind::StrongholdShield => stronghold_shield::generateBoundingBox(self, facing, x, y, z),
             _ => unreachable!("generateBoundingBox on {:?}", self.m_kind),
         }
     }
@@ -866,7 +843,6 @@ impl Piece
     {
         match self.m_kind
         {
-            Kind::HillMaze => hill_maze::getDiameter(self),
             Kind::MinotaurMaze => minotaur_maze::getDiameter(self),
             _ => unreachable!("getDiameter on {:?}", self.m_kind),
         }
@@ -904,7 +880,6 @@ impl Piece
     {
         match self.m_kind
         {
-            Kind::HillMaze => hill_maze::getMazeSize(self),
             Kind::MinotaurMaze => minotaur_maze::getMazeSize(self),
             _ => unreachable!("getMazeSize on {:?}", self.m_kind),
         }
@@ -914,7 +889,6 @@ impl Piece
     {
         match self.m_kind
         {
-            Kind::HillMaze => hill_maze::getRadius(self),
             Kind::MinotaurMaze => minotaur_maze::getRadius(self),
             _ => unreachable!("getRadius on {:?}", self.m_kind),
         }
@@ -1125,22 +1099,11 @@ impl Piece
         }
     }
 
-    pub fn isInHill3(&self, mapX: i32, mapY: i32, mapZ: i32) -> bool
-    {
-        match self.m_kind
-        {
-            Kind::HollowHill | Kind::HydraLair => hollow_hill::isInHill3(self, mapX, mapY, mapZ),
-            Kind::YetiCave => yeti_cave::isInHill3(self, mapX, mapY, mapZ),
-            _ => unreachable!("isInHill on {:?}", self.m_kind),
-        }
-    }
-
     pub fn isNearRoom(&self, dx: i32, dz: i32, rcoords: &[i32]) -> bool
     {
         match self.m_kind
         {
             Kind::HedgeMaze => hedge_maze::isNearRoom(self, dx, dz, rcoords),
-            Kind::HillMaze => hill_maze::isNearRoom(self, dx, dz, rcoords),
             _ => unreachable!("isNearRoom on {:?}", self.m_kind),
         }
     }
@@ -1176,9 +1139,7 @@ impl Piece
             | Kind::StrongholdUpperCorridor
             | Kind::StrongholdUpperLeftTurn
             | Kind::StrongholdUpperRightTurn
-            | Kind::StrongholdUpperTIntersection
-            | Kind::StrongholdComponent
-            | Kind::StrongholdShield => stronghold_component::isOutOfRange(self, parent, nx, ny, nz, range),
+            | Kind::StrongholdUpperTIntersection => stronghold_component::isOutOfRange(self, parent, nx, ny, nz, range),
             _ => unreachable!("isOutOfRange on {:?}", self.m_kind),
         }
     }
@@ -1205,9 +1166,7 @@ impl Piece
             | Kind::StrongholdUpperCorridor
             | Kind::StrongholdUpperLeftTurn
             | Kind::StrongholdUpperRightTurn
-            | Kind::StrongholdUpperTIntersection
-            | Kind::StrongholdComponent
-            | Kind::StrongholdShield => stronghold_component::isValidBreakInPoint(self, wx, wy, wz),
+            | Kind::StrongholdUpperTIntersection => stronghold_component::isValidBreakInPoint(self, wx, wy, wz),
             Kind::StrongholdBossRoom => stronghold_boss_room::isValidBreakInPoint(self, wx, wy, wz),
             _ => unreachable!("isValidBreakInPoint on {:?}", self.m_kind),
         }
@@ -1705,9 +1664,10 @@ impl Piece
             | Kind::StrongholdUpperCorridor
             | Kind::StrongholdUpperLeftTurn
             | Kind::StrongholdUpperRightTurn
-            | Kind::StrongholdUpperTIntersection
-            | Kind::StrongholdComponent
-            | Kind::StrongholdShield => stronghold_component::placeDoorwayAt(self, world, random, x, y, z, sbb),
+            | Kind::StrongholdUpperTIntersection =>
+            {
+                stronghold_component::placeDoorwayAt(self, world, random, x, y, z, sbb)
+            }
             Kind::StrongholdBossRoom => stronghold_boss_room::placeDoorwayAt(self, world, random, x, y, z, sbb),
             Kind::StrongholdTreasureRoom => stronghold_treasure_room::placeDoorwayAt(self, world, random, x, y, z, sbb),
             _ => unreachable!("placeDoorwayAt on {:?}", self.m_kind),
@@ -1764,7 +1724,6 @@ impl Piece
         match self.m_kind
         {
             Kind::HedgeMaze => hedge_maze::roomSpawner(self, world, random, x, z, diameter, sbb),
-            Kind::HillMaze => hill_maze::roomSpawner(self, world, random, x, z, diameter, sbb),
             _ => unreachable!("roomSpawner on {:?}", self.m_kind),
         }
     }
@@ -1774,7 +1733,6 @@ impl Piece
         match self.m_kind
         {
             Kind::HedgeMaze => hedge_maze::roomTreasure(self, world, random, x, z, diameter, sbb),
-            Kind::HillMaze => hill_maze::roomTreasure(self, world, random, x, z, diameter, sbb),
             _ => unreachable!("roomTreasure on {:?}", self.m_kind),
         }
     }
@@ -1795,7 +1753,7 @@ impl Piece
         match self.m_kind
         {
             Kind::TowerRoofGableForwards => tower_roof_gable_forwards::slopeChangeForSize(self, pSize),
-            Kind::TowerRoofPointy | Kind::TowerRoofPointyOverhang => tower_roof_pointy::slopeChangeForSize(self, pSize),
+            Kind::TowerRoofPointyOverhang => tower_roof_pointy::slopeChangeForSize(self, pSize),
             _ => unreachable!("slopeChangeForSize on {:?}", self.m_kind),
         }
     }

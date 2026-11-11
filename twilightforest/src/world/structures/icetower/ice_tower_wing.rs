@@ -1,9 +1,6 @@
 // draft from ComponentTFIceTowerWing.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub const SIZE: i32 = 11;
-pub const RANGE: i32 = 17;
-
 pub fn new(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::IceTowerWing);
@@ -71,7 +68,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 pub fn shouldHaveBase(this: &Piece, random: &Random) -> bool { return (this.depth() == 0) || random.nextBoolean(); }
 
 // ComponentTFIceTowerWing.isOutOfRange
-pub fn isOutOfRange(this: &Piece, parent: &Piece, nx: i32, ny: i32, nz: i32, range: i32) -> bool
+pub fn isOutOfRange(_this: &Piece, parent: &Piece, nx: i32, _ny: i32, nz: i32, range: i32) -> bool
 {
     return ((nx - parent.bounds().centerX()).abs() > range) || ((nz - parent.bounds().centerZ()).abs() > range);
 }
@@ -137,7 +134,7 @@ pub fn makeBossTowerWing(
 }
 
 // ComponentTFIceTowerWing.getYByStairs
-pub fn getYByStairs(this: &Piece, rx: i32, random: &Random, direction: i32) -> i32
+pub fn getYByStairs(this: &Piece, _rx: i32, random: &Random, _direction: i32) -> i32
 {
     let floors: i32 = this.m_height.get() / 10;
     return 11 + (random.nextIntBounded(floors - 1) * 10);
@@ -178,20 +175,6 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     this.makeFloorsForTower(world, &decoRNG, sbb);
     this.makeOpenings(world, sbb);
     return true;
-}
-
-// ComponentTFIceTowerWing.nullifySkyLightForBoundingBox
-pub fn nullifySkyLightForBoundingBox(this: &Piece, world: &GenWorld)
-{
-    this.darkenWorld(
-        world,
-        this.m_box.get().m_min[0] + 1,
-        this.m_box.get().m_min[1] + 1,
-        this.m_box.get().m_min[2] + 1,
-        this.m_box.get().m_max[0] - 1,
-        this.m_box.get().m_max[1] - 1,
-        this.m_box.get().m_max[2] - 1,
-    );
 }
 
 // ComponentTFIceTowerWing.makeFloorsForTower
@@ -236,7 +219,7 @@ pub fn makeFloorsForTower(this: &Piece, world: &GenWorld, decoRNG: &Random, sbb:
 }
 
 // ComponentTFIceTowerWing.placeFloor
-pub fn placeFloor5(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox, floorHeight: i32, floor: i32)
+pub fn placeFloor5(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox, floorHeight: i32, floor: i32)
 {
     for x in 1..(this.m_size.get() - 1)
     {
@@ -429,7 +412,7 @@ pub fn isNoDoorAreaRotated(
 ) -> bool
 {
     let mut isClear: bool = true;
-    let mut var10000: StructureBox;
+    let var10000: StructureBox;
     match rotation
     {
         1 =>
@@ -474,10 +457,10 @@ pub fn decorateTopFloor(
     this: &Piece,
     world: &GenWorld,
     random: &Random,
-    floor: i32,
+    _floor: i32,
     bottom: i32,
     top: i32,
-    ladderUpDir: i32,
+    _ladderUpDir: i32,
     ladderDownDir: i32,
     sbb: StructureBox,
 )
@@ -502,7 +485,7 @@ pub fn decorateTopFloorTreasure(
     world: &GenWorld,
     random: &Random,
     bottom: i32,
-    top: i32,
+    _top: i32,
     rotation: i32,
     sbb: StructureBox,
 )
@@ -527,7 +510,7 @@ pub fn decorateTopFloorTreasure(
 pub fn decoratePillars(
     this: &Piece,
     world: &GenWorld,
-    random: &Random,
+    _random: &Random,
     bottom: i32,
     top: i32,
     rotation: i32,
@@ -743,11 +726,11 @@ pub fn decoratePillarsCorners(
 pub fn decorateFarWallSteps(
     this: &Piece,
     world: &GenWorld,
-    random: &Random,
+    _random: &Random,
     bottom: i32,
     top: i32,
     ladderUpDir: i32,
-    ladderDownDir: i32,
+    _ladderDownDir: i32,
     hasTreasure: bool,
     sbb: StructureBox,
 )
@@ -876,11 +859,11 @@ pub fn decorateFarWallSteps(
 pub fn decorateWraparoundWallSteps(
     this: &Piece,
     world: &GenWorld,
-    random: &Random,
+    _random: &Random,
     bottom: i32,
     top: i32,
     ladderUpDir: i32,
-    ladderDownDir: i32,
+    _ladderDownDir: i32,
     hasTreasure: bool,
     sbb: StructureBox,
 )
@@ -1335,7 +1318,7 @@ pub fn decoratePillarPlatforms(
     bottom: i32,
     top: i32,
     ladderUpDir: i32,
-    ladderDownDir: i32,
+    _ladderDownDir: i32,
     hasTreasure: bool,
     sbb: StructureBox,
 )
@@ -1376,7 +1359,7 @@ pub fn decoratePillarPlatformsOutside(
     bottom: i32,
     top: i32,
     ladderUpDir: i32,
-    ladderDownDir: i32,
+    _ladderDownDir: i32,
     hasTreasure: bool,
     sbb: StructureBox,
 )
@@ -1714,14 +1697,14 @@ pub fn decoratePillarParkour(
 }
 
 // ComponentTFIceTowerWing.makeARoof
-pub fn makeARoof(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn makeARoof(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let index: i32 = this.depth();
     tower_wing::tryToFitRoof(this, list, random, &ice_tower_roof::new(index + 1, this));
 }
 
 // ComponentTFIceTowerWing.makeABeard
-pub fn makeABeard(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn makeABeard(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let index: i32 = this.depth();
     let beard: Rc<Piece> = ice_tower_beard::new(index + 1, this);

@@ -11,11 +11,6 @@ pub struct Carvable
     pub m_grass: i32,
     pub m_water: i32,
     pub m_flowingWater: i32,
-    pub m_lava: i32,
-    pub m_gravel: i32,
-    pub m_sand: i32,
-    pub m_sandstone: i32,
-    pub m_ice: i32,
     pub m_deadrock: [i32; 3],
     pub m_height: usize,
 }

@@ -9,7 +9,7 @@ pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, rotation: i32) -> Rc
 }
 
 // ComponentTFFinalCastleDungeonSteps constructor
-pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, rotation: i32)
+pub fn init(this: &Piece, _random: &Random, _i: i32, x: i32, y: i32, z: i32, rotation: i32)
 {
     this.m_spawnListIndex.set(2);
     this.setMode(rotation);
@@ -17,7 +17,7 @@ pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, rotat
 }
 
 // ComponentTFFinalCastleDungeonSteps.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
@@ -25,7 +25,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 // ComponentTFFinalCastleDungeonSteps.buildMoreStepsTowards
 pub fn buildMoreStepsTowards(
     this: &Piece,
-    parent: &Piece,
+    _parent: &Piece,
     list: &mut Pieces,
     random: &Random,
     rotation: i32,
@@ -66,7 +66,7 @@ pub fn buildMoreStepsTowards(
 }
 
 // ComponentTFFinalCastleDungeonSteps.buildLevelUnder
-pub fn buildLevelUnder(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random, level: i32) -> Rc<Piece>
+pub fn buildLevelUnder(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random, level: i32) -> Rc<Piece>
 {
     let dx: i32 = this.xAt(2, 19);
     let dy: i32 = this.yAt(-7);
@@ -78,7 +78,7 @@ pub fn buildLevelUnder(this: &Piece, parent: &Piece, list: &mut Pieces, random: 
 }
 
 // ComponentTFFinalCastleDungeonSteps.buildBossRoomUnder
-pub fn buildBossRoomUnder(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random) -> Rc<Piece>
+pub fn buildBossRoomUnder(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random) -> Rc<Piece>
 {
     let dx: i32 = this.xAt(2, 19);
     let dy: i32 = this.yAt(-31);
@@ -90,7 +90,7 @@ pub fn buildBossRoomUnder(this: &Piece, parent: &Piece, list: &mut Pieces, rando
 }
 
 // ComponentTFFinalCastleDungeonSteps.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for z in 0..15
     {

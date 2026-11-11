@@ -65,4 +65,4 @@ pub fn addStairs(
 }
 
 // ComponentTFFinalCastleEntranceBottomTower.hasAccessibleRoof
-pub fn hasAccessibleRoof(this: &Piece) -> bool { return false; }
+pub fn hasAccessibleRoof(_this: &Piece) -> bool { return false; }

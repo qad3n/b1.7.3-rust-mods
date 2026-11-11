@@ -31,7 +31,7 @@ pub fn init(this: &Piece, index: i32, x: i32, y: i32, z: i32, caveSize: i32, cav
 }
 
 // ComponentTFTrollCaveConnect.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     if this.depth() < 3
     {
@@ -87,7 +87,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         this.m_height.get() - 1,
         this.m_size.get() - 1,
     );
-    let mut decoRNG: Random = Random::withSeed(
+    let decoRNG: Random = Random::withSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
             ^ ((this.m_box.get().m_min[2] * 756839) as i64),
     );
@@ -102,7 +102,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))
             ^ ((this.m_box.get().m_min[2] * 756839) as i64),
     );
-    for i in 0..32
+    for _i in 0..32
     {
         let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
         troll_cave_main::generateBlockStalactite9(
@@ -118,7 +118,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
             sbb,
         );
     }
-    for i in 0..8
+    for _i in 0..8
     {
         let dest: [i32; 3] = troll_cave_main::getCoordsInCave(this, &decoRNG);
         troll_cave_main::generateBlockStalactite9(
@@ -528,7 +528,7 @@ pub fn makeGardenCave(
 }
 
 // ComponentTFTrollCaveConnect.findNearbyGarden
-pub fn findNearbyGarden(this: &Piece, list: &mut Pieces, boundingBox: StructureBox) -> Option<Rc<Piece>>
+pub fn findNearbyGarden(_this: &Piece, list: &mut Pieces, boundingBox: StructureBox) -> Option<Rc<Piece>>
 {
     let mut largeBox: StructureBox = boundingBox;
     largeBox.m_min[0] -= 30;

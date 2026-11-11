@@ -9,7 +9,7 @@ pub fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) ->
 }
 
 // ComponentTFMazeRuins constructor
-pub fn init(this: &Piece, world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32)
+pub fn init(this: &Piece, _world: &GenWorld, _random: &Random, i: i32, x: i32, y: i32, z: i32)
 {
     this.m_depth.set(i);
     this.setMode(0);
@@ -17,7 +17,7 @@ pub fn init(this: &Piece, world: &GenWorld, random: &Random, i: i32, x: i32, y: 
 }
 
 // ComponentTFMazeRuins.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _structurecomponent: &Piece, list: &mut Pieces, random: &Random)
 {
     let maze: Rc<Piece> =
         minotaur_maze::new(1, this.m_box.get().m_min[0], this.m_box.get().m_min[1] - 14, this.m_box.get().m_min[2], 1);
@@ -44,4 +44,4 @@ pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random
 }
 
 // ComponentTFMazeRuins.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool { return true; }
+pub fn add(_this: &Piece, _world: &GenWorld, _random: &Random, _sbb: StructureBox) -> bool { return true; }

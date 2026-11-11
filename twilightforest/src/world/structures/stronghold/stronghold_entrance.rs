@@ -9,7 +9,7 @@ pub fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) ->
 }
 
 // ComponentTFStrongholdEntrance constructor
-pub fn init(this: &Piece, world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32)
+pub fn init(this: &Piece, _world: &GenWorld, _random: &Random, i: i32, x: i32, y: i32, z: i32)
 {
     stronghold_component::init(this, i, 0, x, y - 10, z);
     this.m_deco.set(Deco::decorator_stronghold());
@@ -42,34 +42,9 @@ pub fn build(this: &Piece, parent: &Piece, pieceList: &mut Pieces, random: &Rand
     if !stronghold_entrance::listContainsBossRoom(this, pieceList)
     {}
     let mut shieldBox: StructureBox = this.m_box.get();
-    let mut tStairs: i32 = 0;
-    let mut tCorridors: i32 = 0;
-    let mut deadEnd: i32 = 0;
-    let mut tRooms: i32 = 0;
-    let mut bossRooms: i32 = 0;
     for component in pieceList.clone()
     {
         shieldBox.expand(&component.bounds());
-        if (matches!(component.m_kind, Kind::StrongholdSmallStairs)) && ((component).m_hasTreasure.get())
-        {
-            tStairs += 1;
-        }
-        if matches!(component.m_kind, Kind::StrongholdTreasureCorridor)
-        {
-            tCorridors += 1;
-        }
-        if matches!(component.m_kind, Kind::StrongholdDeadEnd)
-        {
-            deadEnd += 1;
-        }
-        if matches!(component.m_kind, Kind::StrongholdTreasureRoom)
-        {
-            tRooms += 1;
-        }
-        if matches!(component.m_kind, Kind::StrongholdBossRoom)
-        {
-            bossRooms += 1;
-        }
     }
     let accessChamber: Rc<Piece> = stronghold_access_chamber::new(
         2,
@@ -83,7 +58,7 @@ pub fn build(this: &Piece, parent: &Piece, pieceList: &mut Pieces, random: &Rand
 }
 
 // ComponentTFStrongholdEntrance.listContainsBossRoom
-pub fn listContainsBossRoom(this: &Piece, list: &mut Pieces) -> bool
+pub fn listContainsBossRoom(_this: &Piece, list: &mut Pieces) -> bool
 {
     for component in list.clone()
     {
@@ -96,7 +71,7 @@ pub fn listContainsBossRoom(this: &Piece, list: &mut Pieces) -> bool
 }
 
 // ComponentTFStrongholdEntrance.generateBoundingBox
-pub fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
     return Some(vanillaBox(x, y, z, -1, -1, 0, 18, 7, 18, facing));
 }
@@ -117,9 +92,9 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
         random,
         this.m_deco.get().m_randomBlocks,
     );
-    let var8: i32 = this.xAt(0, 0);
-    let var9: i32 = this.yAt(0);
-    let var10: i32 = this.zAt(0, 0);
+    let _var8: i32 = this.xAt(0, 0);
+    let _var9: i32 = this.yAt(0);
+    let _var10: i32 = this.zAt(0, 0);
     stronghold_component::placeCornerStatue(this, world, 5, 1, 5, 0, sbb);
     stronghold_component::placeCornerStatue(this, world, 5, 1, 12, 1, sbb);
     stronghold_component::placeCornerStatue(this, world, 12, 1, 5, 2, sbb);

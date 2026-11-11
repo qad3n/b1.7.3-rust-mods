@@ -105,7 +105,7 @@ pub fn makeInitialDestroyList(this: &Piece, random: &Random) -> Vec<Option<Destr
 }
 
 // ComponentTFFinalCastleDamagedTower.determineBlockDestroyed
-pub fn determineBlockDestroyed(this: &Piece, world: &GenWorld, areas: &[Option<DestroyArea>], y: i32, x: i32, z: i32)
+pub fn determineBlockDestroyed(_this: &Piece, world: &GenWorld, areas: &[Option<DestroyArea>], y: i32, x: i32, z: i32)
 {
     for dArea in areas.iter().flatten()
     {

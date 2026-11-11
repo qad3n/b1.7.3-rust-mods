@@ -8,13 +8,6 @@ pub fn new(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32
     Rc::new(this)
 }
 
-pub fn new7(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32, rotation: i32) -> Rc<Piece>
-{
-    let this: Piece = Piece::blank(Kind::MushroomTowerMain);
-    init7(&this, world, random, index, x, y, z, rotation);
-    Rc::new(this)
-}
-
 pub fn new7b(i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::MushroomTowerMain);
@@ -29,7 +22,7 @@ pub fn init(this: &Piece, world: &GenWorld, random: &Random, index: i32, x: i32,
 }
 
 // ComponentTFMushroomTowerMain constructor
-pub fn init7(this: &Piece, world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32, rotation: i32)
+pub fn init7(this: &Piece, _world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32, rotation: i32)
 {
     mushroom_tower_wing::init(this, index, x, y, z, 15, 8 + (random.nextIntBounded(3) * 4), rotation);
     this.m_deco.set(Deco::mushroom_tower());
@@ -50,7 +43,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
     let mut mainDir: i32 = -1;
     if this.depth() < 3
     {
-        for i in 0..6
+        for _i in 0..6
         {
             mainDir = mushroom_tower_main::makeAscenderTower(this, list, random);
             if mainDir != (-1)
@@ -115,7 +108,7 @@ pub fn makeAscenderTower(this: &Piece, list: &mut Pieces, random: &Random) -> i3
 }
 
 // ComponentTFMushroomTowerMain.makeARoof
-pub fn makeARoof(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn makeARoof(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random)
 {
     let roof: Rc<Piece> = tower_roof_mushroom::new(this.depth() + 1, this, 1.6);
     list.push(Rc::clone(&roof));

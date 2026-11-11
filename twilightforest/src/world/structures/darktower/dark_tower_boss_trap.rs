@@ -33,7 +33,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFDarkTowerBossTrap.makeARoof
-pub fn makeARoof(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn makeARoof(_this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFDarkTowerBossTrap.func_74875_a
 pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
@@ -102,7 +102,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFDarkTowerBossTrap.addBossTrapFloors
-pub fn addBossTrapFloors(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox, bottom: i32, top: i32)
+pub fn addBossTrapFloors(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox, _bottom: i32, _top: i32)
 {
     dark_tower_wing::makeFullFloor(this, world, sbb, 3, 4, 4);
     dark_tower_wing::addStairsDown6(this, world, sbb, 3, 4, this.m_size.get() - 2, 4);

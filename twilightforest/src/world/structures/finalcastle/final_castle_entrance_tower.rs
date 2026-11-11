@@ -108,7 +108,7 @@ pub fn buildSideTower(
 }
 
 // ComponentTFFinalCastleEntranceTower.getValidOpeningCC
-pub fn getValidOpeningCC(this: &Piece, random: &Random, direction: i32) -> [i32; 3]
+pub fn getValidOpeningCC(_this: &Piece, _random: &Random, direction: i32) -> [i32; 3]
 {
     if (direction == 0) || (direction == 2)
     {

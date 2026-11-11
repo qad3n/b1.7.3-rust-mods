@@ -15,7 +15,7 @@ pub fn init(this: &Piece, i: i32, x: i32, y: i32, z: i32, pSize: i32, pHeight: i
 }
 
 // ComponentTFIceTowerEntrance.shouldHaveBase
-pub fn shouldHaveBase(this: &Piece, random: &Random) -> bool { return true; }
+pub fn shouldHaveBase(_this: &Piece, _random: &Random) -> bool { return true; }
 
 // ComponentTFIceTowerEntrance.func_74861_a
 pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
@@ -53,16 +53,16 @@ pub fn addStairs(
 
 // ComponentTFIceTowerEntrance.makeTowerWing
 pub fn makeTowerWing(
-    this: &Piece,
-    list: &mut Pieces,
-    random: &Random,
-    index: i32,
-    x: i32,
-    y: i32,
-    z: i32,
-    wingSize: i32,
-    wingHeight: i32,
-    rotation: i32,
+    _this: &Piece,
+    _list: &mut Pieces,
+    _random: &Random,
+    _index: i32,
+    _x: i32,
+    _y: i32,
+    _z: i32,
+    _wingSize: i32,
+    _wingHeight: i32,
+    _rotation: i32,
 ) -> bool
 {
     return false;
@@ -78,7 +78,7 @@ pub fn makeFloorsForTower(this: &Piece, world: &GenWorld, random: &Random, sbb: 
 pub fn decoratePillarsCornersHigh(
     this: &Piece,
     world: &GenWorld,
-    random: &Random,
+    _random: &Random,
     bottom: i32,
     top: i32,
     rotation: i32,

@@ -9,7 +9,7 @@ pub fn new(random: &Random, i: i32, keep: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFFinalCastleRoof48Crenellated constructor
-pub fn init(this: &Piece, random: &Random, i: i32, keep: &Piece)
+pub fn init(this: &Piece, _random: &Random, i: i32, keep: &Piece)
 {
     this.m_depth.set(i);
     let height: i32 = 5;
@@ -21,13 +21,13 @@ pub fn init(this: &Piece, random: &Random, i: i32, keep: &Piece)
 }
 
 // ComponentTFFinalCastleRoof48Crenellated.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
 
 // ComponentTFFinalCastleRoof48Crenellated.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fillMeta(world, sbb, 2, 2, 2, 50, 2, 50, blk("tf:castleMagic"), 3, blk("tf:castleMagic"), 3, false);
     for rotation in 0..4

@@ -73,7 +73,10 @@ fn swap(world: World, pos: BlockPos, block: i32, meta: i32)
         warn(&format!("block change at {pos:?}: {}", error.0));
         return;
     }
-    world.breakEffect(pos, was, world.meta(pos));
+    if let Err(error) = world.breakEffect(pos, was, world.meta(pos))
+    {
+        warn(&format!("break effect at {pos:?}: {}", error.0));
+    }
 }
 
 // ItemTFCrumbleHorn.crumbleBlock, a sound blast that wears stone down to rubble, beta repeats the use while held
@@ -103,8 +106,14 @@ fn crumble(world: World, pos: BlockPos) -> i32
             warn(&format!("crumble at {pos:?}: {}", error.0));
             return cost;
         }
-        world.dropBlockItems(pos, here, meta);
-        world.breakEffect(pos, here, meta);
+        if let Err(error) = world.dropBlockItems(pos, here, meta)
+        {
+            warn(&format!("crumble drops at {pos:?}: {}", error.0));
+        }
+        if let Err(error) = world.breakEffect(pos, here, meta)
+        {
+            warn(&format!("break effect at {pos:?}: {}", error.0));
+        }
         cost += 1;
     }
     cost
@@ -227,7 +236,10 @@ impl PeacockFan
             let here: i32 = world.block(pos);
             if FLOWERS.iter().any(|name| here == ids::blockId(name)) && world.random(odds::PICK) == 0
             {
-                world.dropBlockItems(pos, here, 0);
+                if let Err(error) = world.dropBlockItems(pos, here, 0)
+                {
+                    warn(&format!("flower drops at {pos:?}: {}", error.0));
+                }
                 swap(world, pos, 0, 0);
             }
         }

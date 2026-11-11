@@ -1,6 +1,6 @@
 // what every generated piece module sees
 pub use super::base::maze::Maze;
-pub use super::base::{hedge_maze, hill_maze, hollow_hill, hydra_lair, maze, naga_courtyard, quest_grove, yeti_cave};
+pub use super::base::{hedge_maze, hollow_hill, hydra_lair, naga_courtyard, quest_grove, yeti_cave};
 pub use super::component::*;
 pub use super::darktower::
 {
@@ -24,7 +24,7 @@ pub use super::gens::{Gen, bresenham, translateCoords};
 pub use super::hollowtree::
 {
     hollow_tree_large_branch, hollow_tree_leaf_dungeon, hollow_tree_med_branch, hollow_tree_root,
-    hollow_tree_small_branch, hollow_tree_trunk, leaf_sphere,
+    hollow_tree_small_branch, hollow_tree_trunk,
 };
 pub use super::icetower::
 {
@@ -56,17 +56,16 @@ pub use super::stronghold::
 {
     stronghold_access_chamber, stronghold_atrium, stronghold_balcony_room, stronghold_boss_room, stronghold_component,
     stronghold_crossing, stronghold_dead_end, stronghold_entrance, stronghold_foundry, stronghold_left_turn,
-    stronghold_right_turn, stronghold_shield, stronghold_small_hallway, stronghold_small_stairs,
-    stronghold_training_room, stronghold_treasure_corridor, stronghold_treasure_room, stronghold_upper_ascender,
-    stronghold_upper_corridor, stronghold_upper_left_turn, stronghold_upper_right_turn, stronghold_upper_tintersection,
+    stronghold_right_turn, stronghold_small_hallway, stronghold_small_stairs, stronghold_training_room,
+    stronghold_treasure_corridor, stronghold_treasure_room, stronghold_upper_ascender, stronghold_upper_corridor,
+    stronghold_upper_left_turn, stronghold_upper_right_turn, stronghold_upper_tintersection,
 };
 pub use super::trollcave::
 {
-    cloud_castle, cloud_tree, troll_cave_connect, troll_cave_garden, troll_cave_main, troll_cloud, troll_vault,
+    cloud_castle, cloud_tree, troll_cave_connect, troll_cave_garden, troll_cave_main, troll_vault,
 };
 pub use crate::treasure::Table;
 pub use crate::world::biomes::Biome;
-pub use crate::world::features::Feature;
 pub use crate::world::generate::GenWorld;
 pub use b173_api::terrain::Random;
 pub use b173_api::terrain::structure::StructureBox;

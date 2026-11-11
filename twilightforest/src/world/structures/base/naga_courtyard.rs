@@ -12,7 +12,7 @@ pub fn new(world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32) ->
 }
 
 // ComponentTFNagaCourtyard constructor
-pub fn init(this: &Piece, world: &GenWorld, random: &Random, i: i32, x: i32, y: i32, z: i32)
+pub fn init(this: &Piece, _world: &GenWorld, _random: &Random, i: i32, x: i32, y: i32, z: i32)
 {
     this.m_depth.set(i);
     this.setMode(0);
@@ -244,7 +244,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     }
     let pillarRand: Random =
         Random::withSeed(world.seed() + ((this.m_box.get().m_min[0] * this.m_box.get().m_min[2]) as i64));
-    for i in 0..20
+    for _i in 0..20
     {
         let rx: i32 = 2 + pillarRand.nextIntBounded(DIAMETER - 4);
         let rz: i32 = 2 + pillarRand.nextIntBounded(DIAMETER - 4);

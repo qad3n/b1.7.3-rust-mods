@@ -9,7 +9,7 @@ pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, width: i32, height: 
 }
 
 // ComponentTFFinalCastleMural constructor
-pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, width: i32, height: i32, direction: i32)
+pub fn init(this: &Piece, _random: &Random, i: i32, x: i32, y: i32, z: i32, width: i32, height: i32, direction: i32)
 {
     this.m_depth.set(i);
     this.setMode(direction);
@@ -17,7 +17,7 @@ pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, width
 }
 
 // ComponentTFFinalCastleMural.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.m_height.set(this.m_box.get().ySize());
     this.m_width.set(
@@ -254,7 +254,7 @@ pub fn fillHorizontalLine(this: &Piece, mural: &mut [Vec<i32>], sx: i32, sy: i32
 {
     let mut x: i32 = sx;
     let y: i32 = sy;
-    for i in 0..=length
+    for _i in 0..=length
     {
         if (((x >= 0) && (x < this.m_width.get())) && (y >= 0)) && (y < this.m_height.get())
         {
@@ -269,7 +269,7 @@ pub fn fillVerticalLine(this: &Piece, mural: &mut [Vec<i32>], sx: i32, sy: i32, 
 {
     let x: i32 = sx;
     let mut y: i32 = sy;
-    for i in 0..=length
+    for _i in 0..=length
     {
         if (((x >= 0) && (x < this.m_width.get())) && (y >= 0)) && (y < this.m_height.get())
         {

@@ -1,8 +1,6 @@
 // draft from ComponentTFFinalCastleBellTower21.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub const FLOORS: i32 = 8;
-
 pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32) -> Rc<Piece>
 {
     let this: Piece = Piece::blank(Kind::FinalCastleBellTower21);

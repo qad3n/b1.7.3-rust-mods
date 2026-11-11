@@ -1,5 +1,4 @@
 pub mod hedge_maze;
-pub mod hill_maze;
 pub mod hollow_hill;
 pub mod hydra_lair;
 pub mod maze;

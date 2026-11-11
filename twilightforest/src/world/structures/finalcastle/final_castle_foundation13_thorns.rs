@@ -19,7 +19,7 @@ pub fn init(this: &Piece, random: &Random, i: i32, sideTower: &Piece)
 }
 
 // ComponentTFFinalCastleFoundation13Thorns.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     let decoRNG: Random = Random::withSeed(
         (world.seed() + ((this.m_box.get().m_min[0] * 321534781) as i64))

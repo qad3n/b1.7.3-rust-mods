@@ -24,7 +24,6 @@ pub enum Tree
 // TF log metadata keeps the wood in the low bits and the orientation in bits 4 and 8, 12 is all bark
 mod orient
 {
-    pub const UPRIGHT: i32 = 0;
     pub const X: i32 = 4;
     pub const Z: i32 = 8;
     pub const BARK: i32 = 12;

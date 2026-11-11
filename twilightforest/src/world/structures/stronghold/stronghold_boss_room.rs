@@ -16,7 +16,7 @@ pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 }
 
 // ComponentTFStrongholdBossRoom.generateBoundingBox
-pub fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
     return Some(boxFor(x, y, z, -13, -1, 0, 27, 7, 27, facing));
 }
@@ -76,9 +76,9 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
     stronghold_boss_room::placeSarcophagus(this, world, sbb, 18, 1, 15, 0);
     this.fillAir(world, sbb, 12, 1, 1, 14, 4, 2);
     this.fill(world, sbb, 12, 1, 3, 14, 4, 3, blk("iron_bars"), blk("iron_bars"), false);
-    let var8: i32 = this.xAt(0, 0);
-    let var9: i32 = this.yAt(0);
-    let var10: i32 = this.zAt(0, 0);
+    let _var8: i32 = this.xAt(0, 0);
+    let _var9: i32 = this.yAt(0);
+    let _var10: i32 = this.zAt(0, 0);
     this.placeBlock(world, blk("tf:bossSpawner"), 4, 13, 2, 13, sbb);
     stronghold_component::placeDoors(this, world, random, sbb);
     return true;
@@ -221,7 +221,7 @@ pub fn placePillarDecorations(this: &Piece, world: &GenWorld, sbb: StructureBox,
 }
 
 // ComponentTFStrongholdBossRoom.placeDoorwayAt
-pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, sbb: StructureBox)
+pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, _random: &Random, x: i32, y: i32, z: i32, sbb: StructureBox)
 {
     if (x != 0) && (x != stronghold_component::getXSize(this))
     {
@@ -234,4 +234,4 @@ pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, random: &Random, x: i32, y
 }
 
 // ComponentTFStrongholdBossRoom.isValidBreakInPoint
-pub fn isValidBreakInPoint(this: &Piece, wx: i32, wy: i32, wz: i32) -> bool { return false; }
+pub fn isValidBreakInPoint(_this: &Piece, _wx: i32, _wy: i32, _wz: i32) -> bool { return false; }

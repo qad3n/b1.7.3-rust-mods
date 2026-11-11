@@ -1,13 +1,6 @@
 // draft from ComponentTFTowerRoofPointy.java by tools/structgen.py
 use crate::world::structures::prelude::*;
 
-pub fn new(i: i32, wing: &Piece) -> Rc<Piece>
-{
-    let this: Piece = Piece::blank(Kind::TowerRoofPointy);
-    init(&this, i, wing);
-    Rc::new(this)
-}
-
 // ComponentTFTowerRoofPointy constructor
 pub fn init(this: &Piece, i: i32, wing: &Piece)
 {
@@ -19,14 +12,14 @@ pub fn init(this: &Piece, i: i32, wing: &Piece)
 }
 
 // ComponentTFTowerRoofPointy.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     let slabMeta: i32 = 2;
     for y in 0..=this.m_height.get()
     {
         let slopeChange: i32 = this.slopeChangeForSize(this.m_size.get());
-        let mut min: i32;
-        let mut max: i32;
+        let min: i32;
+        let max: i32;
         if y < slopeChange
         {
             min = y;
@@ -60,7 +53,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFTowerRoofPointy.slopeChangeForSize
-pub fn slopeChangeForSize(this: &Piece, pSize: i32) -> i32
+pub fn slopeChangeForSize(this: &Piece, _pSize: i32) -> i32
 {
     if this.m_size.get() > 10
     {

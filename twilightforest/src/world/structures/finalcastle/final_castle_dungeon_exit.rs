@@ -70,7 +70,7 @@ pub fn findStairDirectionTowards(this: &Piece, x: i32, z: i32) -> i32
     let cz: i32 = this.m_box.get().centerZ();
     let dx: i32 = cx - x;
     let dz: i32 = cz - z;
-    let mut absoluteDir: i32;
+    let absoluteDir: i32;
     if dz.abs() >= dx.abs()
     {
         absoluteDir = if dz >= 0 { 2 } else { 0 };
@@ -83,7 +83,7 @@ pub fn findStairDirectionTowards(this: &Piece, x: i32, z: i32) -> i32
 }
 
 // ComponentTFFinalCastleDungeonExit.getForceFieldMeta
-pub fn getForceFieldMeta(this: &Piece, decoRNG: &Random) -> i32 { return 1; }
+pub fn getForceFieldMeta(_this: &Piece, _decoRNG: &Random) -> i32 { return 1; }
 
 // ComponentTFFinalCastleDungeonExit.getRuneMeta
-pub fn getRuneMeta(this: &Piece, fieldMeta: i32) -> i32 { return 0; }
+pub fn getRuneMeta(_this: &Piece, _fieldMeta: i32) -> i32 { return 0; }

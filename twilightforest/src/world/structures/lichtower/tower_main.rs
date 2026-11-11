@@ -9,7 +9,7 @@ pub fn new(world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32
 }
 
 // ComponentTFTowerMain constructor
-pub fn init(this: &Piece, world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32)
+pub fn init(this: &Piece, _world: &GenWorld, random: &Random, index: i32, x: i32, y: i32, z: i32)
 {
     tower_wing::init7(this, index, x, y, z, 15, 55 + random.nextIntBounded(32), 0);
 }
@@ -46,7 +46,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
     }
     for i in 0..4
     {
-        let mut dest: Vec<i32> = this.getValidOpening(random, i);
+        let dest: Vec<i32> = this.getValidOpening(random, i);
         let childHeight: i32 = (7 + random.nextIntBounded(6)).min((this.m_height.get() - dest[1]) - 3);
         if !this.makeTowerWing(list, random, 1, dest[0], dest[1], dest[2], 5, childHeight, i)
         {
@@ -55,14 +55,14 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
     }
     for i in 0..4
     {
-        let mut dest: Vec<i32> = tower_main::getOutbuildingOpening(this, random, i);
+        let dest: Vec<i32> = tower_main::getOutbuildingOpening(this, random, i);
         let childHeight: i32 = 11 + random.nextIntBounded(10);
         let childSize: i32 = 7 + (random.nextIntBounded(2) * 2);
         tower_main::makeTowerOutbuilding(this, list, random, 1, dest[0], dest[1], dest[2], childSize, childHeight, i);
     }
     for i in 0..16
     {
-        let mut dest: Vec<i32> = this.getValidOpening(random, i % 4);
+        let dest: Vec<i32> = this.getValidOpening(random, i % 4);
         let childHeight: i32 = 6 + random.nextIntBounded(5);
         if (random.nextIntBounded(3) == 0)
             || (!this.makeTowerWing(list, random, 1, dest[0], dest[1], dest[2], 5, childHeight, i % 4))
@@ -223,7 +223,7 @@ pub fn makeStairCrossing(this: &Piece, world: &GenWorld, random: &Random, flight
     this.placeBlock(world, blk("double_stone_slab"), floorMeta, 8, floorLevel - 1, 3, sbb);
     this.placeBlock(world, blk("fence"), 0, 5, floorLevel, 11, sbb);
     this.placeBlock(world, blk("fence"), 0, 9, floorLevel, 3, sbb);
-    let mut var10000: &'static str;
+    let var10000: &'static str;
     match random.nextIntBounded(4)
     {
         0 | 1 =>
@@ -264,7 +264,7 @@ pub fn makeLichRoom(this: &Piece, world: &GenWorld, random: &Random, sbb: Struct
 }
 
 // ComponentTFTowerMain.makeTowerPaintings
-pub fn makeTowerPaintings(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox)
+pub fn makeTowerPaintings(this: &Piece, _world: &GenWorld, random: &Random, sbb: StructureBox)
 {
     let howMany: i32 = 10;
     tower_wing::generatePaintingsOnWall(this, random, howMany, 0, 0, 48, sbb);
@@ -404,7 +404,7 @@ pub fn decorateLichChandelier(this: &Piece, world: &GenWorld, floorLevel: i32, s
 }
 
 // ComponentTFTowerMain.decoratePaintings
-pub fn decoratePaintings(this: &Piece, world: &GenWorld, random: &Random, floorLevel: i32, sbb: StructureBox)
+pub fn decoratePaintings(this: &Piece, _world: &GenWorld, random: &Random, floorLevel: i32, sbb: StructureBox)
 {
     let howMany: i32 = 100;
     tower_wing::generatePaintingsOnWall(this, random, howMany, floorLevel, 0, 48, sbb);
@@ -440,7 +440,7 @@ pub fn generateTorchesOnWall(
     sbb: StructureBox,
 )
 {
-    for i in 0..5
+    for _i in 0..5
     {
         let Some(mut tCoords) = tower_wing::getRandomWallSpot(this, random, floorLevel, direction, sbb)
         else
@@ -469,8 +469,8 @@ pub fn generateTorchesOnWall(
             _ =>
             {}
         }
-        if ((world.getBlock(tCoords[0], tCoords[1], tCoords[2]) == blk("air"))
-            && (world.getBlock(tCoords[0], tCoords[1] + 1, tCoords[2]) == blk("air")))
+        if (world.getBlock(tCoords[0], tCoords[1], tCoords[2]) == blk("air"))
+            && (world.getBlock(tCoords[0], tCoords[1] + 1, tCoords[2]) == blk("air"))
         {
             world.setBlock(tCoords[0], tCoords[1], tCoords[2], blk("fence"), 0, 2);
             world.setBlock(tCoords[0], tCoords[1] + 1, tCoords[2], blk("torch"), 5, 2);

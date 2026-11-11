@@ -35,7 +35,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
     );
     if !madeWing
     {
-        let dx: Vec<i32> = this.offsetTower(dest[0], dest[1], dest[2], this.m_dSize.get(), 0);
+        let _dx: Vec<i32> = this.offsetTower(dest[0], dest[1], dest[2], this.m_dSize.get(), 0);
     }
 }
 
@@ -58,7 +58,7 @@ pub fn getWingBB(this: &Piece) -> StructureBox
 }
 
 // ComponentTFMushroomTowerBridge.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for x in 0..this.m_dSize.get()
     {

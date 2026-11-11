@@ -29,7 +29,6 @@ mod sky
     // WorldProviderTwilightForest.getSkyColor and getFogColor, divided by the light the vanilla sky lends at angle 0.225
     pub const SKY: u32 = 0x35387A;
     pub const FOG: u32 = 0x7BA48E;
-    pub const MAP: u32 = 0x005500;
     // the world time whose celestial angle is the source's fixed 0.225, a sky stuck in the evening
     pub const TIME: i64 = 12216;
 }

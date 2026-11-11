@@ -10,7 +10,6 @@ pub mod stronghold_entrance;
 pub mod stronghold_foundry;
 pub mod stronghold_left_turn;
 pub mod stronghold_right_turn;
-pub mod stronghold_shield;
 pub mod stronghold_small_hallway;
 pub mod stronghold_small_stairs;
 pub mod stronghold_training_room;

@@ -9,7 +9,7 @@ pub fn new(random: &Random, i: i32, keep: &Piece) -> Rc<Piece>
 }
 
 // ComponentTFFinalCastleBossGazebo constructor
-pub fn init(this: &Piece, random: &Random, i: i32, keep: &Piece)
+pub fn init(this: &Piece, _random: &Random, i: i32, keep: &Piece)
 {
     this.m_depth.set(i);
     this.m_spawnListIndex.set(-1);
@@ -21,7 +21,7 @@ pub fn init(this: &Piece, random: &Random, i: i32, keep: &Piece)
 }
 
 // ComponentTFFinalCastleBossGazebo.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set(Deco::decorator_castle());
     this.m_deco.get().m_blockID = blk("tf:castleMagic");
@@ -31,7 +31,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFFinalCastleBossGazebo.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     for rotation in 0..4
     {

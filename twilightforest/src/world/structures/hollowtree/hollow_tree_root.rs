@@ -28,11 +28,11 @@ pub fn init(this: &Piece, i: i32, sx: i32, sy: i32, sz: i32, length: f64, angle:
 }
 
 // ComponentTFHollowTreeRoot.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     if this.m_groundLevel.get() < 0
     {
-        let rootHeight: i32 = this.m_box.get().m_max[1] - this.m_box.get().m_min[1];
+        let _rootHeight: i32 = this.m_box.get().m_max[1] - this.m_box.get().m_min[1];
         this.m_groundLevel.set(this.dirtLevel(world, sbb));
         if this.m_groundLevel.get() < 0
         {

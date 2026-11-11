@@ -15,7 +15,7 @@ pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
 }
 
 // ComponentTFStrongholdTreasureCorridor.generateBoundingBox
-pub fn generateBoundingBox(this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
+pub fn generateBoundingBox(_this: &Piece, facing: i32, x: i32, y: i32, z: i32) -> Option<StructureBox>
 {
     return Some(boxFor(x, y, z, -4, -1, 0, 9, 7, 27, facing));
 }

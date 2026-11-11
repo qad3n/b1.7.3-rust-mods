@@ -20,30 +20,21 @@ pub fn isInHill(this: &Piece, cx: i32, cz: i32) -> bool
     return (((cx < (this.m_radius.get() * 2)) && (cx > 0)) && (cz < (this.m_radius.get() * 2))) && (cz > 0);
 }
 
-// ComponentTFYetiCave.isInHill
-pub fn isInHill3(this: &Piece, mapX: i32, mapY: i32, mapZ: i32) -> bool
-{
-    return (((((mapX < (this.m_radius.get() * 2)) && (mapX > 0)) && (mapZ < (this.m_radius.get() * 2)))
-        && (mapZ > 0))
-        && (mapY > crate::world::terrain::SEA_LEVEL))
-        && (mapY < (crate::world::terrain::SEA_LEVEL + 20));
-}
-
 // ComponentTFYetiCave.func_74875_a
 pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
 {
     let sn: i32 = 128;
-    for i in 0..sn
+    for _i in 0..sn
     {
         let dest: Vec<i32> = hollow_hill::getCoordsInHill2D(this, random);
         hollow_hill::generateBlockStalactite(this, world, blk("stone"), 1.0, true, dest[0], 1, dest[1], sbb);
     }
-    for i in 0..sn
+    for _i in 0..sn
     {
         let dest: Vec<i32> = hollow_hill::getCoordsInHill2D(this, random);
         hollow_hill::generateBlockStalactite(this, world, blk("ice"), 1.0, true, dest[0], 1, dest[1], sbb);
     }
-    for i in 0..sn
+    for _i in 0..sn
     {
         let dest: Vec<i32> = hollow_hill::getCoordsInHill2D(this, random);
         hollow_hill::generateBlockStalactite(this, world, blk("packed_ice"), 0.9, true, dest[0], 1, dest[1], sbb);

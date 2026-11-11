@@ -17,10 +17,10 @@ pub fn init(this: &Piece, i: i32, random: &Random, x: i32, y: i32, z: i32)
 }
 
 // ComponentTFMazeRoom.func_74861_a
-pub fn build(this: &Piece, structurecomponent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn build(_this: &Piece, _structurecomponent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFMazeRoom.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     this.fillMeta(world, sbb, 1, 0, 1, 14, 0, 14, blk("tf:mazestone"), 7, blk("air"), 0, true);
     this.fillMeta(world, sbb, 2, 0, 2, 13, 0, 13, blk("tf:mazestone"), 6, blk("air"), 0, true);

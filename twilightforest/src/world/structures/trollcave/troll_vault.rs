@@ -21,7 +21,7 @@ pub fn init(this: &Piece, index: i32, mut x: i32, mut y: i32, mut z: i32)
 }
 
 // ComponentTFTrollVault.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random) {}
+pub fn build(_this: &Piece, _parent: &Piece, _list: &mut Pieces, _random: &Random) {}
 
 // ComponentTFTrollVault.func_74875_a
 pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool

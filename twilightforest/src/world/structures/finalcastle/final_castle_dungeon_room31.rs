@@ -9,7 +9,7 @@ pub fn new(random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32, leve
 }
 
 // ComponentTFFinalCastleDungeonRoom31 constructor
-pub fn init(this: &Piece, random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32, level: i32)
+pub fn init(this: &Piece, _random: &Random, i: i32, x: i32, y: i32, z: i32, direction: i32, level: i32)
 {
     tower_wing::init(this, i);
     this.setMode(direction);
@@ -65,7 +65,7 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFFinalCastleDungeonRoom31.isExitBuildForLevel
-pub fn isExitBuildForLevel(this: &Piece, parent: &Piece) -> bool
+pub fn isExitBuildForLevel(_this: &Piece, parent: &Piece) -> bool
 {
     return if matches!(parent.m_kind, Kind::FinalCastleDungeonEntrance)
     {
@@ -78,7 +78,7 @@ pub fn isExitBuildForLevel(this: &Piece, parent: &Piece) -> bool
 }
 
 // ComponentTFFinalCastleDungeonRoom31.setExitBuiltForLevel
-pub fn setExitBuiltForLevel(this: &Piece, parent: &Piece, exit: bool)
+pub fn setExitBuiltForLevel(_this: &Piece, parent: &Piece, exit: bool)
 {
     if matches!(parent.m_kind, Kind::FinalCastleDungeonEntrance)
     {
@@ -120,7 +120,7 @@ pub fn addDungeonRoom(
 }
 
 // ComponentTFFinalCastleDungeonRoom31.addDungeonExit
-pub fn addDungeonExit(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random, mut rotation: i32) -> bool
+pub fn addDungeonExit(this: &Piece, _parent: &Piece, list: &mut Pieces, random: &Random, mut rotation: i32) -> bool
 {
     rotation = (this.m_mode.get() + rotation) % 4;
     let rc: [i32; 3] = final_castle_dungeon_room31::getNewRoomCoords(this, random, rotation);
@@ -154,7 +154,7 @@ pub fn getNewRoomCoords(this: &Piece, random: &Random, rotation: i32) -> [i32; 3
     {
         offset += this.m_size.get();
     }
-    let mut var10000: [i32; 3];
+    let var10000: [i32; 3];
     match rotation
     {
         1 =>
@@ -178,7 +178,7 @@ pub fn getNewRoomCoords(this: &Piece, random: &Random, rotation: i32) -> [i32; 3
 }
 
 // ComponentTFFinalCastleDungeonRoom31.func_74875_a
-pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -> bool
+pub fn add(this: &Piece, world: &GenWorld, _random: &Random, sbb: StructureBox) -> bool
 {
     if final_castle_dungeon_room31::isBoundingBoxOutOfPlateau(this, world, sbb)
     {
@@ -237,7 +237,7 @@ pub fn add(this: &Piece, world: &GenWorld, random: &Random, sbb: StructureBox) -
 }
 
 // ComponentTFFinalCastleDungeonRoom31.isBoundingBoxOutOfPlateau
-pub fn isBoundingBoxOutOfPlateau(this: &Piece, world: &GenWorld, sbb: StructureBox) -> bool
+pub fn isBoundingBoxOutOfPlateau(this: &Piece, world: &GenWorld, _sbb: StructureBox) -> bool
 {
     let minX: i32 = this.m_box.get().m_min[0] - 1;
     let minZ: i32 = this.m_box.get().m_min[2] - 1;
@@ -257,7 +257,7 @@ pub fn isBoundingBoxOutOfPlateau(this: &Piece, world: &GenWorld, sbb: StructureB
 }
 
 // ComponentTFFinalCastleDungeonRoom31.getRuneMeta
-pub fn getRuneMeta(this: &Piece, forceFieldMeta: i32) -> i32 { return if forceFieldMeta == 4 { 1 } else { 2 }; }
+pub fn getRuneMeta(_this: &Piece, forceFieldMeta: i32) -> i32 { return if forceFieldMeta == 4 { 1 } else { 2 }; }
 
 // ComponentTFFinalCastleDungeonRoom31.getForceFieldMeta
-pub fn getForceFieldMeta(this: &Piece, decoRNG: &Random) -> i32 { return decoRNG.nextIntBounded(2) + 3; }
+pub fn getForceFieldMeta(_this: &Piece, decoRNG: &Random) -> i32 { return decoRNG.nextIntBounded(2) + 3; }

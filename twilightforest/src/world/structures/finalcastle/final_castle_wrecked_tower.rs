@@ -24,10 +24,10 @@ pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
 }
 
 // ComponentTFFinalCastleWreckedTower.getGlyphMeta
-pub fn getGlyphMeta(this: &Piece) -> i32 { return 1; }
+pub fn getGlyphMeta(_this: &Piece) -> i32 { return 1; }
 
 // ComponentTFFinalCastleWreckedTower.determineBlockDestroyed
-pub fn determineBlockDestroyed(this: &Piece, world: &GenWorld, areas: &[Option<DestroyArea>], y: i32, x: i32, z: i32)
+pub fn determineBlockDestroyed(_this: &Piece, world: &GenWorld, areas: &[Option<DestroyArea>], y: i32, x: i32, z: i32)
 {
     let mut isInside: bool = false;
     for dArea in areas.iter().flatten()

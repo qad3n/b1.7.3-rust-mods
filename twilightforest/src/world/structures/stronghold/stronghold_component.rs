@@ -13,64 +13,8 @@ pub fn init(this: &Piece, i: i32, facing: i32, x: i32, y: i32, z: i32)
     this.setMode(facing);
 }
 
-// StructureTFStrongholdComponent.getComponentToAddBoundingBox
-pub fn getComponentToAddBoundingBox(
-    x: i32,
-    y: i32,
-    z: i32,
-    xOff: i32,
-    yOff: i32,
-    zOff: i32,
-    xSize: i32,
-    ySize: i32,
-    zSize: i32,
-    facing: i32,
-) -> StructureBox
-{
-    let mut var10000: StructureBox;
-    match facing
-    {
-        0 =>
-        {
-            var10000 = StructureBox::new(
-                [x + xOff, y + yOff, z + zOff],
-                [((x + xSize) - 1) + xOff, ((y + ySize) - 1) + yOff, ((z + zSize) - 1) + zOff],
-            );
-        }
-        1 =>
-        {
-            var10000 = StructureBox::new(
-                [((x - zSize) + 1) + zOff, y + yOff, z + xOff],
-                [x + zOff, ((y + ySize) - 1) + yOff, ((z + xSize) - 1) + xOff],
-            );
-        }
-        2 =>
-        {
-            var10000 = StructureBox::new(
-                [((x - xSize) + 1) - xOff, y + yOff, ((z - zSize) + 1) + zOff],
-                [x - xOff, ((y + ySize) - 1) + yOff, z + zOff],
-            );
-        }
-        3 =>
-        {
-            var10000 = StructureBox::new(
-                [x + zOff, y + yOff, ((z - xSize) + 1) - xOff],
-                [((x + zSize) - 1) + zOff, ((y + ySize) - 1) + yOff, z - xOff],
-            );
-        }
-        _ =>
-        {
-            var10000 = StructureBox::new(
-                [x + xOff, y + yOff, z + zOff],
-                [((x + xSize) - 1) + xOff, ((y + ySize) - 1) + yOff, ((z + zSize) - 1) + zOff],
-            );
-        }
-    }
-    return var10000;
-}
-
 // StructureTFStrongholdComponent.func_74861_a
-pub fn build(this: &Piece, parent: &Piece, list: &mut Pieces, random: &Random)
+pub fn build(this: &Piece, parent: &Piece, _list: &mut Pieces, _random: &Random)
 {
     this.m_deco.set((parent).m_deco.get());
 }
@@ -114,7 +58,7 @@ pub fn addNewComponent(
 }
 
 // StructureTFStrongholdComponent.findBreakInComponent
-pub fn findBreakInComponent(this: &Piece, list: &mut Pieces, x: i32, y: i32, z: i32) -> Option<Rc<Piece>>
+pub fn findBreakInComponent(_this: &Piece, list: &mut Pieces, x: i32, y: i32, z: i32) -> Option<Rc<Piece>>
 {
     for component in list.clone()
     {
@@ -138,7 +82,6 @@ pub fn addNewUpperComponent(
     z: i32,
 )
 {
-    let mut attempted: Option<Rc<Piece>> = None;
     let index: i32 = this.m_depth.get() + 1;
     let nFacing: i32 = (this.m_mode.get() + facing) % 4;
     let nx: i32 = this.xAt(x, z);
@@ -146,7 +89,7 @@ pub fn addNewUpperComponent(
     let nz: i32 = this.zAt(x, z);
     if (index <= 100) && (!this.isOutOfRange(&parent, nx, ny, nz, 48))
     {
-        let mut var10000: Rc<Piece>;
+        let var10000: Rc<Piece>;
         match random.nextIntBounded(5)
         {
             1 =>
@@ -170,7 +113,7 @@ pub fn addNewUpperComponent(
                 var10000 = stronghold_upper_tintersection::new(index, nFacing, nx, ny, nz);
             }
         }
-        attempted = Some(Rc::clone(&var10000));
+        let attempted: Option<Rc<Piece>> = Some(Rc::clone(&var10000));
         if attempted.is_some() && intersecting(list, attempted.piece().bounds()).is_none()
         {
             list.push(Rc::clone(attempted.piece()));
@@ -180,13 +123,13 @@ pub fn addNewUpperComponent(
 }
 
 // StructureTFStrongholdComponent.isOutOfRange
-pub fn isOutOfRange(this: &Piece, parent: &Piece, nx: i32, ny: i32, nz: i32, range: i32) -> bool
+pub fn isOutOfRange(_this: &Piece, parent: &Piece, nx: i32, _ny: i32, nz: i32, range: i32) -> bool
 {
     return ((nx - parent.bounds().m_min[0]).abs() > range) || ((nz - parent.bounds().m_min[2]).abs() > range);
 }
 
 // StructureTFStrongholdComponent.placeDoorwayAt
-pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, sbb: StructureBox)
+pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, _random: &Random, x: i32, y: i32, z: i32, sbb: StructureBox)
 {
     if (x != 0) && (x != stronghold_component::getXSize(this))
     {
@@ -231,7 +174,7 @@ pub fn placeDoorwayAt(this: &Piece, world: &GenWorld, random: &Random, x: i32, y
 // StructureTFStrongholdComponent.getXSize
 pub fn getXSize(this: &Piece) -> i32
 {
-    let mut var10000: i32;
+    let var10000: i32;
     match this.mode()
     {
         1 | 3 =>
@@ -250,7 +193,7 @@ pub fn getXSize(this: &Piece) -> i32
 pub fn placeSmallDoorwayAt(
     this: &Piece,
     world: &GenWorld,
-    random: &Random,
+    _random: &Random,
     facing: i32,
     x: i32,
     y: i32,
@@ -445,7 +388,7 @@ pub fn isValidBreakInPoint(this: &Piece, wx: i32, wy: i32, wz: i32) -> bool
 // StructureTFStrongholdComponent.getRelativeX
 pub fn getRelativeX(this: &Piece, x: i32, z: i32) -> i32
 {
-    let mut var10000: i32;
+    let var10000: i32;
     match this.mode()
     {
         0 =>
@@ -478,7 +421,7 @@ pub fn getRelativeY(this: &Piece, par1: i32) -> i32 { return par1 - this.m_box.g
 // StructureTFStrongholdComponent.getRelativeZ
 pub fn getRelativeZ(this: &Piece, x: i32, z: i32) -> i32
 {
-    let mut var10000: i32;
+    let var10000: i32;
     match this.mode()
     {
         0 =>
