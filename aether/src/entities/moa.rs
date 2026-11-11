@@ -41,6 +41,7 @@ mod moa
     pub const ADULT_SCALE: f32 = 1.8;
     pub const SADDLE_LIFT: f32 = 0.02;
     pub const TICKS_PER_SECOND: i32 = 20;
+    pub const JUMP_LIFT: f64 = 0.05;
 }
 
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
@@ -117,6 +118,13 @@ impl EntityBehavior for Moa
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
         entity.setField(EntityField::FallDistance, 0.0);
+
+        // a moa jumping by itself rises a little more every tick of the jump
+        if entity.world.isAuthority() && entity.rider().is_none() && entity.flag(EntityField::Jumping)
+        {
+            let [x, y, z] = info.motion;
+            let _ = entity.setMotion([x, y + moa::JUMP_LIFT, z]);
+        }
 
         let mut current: MoaState = state(entity);
 
