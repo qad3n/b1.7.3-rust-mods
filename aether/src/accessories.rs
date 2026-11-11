@@ -1,7 +1,7 @@
 use crate::effects::Effect;
-use b173_api::StackData;
 use b173_api::math::floor;
 use b173_api::prelude::*;
+use b173_api::{StackData, WornStack};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 
@@ -70,28 +70,56 @@ pub(crate) const ACCESSORIES: [Accessory; 31] = [
     accessory("repulsion_shield", Slot::Shield, "repulsion_shield", PLAIN, Some(512)),
 ];
 
-// AccessoryType.createCompleteList, the eight worn slots in order with their empty slot icons
-const WORN: [(Slot, &str); 8] = [
-    (Slot::Pendant, "pendant"),
-    (Slot::Cape, "cape"),
-    (Slot::Shield, "shield"),
-    (Slot::Misc, "misc"),
-    (Slot::Ring, "ring"),
-    (Slot::Ring, "ring"),
-    (Slot::Gloves, "gloves"),
-    (Slot::Misc, "misc"),
+// the common item tag of each accessory kind, so other mods' rings and capes fit these slots and Aether's fit theirs
+const KINDS: [(Slot, &str); 6] = [
+    (Slot::Gloves, "c:accessories/gloves"),
+    (Slot::Ring, "c:accessories/ring"),
+    (Slot::Pendant, "c:accessories/pendant"),
+    (Slot::Cape, "c:accessories/cape"),
+    (Slot::Misc, "c:accessories/misc"),
+    (Slot::Shield, "c:accessories/shield"),
 ];
+
+// one accessory slot of the loader registry: its name, kind and empty slot icon
+struct WornSlot
+{
+    m_name: &'static str,
+    m_slot: Slot,
+    m_icon: &'static str,
+}
+
+// AccessoryType.createCompleteList, the eight worn slots in order
+const WORN: [WornSlot; 8] = [
+    WornSlot { m_name: "pendant", m_slot: Slot::Pendant, m_icon: "pendant" },
+    WornSlot { m_name: "cape", m_slot: Slot::Cape, m_icon: "cape" },
+    WornSlot { m_name: "shield", m_slot: Slot::Shield, m_icon: "shield" },
+    WornSlot { m_name: "misc", m_slot: Slot::Misc, m_icon: "misc" },
+    WornSlot { m_name: "ring", m_slot: Slot::Ring, m_icon: "ring" },
+    WornSlot { m_name: "second_ring", m_slot: Slot::Ring, m_icon: "ring" },
+    WornSlot { m_name: "gloves", m_slot: Slot::Gloves, m_icon: "gloves" },
+    WornSlot { m_name: "second_misc", m_slot: Slot::Misc, m_icon: "misc" },
+];
+
+fn kindTag(slot: Slot) -> &'static str
+{
+    KINDS.iter().find(|(kind, _)| *kind == slot).map_or(KINDS[0].1, |(_, tag)| tag)
+}
 const SLOTS: usize = 8;
 const CLICK: &str = "accessory_click";
 
-// what a player wears and the life shards it used, kept in the player's synced data so every client can draw it
+// what a player wears, held in the loader's accessory slots, with the life shards it used and the valkyrie set flag
+// kept in the player's synced data so every client can draw them
 #[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
 pub(crate) struct Worn
 {
+    // the slots as worlds saved them before the loader kept accessories, moved into its slots on first read
     pub m_slots: [Option<StackData>; SLOTS],
     pub m_lifeShards: i32,
     // InventoryAccessories.isWearingValkyrieSet, worked out where the armor is known so every client can draw the wings
     pub m_valkyrieSet: bool,
+    // the loader's slots as read, so a save writes only the ones that changed
+    #[serde(skip)]
+    m_held: [Option<StackData>; SLOTS],
 }
 
 impl Worn
@@ -100,15 +128,68 @@ impl Worn
     {
         player.info().map_or_else(Self::default, |info|
         {
-            Entity { world: World { dimension: info.world }, id: player.id }.synced()
+            Self::ofEntity(Entity { world: World { dimension: info.world }, id: player.id })
         })
     }
 
-    fn save(&self, player: Player)
+    pub(crate) fn ofEntity(entity: Entity) -> Self
+    {
+        let mut worn: Worn = entity.synced();
+        let held: Vec<WornStack> = entity.accessories();
+        for (index, slot) in WORN.iter().enumerate()
+        {
+            let stack: Option<StackData> = held
+                .iter()
+                .find(|worn| worn.slot.path() == slot.m_name && worn.slot.namespace() == "aether")
+                .and_then(|worn| worn.stack.as_ref())
+                .and_then(|stack| stack.toRaw().ok());
+            worn.m_held[index] = stack;
+        }
+
+        let legacy: bool = worn.m_slots.iter().any(Option::is_some);
+        if !legacy
+        {
+            worn.m_slots = worn.m_held.clone();
+            return worn;
+        }
+
+        if entity.world.isAuthority()
+        {
+            worn.store(entity);
+        }
+
+        worn
+    }
+
+    // the slots into the loader, the rest into this mod's synced data without the old slot copy
+    fn store(&mut self, entity: Entity)
+    {
+        for (index, slot) in WORN.iter().enumerate()
+        {
+            if self.m_slots[index] == self.m_held[index]
+            {
+                continue;
+            }
+
+            let stack: Option<ItemStack> = self.m_slots[index].clone().map(ItemStack::fromRaw);
+            if let Err(error) = entity.setAccessory(slot.m_name, stack)
+            {
+                warn(&format!("accessory slot {} not saved: {}", slot.m_name, error.0));
+                continue;
+            }
+
+            self.m_held[index] = self.m_slots[index].clone();
+        }
+
+        let synced: Worn = Worn { m_slots: Default::default(), ..self.clone() };
+        let _ = entity.setSynced(&synced);
+    }
+
+    fn save(&mut self, player: Player)
     {
         if let Some(info) = player.info()
         {
-            let _ = Entity { world: World { dimension: info.world }, id: player.id }.setSynced(self);
+            self.store(Entity { world: World { dimension: info.world }, id: player.id });
         }
     }
 
@@ -163,32 +244,13 @@ struct Click
     m_slot: u8,
 }
 
+// SlotAccessory: the loader swaps the cursor stack and the slot when the slot's tag takes the cursor stack
 fn click(message: Click, player: Player)
 {
-    let index: usize = message.m_slot as usize;
-    if index >= SLOTS
+    if let Some(slot) = WORN.get(message.m_slot as usize)
     {
-        return;
+        player.swapAccessory(slot.m_name);
     }
-
-    let mut worn: Worn = Worn::of(player);
-    let cursor: Option<ItemStack> = player.cursor();
-    let fits: bool = cursor
-        .as_ref()
-        .is_none_or(|stack| accessoryOf(stack).is_some_and(|row| row.m_slot == WORN[index].0) && stack.count == 1);
-
-    if !fits
-    {
-        return;
-    }
-
-    let taken: Option<ItemStack> = worn.stack(index);
-
-    worn.m_slots[index] = cursor.and_then(|stack| stack.toRaw().ok());
-
-    let _ = player.setCursor(taken);
-
-    worn.save(player);
 }
 
 mod panel
@@ -260,7 +322,7 @@ impl Overlay for Equipment
 
         let worn: Worn = localPlayer().map_or_else(Worn::default, Worn::of);
 
-        for (index, (_, icon)) in WORN.iter().enumerate()
+        for (index, slot) in WORN.iter().enumerate()
         {
             let [sx, sy] = slotAt(index);
             draw.texture(panel::SHEET, sx - 1, sy - 1, panel::SLOT_UV[0], panel::SLOT_UV[1], panel::SLOT, panel::SLOT);
@@ -268,7 +330,7 @@ impl Overlay for Equipment
             match worn.stack(index)
             {
                 Some(stack) => draw.item(sx, sy, &stack),
-                None => draw.image(&format!("aether:item/slots/{icon}"), sx, sy, panel::ICON, panel::ICON),
+                None => draw.image(&format!("aether:item/slots/{}", slot.m_icon), sx, sy, panel::ICON, panel::ICON),
             };
 
             if inside(mouse, [sx, sy, panel::ICON, panel::ICON])
@@ -450,7 +512,7 @@ fn serverTick(player: Player)
 
     if worn.wearing("phoenix_gloves") && entity.flag(EntityField::InWater) && age % ability::BURN_EVERY == 0.0
     {
-        let gloves: usize = 6;
+        let gloves: usize = WORN.iter().position(|slot| slot.m_slot == Slot::Gloves).unwrap_or(SLOTS - 1);
 
         worn.wear("phoenix_gloves", 1);
 
@@ -624,9 +686,9 @@ fn layer(row: &Accessory, parts: Vec<BipedPart>, inflate: f32, scale: f32, blend
 }
 
 // PlayerAetherRenderer.renderModel: pendant on the body, cape on the cloak, gloves on the arms, the shield all over
-fn layers(player: &EntityInfo, synced: &[u8]) -> Vec<PlayerLayer>
+fn layers(player: &EntityInfo, _synced: &[u8]) -> Vec<PlayerLayer>
 {
-    let worn: Worn = b173_api::fromBytes(synced).unwrap_or_default();
+    let worn: Worn = Worn::ofEntity(Entity { world: World { dimension: player.world }, id: player.id });
     let mut out: Vec<PlayerLayer> = crate::abilities::wings(player, &worn).into_iter().collect();
     let invisible: bool = worn.wearing("invisibility_cape");
 
@@ -691,6 +753,21 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         }
 
         ctx.items().register(row.m_name, spec)?;
+    }
+
+    for (kind, tag) in KINDS
+    {
+        let members: Vec<&str> = ACCESSORIES.iter().filter(|row| row.m_slot == kind).map(|row| row.m_name).collect();
+        ctx.tags().add(RegistryKind::Item, tag, &members)?;
+    }
+
+    for slot in &WORN
+    {
+        ctx.accessories().register(
+            slot.m_name,
+            kindTag(slot.m_slot),
+            Some(&format!("aether:item/slots/{}", slot.m_icon)),
+        )?;
     }
 
     ctx.channels().register::<Click>(CLICK, Direction::ToServer, click)?;
