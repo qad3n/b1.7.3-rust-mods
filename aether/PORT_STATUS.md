@@ -232,8 +232,10 @@ Fixed:
 - The lightning knife plays the mod's own `projectile.shoot` sound instead of the bow's.
 
 Still differs or unverified:
-- Valkyrie tools reach eight blocks for blocks and entities in the source (PlayerAether block reach and the client's
-  extended attack); the loader has no per item reach yet, so they reach as far as any tool.
+- Valkyrie reach rides the loader's `block_interaction_range` and `entity_interaction_range` attributes (rewrite
+  3503004): the pickaxe, axe and shovel reach eight blocks for blocks, they and the lance point at entities eight
+  blocks off. The source's extended attack picks the nearest entity in a narrow cone by line of sight and wears the
+  item one more; the port uses the normal pick ray and wear.
 - Creative players' darts (pickup mode 2) are picked up like survival ones and the pickup has no item fly animation.
 - The slider's crush shows the break effect and smoke the source spawns only on the server, where 1.7 never draws
   them.
