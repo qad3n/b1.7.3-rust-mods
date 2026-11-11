@@ -6,7 +6,7 @@ use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-// the twilight tools that act on the world, ItemTFOreMeter through ItemTFTowerKey
+// the twilight tools that act on the world, ItemTFOreMagnet through ItemTFTowerKey
 mod reach
 {
     // ItemTFCrumbleHorn and ItemTFPeacockFan act on a four block box three blocks ahead of the eyes
@@ -17,8 +17,6 @@ mod reach
     pub const VEIN: usize = 24;
     // ItemTFLampOfCinders burns thorns this far around the player
     pub const LAMP: i32 = 4;
-    // ItemTFOreMeter counts this many chunks around the player's
-    pub const METER: i32 = 3;
 }
 
 mod wear
@@ -758,74 +756,6 @@ impl ItemBehavior for OreMagnet
     }
 }
 
-// ItemTFOreMeter.countOreInArea, the 2.4.3 meter counts but never speaks, the older meters' report is restored
-struct OreMeter;
-
-const METERED: [(&str, &str); 11] = [
-    ("minecraft:stone", "Stone"),
-    ("minecraft:dirt", "Dirt"),
-    ("minecraft:gravel", "Gravel"),
-    ("minecraft:coal_ore", "Coal"),
-    ("minecraft:iron_ore", "Iron"),
-    ("minecraft:gold_ore", "Gold"),
-    ("minecraft:diamond_ore", "Diamond"),
-    ("minecraft:lapis_ore", "Lapis"),
-    ("minecraft:redstone_ore", "Redstone"),
-    (block::ROOT, "Roots"),
-    (block::LIVEROOT, "Liveroot"),
-];
-
-#[item_behavior]
-impl ItemBehavior for OreMeter
-{
-    fn onRightClick(&self, world: World, player: Player, _stack: ItemStack) -> Use
-    {
-        let Some(info) = player.info().filter(|_| world.isAuthority())
-        else
-        {
-            return Use::Pass;
-        };
-
-        let ids: Vec<i32> = METERED.iter().map(|(name, _)| ids::blockId(name)).collect();
-        let mut counts: Vec<i32> = vec![0; ids.len()];
-        let (chunkX, chunkZ): (i32, i32) = (floor(info.pos[0]) >> 4, floor(info.pos[2]) >> 4);
-        let top: i32 = crate::world::terrain::height();
-
-        for cx in chunkX - reach::METER..=chunkX + reach::METER
-        {
-            for cz in chunkZ - reach::METER..=chunkZ + reach::METER
-            {
-                for x in cx * 16..cx * 16 + 16
-                {
-                    for z in cz * 16..cz * 16 + 16
-                    {
-                        for y in 0..top
-                        {
-                            let here: i32 = world.block(BlockPos::new(x, y, z));
-                            if let Some(index) = ids.iter().position(|id| *id == here)
-                            {
-                                counts[index] += 1;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let total: i32 = counts.iter().sum::<i32>().max(1);
-
-        player.chat(&format!("Ore Meter! Radius {}", reach::METER));
-
-        for ((_, label), count) in METERED.iter().zip(&counts).skip(3)
-        {
-            let percent: f32 = *count as f32 / total as f32 * 100.0;
-            player.chat(&format!("{label} - {count} ({percent:.2}%)"));
-        }
-
-        Use::Done(player.held())
-    }
-}
-
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     let worn = |label: &str, look: &str, durability: i32|
@@ -833,10 +763,11 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         ItemSpecBuilder::new().name(label).texture(&texture(look)).maxStack(1).maxDamage(durability)
     };
 
+    // the 2.4.3 meter counts ores around the player and never shows the counts
     put(
         ctx,
         item::ORE_METER,
-        ItemSpecBuilder::new().name("Ore Meter [WIP]").texture(&texture("oremeter")).maxStack(1).behavior(OreMeter),
+        ItemSpecBuilder::new().name("Ore Meter [WIP]").texture(&texture("oremeter")).maxStack(1),
     )?;
 
     // no item spec names the glowing magnet icons, asking for their slots now gives them room on the item sheet
