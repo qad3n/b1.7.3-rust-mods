@@ -22,6 +22,8 @@ pub(crate) struct Shot
     pub m_impact: Impact,
     // ticks of fire set on what it hits
     pub m_burn: f64,
+    // EntityDartBase.getStack and EntityArrow, what a player who shot it picks up once it is stuck
+    pub m_pickup: Option<&'static str>,
 }
 
 // what happens where a shot lands besides its damage
@@ -78,6 +80,7 @@ pub(crate) const SHOTS: [Shot; 8] = [
         m_look: Look::Dart,
         m_impact: Impact::Stick,
         m_burn: 0.0,
+        m_pickup: Some("golden_dart"),
     },
     Shot
     {
@@ -93,6 +96,7 @@ pub(crate) const SHOTS: [Shot; 8] = [
         m_look: Look::Dart,
         m_impact: Impact::Stick,
         m_burn: 0.0,
+        m_pickup: Some("poison_dart"),
     },
     Shot
     {
@@ -108,6 +112,7 @@ pub(crate) const SHOTS: [Shot; 8] = [
         m_look: Look::Dart,
         m_impact: Impact::Stick,
         m_burn: 0.0,
+        m_pickup: Some("enchanted_dart"),
     },
     Shot
     {
@@ -123,6 +128,7 @@ pub(crate) const SHOTS: [Shot; 8] = [
         m_look: Look::Dart,
         m_impact: Impact::Stick,
         m_burn: 0.0,
+        m_pickup: Some("poison_dart"),
     },
     // EntityZephyrSnowball: no gravity, flings what it hits, gone after 150 ticks
     Shot
@@ -139,6 +145,7 @@ pub(crate) const SHOTS: [Shot; 8] = [
         m_look: Look::Sprite,
         m_impact: Impact::Vanish,
         m_burn: 0.0,
+        m_pickup: None,
     },
     // EntityHammerProjectile: straight and fast, hurts what it hits and knocks it up
     Shot
@@ -155,6 +162,7 @@ pub(crate) const SHOTS: [Shot; 8] = [
         m_look: Look::Icon,
         m_impact: Impact::Blast,
         m_burn: 0.0,
+        m_pickup: None,
     },
     // EntityLightningKnife: thrown, calls lightning where it lands
     Shot
@@ -171,6 +179,7 @@ pub(crate) const SHOTS: [Shot; 8] = [
         m_look: Look::Icon,
         m_impact: Impact::Lightning,
         m_burn: 0.0,
+        m_pickup: None,
     },
     // EntityPhoenixArrow: an arrow that sets what it hits alight
     Shot
@@ -187,6 +196,7 @@ pub(crate) const SHOTS: [Shot; 8] = [
         m_look: Look::Dart,
         m_impact: Impact::Stick,
         m_burn: 100.0,
+        m_pickup: Some("minecraft:arrow"),
     },
 ];
 
@@ -204,6 +214,10 @@ struct Flight
     m_owner: Option<i32>,
     m_stuck: bool,
     m_age: i32,
+    // EntityArrow.canBePickedUp, a player's shot only
+    m_pickup: bool,
+    // EntityArrow.arrowShake, a stuck shot quivers before it can be picked up
+    m_shake: i32,
 }
 
 // fires a shot from a point toward a target point with a speed and EntityArrow.setThrowableHeading's spread
@@ -224,7 +238,8 @@ pub(crate) fn fire(
     let motion: [f64; 3] =
         [(dx / length + jitter()) * speed, (dy / length + jitter()) * speed, (dz / length + jitter()) * speed];
     let _ = entity.setMotion(motion);
-    let _ = entity.setData(&Flight { m_owner: owner, ..Flight::default() });
+    let pickup: bool = owner.and_then(|owner| world.entity(owner)).is_some_and(|shooter| shooter.player.is_some());
+    let _ = entity.setData(&Flight { m_owner: owner, m_pickup: pickup, ..Flight::default() });
 
     if let Some(owner) = owner
     {
@@ -237,6 +252,79 @@ pub(crate) fn fire(
 struct Projectile
 {
     m_shot: &'static Shot,
+}
+
+mod hit
+{
+    // EntityArrow.onUpdate plays bowhit where a shot strikes and quivers seven ticks once stuck
+    pub const SHAKE: i32 = 7;
+    pub const PITCH_LOW: f32 = 0.9;
+    pub const PITCH_SPREAD: f32 = 0.2;
+    pub const PITCH: f32 = 1.2;
+    // EntityArrow.onUpdate in water: a stronger drag and four bubbles behind
+    pub const WATER_DRAG: f64 = 0.8;
+    pub const BUBBLES: i32 = 4;
+    pub const BUBBLE_BACK: f64 = 0.25;
+    // EntityArrow.onCollideWithPlayer, the player's box against the shot's half block box
+    pub const REACH: f64 = 0.55;
+    pub const EYES: f64 = 1.62;
+    pub const HEIGHT: f64 = 1.8;
+    pub const HALF: f64 = 0.25;
+    pub const POP_VOLUME: f32 = 0.2;
+    pub const POP_SPREAD: f32 = 0.7;
+    pub const STACK: i32 = 64;
+    pub const MAIN_SLOTS: i32 = 36;
+}
+
+fn bowhit(world: World, at: [f64; 3])
+{
+    let pitch: f32 = hit::PITCH / (world.random(1000) as f32 / 1000.0 * hit::PITCH_SPREAD + hit::PITCH_LOW);
+    world.playSound(at, "random.bowhit", 1.0, pitch);
+}
+
+// InventoryPlayer.addItemStackToInventory fits the stack somewhere in the main inventory
+fn room(player: Player, item: &str) -> bool
+{
+    (0..hit::MAIN_SLOTS).any(|slot| player.slot(slot).is_none_or(|held| held.item.is(item) && held.count < hit::STACK))
+}
+
+// EntityArrow.onCollideWithPlayer: a stuck shot goes to the shooter's kind of player who touches it and has room
+fn pickUp(shot: &Shot, entity: Entity, info: &EntityInfo, flight: &Flight) -> bool
+{
+    let Some(item) = shot.m_pickup.filter(|_| flight.m_pickup && flight.m_shake <= 0)
+    else
+    {
+        return false;
+    };
+    let world: World = entity.world;
+
+    let toucher: Option<Player> = world.players().into_iter().find(|player|
+    {
+        player.info().is_some_and(|other|
+        {
+            let feet: f64 = other.pos[1] - hit::EYES;
+            (other.pos[0] - info.pos[0]).abs() < hit::REACH
+                && (other.pos[2] - info.pos[2]).abs() < hit::REACH
+                && feet < info.pos[1] + hit::HALF
+                && feet + hit::HEIGHT > info.pos[1] - hit::HALF
+        })
+    });
+    let Some(player) = toucher.filter(|player| room(*player, item))
+    else
+    {
+        return false;
+    };
+
+    if let Err(error) = player.give(ItemStack::of(item, 1))
+    {
+        warn(&format!("could not hand back a {item}: {}", error.0));
+        return false;
+    }
+
+    let spread: f32 = (world.random(1000) as f32 - world.random(1000) as f32) / 1000.0;
+    world.playSound(info.pos, "random.pop", hit::POP_VOLUME, (spread * hit::POP_SPREAD + 1.0) * 2.0);
+    entity.kill();
+    true
 }
 
 mod flame
@@ -372,8 +460,14 @@ impl EntityBehavior for Projectile
         if flight.m_stuck
         {
             let _ = entity.setMotion([0.0; 3]);
-            let _ = entity.setData(&flight);
 
+            flight.m_shake = (flight.m_shake - 1).max(0);
+            if pickUp(self.m_shot, entity, info, &flight)
+            {
+                return;
+            }
+
+            let _ = entity.setData(&flight);
             return;
         }
 
@@ -399,6 +493,11 @@ impl EntityBehavior for Projectile
                 );
             }
 
+            if self.m_shot.m_impact == Impact::Stick
+            {
+                bowhit(entity.world, to);
+            }
+
             strike(self.m_shot, entity.world, &target, motion, flight.m_owner);
             land(self.m_shot, entity, to);
             return;
@@ -413,8 +512,10 @@ impl EntityBehavior for Projectile
             }
 
             let _ = entity.setPosition(hit.point);
+            bowhit(entity.world, hit.point);
 
             flight.m_stuck = true;
+            flight.m_shake = hit::SHAKE;
 
             let _ = entity.setMotion([0.0; 3]);
             let _ = entity.setData(&flight);
@@ -422,11 +523,27 @@ impl EntityBehavior for Projectile
             return;
         }
 
-        let _ = entity.setMotion([
-            motion[0] * self.m_shot.m_drag,
-            motion[1] * self.m_shot.m_drag - self.m_shot.m_gravity,
-            motion[2] * self.m_shot.m_drag,
-        ]);
+        let wet: bool = self.m_shot.m_impact == Impact::Stick && entity.flag(EntityField::InWater);
+        let drag: f64 = if wet
+        {
+            hit::WATER_DRAG
+        }
+        else
+        {
+            self.m_shot.m_drag
+        };
+        if wet
+        {
+            let behind: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - motion[axis] * hit::BUBBLE_BACK);
+            for _ in 0..hit::BUBBLES
+            {
+                entity.world.particle("bubble", behind, motion);
+            }
+
+            entity.setField(EntityField::FireTicks, 0.0);
+        }
+
+        let _ = entity.setMotion([motion[0] * drag, motion[1] * drag - self.m_shot.m_gravity, motion[2] * drag]);
 
         let _ = entity.setData(&flight);
     }
