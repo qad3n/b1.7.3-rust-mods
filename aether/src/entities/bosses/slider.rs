@@ -152,7 +152,7 @@ fn stop(entity: Entity, state: &mut Sync, motion: &mut Slide)
 
 fn feet(entity: Entity) -> f64 { entity.field(EntityField::Bottom) }
 
-// EntitySlider.destroyBlock: everything but dungeon stone and unbreakable blocks gives way
+// EntitySlider.destroyBlock: everything but dungeon stone and unbreakable blocks gives way and drops
 fn crushBlock(world: World, at: [f64; 3]) -> bool
 {
     let pos: BlockPos = BlockPos::new(at[0] as i32, at[1] as i32, at[2] as i32);
@@ -164,6 +164,12 @@ fn crushBlock(world: World, at: [f64; 3]) -> bool
 
     let meta: i32 = world.meta(pos);
     let _ = world.breakEffect(pos, block, meta);
+
+    if let Err(error) = world.dropBlockItems(pos, block, meta)
+    {
+        warn(&format!("slider crush drops at {pos:?}: {}", error.0));
+    }
+
     let _ = world.setBlock(pos, 0, 0);
     let wobble = || (fraction(world) - fraction(world)) * 0.375;
     world.particle("smoke", [at[0] + 0.5 + wobble(), at[1] + 0.5 + wobble(), at[2] + 0.5 + wobble()], [0.0; 3]);
