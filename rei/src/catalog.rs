@@ -1,6 +1,6 @@
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::rc::Rc;
 
 const ANY_DAMAGE: i32 = -1;
@@ -52,6 +52,7 @@ pub(crate) struct Catalog
     m_byKey: HashMap<Key, usize>,
     m_origins: HashMap<i32, String>,
     m_mods: HashMap<String, String>,
+    m_details: RefCell<HashMap<i32, Rc<[String]>>>,
     pub m_generation: i32,
 }
 
@@ -106,6 +107,7 @@ impl Catalog
             m_byKey: byKey,
             m_origins: origins,
             m_mods: mods,
+            m_details: RefCell::new(HashMap::new()),
             m_generation: generation,
         }
     }
@@ -134,6 +136,12 @@ impl Catalog
 
     // keyed by id alone so damaged tools find their mod too
     pub(crate) fn origin(&self, id: i32) -> Option<&str> { self.m_origins.get(&id).map(String::as_str) }
+
+    // asked of the host once per item id, so hovering costs nothing after the first frame
+    pub(crate) fn details(&self, id: i32) -> Rc<[String]>
+    {
+        Rc::clone(self.m_details.borrow_mut().entry(id).or_insert_with(|| details(id).into()))
+    }
 
     pub(crate) fn name(&self, key: Key) -> String
     {
@@ -245,6 +253,27 @@ fn origins(entries: &[Entry], names: &HashMap<String, String>) -> HashMap<i32, S
             names.get(&entry.m_namespace).map(|name| (entry.m_key.m_id, format!("{ORIGIN_STYLE}{name}")))
         })
         .collect()
+}
+
+// the registry id, then every item tag and the tags of the block it places
+fn details(id: i32) -> Vec<String>
+{
+    let Some(item) = nameOf(RegistryKind::Item, id)
+    else
+    {
+        return Vec::new();
+    };
+
+    let mut tags: BTreeSet<Identifier> = tagsOf(RegistryKind::Item, &item).into_iter().collect();
+    // the item form of a block shares its numeric id and its name
+    if let Some(block) = nameOf(RegistryKind::Block, id).filter(|block| *block == item)
+    {
+        tags.extend(tagsOf(RegistryKind::Block, &block));
+    }
+
+    let mut lines: Vec<String> = vec![item.to_string()];
+    lines.extend(tags.iter().map(|tag| format!("#{tag}")));
+    lines
 }
 
 // greedy, exact damages first so a wildcard ingredient never takes the one stack an exact ingredient needs

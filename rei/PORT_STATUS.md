@@ -21,6 +21,7 @@ time and gamemode buttons are left out.
 | `Esc` / `Backspace` / Back button on a recipe page | close / back to the page an ingredient was opened from, else close. Any screen change closes the page, so the inventory always reopens on the plain container |
 | `O` | hides or shows the panel |
 | Search field | words match the name, `@word` the mod id or name, right click clears |
+| Recipe page tooltips | name, owning mod, registry id and every item and block tag |
 | Crafting table button | craftable filter, from the 36 inventory slots |
 | `R` button | REI's cheat toggle as recipe mode and give mode, the R turns red in give mode and its tooltip names the mode. The server grants it only to ops and checks op again on every grab and delete |
 

@@ -44,6 +44,8 @@ mod color
     pub const TOOLTIP: u32 = 0xC0000000;
     pub const TITLE: u32 = 0x404040;
     pub const RECIPE_ID: u32 = 0x707070;
+    // the dark gray vanilla advanced tooltips use
+    pub const DETAIL: u32 = 0x555555;
 }
 
 // lwjgl key codes
@@ -638,6 +640,7 @@ struct Painter<'a>
     m_hovered: Option<Key>,
     m_hint: Option<&'static str>,
     m_slots: Vec<(Rect, Key)>,
+    m_detailed: bool,
 }
 
 impl Painter<'_>
@@ -749,7 +752,7 @@ impl Painter<'_>
         self.stack(x, y, output, count);
     }
 
-    // the name, and for mod items the owning mod as REI shows it
+    // the name, for mod items the owning mod as REI shows it, and on a recipe page the registry id and tags
     fn tooltip(&mut self, screen: Rect)
     {
         let mut lines: Vec<(String, u32)> = match (self.m_hint, self.m_hovered)
@@ -763,6 +766,11 @@ impl Painter<'_>
             self.m_hovered.filter(|_| self.m_hint.is_none()).and_then(|key| origin(self.m_catalog, key))
         {
             lines.push((origin.to_owned(), color::WHITE));
+        }
+
+        if let Some(key) = self.m_hovered.filter(|_| self.m_detailed && self.m_hint.is_none())
+        {
+            lines.extend(self.m_catalog.details(key.m_id).iter().map(|line| (line.clone(), color::DETAIL)));
         }
 
         let width: i32 = lines.iter().map(|(line, _)| textWidth(line)).max().unwrap_or(0);
@@ -978,6 +986,7 @@ fn drawFrame(draw: &mut Draw, state: &mut State, size: [i32; 2], mouse: [i32; 2]
         m_hovered: None,
         m_hint: None,
         m_slots: Vec::new(),
+        m_detailed: state.m_view.is_some(),
     };
     painter.toggles(state, &layout);
     painter.search(state, layout.m_search);
