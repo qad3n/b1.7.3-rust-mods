@@ -18,6 +18,8 @@ KEYS = [
     "text.rei.back",
     "text.rei.left_arrow",
     "text.rei.right_arrow",
+    "category.rei.crafting",
+    "category.rei.smelting",
 ]
 
 

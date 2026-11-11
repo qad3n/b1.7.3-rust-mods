@@ -1,8 +1,11 @@
 use crate::catalog::{self, Catalog, Entry, Key};
+use crate::display::{self, Display, Tab};
 use crate::{cheat, config, spawner};
 use b173_api::prelude::*;
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
+
+mod pages;
 
 // container screens that get the item list, as REI shows it beside every handled screen
 const TARGETS: [&str; 5] = ["GuiInventory", "GuiCrafting", "GuiFurnace", "GuiChest", "GuiDispenser"];
@@ -46,6 +49,10 @@ mod color
     pub const RECIPE_ID: u32 = 0x707070;
     // the dark gray vanilla advanced tooltips use
     pub const DETAIL: u32 = 0x555555;
+    // the light gray of a vanilla tooltip's extra lines
+    pub const NOTE: u32 = 0xAAAAAA;
+    // the face Draw::panel fills a gui with
+    pub const PANEL_FACE: u32 = 0xFFC6C6C6;
 }
 
 // lwjgl key codes
@@ -103,6 +110,21 @@ mod page
     pub const ARROW_TEXTURE: &str = "/gui/furnace.png";
     pub const ARROW_UV: [i32; 4] = [79, 34, 24, 17];
     pub const FLAME_UV: [i32; 4] = [176, 0, 14, 14];
+    pub const BODY_ROWS: i32 = 5;
+}
+
+// the category tabs standing in a column left of the recipe page
+mod tab
+{
+    pub const WIDTH: i32 = 28;
+    pub const HEIGHT: i32 = 24;
+    pub const PITCH: i32 = 26;
+    pub const TOP: i32 = 4;
+    // how far a tab reaches under the page so the chosen one joins it
+    pub const OVERLAP: i32 = 4;
+    pub const ICON_INSET: i32 = 4;
+    // the light rim and dark edge of Draw::panel
+    pub const RIM: i32 = 2;
 }
 
 const LEFT_BUTTON: i32 = 0;
@@ -198,13 +220,31 @@ fn pageButtons(container: Rect) -> [Rect; 3]
     ]
 }
 
-// the recipe pages of one item, the recipes making it or the recipes using it
+fn tabRect(index: usize) -> Rect
+{
+    [tab::OVERLAP - tab::WIDTH, tab::TOP + index as i32 * tab::PITCH, tab::WIDTH, tab::HEIGHT]
+}
+
+// the pages of one item, how to get it or what it is used for, in category tabs
 #[derive(Clone)]
 struct View
 {
     m_focus: Key,
-    m_recipes: Vec<usize>,
+    m_tabs: Vec<Tab>,
+    m_tab: usize,
     m_index: usize,
+}
+
+impl View
+{
+    fn displays(&self) -> &[Display] { &self.m_tabs[self.m_tab].m_displays }
+
+    fn display(&self) -> &Display { &self.displays()[self.m_index] }
+
+    fn tabAt(&self, point: [i32; 2]) -> Option<usize>
+    {
+        (0..self.m_tabs.len()).find(|index| inside(point, tabRect(*index)))
+    }
 }
 
 #[derive(Default)]
@@ -345,17 +385,9 @@ impl State
     fn open(&mut self, catalog: &Catalog, key: Key, usages: bool, drill: bool)
     {
         let key: Key = listedKey(catalog, key);
+        let tabs: Vec<Tab> = display::tabs(catalog, key, usages);
 
-        let recipes: Vec<usize> = if usages
-        {
-            catalog.usagesOf(key)
-        }
-        else
-        {
-            catalog.recipesFor(key)
-        };
-
-        if recipes.is_empty()
+        if tabs.is_empty()
         {
             return;
         }
@@ -366,7 +398,7 @@ impl State
             _ => self.m_history.clear(),
         }
 
-        self.m_view = Some(View { m_focus: key, m_recipes: recipes, m_index: 0 });
+        self.m_view = Some(View { m_focus: key, m_tabs: tabs, m_tab: 0, m_index: 0 });
     }
 
     fn back(&mut self) { self.m_view = self.m_history.pop(); }
@@ -400,7 +432,7 @@ impl State
     {
         if let Some(view) = &mut self.m_view
         {
-            view.m_index = cycle(view.m_index, view.m_recipes.len(), forward);
+            view.m_index = cycle(view.m_index, view.displays().len(), forward);
         }
     }
 
@@ -544,7 +576,16 @@ impl State
         let container: Rect = self.m_layout.m_container;
         let [previous, next, back] = pageButtons(container);
         let focus: Key = view.m_focus;
-        let paged: bool = view.m_recipes.len() > 1;
+        let paged: bool = view.displays().len() > 1;
+        let tab: Option<usize> = view.tabAt(point);
+
+        if let (Some(tab), Some(view)) = (tab, &mut self.m_view)
+        {
+            view.m_tab = tab;
+            view.m_index = 0;
+            return true;
+        }
+
         if paged && (inside(point, previous) || inside(point, next))
         {
             self.turnRecipe(inside(point, next));
@@ -638,7 +679,9 @@ struct Painter<'a>
     m_mouse: [i32; 2],
     m_ticks: u32,
     m_hovered: Option<Key>,
-    m_hint: Option<&'static str>,
+    m_hint: Option<String>,
+    // extra tooltip lines for the hovered stack, as a drop's count and chance
+    m_notes: Vec<String>,
     m_slots: Vec<(Rect, Key)>,
     m_detailed: bool,
 }
@@ -755,20 +798,28 @@ impl Painter<'_>
     // the name, for mod items the owning mod as REI shows it, and on a recipe page the registry id and tags
     fn tooltip(&mut self, screen: Rect)
     {
-        let mut lines: Vec<(String, u32)> = match (self.m_hint, self.m_hovered)
+        let hinted: bool = self.m_hint.is_some();
+        let mut lines: Vec<(String, u32)> = match (self.m_hint.take(), self.m_hovered)
         {
-            (Some(hint), _) => vec![(hint.to_owned(), color::WHITE)],
+            (Some(hint), _) => vec![(hint, color::WHITE)],
             (None, Some(key)) => vec![(self.m_catalog.name(key), color::WHITE)],
             (None, None) => return,
         };
 
-        if let Some(origin) =
-            self.m_hovered.filter(|_| self.m_hint.is_none()).and_then(|key| origin(self.m_catalog, key))
+        // a hint is the whole tooltip
+        let item: bool = !hinted;
+
+        if let Some(origin) = self.m_hovered.filter(|_| item).and_then(|key| origin(self.m_catalog, key))
         {
             lines.push((origin.to_owned(), color::WHITE));
         }
 
-        if let Some(key) = self.m_hovered.filter(|_| self.m_detailed && self.m_hint.is_none())
+        if item
+        {
+            lines.extend(self.m_notes.drain(..).map(|note| (note, color::NOTE)));
+        }
+
+        if let Some(key) = self.m_hovered.filter(|_| self.m_detailed && item)
         {
             lines.extend(self.m_catalog.details(key.m_id).iter().map(|line| (line.clone(), color::DETAIL)));
         }
@@ -878,12 +929,12 @@ impl Painter<'_>
 
         if overCheat
         {
-            self.m_hint = Some(cheat::mode());
+            self.m_hint = Some(cheat::mode().to_owned());
         }
 
         if inside(self.m_mouse, layout.m_craftable)
         {
-            self.m_hint = Some(text::CRAFTABLE);
+            self.m_hint = Some(text::CRAFTABLE.to_owned());
         }
 
         self.button(layout.m_craftable, "");
@@ -917,32 +968,60 @@ impl Painter<'_>
         self.m_draw.plain(x, top, shown, color::RECIPE_ID);
     }
 
+    fn recipePage(&mut self, index: usize, top: i32, bottom: i32) -> (String, Option<String>)
+    {
+        let catalog: &Catalog = self.m_catalog;
+        let recipe: &RecipeView = &catalog.m_recipes[index];
+        let body: i32 = page::GRID as i32 * layout::CELL;
+        self.recipe(recipe, (top + bottom - body) / 2);
+        (catalog.name(Key::of(&recipe.output)), recipe.id.as_ref().map(Identifier::to_string))
+    }
+
     fn view(&mut self, view: &View, container: Rect)
     {
+        // the page covers the inner edge of every tab but the chosen one, which opens into it
+        for index in (0..view.m_tabs.len()).filter(|index| *index != view.m_tab)
+        {
+            self.tab(view, index);
+        }
+
         let [x, y, w, h] = container;
         self.m_draw.panel(x, y, w, h);
-
-        let recipe: &RecipeView = &self.m_catalog.m_recipes[view.m_recipes[view.m_index]];
-        let name: String = self.m_catalog.name(Key::of(&recipe.output));
-        self.m_draw.plain((container[2] - textWidth(&name)) / 2, page::TITLE_TOP, &name, color::TITLE);
-
-        let paged: bool = view.m_recipes.len() > 1;
-        if paged
-        {
-            let index: String = format!("{}/{}", view.m_index + 1, view.m_recipes.len());
-            self.m_draw.plain(container[2] - page::INSET - textWidth(&index), page::TITLE_TOP, &index, color::TITLE);
-        }
+        self.tab(view, view.m_tab);
 
         let [previous, next, back] = pageButtons(container);
         let idTop: i32 = back[1] - layout::LINE - page::ID_GAP;
-        // the grid sits centered between the title and the recipe id
+        // the body sits centered between the title and the id line
         let bodyTop: i32 = page::TITLE_TOP + layout::FONT_HEIGHT;
-        let body: i32 = page::GRID as i32 * layout::CELL;
-        self.recipe(recipe, (bodyTop + idTop - body) / 2);
 
-        if let Some(id) = &recipe.id
+        let (title, id): (String, Option<String>) = match view.display()
         {
-            self.recipeId(&id.to_string(), container, idTop);
+            Display::Recipe(index) => self.recipePage(*index, bodyTop, idTop),
+            Display::Loot { table, start } => self.lootPage(*table, *start, bodyTop, idTop),
+            Display::Tag { tag, start } => self.tagPage(tag, *start, [bodyTop, idTop], w),
+        };
+
+        let count: usize = view.displays().len();
+        let paged: bool = count > 1;
+        let index: String = if paged
+        {
+            format!("{}/{count}", view.m_index + 1)
+        }
+        else
+        {
+            String::new()
+        };
+        let indexLeft: i32 = w - page::INSET - textWidth(&index);
+        self.m_draw.plain(indexLeft, page::TITLE_TOP, &index, color::TITLE);
+
+        // a long title keeps clear of the page index
+        let room: i32 = indexLeft - page::INSET * 2;
+        let title: &str = clip(&title, room, false);
+        self.m_draw.plain((w - textWidth(title)) / 2, page::TITLE_TOP, title, color::TITLE);
+
+        if let Some(id) = id
+        {
+            self.recipeId(&id, container, idTop);
         }
 
         if paged
@@ -985,6 +1064,7 @@ fn drawFrame(draw: &mut Draw, state: &mut State, size: [i32; 2], mouse: [i32; 2]
         m_ticks: state.m_ticks,
         m_hovered: None,
         m_hint: None,
+        m_notes: Vec::new(),
         m_slots: Vec::new(),
         m_detailed: state.m_view.is_some(),
     };

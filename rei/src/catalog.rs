@@ -7,6 +7,7 @@ use std::rc::Rc;
 const ANY_DAMAGE: i32 = -1;
 // blue italics as later REI versions name the owning mod under an item
 const ORIGIN_STYLE: &str = "§9§o";
+const CHEST: &str = "chest";
 
 // an item and damage pair, the identity every list, filter and recipe lookup works on
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -57,10 +58,13 @@ pub(crate) struct Catalog
 {
     pub m_entries: Vec<Entry>,
     pub m_recipes: Vec<RecipeView>,
+    pub m_loot: Vec<LootView>,
     m_byKey: HashMap<Key, usize>,
     m_origins: HashMap<i32, String>,
     m_mods: HashMap<String, String>,
     m_details: RefCell<HashMap<i32, Rc<[String]>>>,
+    m_members: RefCell<HashMap<Identifier, Rc<[Key]>>>,
+    m_chest: Option<Key>,
     pub m_generation: i32,
 }
 
@@ -121,10 +125,15 @@ impl Catalog
         {
             m_entries: entries,
             m_recipes: recipeList(),
+            m_loot: lootList(),
             m_byKey: byKey,
             m_origins: origins,
             m_mods: mods,
             m_details: RefCell::new(HashMap::new()),
+            m_members: RefCell::new(HashMap::new()),
+            m_chest: resolve(RegistryKind::Item, &Identifier::minecraft(CHEST))
+                .ok()
+                .map(|id| Key { m_id: id, m_damage: 0 }),
             m_generation: generation,
         }
     }
@@ -166,7 +175,21 @@ impl Catalog
     // asked of the host once per item id, so hovering costs nothing after the first frame
     pub(crate) fn details(&self, id: i32) -> Rc<[String]>
     {
-        Rc::clone(self.m_details.borrow_mut().entry(id).or_insert_with(|| details(id).into()))
+        Rc::clone(self.m_details.borrow_mut().entry(id).or_insert_with(|| self.detail(id).into()))
+    }
+
+    // the registry id, then every item tag and the tags of the block it places
+    fn detail(&self, id: i32) -> Vec<String>
+    {
+        let Some(item) = nameOf(RegistryKind::Item, id)
+        else
+        {
+            return Vec::new();
+        };
+
+        let mut lines: Vec<String> = vec![item.to_string()];
+        lines.extend(self.tags(id).iter().map(|tag| format!("#{tag}")));
+        lines
     }
 
     pub(crate) fn name(&self, key: Key) -> String
@@ -196,6 +219,56 @@ impl Catalog
         (0..self.m_recipes.len())
             .filter(|index| inputs(&self.m_recipes[*index]).iter().any(|input| input.accepts(key)))
             .collect()
+    }
+
+    // tables dropping the item, as a mob, a broken block or a chest
+    pub(crate) fn lootFor(&self, key: Key) -> Vec<usize>
+    {
+        (0..self.m_loot.len())
+            .filter(|index| self.m_loot[*index].drops.iter().any(|drop| Key::of(&drop.stack).accepts(key)))
+            .collect()
+    }
+
+    // tables of what the item is the source of, a block's drops, a spawner's mob or a chest's loot
+    pub(crate) fn lootFrom(&self, key: Key) -> Vec<usize>
+    {
+        (0..self.m_loot.len()).filter(|index| self.source(&self.m_loot[*index].source) == Some(key)).collect()
+    }
+
+    // the stack standing for a table's source, a mob through its spawner
+    pub(crate) fn source(&self, source: &LootSource) -> Option<Key>
+    {
+        match source
+        {
+            LootSource::Block { block, meta } => Some(Key { m_id: *block, m_damage: *meta }),
+            LootSource::Entity { entity } => spawner::key(entity),
+            LootSource::Chest { .. } => self.m_chest,
+        }
+    }
+
+    // item and block tags holding the item
+    pub(crate) fn tags(&self, id: i32) -> BTreeSet<Identifier>
+    {
+        let Some(item) = nameOf(RegistryKind::Item, id)
+        else
+        {
+            return BTreeSet::new();
+        };
+
+        let mut tags: BTreeSet<Identifier> = tagsOf(RegistryKind::Item, &item).into_iter().collect();
+        // the item form of a block shares its numeric id and its name
+        if let Some(block) = nameOf(RegistryKind::Block, id).filter(|block| *block == item)
+        {
+            tags.extend(tagsOf(RegistryKind::Block, &block));
+        }
+
+        tags
+    }
+
+    // every item a tag holds, a block member through its item, each damage of a member taken
+    pub(crate) fn members(&self, tag: &Identifier) -> Rc<[Key]>
+    {
+        Rc::clone(self.m_members.borrow_mut().entry(tag.clone()).or_insert_with(|| members(tag).into()))
     }
 
     // a search matches every word against the name, @word against the owning mod id or name
@@ -281,25 +354,19 @@ fn origins(entries: &[Entry], names: &HashMap<String, String>) -> HashMap<i32, S
         .collect()
 }
 
-// the registry id, then every item tag and the tags of the block it places
-fn details(id: i32) -> Vec<String>
+fn members(tag: &Identifier) -> Vec<Key>
 {
-    let Some(item) = nameOf(RegistryKind::Item, id)
-    else
-    {
-        return Vec::new();
-    };
+    let name: String = tag.to_string();
+    let mut ids: BTreeSet<Identifier> = tagValues(RegistryKind::Item, &name).into_iter().collect();
+    ids.extend(tagValues(RegistryKind::Block, &name));
 
-    let mut tags: BTreeSet<Identifier> = tagsOf(RegistryKind::Item, &item).into_iter().collect();
-    // the item form of a block shares its numeric id and its name
-    if let Some(block) = nameOf(RegistryKind::Block, id).filter(|block| *block == item)
-    {
-        tags.extend(tagsOf(RegistryKind::Block, &block));
-    }
-
-    let mut lines: Vec<String> = vec![item.to_string()];
-    lines.extend(tags.iter().map(|tag| format!("#{tag}")));
-    lines
+    let mut keys: Vec<Key> = ids
+        .iter()
+        .filter_map(|id| resolve(RegistryKind::Item, id).ok())
+        .map(|id| Key { m_id: id, m_damage: ANY_DAMAGE })
+        .collect();
+    keys.dedup();
+    keys
 }
 
 // greedy, exact damages first so a wildcard ingredient never takes the one stack an exact ingredient needs

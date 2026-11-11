@@ -1,10 +1,10 @@
 id = "rei"
 version = "0.1.0"
 name = "Roughly Enough Items"
-description = "Item list, search, craftable filter, recipe pages and op-gated cheat mode beside every container screen"
+description = "Item list, search, craftable filter, recipe, drop, loot and tag pages and op-gated cheat mode beside every container screen"
 authors = ["shedaniel (original mod)", "b173 port"]
 license = "MIT"
-api = "1.31"
+api = "1.33"
 side = "both"
 
 [network]

@@ -7,7 +7,7 @@ const SUFFIX: &str = "Spawner";
 fn block() -> Result<i32> { resolve(RegistryKind::Block, &Identifier::minecraft(SPAWNER)) }
 
 // a registry path such as pig_zombie read as Pig Zombie
-fn humanize(path: &str) -> String
+pub(crate) fn humanize(path: &str) -> String
 {
     let words: Vec<String> = path
         .split('_')
@@ -40,6 +40,13 @@ pub(crate) fn stacks() -> Vec<(ItemStack, String)>
             Some((ItemStack::of(ItemRef::Numeric(spawner), 1).withDamage(numeric), name))
         })
         .collect()
+}
+
+// the listed spawner of a mob
+pub(crate) fn key(mob: &Identifier) -> Option<Key>
+{
+    let numeric: i32 = resolve(RegistryKind::Entity, mob).ok()?;
+    block().ok().map(|spawner| Key { m_id: spawner, m_damage: numeric })
 }
 
 // a spawner stack that carries a mob

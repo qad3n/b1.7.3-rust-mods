@@ -1,6 +1,7 @@
 mod catalog;
 mod cheat;
 mod config;
+mod display;
 mod overlay;
 mod spawner;
 
