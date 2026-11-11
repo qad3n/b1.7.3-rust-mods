@@ -95,21 +95,6 @@ pub(crate) fn trySpawn(world: World, player: Player, feature: Feature, pos: Bloc
 }
 
 // the notes a hint kobold drops on death, every time as its held book
-pub(crate) fn dropNotes(entity: Entity, info: &EntityInfo)
-{
-    let notes: Notes = entity.data();
-    let Some(book) = notes.m_book
-    else
-    {
-        return;
-    };
-
-    if let Err(error) = entity.world.spawnItem(info.pos, ItemStack::of(book.as_str(), 1))
-    {
-        warn(&format!("hint kobold book: {}", error.0));
-    }
-}
-
 // beta has no written book screen, the notes read out in chat with the book's light text
 struct Book
 {
@@ -149,5 +134,25 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         )?;
     }
 
-    Ok(())
+    loot(ctx)
+}
+
+// a kobold that carries a hint book drops it, one loot condition per book so recipe viewers list each
+fn loot(ctx: &mut RegisterCtx) -> Result<()>
+{
+    let mut pool: PoolBuilder = PoolBuilder::new(1, 1);
+
+    for hint in &HINTS
+    {
+        let book: &'static str = hint.m_item;
+        let condition: String = format!("carries/{book}");
+        let carries = move |query: &LootQuery|
+        {
+            query.entity.is_some_and(|entity| entity.data::<Notes>().m_book.as_deref() == Some(book))
+        };
+        ctx.loot().condition(&condition, &format!("Carries {}", hint.m_title), carries)?;
+        pool = pool.entry(book, 1, 1, 1)?.when(&condition)?;
+    }
+
+    ctx.loot().pool(LootTarget::Entity, KOBOLD, pool.m_spec)
 }

@@ -1,4 +1,4 @@
-use super::{dropAt, killer, showBar};
+use super::{killer, showBar};
 use crate::entities::ai::{eyes, face, target};
 use crate::entities::shots::{self, LICH_BOLT, LICH_BOMB};
 use crate::models::{Program, bipedPose, tf_lich};
@@ -472,24 +472,6 @@ impl EntityBehavior for TwilightLich
             return;
         };
 
-        let scepters: [&str; 3] = [item::SCEPTER_ZOMBIE, item::SCEPTER_LIFE_DRAIN, item::SCEPTER_TWILIGHT];
-        dropAt(world, info.pos, scepters[world.random(3) as usize], 1);
-
-        let gold: [&str; 5] = [
-            "minecraft:golden_sword",
-            "minecraft:golden_helmet",
-            "minecraft:golden_chestplate",
-            "minecraft:golden_leggings",
-            "minecraft:golden_boots",
-        ];
-
-        for _ in 0..world.random(3) + 2
-        {
-            dropAt(world, info.pos, gold[world.random(5) as usize], 1);
-        }
-
-        dropAt(world, info.pos, "minecraft:bone", world.random(5) + 5);
-        dropAt(world, info.pos, item::LICH_TROPHY, 1);
         super::conquer(world, info.pos);
 
         if let Some(player) = killer(world, source)
@@ -564,8 +546,44 @@ impl EntityBehavior for Minion
 
 const MINION_TINT: [f32; 3] = [0.5, 1.0, 0.5];
 
+// EntityTFLich.dropFewItems: only the lich itself drops, a scepter, two to four gold gear pieces, bones and the trophy
+fn loot(ctx: &mut RegisterCtx) -> Result<()>
+{
+    const ORIGINAL: &str = "lich_original";
+    const SCEPTERS: [&str; 3] = [item::SCEPTER_ZOMBIE, item::SCEPTER_LIFE_DRAIN, item::SCEPTER_TWILIGHT];
+    const GOLD: [&str; 5] = [
+        "minecraft:golden_sword",
+        "minecraft:golden_helmet",
+        "minecraft:golden_chestplate",
+        "minecraft:golden_leggings",
+        "minecraft:golden_boots",
+    ];
+    const BONES: (i32, i32) = (5, 9);
+    const GOLD_ROLLS: (i32, i32) = (2, 4);
+
+    ctx.loot().condition(ORIGINAL, "Not a clone", |query| query.entity.is_some_and(|entity| !state(entity).m_clone))?;
+    let pick = |pool: PoolBuilder, items: &[&str]| -> Result<PoolBuilder>
+    {
+        items.iter().try_fold(pool, |pool, item| pool.entry(item, 1, 1, 1)?.when(ORIGINAL))
+    };
+
+    let pools: [PoolBuilder; 4] = [
+        pick(PoolBuilder::new(1, 1), &SCEPTERS)?,
+        pick(PoolBuilder::new(GOLD_ROLLS.0, GOLD_ROLLS.1), &GOLD)?,
+        PoolBuilder::new(1, 1).entry("minecraft:bone", 1, BONES.0, BONES.1)?.when(ORIGINAL)?,
+        PoolBuilder::new(1, 1).entry(item::LICH_TROPHY, 1, 1, 1)?.when(ORIGINAL)?,
+    ];
+    for pool in pools
+    {
+        ctx.loot().pool(LootTarget::Entity, NAME, pool.m_spec)?;
+    }
+
+    Ok(())
+}
+
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
+    loot(ctx)?;
     ctx.entities().register(
         NAME,
         EntitySpec

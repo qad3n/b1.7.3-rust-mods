@@ -172,15 +172,6 @@ fn drawBar(draw: &mut Draw, width: i32)
     draw.rect(left, bar::TOP, shown.m_health * bar::WIDTH / shown.m_maxHealth.max(1), bar::HEIGHT, bar::FILL);
 }
 
-// drops a stack where a boss died, EntityLiving.entityDropItem
-pub(crate) fn dropAt(world: World, at: [f64; 3], item: &str, count: i32)
-{
-    if let Err(error) = world.spawnItem(at, ItemStack::of(item, count))
-    {
-        warn(&format!("boss drop {item}: {}", error.0));
-    }
-}
-
 // ChunkProviderTwilightForest.setStructureConquered, kept as the feature centers whose boss is beaten
 #[derive(Serialize, Deserialize, Default)]
 struct Conquered

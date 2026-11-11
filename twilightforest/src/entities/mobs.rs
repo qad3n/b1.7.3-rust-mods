@@ -1400,7 +1400,6 @@ impl EntityBehavior for Posed
             (Ai::Kobold, Some(info)) =>
             {
                 super::flock::died(entity, &info);
-                crate::hints::dropNotes(entity, &info);
             }
 
             (Ai::Troll, Some(info)) => ai::ripen(entity, &info),
