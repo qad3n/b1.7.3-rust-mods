@@ -30,7 +30,7 @@ enum Class
     Shovel,
     Sword,
     Hoe,
-    // the knightly axe minotaur axe and giant pick hit as hard as a sword of their tier
+    // the knightly axe knightly pick minotaur axe and giant pick hit as hard as a sword of their tier
     Heavy(ToolClass),
 }
 
@@ -99,7 +99,7 @@ const TOOLS: [Tool; 21] = [
     tool("steeleaf_axe", "Steeleaf Axe", "steeleafaxe", Class::Axe, STEELEAF, 2),
     tool("steeleaf_hoe", "Steeleaf Hoe", "steeleafhoe", Class::Hoe, STEELEAF, 0),
     tool(item::KNIGHTLY_SWORD, "Knightly Sword", "knightlysword", Class::Sword, KNIGHTLY, 0),
-    tool(item::KNIGHTLY_PICK, "Knightly Pick", "knightlypick", Class::Pickaxe, KNIGHTLY, 0),
+    tool(item::KNIGHTLY_PICK, "Knightly Pick", "knightlypick", Class::Heavy(ToolClass::Pickaxe), KNIGHTLY, 0),
     tool(item::KNIGHTLY_AXE, "Knightly Axe", "knightlyaxe", Class::Heavy(ToolClass::Axe), KNIGHTLY, 0),
     tool(item::MINOTAUR_AXE, "Minotaur Axe", "minotauraxe", Class::Heavy(ToolClass::Axe), EMERALD, 0),
     tool(item::MAZEBREAKER_PICK, "Mazebreaker", "mazebreakerpick", Class::Pickaxe, EMERALD, 4),
