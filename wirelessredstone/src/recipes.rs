@@ -2,6 +2,9 @@ use b173_api::prelude::*;
 
 const RECEIVER: &str = "wirelessredstone:receiver";
 const TRANSMITTER: &str = "wirelessredstone:transmitter";
+const IRON: &str = "minecraft:iron_ingot";
+const REDSTONE: &str = "minecraft:redstone";
+const TORCH: &str = "minecraft:redstone_torch";
 
 // the AddRecipes of all six mods
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
@@ -9,16 +12,16 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     ctx.recipes()
         .shaped("receiver", ItemStack::of(RECEIVER, 1))
         .pattern(["IRI", "RLR", "IRI"])
-        .key('I', vanilla::item::IRON_INGOT)
-        .key('R', vanilla::item::REDSTONE)
-        .key('L', vanilla::block::LEVER)
+        .key('I', IRON)
+        .key('R', REDSTONE)
+        .key('L', "minecraft:lever")
         .build()?;
     ctx.recipes()
         .shaped("transmitter", ItemStack::of(TRANSMITTER, 1))
         .pattern(["IRI", "RTR", "IRI"])
-        .key('I', vanilla::item::IRON_INGOT)
-        .key('R', vanilla::item::REDSTONE)
-        .key('T', "minecraft:redstone_torch")
+        .key('I', IRON)
+        .key('R', REDSTONE)
+        .key('T', TORCH)
         .build()?;
     ctx.recipes()
         .shaped("clocker", ItemStack::of("wirelessredstone:clocker", 1))
@@ -29,14 +32,14 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     ctx.recipes()
         .shaped("remote", ItemStack::of("wirelessredstone:remote", 1))
         .pattern(["i", "#"])
-        .key('i', "minecraft:redstone_torch")
+        .key('i', TORCH)
         .key('#', TRANSMITTER)
         .build()?;
     ctx.recipes()
         .shaped("power_configurator", ItemStack::of("wirelessredstone:power_configurator", 1))
         .pattern(["R R", " X ", "R R"])
         .key('X', RECEIVER)
-        .key('R', vanilla::item::REDSTONE)
+        .key('R', REDSTONE)
         .build()?;
     ctx.recipes()
         .shaped("sniffer", ItemStack::of("wirelessredstone:sniffer", 1))
