@@ -1,8 +1,8 @@
 use super::gen_world::GenWorld;
 use super::trees::{self, Tree};
 use crate::names::block;
+use b173_api::prelude::*;
 use b173_api::terrain::{Random, math};
-use b173_api::{ChunkInfo, World};
 
 mod cloud
 {
@@ -107,32 +107,26 @@ impl Decorator<'_>
         }
     }
 
-    // AetherBiomeDecorator.decorate, holiday trees and tall grass are off by default in the Java config
-    fn decorate(&self)
+    // AetherBiomeDecorator.decorate's crystal island
+    fn crystalIsland(&self)
     {
-        self.clouds(block::GOLDEN_AERCLOUD, cloud::GOLDEN_AMOUNT, cloud::GOLDEN_CHANCE, cloud::GOLDEN_BASE);
-        self.clouds(block::BLUE_AERCLOUD, cloud::BLUE_AMOUNT, cloud::BLUE_CHANCE, cloud::BLUE_BASE);
-        self.clouds(block::COLD_AERCLOUD, cloud::COLD_AMOUNT, cloud::COLD_CHANCE, cloud::COLD_BASE);
-
         if self.shouldSpawn(feature::CRYSTAL_ISLAND_CHANCE)
         {
             let y: i32 = self.nextInt(feature::ISLAND_SPREAD) + feature::ISLAND_BASE;
             crystalIsland(self.m_world, self.m_random, self.m_x + feature::OFFSET, y, self.m_z + feature::OFFSET);
         }
+    }
 
+    fn aetherDirt(&self)
+    {
         if self.shouldSpawn(ore::DIRT_CHANCE)
         {
             self.ore(block::AETHER_DIRT, ore::DIRT);
         }
+    }
 
-        self.plants(block::WHITE_FLOWER);
-        self.plants(block::PURPLE_FLOWER);
-        self.ore(block::ICESTONE, ore::ICESTONE);
-        self.ore(block::AMBROSIUM_ORE, ore::AMBROSIUM);
-        self.ore(block::ZANITE_ORE, ore::ZANITE);
-        self.ore(block::GRAVITITE_ORE, ore::GRAVITITE);
-        self.plants(block::BERRY_BUSH);
-
+    fn trees(&self)
+    {
         for _ in 0..feature::TREES
         {
             let x: i32 = self.m_x + self.nextInt(CHUNK) + feature::OFFSET;
@@ -149,7 +143,10 @@ impl Decorator<'_>
             };
             tree.generate(self.m_world, self.m_random, x, y, z);
         }
+    }
 
+    fn dungeonOaks(&self)
+    {
         for _ in 0..feature::DUNGEON_OAKS
         {
             let x: i32 = self.m_x + self.nextInt(CHUNK);
@@ -157,7 +154,10 @@ impl Decorator<'_>
             let y: i32 = self.m_world.height(x, z);
             trees::dungeonOakTree(self.m_world, self.m_random, x, y, z);
         }
+    }
 
+    fn lakes(&self)
+    {
         if self.shouldSpawn(feature::LAKE_CHANCE)
         {
             let x: i32 = self.m_x + self.nextInt(CHUNK) + feature::OFFSET;
@@ -166,6 +166,146 @@ impl Decorator<'_>
             super::lakes::waterLake(self.m_world, self.m_random, x, y, z);
         }
     }
+
+    // ChunkProviderAether.populate's silver and gold dungeons, before the decorator
+    fn dungeons(&self)
+    {
+        let world: World = self.m_world.m_world;
+        let chunk: ChunkInfo =
+            ChunkInfo { world: world.dimension, x: self.m_x / CHUNK, z: self.m_z / CHUNK, seed: world.seed() };
+        super::dungeons::structures(self.m_world, self.m_random, &chunk);
+    }
+
+    // ChunkProviderAether.populate's bronze dungeon, after the decorator
+    fn bronze(&self) { super::dungeons::bronze(self.m_world, self.m_random, self.m_x, self.m_z); }
+}
+
+// one step of ChunkProviderAether.populate, a named feature placed in this order on the chunk's random, so the
+// loader lists every Aether decoration and players can turn one off; holiday trees and tall grass stay off as in the
+// Java config
+struct Decoration
+{
+    m_name: &'static str,
+    m_step: FeatureStep,
+    m_run: fn(&Decorator),
+}
+
+const DECORATIONS: [Decoration; 17] = [
+    Decoration { m_name: "dungeons", m_step: FeatureStep::SurfaceStructures, m_run: |decorator| decorator.dungeons() },
+    Decoration
+    {
+        m_name: "golden_aerclouds",
+        m_step: FeatureStep::RawGeneration,
+        m_run: |decorator|
+        {
+            decorator.clouds(block::GOLDEN_AERCLOUD, cloud::GOLDEN_AMOUNT, cloud::GOLDEN_CHANCE, cloud::GOLDEN_BASE)
+        },
+    },
+    Decoration
+    {
+        m_name: "blue_aerclouds",
+        m_step: FeatureStep::RawGeneration,
+        m_run: |decorator|
+        {
+            decorator.clouds(block::BLUE_AERCLOUD, cloud::BLUE_AMOUNT, cloud::BLUE_CHANCE, cloud::BLUE_BASE)
+        },
+    },
+    Decoration
+    {
+        m_name: "cold_aerclouds",
+        m_step: FeatureStep::RawGeneration,
+        m_run: |decorator|
+        {
+            decorator.clouds(block::COLD_AERCLOUD, cloud::COLD_AMOUNT, cloud::COLD_CHANCE, cloud::COLD_BASE)
+        },
+    },
+    Decoration
+    {
+        m_name: "crystal_islands",
+        m_step: FeatureStep::SurfaceStructures,
+        m_run: |decorator| decorator.crystalIsland(),
+    },
+    Decoration
+    {
+        m_name: "aether_dirt",
+        m_step: FeatureStep::UndergroundOres,
+        m_run: |decorator| decorator.aetherDirt(),
+    },
+    Decoration
+    {
+        m_name: "white_flowers",
+        m_step: FeatureStep::VegetalDecoration,
+        m_run: |decorator| decorator.plants(block::WHITE_FLOWER),
+    },
+    Decoration
+    {
+        m_name: "purple_flowers",
+        m_step: FeatureStep::VegetalDecoration,
+        m_run: |decorator| decorator.plants(block::PURPLE_FLOWER),
+    },
+    Decoration
+    {
+        m_name: "icestone",
+        m_step: FeatureStep::UndergroundOres,
+        m_run: |decorator| decorator.ore(block::ICESTONE, ore::ICESTONE),
+    },
+    Decoration
+    {
+        m_name: "ambrosium_ore",
+        m_step: FeatureStep::UndergroundOres,
+        m_run: |decorator| decorator.ore(block::AMBROSIUM_ORE, ore::AMBROSIUM),
+    },
+    Decoration
+    {
+        m_name: "zanite_ore",
+        m_step: FeatureStep::UndergroundOres,
+        m_run: |decorator| decorator.ore(block::ZANITE_ORE, ore::ZANITE),
+    },
+    Decoration
+    {
+        m_name: "gravitite_ore",
+        m_step: FeatureStep::UndergroundOres,
+        m_run: |decorator| decorator.ore(block::GRAVITITE_ORE, ore::GRAVITITE),
+    },
+    Decoration
+    {
+        m_name: "berry_bushes",
+        m_step: FeatureStep::VegetalDecoration,
+        m_run: |decorator| decorator.plants(block::BERRY_BUSH),
+    },
+    Decoration { m_name: "trees", m_step: FeatureStep::VegetalDecoration, m_run: |decorator| decorator.trees() },
+    Decoration
+    {
+        m_name: "dungeon_oaks",
+        m_step: FeatureStep::VegetalDecoration,
+        m_run: |decorator| decorator.dungeonOaks(),
+    },
+    Decoration { m_name: "lakes", m_step: FeatureStep::Lakes, m_run: |decorator| decorator.lakes() },
+    Decoration
+    {
+        m_name: "bronze_dungeons",
+        m_step: FeatureStep::UndergroundStructures,
+        m_run: |decorator| decorator.bronze(),
+    },
+];
+
+fn place(run: fn(&Decorator), ctx: &FeatureCtx) -> bool
+{
+    let world: GenWorld = GenWorld::new(ctx.world);
+    run(&Decorator { m_world: &world, m_random: ctx.random, m_x: ctx.origin.x, m_z: ctx.origin.z });
+    true
+}
+
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
+{
+    for decoration in &DECORATIONS
+    {
+        let run: fn(&Decorator) = decoration.m_run;
+        let feature: FeatureBuilder = FeatureBuilder::custom(decoration.m_step).dimension(super::DIMENSION)?.placed();
+        ctx.worldgen().custom(decoration.m_name, feature, move |placed| place(run, placed))?;
+    }
+
+    Ok(())
 }
 
 // AetherGenClouds.generate, every loop bound draws a fresh random on each check as the Java condition does
@@ -415,14 +555,16 @@ fn crossSkippingCenter(world: &GenWorld, j: i32, y: i32, l: i32, radius: i32, bl
 // ChunkProviderAether.populate
 pub(crate) fn populate(chunkInfo: ChunkInfo)
 {
-    let world: GenWorld = GenWorld::new(World { dimension: chunkInfo.world });
+    let world: World = World { dimension: chunkInfo.world };
     let x: i32 = chunkInfo.x * CHUNK;
     let z: i32 = chunkInfo.z * CHUNK;
     let random: Random = Random::withSeed(chunkInfo.seed);
     let k: i64 = random.nextLong() / 2 * 2 + 1;
     let l: i64 = random.nextLong() / 2 * 2 + 1;
     random.setSeed((x as i64).wrapping_mul(k).wrapping_add((z as i64).wrapping_mul(l)) ^ chunkInfo.seed);
-    super::dungeons::structures(&world, &random, &chunkInfo);
-    Decorator { m_world: &world, m_random: &random, m_x: x, m_z: z }.decorate();
-    super::dungeons::bronze(&world, &random, x, z);
+
+    for decoration in &DECORATIONS
+    {
+        world.placeFeature(decoration.m_name, BlockPos::new(x, 0, z), &random);
+    }
 }
