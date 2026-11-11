@@ -1,10 +1,10 @@
 use crate::catalog::Key;
 use b173_api::prelude::*;
 
-const SPAWNER: &str = "mob_spawner";
+const SPAWNER: &str = "minecraft:mob_spawner";
 const SUFFIX: &str = "Spawner";
 
-fn block() -> Result<i32> { resolve(RegistryKind::Block, &Identifier::minecraft(SPAWNER)) }
+fn spawner() -> Result<i32> { ItemRef::from(SPAWNER).id() }
 
 // a registry path such as pig_zombie read as Pig Zombie
 pub(crate) fn humanize(path: &str) -> String
@@ -24,8 +24,7 @@ pub(crate) fn humanize(path: &str) -> String
 // one spawner per registered mob with the entity id as its damage, the way old item viewers carried the mob
 pub(crate) fn stacks() -> Vec<(ItemStack, String)>
 {
-    let Ok(spawner) = block()
-    else
+    if spawner().is_err()
     {
         warn("mob spawner is not registered, no spawners listed");
         return Vec::new();
@@ -37,7 +36,7 @@ pub(crate) fn stacks() -> Vec<(ItemStack, String)>
         {
             let numeric: i32 = resolve(RegistryKind::Entity, &mob).ok()?;
             let name: String = format!("{} {SUFFIX}", humanize(mob.path()));
-            Some((ItemStack::of(ItemRef::Numeric(spawner), 1).withDamage(numeric), name))
+            Some((ItemStack::of(SPAWNER, 1).withDamage(numeric), name))
         })
         .collect()
 }
@@ -46,11 +45,11 @@ pub(crate) fn stacks() -> Vec<(ItemStack, String)>
 pub(crate) fn key(mob: &Identifier) -> Option<Key>
 {
     let numeric: i32 = resolve(RegistryKind::Entity, mob).ok()?;
-    block().ok().map(|spawner| Key { m_id: spawner, m_damage: numeric })
+    spawner().ok().map(|spawner| Key { m_id: spawner, m_damage: numeric })
 }
 
 // a spawner stack that carries a mob
-pub(crate) fn held(key: &Key) -> bool { key.m_damage > 0 && block().ok() == Some(key.m_id) }
+pub(crate) fn held(key: &Key) -> bool { key.m_damage > 0 && spawner().ok() == Some(key.m_id) }
 
 fn mob(damage: i32) -> Option<Identifier>
 {
@@ -80,7 +79,7 @@ fn place(event: &mut Event)
         return;
     };
 
-    if block().ok() != Some(placed) || !world.isAuthority()
+    if !blockIs(placed, SPAWNER) || !world.isAuthority()
     {
         return;
     }

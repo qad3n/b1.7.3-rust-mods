@@ -8,7 +8,7 @@ use std::rc::Rc;
 const ANY_DAMAGE: i32 = -1;
 // blue italics as later REI versions name the owning mod under an item
 const ORIGIN_STYLE: &str = "§9§o";
-const CHEST: &str = "chest";
+const CHEST: &str = "minecraft:chest";
 
 // an item and damage pair, the identity every list, filter and recipe lookup works on
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -134,9 +134,7 @@ impl Catalog
             m_mods: mods,
             m_details: RefCell::new(HashMap::new()),
             m_members: RefCell::new(HashMap::new()),
-            m_chest: resolve(RegistryKind::Item, &Identifier::minecraft(CHEST))
-                .ok()
-                .map(|id| Key { m_id: id, m_damage: 0 }),
+            m_chest: ItemRef::from(CHEST).id().ok().map(|id| Key { m_id: id, m_damage: 0 }),
             m_generation: generation,
         }
     }
@@ -416,7 +414,7 @@ fn members(tag: &Identifier) -> Vec<Key>
 
     let mut keys: Vec<Key> = ids
         .iter()
-        .filter_map(|id| resolve(RegistryKind::Item, id).ok())
+        .filter_map(|id| ItemRef::Named(id.clone()).id().ok())
         .map(|id| Key { m_id: id, m_damage: ANY_DAMAGE })
         .collect();
     keys.dedup();
