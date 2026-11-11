@@ -15,8 +15,8 @@ mod fire
 mod leaves
 {
     pub const HARDNESS: f32 = 0.2;
-    // fancy oak leaves in terrain.png
-    pub const TEXTURE: i32 = 52;
+    // fancy oak leaves
+    pub const TEXTURE: &str = "oak_leaves";
     pub const SAPLING_CHANCE: f32 = 1.0 / 40.0;
     pub const MANGROVE_SAPLING_CHANCE: f32 = 1.0 / 20.0;
     pub const MAGIC_SAPLING_CHANCE: f32 = 1.0 / 150.0;

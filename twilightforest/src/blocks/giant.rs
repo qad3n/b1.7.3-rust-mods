@@ -77,8 +77,8 @@ struct GiantRow
     m_kind: Kind,
     m_hardness: f32,
     m_resistance: Option<f32>,
-    m_top: i32,
-    m_side: i32,
+    m_top: &'static str,
+    m_side: &'static str,
 }
 
 // the vanilla sprites the giant blocks blow up, cobblestone log leaves and obsidian
@@ -90,8 +90,8 @@ const GIANTS: [GiantRow; 4] = [
         m_kind: Kind::Rock,
         m_hardness: 128.0,
         m_resistance: Some(10.0),
-        m_top: 16,
-        m_side: 16,
+        m_top: "cobblestone",
+        m_side: "cobblestone",
     },
     GiantRow
     {
@@ -100,8 +100,8 @@ const GIANTS: [GiantRow; 4] = [
         m_kind: Kind::Wood,
         m_hardness: 128.0,
         m_resistance: None,
-        m_top: 21,
-        m_side: 20,
+        m_top: "oak_log_top",
+        m_side: "oak_log",
     },
     GiantRow
     {
@@ -110,8 +110,8 @@ const GIANTS: [GiantRow; 4] = [
         m_kind: Kind::Plant,
         m_hardness: 12.8,
         m_resistance: None,
-        m_top: 52,
-        m_side: 52,
+        m_top: "oak_leaves",
+        m_side: "oak_leaves",
     },
     GiantRow
     {
@@ -120,8 +120,8 @@ const GIANTS: [GiantRow; 4] = [
         m_kind: Kind::Rock,
         m_hardness: 204800.0,
         m_resistance: Some(8192000.0),
-        m_top: 37,
-        m_side: 37,
+        m_top: "obsidian",
+        m_side: "obsidian",
     },
 ];
 

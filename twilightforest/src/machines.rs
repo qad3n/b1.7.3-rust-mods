@@ -926,9 +926,9 @@ fn registerFurnace(ctx: &mut RegisterCtx) -> Result<()>
     let spec: TileEntitySpec = TileEntitySpec { inventory: furnace::SLOTS, ticks: true, sync: true, behavior: None };
     ctx.tileEntities().register(FURNACE_NAME, spec, Some(std::rc::Rc::new(FurnaceTile)))?;
 
-    let (top, off, on): (i32, i32, i32) = (62, 44, 61);
+    let (top, off, on): (&str, &str, &str) = ("furnace_top", "furnace_front", "furnace_front_on");
 
-    let look = |front: i32| FaceTextures
+    let look = |front: &str| FaceTextures
     {
         top: Some(vanillaTexture(top)),
         bottom: Some(vanillaTexture(top)),
@@ -936,7 +936,7 @@ fn registerFurnace(ctx: &mut RegisterCtx) -> Result<()>
         front: None,
     };
 
-    let spec = |front: i32, lit: bool| -> Result<BlockSpecBuilder>
+    let spec = |front: &str, lit: bool| -> Result<BlockSpecBuilder>
     {
         Ok(BlockSpecBuilder::template("minecraft:block")
             .name(FURNACE_LABEL)

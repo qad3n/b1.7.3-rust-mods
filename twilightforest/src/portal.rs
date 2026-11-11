@@ -568,7 +568,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         BlockSpecBuilder::template("minecraft:block")
             .name("Twilight Forest Portal")
             .material("glass")
-            .texture(&crate::blocks::vanillaTexture(14))
+            .texture(&crate::blocks::vanillaTexture("nether_portal"))
             .hardness(look::HARDNESS)
             .resistance(look::RESISTANCE)
             .light(look::LIGHT)

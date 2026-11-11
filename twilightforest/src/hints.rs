@@ -8,8 +8,7 @@ use std::collections::HashMap;
 // TFFeature.trySpawnHintMonster, a kobold carrying the explorer's notes turns up near a player a guarded feature
 // turns away, at most once a minute per feature, and drops the notes when it dies
 const KOBOLD: &str = "twilightforest:kobold";
-// beta's book icon, Item.book at column 11 row 3 of the items sheet
-const BOOK_ICON: &str = "minecraft:items/59";
+const BOOK_ICON: &str = "minecraft:item/book";
 
 mod tuning
 {

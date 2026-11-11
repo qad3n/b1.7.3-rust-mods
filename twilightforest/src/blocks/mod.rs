@@ -98,13 +98,13 @@ pub(crate) const PIXELS: f32 = 16.0;
 
 pub(crate) fn texture(name: &str) -> String { format!("twilightforest:block/{name}") }
 
-pub(crate) fn vanillaTexture(index: i32) -> String { format!("minecraft:terrain/{index}") }
+pub(crate) fn vanillaTexture(sprite: &str) -> String { format!("minecraft:block/{sprite}") }
 
 fn lookTexture(name: &str) -> String
 {
     match name.strip_prefix("minecraft:")
     {
-        Some(index) => format!("minecraft:terrain/{index}"),
+        Some(sprite) => vanillaTexture(sprite),
         None => texture(name),
     }
 }

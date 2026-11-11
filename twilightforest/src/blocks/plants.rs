@@ -56,8 +56,8 @@ const LIT_PLANT_LIGHT: i32 = 3;
 // the ripe troll berry spills four to eight torchberries
 const TROLLBER_DROP: [i32; 2] = [4, 8];
 const ONE: [i32; 2] = [1, 1];
-const TALLGRASS_TEXTURE: &str = "minecraft:39";
-const DEADBUSH_TEXTURE: &str = "minecraft:55";
+const TALLGRASS_TEXTURE: &str = "minecraft:short_grass";
+const DEADBUSH_TEXTURE: &str = "minecraft:dead_bush";
 
 const PLANTS: [Plant; 12] = [
     Plant
@@ -198,7 +198,7 @@ fn plantTexture(name: &str) -> String
 {
     match name.strip_prefix("minecraft:")
     {
-        Some(index) => vanillaTexture(index.parse().unwrap_or(0)),
+        Some(sprite) => vanillaTexture(sprite),
         None => texture(name),
     }
 }
@@ -925,7 +925,7 @@ mod foliage
     // ColorizerFoliage pine and birch colors
     pub const PINE: u32 = 0x619961;
     pub const BIRCH: u32 = 0x80A755;
-    pub const LEAVES_TEXTURE: i32 = 52;
+    pub const LEAVES_TEXTURE: &str = "oak_leaves";
     pub const LEAVES_HARDNESS: f32 = 0.2;
 }
 

@@ -356,7 +356,7 @@ const DEVICES: [DeviceRow; 22] = [
         Device::Debris,
         block::REACTOR_DEBRIS,
         "Carminite Reactor Debris",
-        "minecraft:7",
+        "minecraft:bricks",
         device::DEBRIS_HARDNESS,
         device::TRANSLUCENT_RESISTANCE,
         0.0,
@@ -367,7 +367,7 @@ const DEVICES: [DeviceRow; 22] = [
         Device::FalseGold,
         block::FALSE_GOLD,
         "False Gold",
-        "minecraft:23",
+        "minecraft:gold_block",
         device::TRANSLUCENT_HARDNESS,
         device::TRANSLUCENT_RESISTANCE,
         0.0,
@@ -378,7 +378,7 @@ const DEVICES: [DeviceRow; 22] = [
         Device::FalseDiamond,
         block::FALSE_DIAMOND,
         "False Diamond",
-        "minecraft:24",
+        "minecraft:diamond_block",
         device::TRANSLUCENT_HARDNESS,
         device::TRANSLUCENT_RESISTANCE,
         0.0,
@@ -640,7 +640,7 @@ fn deviceSpec(row: &DeviceRow) -> Result<BlockSpecBuilder>
 {
     let look: String = match row.m_texture.strip_prefix("minecraft:")
     {
-        Some(index) => vanillaTexture(index.parse().unwrap_or(0)),
+        Some(sprite) => vanillaTexture(sprite),
         None => texture(row.m_texture),
     };
     let mut spec: BlockSpecBuilder = base("minecraft:block", row.m_label, Kind::Wood, row.m_hardness)

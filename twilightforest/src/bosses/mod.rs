@@ -239,7 +239,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 
     let unbreakable: f32 = -1.0;
     let resistance: f32 = 6000000.0;
-    let spawnerTexture: i32 = 65;
     ctx.blocks().register(
         SPAWNER,
         BlockSpecBuilder::template("minecraft:block")
@@ -247,7 +246,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .material("rock")
             .hardness(unbreakable)
             .resistance(resistance)
-            .texture(&crate::blocks::vanillaTexture(spawnerTexture))
+            .texture(&crate::blocks::vanillaTexture("spawner"))
             .drops(Vec::new())
             .tileEntity(SPAWNER),
     )?;

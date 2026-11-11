@@ -117,8 +117,8 @@ const TOOLS: [Tool; 21] = [
     tool(item::KNIGHTLY_AXE, "Knightly Axe", "knightlyaxe", Class::Heavy(ToolClass::Axe), KNIGHTLY, 0),
     tool(item::MINOTAUR_AXE, "Minotaur Axe", "minotauraxe", Class::Heavy(ToolClass::Axe), EMERALD, 0),
     tool(item::MAZEBREAKER_PICK, "Mazebreaker", "mazebreakerpick", Class::Pickaxe, EMERALD, 4),
-    tool(item::GIANT_PICK, "Giant's Pickaxe", "minecraft:97", Class::Heavy(ToolClass::Pickaxe), GIANT, 0),
-    tool(item::GIANT_SWORD, "Giant's Sword", "minecraft:65", Class::Sword, GIANT, 0),
+    tool(item::GIANT_PICK, "Giant's Pickaxe", "minecraft:stone_pickaxe", Class::Heavy(ToolClass::Pickaxe), GIANT, 0),
+    tool(item::GIANT_SWORD, "Giant's Sword", "minecraft:stone_sword", Class::Sword, GIANT, 0),
     tool(item::ICE_SWORD, "Ice Sword", "icesword", Class::Sword, ICE, 0),
     tool(item::GLASS_SWORD, "Glass Sword", "glasssword", Class::Sword, GLASS, 0),
 ];
@@ -255,7 +255,7 @@ fn iconTexture(name: &str) -> String
 {
     match name.strip_prefix("minecraft:")
     {
-        Some(index) => format!("minecraft:items/{index}"),
+        Some(sprite) => format!("minecraft:item/{sprite}"),
         None => texture(name),
     }
 }
