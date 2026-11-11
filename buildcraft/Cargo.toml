@@ -1,0 +1,27 @@
+[package]
+name = "buildcraft"
+version = "2.1.1"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+b173_api = { path = "../../b1.7.3_rewrite/vendor/b1.7.3-modding-sdk/b173_api" }
+serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
+
+[lints.rust]
+non_snake_case = "allow"
+
+[lints.clippy]
+too_many_arguments = "allow"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "debuginfo"
+
+[workspace]
