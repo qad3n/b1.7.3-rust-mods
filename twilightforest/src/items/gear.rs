@@ -240,18 +240,17 @@ fn iconTexture(name: &str) -> String
 }
 
 // EfficiencyEnchantment adds the square of its level plus one to a tool that is already effective
-fn speed(row: &Tool) -> f32
+fn efficiency(level: i32) -> f32
 {
-    let level: i32 = row.m_efficiency;
     if level == 0
     {
-        row.m_tier.m_speed
+        return 0.0;
     }
-    else
-    {
-        row.m_tier.m_speed + (level * level + 1) as f32
-    }
+
+    (level * level + 1) as f32
 }
+
+fn speed(row: &Tool) -> f32 { row.m_tier.m_speed + efficiency(row.m_efficiency) }
 
 fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
 {
@@ -265,8 +264,6 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
 
         spec = match row.m_name
         {
-            item::GIANT_PICK => spec.behavior(Giant),
-            item::MAZEBREAKER_PICK => spec.behavior(Mazebreaker),
             item::GLASS_SWORD => spec.behavior(Shatter),
             item::FIERY_PICK => spec.behavior(Smelting),
             _ => spec,
@@ -308,51 +305,46 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
     Ok(())
 }
 
-// ItemTFGiantPick digs giant blocks sixty four times faster and giant obsidian sixty four times again
-struct Giant;
-
-mod giant
+mod boost
 {
-    pub const BOOST: f32 = 64.0;
+    // ItemTFGiantPick digs giant blocks sixty four times faster and giant obsidian sixty four times again
+    pub const GIANT: f32 = 64.0;
+    // ItemTFMazebreakerPick digs mazestone sixteen times faster before its efficiency four
+    pub const MAZE: f32 = 16.0;
+    pub const MAZE_EFFICIENCY: i32 = 4;
 }
 
-#[item_behavior]
-impl ItemBehavior for Giant
+// ItemPickaxe.func_150893_a for a giant block, only rock comes at the tier speed
+fn giantSpeed(block: i32) -> f32
 {
-    fn strVsBlock(&self, _stack: ItemStack, block: i32) -> f32
-    {
-        let base: f32 = GIANT.m_speed;
+    let obsidian: bool = block == crate::ids::blockId(crate::ids::block::GIANT_OBSIDIAN);
+    let rock: bool = obsidian || block == crate::ids::blockId(crate::ids::block::GIANT_COBBLE);
+    let base: f32 = if rock { GIANT.m_speed } else { 1.0 };
+    let extra: f32 = if obsidian { boost::GIANT } else { 1.0 };
+    base * boost::GIANT * extra
+}
 
-        if crate::ids::giantBlock(block)
-        {
-            let obsidian: bool = block == crate::ids::blockId(crate::ids::block::GIANT_OBSIDIAN);
-            base * giant::BOOST * if obsidian { giant::BOOST } else { 1.0 }
-        }
-        else
-        {
-            1.0
-        }
+// the loader answers tool blocks from the tool speed alone, so the two picks raise their own blocks here
+fn pickSpeed(event: &mut Event)
+{
+    let Some(held) = event.player().and_then(Player::held)
+    else
+    {
+        return;
+    };
+    let EventData::BreakSpeed { block, speed, .. } = event.dataMut()
+    else
+    {
+        return;
+    };
+
+    if held.item.is(item::GIANT_PICK) && crate::ids::giantBlock(*block)
+    {
+        *speed = giantSpeed(*block);
     }
-}
-
-// ItemTFMazebreakerPick breaks mazestone sixteen times faster than its tier
-struct Mazebreaker;
-
-#[item_behavior]
-impl ItemBehavior for Mazebreaker
-{
-    fn strVsBlock(&self, _stack: ItemStack, block: i32) -> f32
+    else if held.item.is(item::MAZEBREAKER_PICK) && crate::ids::mazestone(*block)
     {
-        let boost: f32 = 16.0;
-
-        if crate::ids::mazestone(block)
-        {
-            (EMERALD.m_speed + 17.0) * boost
-        }
-        else
-        {
-            1.0
-        }
+        *speed = EMERALD.m_speed * boost::MAZE + efficiency(boost::MAZE_EFFICIENCY);
     }
 }
 
@@ -417,5 +409,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerTools(ctx)?;
     registerArmor(ctx)?;
+    ctx.events().on::<PlayerBreakSpeed>(Priority::Normal, pickSpeed)?;
     crate::combat::register(ctx)
 }
