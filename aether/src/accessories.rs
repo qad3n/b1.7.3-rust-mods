@@ -111,7 +111,7 @@ impl Worn
 
     pub fn stack(&self, index: usize) -> Option<ItemStack> { self.m_slots[index].clone().map(ItemStack::fromRaw) }
 
-    fn maxHealth(&self) -> f64 { (crate::player::BASE_HEALTH + self.m_lifeShards * crate::player::SHARD_HEALTH) as f64 }
+    fn shardHealth(&self) -> f64 { f64::from(self.m_lifeShards * crate::player::SHARD_HEALTH) }
 
     // InventoryAccessories.wearingAccessory
     pub fn wearing(&self, name: &str) -> bool
@@ -306,6 +306,29 @@ thread_local! {
     // players whose step height the agility cape raised, and players whose worn list reached their own client
     static STEPPING: RefCell<HashMap<i32, bool>> = RefCell::new(HashMap::new());
     static ANNOUNCED: RefCell<HashMap<i32, bool>> = RefCell::new(HashMap::new());
+    // the life shard count each player's health modifier was last set for
+    static SHARDS: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
+}
+
+// PlayerAether's health modifier, set only when the shards change since every set resends the player's modifiers
+fn shardHealth(entity: Entity, worn: &Worn)
+{
+    let applied: Option<i32> = SHARDS.with(|shards| shards.borrow().get(&entity.id).copied());
+    if applied == Some(worn.m_lifeShards)
+    {
+        return;
+    }
+
+    // older saves raised the base health itself
+    entity.setField(EntityField::MaxHealth, f64::from(crate::player::BASE_HEALTH));
+    let modifier: &str = "aether:life_shards";
+    if let Err(error) = entity.setModifier("minecraft:max_health", modifier, worn.shardHealth(), ModifierOperation::Add)
+    {
+        warn(&format!("life shard health: {error}"));
+        return;
+    }
+
+    SHARDS.with(|shards| shards.borrow_mut().insert(entity.id, worn.m_lifeShards));
 }
 
 // the ice ring and pendant freeze water to ice and lava to obsidian around the wearer's feet
@@ -368,7 +391,7 @@ fn serverTick(player: Player)
     let before: Worn = Worn::of(player);
     let mut worn: Worn = before.clone();
     let age: f64 = entity.field(EntityField::TicksExisted);
-    entity.setField(EntityField::MaxHealth, worn.maxHealth());
+    shardHealth(entity, &worn);
     worn.m_valkyrieSet = crate::player::wearingSet(player, "valkyrie");
     crate::abilities::repel(player, &mut worn);
     if !ANNOUNCED.with(|announced| announced.borrow().contains_key(&player.id)) && player.canSend(CLICK)
@@ -456,7 +479,6 @@ fn localTick()
     };
     let entity: Entity = Entity { world: World { dimension: info.world }, id: player.id };
     let worn: Worn = Worn::of(player);
-    entity.setField(EntityField::MaxHealth, worn.maxHealth());
     let sneaking: bool = entity.flag(EntityField::Sneaking);
     let agile: bool = worn.wearing("agility_cape") && !sneaking;
     let wasAgile: bool = STEPPING.with(|stepping| stepping.borrow().get(&player.id).copied().unwrap_or(false));

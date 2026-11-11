@@ -124,9 +124,12 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Not ported yet, add their options with the features: Aether menu and menu button, trivia, holiday trees, tall grass,
   Sun Spirit dialogue repeat, legacy visuals, legacy altar name, portal frame start, first-entry gifts toggle.
 
-## Done (loader API 1.17, damage types)
+## Done (loader API 1.18, damage types and attributes)
 
-- `mod.toml` needs API 1.17. Hits carry the vanilla damage type closest to the source's DamageSource (`src/damage.rs`):
+- Life shard hearts are an `aether:life_shards` add modifier on `minecraft:max_health`, as the source's health
+  attribute modifier, set again only when the shard count changes. Older saves that raised the base health get it
+  reset to twenty once.
+- `mod.toml` needs API 1.18. Hits carry the vanilla damage type closest to the source's DamageSource (`src/damage.rs`):
   darts, needles and flaming arrows as arrows, crystals as thrown, zephyr snowballs as fireballs, mob, boss, slider,
   sentry, pig slayer and hammer hits as mob, the holy sword's undead bonus as drown. Custom source names (incineration,
   crush, dart) have no beta type and take the nearest one.
