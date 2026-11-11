@@ -1,3 +1,4 @@
+use crate::effects::Effect;
 use b173_api::StackData;
 use b173_api::prelude::*;
 use std::cell::{Cell, RefCell};
@@ -295,8 +296,8 @@ mod ability
     pub const AGILE_STEP: f64 = 1.0;
     pub const NORMAL_STEP: f64 = 0.5;
     pub const FEATHER_FALL: f64 = 0.6;
-    // regeneration I heals one point every fifty ticks, b1.7.3 has no potions so the stone heals on that beat
-    pub const REGEN_EVERY: f64 = 50.0;
+    // the regeneration stone hands a hurt wearer eighty ticks of regeneration whenever it has none
+    pub const REGEN_TICKS: i32 = 80;
     pub const FULL_AIR: f64 = 300.0;
     pub const BURN_EVERY: f64 = 5.0;
     pub const FREEZE_REACH: i32 = 1;
@@ -414,12 +415,10 @@ fn serverTick(player: Player)
         entity.setField(EntityField::Air, ability::FULL_AIR);
     }
     let health: i32 = info.health.unwrap_or(0);
-    if worn.wearing("regeneration_stone")
-        && health > 0
-        && health < entity.field(EntityField::MaxHealth) as i32
-        && age % ability::REGEN_EVERY == 0.0
+    let hurt: bool = health > 0 && health < entity.field(EntityField::MaxHealth) as i32;
+    if worn.wearing("regeneration_stone") && hurt && !crate::effects::has(entity, Effect::Regeneration)
     {
-        entity.setField(EntityField::Health, (health + 1) as f64);
+        crate::effects::give(entity, Effect::Regeneration, ability::REGEN_TICKS);
     }
     if worn.wearing("phoenix_gloves") && entity.flag(EntityField::InWater) && age % ability::BURN_EVERY == 0.0
     {

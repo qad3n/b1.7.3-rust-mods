@@ -1,4 +1,5 @@
 use super::{fraction, lookOf};
+use crate::effects::Effect;
 use crate::models::{DEGREES_PER_RADIAN, Program, crystal as model};
 use b173_api::prelude::*;
 use std::cell::RefCell;
@@ -52,7 +53,8 @@ fn row(kind: Kind) -> &'static KindRow { KINDS.iter().find(|row| row.m_kind == k
 
 mod crystal
 {
-    // EntityCrystal
+    // EntityCrystal, ice and cloud crystals leave ten ticks of weakness on what they hit
+    pub const WEAK_TICKS: i32 = 10;
     pub const BASE_SPEED: f64 = 0.2;
     pub const SPEED_SPREAD: f64 = 0.15;
     pub const SPIN_SPREAD: f32 = 6.0;
@@ -310,21 +312,19 @@ fn touch(entity: Entity, info: &EntityInfo, look: Look, state: &mut Flight) -> b
         {
             continue;
         }
-        let before: Option<i32> = victim.info().and_then(|info| info.health);
-        crate::damage::hit(victim, crystal::DAMAGE, Some(entity.id), crate::damage::kind::THROWN);
-        let landed: bool = victim.info().and_then(|info| info.health) != before;
-        if !landed
+        if !crate::damage::hit(victim, crystal::DAMAGE, Some(entity.id), crate::damage::kind::THROWN)
         {
             continue;
         }
-        if look.m_kind == Kind::Thunder
+        match look.m_kind
         {
-            moveTowards(entity, info, &other, crystal::RECOIL);
-            continue;
-        }
-        if look.m_kind == Kind::Fire
-        {
-            victim.setField(EntityField::FireTicks, crystal::BURN_TICKS);
+            Kind::Thunder =>
+            {
+                moveTowards(entity, info, &other, crystal::RECOIL);
+                continue;
+            }
+            Kind::Fire => victim.setField(EntityField::FireTicks, crystal::BURN_TICKS),
+            Kind::Ice | Kind::Cloud => crate::effects::give(victim, Effect::Weakness, crystal::WEAK_TICKS),
         }
         burst(entity, info, look.m_kind);
         return true;

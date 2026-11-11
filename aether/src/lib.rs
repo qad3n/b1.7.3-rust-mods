@@ -3,6 +3,7 @@ mod accessories;
 mod blocks;
 mod config;
 mod damage;
+mod effects;
 mod entities;
 mod gear;
 mod harvest;
@@ -28,6 +29,7 @@ use b173_api::prelude::*;
 fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     config::register(ctx)?;
+    effects::register(ctx)?;
     blocks::register(ctx)?;
     shapes::register(ctx)?;
     sun_altar::register(ctx)?;

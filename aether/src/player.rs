@@ -1,3 +1,4 @@
+use crate::effects::Effect;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 use std::cell::{Cell, RefCell};
@@ -9,15 +10,8 @@ pub const SHARD_HEALTH: i32 = 2;
 
 mod inebriation
 {
-    // PotionInebriation as darts, needles and poison buckets give it, with its hud colour and inventory icon
-    pub const NAME: &str = "inebriation";
-    pub const EFFECT: &str = "aether:inebriation";
-    pub const ICON: &str = "aether:gui/inventory/inebriation";
-    pub const COLOR: u32 = 0x51297B;
+    // EffectInebriation as darts, needles and poison buckets give it
     pub const TICKS: i32 = 500;
-    // PotionInebriation.performEffect takes one health every fifty ticks
-    pub const DAMAGE_EVERY: i32 = 50;
-    pub const DAMAGE: i32 = -1;
     // PotionInebriation.distractEntity: a gaussian push and turn, each smoothed into the last
     pub const PUSH: f64 = 0.1;
     pub const TURN: f64 = std::f64::consts::FRAC_PI_4;
@@ -37,7 +31,7 @@ thread_local! {
     static GAUSSIAN: Random = Random::withSeed(0);
 }
 
-fn poisoned(entity: Entity) -> bool { entity.effectLevel(inebriation::EFFECT).is_some() }
+fn poisoned(entity: Entity) -> bool { crate::effects::has(entity, Effect::Inebriation) }
 
 pub fn poison(entity: Entity)
 {
@@ -46,12 +40,7 @@ pub fn poison(entity: Entity)
         return;
     }
 
-    if let Err(error) = entity.addEffect(inebriation::EFFECT, 0, inebriation::TICKS)
-    {
-        warn(&format!("inebriation: {error}"));
-        return;
-    }
-
+    crate::effects::give(entity, Effect::Inebriation, inebriation::TICKS);
     POISONED.with(|poisoned| poisoned.borrow_mut().insert((entity.world.dimension, entity.id)));
 }
 
@@ -63,10 +52,7 @@ pub fn cure(entity: Entity)
         return;
     }
 
-    if let Err(error) = entity.removeEffect(inebriation::EFFECT)
-    {
-        warn(&format!("inebriation cure: {error}"));
-    }
+    crate::effects::remove(entity, Effect::Inebriation);
     POISONED.with(|poisoned| poisoned.borrow_mut().remove(&(entity.world.dimension, entity.id)));
 }
 
@@ -290,14 +276,5 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
             localPoison();
         }
     })?;
-    let effect: EffectSpec = EffectSpec {
-        color: inebriation::COLOR,
-        beneficial: false,
-        icon: Some(inebriation::ICON.to_owned()),
-        modifiers: Vec::new(),
-        interval: inebriation::DAMAGE_EVERY,
-        amount: inebriation::DAMAGE,
-    };
-    ctx.effects().register(inebriation::NAME, effect)?;
     Ok(())
 }

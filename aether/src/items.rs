@@ -71,8 +71,8 @@ const FOODS: [(&str, &str, i32); 8] = [
     (item::WHITE_APPLE, "food/white_apple", 0),
     ("blue_gummy_swet", "food/blue_gummy_swet", 20),
     ("golden_gummy_swet", "food/golden_gummy_swet", 20),
-    // ItemHealingStone gives regeneration, which b1.7.3 lacks, so it heals three hearts at once
-    ("healing_stone", "food/healing_stone", 6),
+    // ItemHealingStone heals nothing itself, its regeneration does
+    (HEALING_STONE, "food/healing_stone", 0),
     ("candy_cane", "food/candycane", 2),
     ("gingerbread_man", "food/gingerbread_man", 2),
 ];
@@ -149,6 +149,26 @@ impl ItemBehavior for WhiteApple
     fn onRightClick(&self, world: World, player: Player, _stack: ItemStack) -> Use
     {
         crate::player::cure(Entity { world, id: player.id });
+        Use::Pass
+    }
+}
+
+const HEALING_STONE: &str = "healing_stone";
+// ItemHealingStone.onFoodEaten
+const HEALING_TICKS: i32 = 610;
+
+// ItemHealingStone: eating it gives half a minute of regeneration, the food itself is eaten as usual
+struct HealingStone;
+
+#[item_behavior]
+impl ItemBehavior for HealingStone
+{
+    fn onRightClick(&self, world: World, player: Player, _stack: ItemStack) -> Use
+    {
+        if world.isAuthority()
+        {
+            crate::effects::give(Entity { world, id: player.id }, crate::effects::Effect::Regeneration, HEALING_TICKS);
+        }
         Use::Pass
     }
 }
@@ -278,17 +298,13 @@ pub fn register(ctx: &mut RegisterCtx) -> Result<()>
     for (name, path, heal) in FOODS
     {
         let spec: ItemSpecBuilder = ItemSpecBuilder::new().texture(&texture(path)).food(heal);
-        ctx.items().register(
-            name,
-            if name == item::WHITE_APPLE
-            {
-                spec.behavior(WhiteApple)
-            }
-            else
-            {
-                spec
-            },
-        )?;
+        let spec: ItemSpecBuilder = match name
+        {
+            item::WHITE_APPLE => spec.behavior(WhiteApple),
+            HEALING_STONE => spec.behavior(HealingStone),
+            _ => spec,
+        };
+        ctx.items().register(name, spec)?;
     }
     ctx.items().register(
         item::VICTORY_MEDAL,
