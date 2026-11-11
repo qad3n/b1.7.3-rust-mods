@@ -2,6 +2,7 @@ use super::projectile::{self, POISON_NEEDLE};
 use super::{closestPlayer, creature, onAetherGrass};
 use crate::ids::{Palette, item};
 use crate::models::{Program, aechor_plant as model};
+use b173_api::math::floor;
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -93,8 +94,7 @@ impl EntityBehavior for AechorPlant
     {
         let world: World = entity.world;
         let plantSize: i32 = size(entity);
-        let below: BlockPos =
-            BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32 - 1, info.pos[2].floor() as i32);
+        let below: BlockPos = BlockPos::new(floor(info.pos[0]), floor(info.pos[1]) - 1, floor(info.pos[2]));
 
         if world.block(below) != Palette::load().m_grass
         {

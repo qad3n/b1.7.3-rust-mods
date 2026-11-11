@@ -1,6 +1,7 @@
 use super::crystal::{self, Kind};
 use super::{fraction, lookOf};
 use crate::models::{Program, mini_cloud as model};
+use b173_api::math::{distance, length, sub};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -40,7 +41,7 @@ thread_local!
 
 fn target(owner: &EntityInfo, cloud: &EntityInfo, left: bool) -> [f64; 3]
 {
-    let gap: f64 = (0..3).map(|axis| (owner.pos[axis] - cloud.pos[axis]).powi(2)).sum::<f64>().sqrt();
+    let gap: f64 = distance(owner.pos, cloud.pos);
     if gap > cloud::FAR
     {
         return [owner.pos[0], owner.pos[1] + cloud::LIFT, owner.pos[2]];
@@ -84,8 +85,8 @@ impl EntityBehavior for MiniCloud
         reload -= 1;
 
         let goal: [f64; 3] = target(&owner, info, bond.m_left);
-        let offset: [f64; 3] = [goal[0] - info.pos[0], goal[1] - info.pos[1], goal[2] - info.pos[2]];
-        let gap: f64 = offset.iter().map(|axis| axis * axis).sum::<f64>().sqrt();
+        let offset: [f64; 3] = sub(goal, info.pos);
+        let gap: f64 = length(offset);
         if gap < cloud::SETTLED
         {
             let _ = entity.setMotion(info.motion.map(|axis| axis * cloud::HOLD));

@@ -1,6 +1,7 @@
 use super::projectile::{self, POISON_NEEDLE};
 use super::{bird, drop, monster, sounds};
 use crate::models::{Program, cockatrice as model};
+use b173_api::math::yawTowards;
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -56,8 +57,7 @@ impl EntityBehavior for Cockatrice
             return;
         };
 
-        let (dx, dz): (f64, f64) = (goal.pos[0] - info.pos[0], goal.pos[2] - info.pos[2]);
-        entity.setField(EntityField::Yaw, dz.atan2(dx).to_degrees() - 90.0);
+        entity.setField(EntityField::Yaw, f64::from(yawTowards(info.pos, goal.pos)));
 
         let timer: i32 = TIMERS.with(|timers| timers.borrow().get(&entity.id).copied()).unwrap_or(0);
         let seen: bool = entity.world.rayTrace(eyes(info), eyes(&goal), false).is_none();

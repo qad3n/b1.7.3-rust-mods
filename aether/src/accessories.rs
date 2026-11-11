@@ -1,5 +1,6 @@
 use crate::effects::Effect;
 use b173_api::StackData;
+use b173_api::math::floor;
 use b173_api::prelude::*;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -364,8 +365,7 @@ fn freeze(world: World, entity: Entity, worn: &mut Worn) -> bool
 
     let water: [i32; 2] = [crate::ids::blockId("minecraft:water"), crate::ids::blockId("minecraft:flowing_water")];
     let lava: [i32; 2] = [crate::ids::blockId("minecraft:lava"), crate::ids::blockId("minecraft:flowing_lava")];
-    let feet: [i32; 3] =
-        [info.pos[0].floor() as i32, entity.field(EntityField::Bottom).floor() as i32, info.pos[2].floor() as i32];
+    let feet: [i32; 3] = [floor(info.pos[0]), floor(entity.field(EntityField::Bottom)), floor(info.pos[2])];
     let mut changed: bool = false;
     let reach: i32 = ability::FREEZE_REACH;
     for x in feet[0] - reach..=feet[0] + reach

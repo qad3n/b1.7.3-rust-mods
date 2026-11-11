@@ -1,7 +1,7 @@
 use super::{creature, drop, onAetherGrass, sounds};
 use crate::models::{DEGREES_PER_RADIAN, HALF_PI, Program, aerbunny as model};
+use b173_api::math;
 use b173_api::prelude::*;
-use b173_api::terrain::math;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 

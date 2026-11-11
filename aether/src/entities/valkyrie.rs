@@ -1,8 +1,8 @@
 use super::fraction;
 use crate::ids::item::VICTORY_MEDAL;
 use crate::models::{DEGREES_PER_RADIAN, Phases, Program, WALK_RATE, valkyrie as model};
+use b173_api::math;
 use b173_api::prelude::*;
-use b173_api::terrain::math;
 pub(crate) use look::{AIR_SINAGE, GROUND_SINAGE};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -123,7 +123,7 @@ pub(crate) fn glide(entity: Entity, info: &EntityInfo, lastMotionY: &mut f64)
 
     if !onGround && let Some(goal) = target(entity)
     {
-        let gap: f64 = (0..3).map(|axis| (goal.pos[axis] - info.pos[axis]).powi(2)).sum::<f64>().sqrt();
+        let gap: f64 = math::distance(goal.pos, info.pos);
         if *lastMotionY >= 0.0 && motion[1] < 0.0 && gap <= valk::CHASE_RANGE && canSee(entity.world, info, &goal)
         {
             let angle: f64 = (goal.pos[0] - info.pos[0]).atan2(goal.pos[2] - info.pos[2]);
@@ -176,10 +176,7 @@ impl EntityBehavior for Valkyrie
     {
         if let (Some(info), Some(seen)) = (entity.info(), player.info())
         {
-            entity.setField(
-                EntityField::Yaw,
-                (seen.pos[2] - info.pos[2]).atan2(seen.pos[0] - info.pos[0]).to_degrees() - 90.0,
-            );
+            entity.setField(EntityField::Yaw, f64::from(math::yawTowards(info.pos, seen.pos)));
         }
 
         if !entity.world.isAuthority()

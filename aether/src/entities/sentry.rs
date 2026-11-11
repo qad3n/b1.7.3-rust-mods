@@ -1,5 +1,6 @@
 use super::{closestPlayer, fraction, sounds};
 use crate::models::{Program, slime_outer};
+use b173_api::math::{distance, yawTowards};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -143,15 +144,14 @@ impl EntityBehavior for Sentry
 
         if let Some(goal) = &target
         {
-            let gap: f64 = ((0..3).map(|axis| (goal.pos[axis] - info.pos[axis]).powi(2)).sum::<f64>()).sqrt();
+            let gap: f64 = distance(goal.pos, info.pos);
             if gap < sentry::BLAST_REACH && world.isAuthority()
             {
                 burst(entity, info, goal);
                 return;
             }
 
-            let [dx, dz] = [goal.pos[0] - info.pos[0], goal.pos[2] - info.pos[2]];
-            entity.setField(EntityField::Yaw, dz.atan2(dx).to_degrees() - 90.0);
+            entity.setField(EntityField::Yaw, f64::from(yawTowards(info.pos, goal.pos)));
         }
 
         if entity.synced::<Watch>().m_awake

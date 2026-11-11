@@ -1,6 +1,5 @@
 use crate::models::{DEGREES_PER_RADIAN, HALF_PI, Program, WALK_RATE, moa as layout, quadruped};
-use b173_api::PoseInput;
-use b173_api::terrain::math;
+use b173_api::{PoseInput, math};
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 

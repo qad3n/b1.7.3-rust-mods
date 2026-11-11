@@ -1,5 +1,6 @@
 use crate::ids::{Palette, block, blockId};
 use crate::world::DIMENSION_ID;
+use b173_api::math::{Face, blockOf, floor, offset};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -243,11 +244,6 @@ fn remember(dimension: i32, center: [f64; 3])
     }
 }
 
-fn blockAt(point: [f64; 3]) -> BlockPos
-{
-    BlockPos::new(point[0].floor() as i32, point[1].floor() as i32, point[2].floor() as i32)
-}
-
 // the nearest portal this mod built or lit in the target dimension, TeleporterAether.placeInExistingPortal
 fn knownPortal(dimension: i32, x: i32, z: i32) -> Option<[f64; 3]>
 {
@@ -255,7 +251,7 @@ fn knownPortal(dimension: i32, x: i32, z: i32) -> Option<[f64; 3]>
 
     let distance = |point: &[f64; 3]|
     {
-        let pos: BlockPos = blockAt(*point);
+        let pos: BlockPos = blockOf(*point);
         ((pos.x - x).abs(), (pos.z - z).abs())
     };
     log.m_entries
@@ -330,8 +326,7 @@ pub(crate) fn inPortal(info: &EntityInfo) -> bool
 {
     let world: World = World { dimension: info.world };
     let portal: i32 = blockId(block::AETHER_PORTAL);
-    let feet: BlockPos =
-        BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32, info.pos[2].floor() as i32);
+    let feet: BlockPos = blockOf(info.pos);
     world.block(feet) == portal || world.block(feet.offset(0, 1, 0)) == portal
 }
 
@@ -392,7 +387,7 @@ fn enter(world: World, player: Player)
     {
         aether
     };
-    let (x, z): (i32, i32) = (info.pos[0].floor() as i32, info.pos[2].floor() as i32);
+    let (x, z): (i32, i32) = (floor(info.pos[0]), floor(info.pos[2]));
     let known: Option<[f64; 3]> = knownPortal(target, x, z);
     let hold: [f64; 3] = known.unwrap_or([x as f64 + 0.5, travel::HOLD_Y, z as f64 + 0.5]);
 
@@ -474,7 +469,7 @@ fn arrive(player: Player, to: i32)
 
     let world: World = World { dimension: to };
     let standing: Option<[f64; 3]> =
-        known.filter(|point| world.block(blockAt(*point)) == blockId(block::AETHER_PORTAL));
+        known.filter(|point| world.block(blockOf(*point)) == blockId(block::AETHER_PORTAL));
 
     let spot: [f64; 3] = match standing
     {
@@ -488,7 +483,7 @@ fn arrive(player: Player, to: i32)
                 return;
             };
 
-            buildPortal(world, info.pos[0].floor() as i32, info.pos[2].floor() as i32)
+            buildPortal(world, floor(info.pos[0]), floor(info.pos[2]))
         }
     };
     let _ = player.teleport(to, spot);
@@ -569,7 +564,14 @@ pub(crate) fn registerEvents(ctx: &mut RegisterCtx) -> Result<()>
             return;
         }
 
-        if trySpawn(world, faceOffset(pos, face))
+        let Some(face) = Face::fromIndex(face)
+        else
+        {
+            return;
+        };
+
+        // the block next to the clicked face as ItemBucket offsets its target
+        if trySpawn(world, offset(pos, face))
         {
             event.cancel();
 
@@ -595,18 +597,4 @@ pub(crate) fn registerEvents(ctx: &mut RegisterCtx) -> Result<()>
     })?;
 
     Ok(())
-}
-
-// the block next to the clicked face, as ItemBucket offsets its target
-fn faceOffset(pos: BlockPos, face: i32) -> BlockPos
-{
-    match face
-    {
-        0 => pos.offset(0, -1, 0),
-        1 => pos.offset(0, 1, 0),
-        2 => pos.offset(0, 0, -1),
-        3 => pos.offset(0, 0, 1),
-        4 => pos.offset(-1, 0, 0),
-        _ => pos.offset(1, 0, 0),
-    }
 }

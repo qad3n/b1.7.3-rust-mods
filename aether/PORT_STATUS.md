@@ -124,6 +124,14 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Not ported yet, add their options with the features: Aether menu and menu button, trivia, holiday trees, tall grass,
   Sun Spirit dialogue repeat, legacy visuals, legacy altar name, portal frame start, first-entry gifts toggle.
 
+## Done (SDK shared math)
+
+- Block positions, distances, face offsets and faceEntity turns use `b173_api::math` (`blockOf`, `distance`,
+  `Face`, `yawTowards`). Turns now divide by float pi as EntityLiving.faceEntity does; the earlier f64 `to_degrees`
+  differed in the last bits.
+- Left on their own math: dungeon and island generation, the f32 yaw quarter in `shapes.rs`, and angles the source
+  wrote by hand with other constants (whirlwind and zephyr turns, sun spirit rotary, valkyrie lunges).
+
 ## Done (loader API 1.25, achievements)
 
 - `mod.toml` needs API 1.25. AchievementsAether's ten achievements are loader mod achievements (`src/progress.rs`),

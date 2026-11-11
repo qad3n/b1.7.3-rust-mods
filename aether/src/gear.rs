@@ -1,13 +1,13 @@
 use crate::effects::Effect;
 use crate::entities::lookOf;
 use crate::ids::blockId;
+use b173_api::math::{Face, offset};
 use b173_api::prelude::*;
 
 mod reach
 {
     // ItemBucket traces five blocks ahead of the eyes
     pub const BUCKET: f64 = 5.0;
-    pub const FACES: [[i32; 3]; 6] = [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]];
 }
 
 fn trace(world: World, info: &EntityInfo, liquids: bool) -> Option<RayHit>
@@ -90,8 +90,13 @@ impl ItemBehavior for SkyrootBucket
                 {
                     return Use::Pass;
                 };
-                let [dx, dy, dz] = reach::FACES[hit.face.clamp(0, 5) as usize];
-                let at: BlockPos = hit.pos.offset(dx, dy, dz);
+                let Some(face) = Face::fromIndex(hit.face)
+                else
+                {
+                    return Use::Pass;
+                };
+
+                let at: BlockPos = offset(hit.pos, face);
                 if !world.isAir(at)
                 {
                     return Use::Pass;

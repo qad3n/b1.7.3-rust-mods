@@ -1,5 +1,6 @@
 use crate::damage::kind;
 use crate::models::Program;
+use b173_api::math::{length, sub};
 use b173_api::prelude::*;
 
 // a shot the Aether fires: how it flies, what it does on a hit and how it looks
@@ -216,8 +217,8 @@ pub(crate) fn fire(
 ) -> Option<Entity>
 {
     let entity: Entity = world.spawnEntity(&format!("aether:{name}"), from).ok()?;
-    let [dx, dy, dz] = [toward[0] - from[0], toward[1] - from[1], toward[2] - from[2]];
-    let length: f64 = (dx * dx + dy * dy + dz * dz).sqrt().max(1.0e-4);
+    let [dx, dy, dz] = sub(toward, from);
+    let length: f64 = length([dx, dy, dz]).max(1.0e-4);
     let jitter = || (world.random(2001) as f64 / 1000.0 - 1.0) * 0.0075 * spread;
     let motion: [f64; 3] =
         [(dx / length + jitter()) * speed, (dy / length + jitter()) * speed, (dz / length + jitter()) * speed];

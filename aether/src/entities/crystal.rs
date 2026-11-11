@@ -1,6 +1,7 @@
 use super::{fraction, lookOf};
 use crate::effects::Effect;
 use crate::models::{DEGREES_PER_RADIAN, Program, crystal as model};
+use b173_api::math::{floor, yawTowards};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -92,7 +93,6 @@ mod crystal
 
 mod angle
 {
-    pub const QUARTER: f32 = 90.0;
     pub const HALF: f32 = 180.0;
     pub const FULL: f32 = 360.0;
 }
@@ -217,8 +217,7 @@ fn moveTowards(entity: Entity, info: &EntityInfo, target: &EntityInfo, speed: f6
 // EntityLiving.faceEntity limited to ten degrees a tick
 fn face(entity: Entity, info: &EntityInfo, target: &EntityInfo)
 {
-    let wanted: f32 =
-        ((target.pos[2] - info.pos[2]).atan2(target.pos[0] - info.pos[0]) as f32).to_degrees() - angle::QUARTER;
+    let wanted: f32 = yawTowards(info.pos, target.pos);
     let current: f32 = info.yaw;
     let mut turn: f32 = (wanted - current) % angle::FULL;
     if turn >= angle::HALF
@@ -358,7 +357,7 @@ fn touch(entity: Entity, info: &EntityInfo, look: Look, state: &mut Flight) -> b
 // bouncing off the block in the way on each axis it moves along
 fn bounce(world: World, info: &EntityInfo, bottom: f64, motion: &mut [f64; 3])
 {
-    let [x, y, z] = [info.pos[0].floor() as i32, bottom.floor() as i32, info.pos[2].floor() as i32];
+    let [x, y, z] = [floor(info.pos[0]), floor(bottom), floor(info.pos[2])];
     let solid = |dx: i32, dy: i32, dz: i32| !world.isAir(BlockPos::new(x + dx, y + dy, z + dz));
     let checks: [[i32; 3]; 3] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
     for (axis, step) in checks.iter().enumerate()

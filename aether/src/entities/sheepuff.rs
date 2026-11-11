@@ -1,8 +1,8 @@
 use super::{creature, onAetherGrass};
 use crate::ids::Palette;
 use crate::models::{Program, combine, quadruped, quadrupedPose, sheepuff, sheepuff_wool, sheepuffed};
+use b173_api::math;
 use b173_api::prelude::*;
-use b173_api::terrain::math;
 
 const NAME: &str = "sheepuff";
 const TEXTURE: &str = "aether:entity/sheepuff/sheepuff";
@@ -181,7 +181,7 @@ impl EntityBehavior for Sheepuff
             return;
         }
         let feet: BlockPos =
-            BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32 - 1, info.pos[2].floor() as i32);
+            BlockPos::new(math::floor(info.pos[0]), math::floor(info.pos[1]) - 1, math::floor(info.pos[2]));
         let palette: Palette = Palette::load();
         if entity.world.block(feet) != palette.m_grass
         {

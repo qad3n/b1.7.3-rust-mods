@@ -1,6 +1,7 @@
 use super::{closestPlayer, fraction, monster, sounds};
 use crate::ids::{block, item};
 use crate::models::{Program, combine, slime_inner, slime_outer};
+use b173_api::math::{distance, yawTowards};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -171,10 +172,9 @@ impl EntityBehavior for Swet
             let target: Option<EntityInfo> = closestPlayer(world, info, hunt::SIGHT);
             if let Some(player) = &target
             {
-                let [dx, dz] = [player.pos[0] - info.pos[0], player.pos[2] - info.pos[2]];
-                entity.setField(EntityField::Yaw, dz.atan2(dx).to_degrees() - 90.0);
+                entity.setField(EntityField::Yaw, f64::from(yawTowards(info.pos, player.pos)));
 
-                let gap: f64 = ((0..3).map(|axis| (player.pos[axis] - info.pos[axis]).powi(2)).sum::<f64>()).sqrt();
+                let gap: f64 = distance(player.pos, info.pos);
                 if gap < hunt::CATCH_REACH + 0.5 && world.isAuthority()
                 {
                     world.playSound(info.pos, "mob.attack", 0.5, 1.0);

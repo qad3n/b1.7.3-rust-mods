@@ -3,6 +3,7 @@ use crate::entities::fraction;
 use crate::ids::blockId;
 use crate::models::{Program, slider as model};
 use crate::progress::{self, Award};
+use b173_api::math::{blockOf, distance};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -518,7 +519,7 @@ impl EntityBehavior for Slider
             return None;
         }
 
-        let distance: f64 = (0..3).map(|axis| (player.pos[axis] - info.pos[axis]).powi(2)).sum::<f64>().sqrt();
+        let distance: f64 = distance(player.pos, info.pos);
         if distance > slide::REACH && !state.m_awake
         {
             chat(entity, attacker, "gui.slider.far");
@@ -552,11 +553,7 @@ impl EntityBehavior for Slider
                 world.particle("explode", spot, [0.0; 3]);
             }
 
-            let _ = world.breakEffect(
-                BlockPos::new(spot[0].floor() as i32, spot[1].floor() as i32, spot[2].floor() as i32),
-                blockId("minecraft:stone"),
-                0,
-            );
+            let _ = world.breakEffect(blockOf(spot), blockId("minecraft:stone"), 0);
         }
 
         if !state.m_awake

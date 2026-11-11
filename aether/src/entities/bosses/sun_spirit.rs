@@ -5,6 +5,7 @@ use crate::entities::fraction;
 use crate::ids::blockId;
 use crate::models::Program;
 use crate::progress::{self, Award};
+use b173_api::math::{floor, yawTowards};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -225,7 +226,7 @@ fn burn(entity: Entity, info: &EntityInfo)
 fn evaporate(entity: Entity, info: &EntityInfo, originY: i32)
 {
     let world: World = entity.world;
-    let [cx, cz] = [info.pos[0].floor() as i32, info.pos[2].floor() as i32];
+    let [cx, cz] = [floor(info.pos[0]), floor(info.pos[2])];
     for x in cx - spirit::STEAM_RADIUS..=cx + spirit::STEAM_RADIUS
     {
         for z in cz - spirit::STEAM_RADIUS..=cz + spirit::STEAM_RADIUS
@@ -302,8 +303,7 @@ fn circle(entity: Entity, info: &EntityInfo, target: &EntityInfo, home: &Home, s
 
     state.m_rotary = state.m_rotary.rem_euclid(spirit::FULL_TURN);
 
-    let yaw: f64 = (target.pos[2] - info.pos[2]).atan2(target.pos[0] - info.pos[0]).to_degrees() - 90.0;
-    entity.setField(EntityField::Yaw, yaw);
+    entity.setField(EntityField::Yaw, f64::from(yawTowards(info.pos, target.pos)));
 
     let angle: f64 = state.m_rotary.to_radians();
     let _ = entity.setMotion([angle.sin() * velocity, 0.0, angle.cos() * velocity]);
@@ -322,8 +322,7 @@ fn circle(entity: Entity, info: &EntityInfo, target: &EntityInfo, home: &Home, s
     state.m_flameCount += 1;
     if state.m_flameCount == spirit::FLAME_AT
     {
-        let below: BlockPos =
-            BlockPos::new(info.pos[0].floor() as i32, home.m_dungeon[1] - 2, info.pos[2].floor() as i32);
+        let below: BlockPos = BlockPos::new(floor(info.pos[0]), home.m_dungeon[1] - 2, floor(info.pos[2]));
 
         if world.isAir(below)
         {

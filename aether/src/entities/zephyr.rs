@@ -1,6 +1,7 @@
 use super::projectile::{self, ZEPHYR_SNOWBALL};
 use super::{closestPlayer, monster, onAetherGrass, sounds};
 use crate::models::{Program, zephyr as model};
+use b173_api::math::{distanceSquared, sub};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -64,7 +65,7 @@ impl EntityBehavior for Zephyr
         let world: World = entity.world;
         let mut course: Course = COURSES.with(|courses| courses.borrow().get(&entity.id).copied()).unwrap_or_default();
         let mut motion: [f64; 3] = info.motion;
-        let offset: [f64; 3] = [0, 1, 2].map(|axis| course.m_waypoint[axis] - info.pos[axis]);
+        let offset: [f64; 3] = sub(course.m_waypoint, info.pos);
         let squared: f64 = offset.iter().map(|value| value * value).sum();
         if squared < flight::NEAR || squared > flight::FAR
         {
@@ -95,7 +96,7 @@ impl EntityBehavior for Zephyr
 
         let target: Option<EntityInfo> = closestPlayer(world, info, flight::SIGHT).filter(|player|
         {
-            let gap: f64 = (0..3).map(|axis| (player.pos[axis] - info.pos[axis]).powi(2)).sum();
+            let gap: f64 = distanceSquared(player.pos, info.pos);
             gap < flight::RANGE_SQUARED
                 && world.rayTrace(center, [player.pos[0], player.pos[1] + 1.0, player.pos[2]], false).is_none()
         });

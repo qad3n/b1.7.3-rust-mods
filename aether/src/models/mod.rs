@@ -3,8 +3,7 @@
 #[allow(clippy::approx_constant, clippy::excessive_precision)]
 mod generated;
 
-use b173_api::terrain::math;
-use b173_api::{EntityModelSpec, ModelBox, ModelOp, ModelPart, PoseInput};
+use b173_api::{EntityModelSpec, ModelBox, ModelOp, ModelPart, PoseInput, math};
 pub(crate) use generated::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;

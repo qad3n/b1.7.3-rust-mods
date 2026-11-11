@@ -1,4 +1,5 @@
 use super::{closestPlayer, fraction, monster, onAetherGrass};
+use b173_api::math::{blockOf, distance};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -121,7 +122,7 @@ fn pull(world: World, info: &EntityInfo, entity: Entity)
         let caught: Entity = Entity { world, id: other.id };
         let [dx, dz] = [info.pos[0] - other.pos[0], info.pos[2] - other.pos[2]];
         let height: f64 = other.pos[1] - info.pos[1];
-        let mut distance: f64 = ((0..3).map(|axis| (other.pos[axis] - info.pos[axis]).powi(2)).sum::<f64>()).sqrt();
+        let mut distance: f64 = distance(other.pos, info.pos);
         let angle: f64 = dx.atan2(dz).to_degrees();
 
         if distance <= wind::CATCH + height
@@ -192,8 +193,7 @@ impl EntityBehavior for Whirlwind
 
         current.m_life -= 1;
 
-        let below: BlockPos =
-            BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32, info.pos[2].floor() as i32);
+        let below: BlockPos = blockOf(info.pos);
 
         if !world.isAir(below)
         {

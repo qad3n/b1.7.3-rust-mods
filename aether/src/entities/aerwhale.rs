@@ -1,7 +1,7 @@
 use super::{creature, onAetherGrass, sounds};
 use crate::models::{Program, aerwhale as model};
+use b173_api::math;
 use b173_api::prelude::*;
-use b173_api::terrain::math;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -62,11 +62,7 @@ fn openDistance(world: World, info: &EntityInfo, yawOffset: f32, pitchOffset: f3
 
     match world.rayTrace(from, to, true)
     {
-        Some(hit) =>
-        {
-            let [dx, dy, dz] = [hit.pos.x as f64 - from[0], hit.pos.y as f64 - from[1], hit.pos.z as f64 - from[2]];
-            (dx * dx + dy * dy + dz * dz).sqrt()
-        }
+        Some(hit) => math::distance([hit.pos.x as f64, hit.pos.y as f64, hit.pos.z as f64], from),
 
         None => course::SIGHT,
     }
@@ -74,11 +70,10 @@ fn openDistance(world: World, info: &EntityInfo, yawOffset: f32, pitchOffset: f3
 
 fn anyBlock(world: World, from: [f64; 3], to: [f64; 3]) -> bool
 {
-    let floor = |value: f64| value.floor() as i32;
-    (floor(from[0])..=floor(to[0])).any(|x|
+    (math::floor(from[0])..=math::floor(to[0])).any(|x|
     {
-        (floor(from[1])..=floor(to[1]))
-            .any(|y| (floor(from[2])..=floor(to[2])).any(|z| !world.isAir(BlockPos::new(x, y, z))))
+        (math::floor(from[1])..=math::floor(to[1]))
+            .any(|y| (math::floor(from[2])..=math::floor(to[2])).any(|z| !world.isAir(BlockPos::new(x, y, z))))
     })
 }
 
@@ -196,8 +191,7 @@ impl EntityBehavior for Aerwhale
         motion[1] = (motion[1] + course::THRUST * pitchRadians.sin()) * course::DRAG;
         motion[2] = (motion[2] + course::THRUST * yawRadians.sin() * pitchRadians.cos()) * course::DRAG;
 
-        let at: BlockPos =
-            BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32, info.pos[2].floor() as i32);
+        let at: BlockPos = math::blockOf(info.pos);
         let bounces: [(usize, [i32; 3], f64, bool); 3] = [
             (0, [1, 0, 0], course::BOUNCE_TURN, true),
             (1, [0, 1, 0], course::BOUNCE_TURN, false),

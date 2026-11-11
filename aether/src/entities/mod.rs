@@ -22,6 +22,7 @@ mod whirlwind;
 mod zephyr;
 
 use crate::ids::Palette;
+use b173_api::math::{blockOf, distanceSquared};
 use b173_api::prelude::*;
 
 pub(crate) const BIOME: &str = "aether:highlands";
@@ -32,8 +33,7 @@ const SPAWN_LIGHT: i32 = 9;
 pub(crate) fn onAetherGrass(info: &EntityInfo) -> bool
 {
     let world: World = World { dimension: info.world };
-    let feet: BlockPos =
-        BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32, info.pos[2].floor() as i32);
+    let feet: BlockPos = blockOf(info.pos);
     world.block(feet.offset(0, -1, 0)) == Palette::load().m_grass && world.light(feet) >= SPAWN_LIGHT
 }
 
@@ -69,11 +69,6 @@ pub(crate) fn drop(item: &str, count: [i32; 2]) -> DropSpec
     }
 }
 
-fn distanceSquared(a: &EntityInfo, b: &EntityInfo) -> f64
-{
-    (0..3).map(|axis| (a.pos[axis] - b.pos[axis]).powi(2)).sum()
-}
-
 // World.getClosestPlayerToEntity
 pub(crate) fn closestPlayer(world: World, info: &EntityInfo, range: f64) -> Option<EntityInfo>
 {
@@ -81,8 +76,8 @@ pub(crate) fn closestPlayer(world: World, info: &EntityInfo, range: f64) -> Opti
         .players()
         .into_iter()
         .filter_map(Player::info)
-        .filter(|player| distanceSquared(player, info) < range * range)
-        .min_by(|a, b| distanceSquared(a, info).total_cmp(&distanceSquared(b, info)))
+        .filter(|player| distanceSquared(player.pos, info.pos) < range * range)
+        .min_by(|a, b| distanceSquared(a.pos, info.pos).total_cmp(&distanceSquared(b.pos, info.pos)))
 }
 
 // Entity.getLookVec

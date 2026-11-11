@@ -1,7 +1,7 @@
 use super::{fraction, sounds};
 use crate::models::{DEGREES_PER_RADIAN, Program, sun_spirit as model};
+use b173_api::math;
 use b173_api::prelude::*;
-use b173_api::terrain::math;
 
 const NAME: &str = "fire_minion";
 pub(crate) const SPIRIT_TEXTURE: &str = "aether:entity/boss/sun_spirit/sun_spirit";

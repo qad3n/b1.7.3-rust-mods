@@ -6,6 +6,7 @@ use crate::ids::blockId;
 use crate::ids::item::VICTORY_MEDAL;
 use crate::models::Phases;
 use crate::progress::{self, Award};
+use b173_api::math::{floor, yawTowards};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -217,11 +218,8 @@ fn teleport(entity: Entity, info: &EntityInfo, target: [f64; 3], state: &mut Min
     a *= sign();
     b *= sign();
     c *= sign();
-    let start: [i32; 3] = [
-        (target[0] + a as f64 - 0.5).floor() as i32,
-        (target[1] + b as f64 - 0.5).floor() as i32,
-        (target[2] + c as f64 - 0.5).floor() as i32,
-    ];
+    let start: [i32; 3] =
+        [floor(target[0] + a as f64 - 0.5), floor(target[1] + b as f64 - 0.5), floor(target[2] + c as f64 - 0.5)];
 
     let [hx, hy, hz] = hall(entity);
     let shift = || world.random(rad / 2) - world.random(rad / 2);
@@ -311,8 +309,7 @@ fn watchClosest(entity: Entity, info: &EntityInfo)
 {
     if let Some(player) = crate::entities::closestPlayer(entity.world, info, queen::WATCH)
     {
-        let yaw: f64 = (player.pos[2] - info.pos[2]).atan2(player.pos[0] - info.pos[0]).to_degrees() - 90.0;
-        entity.setField(EntityField::Yaw, yaw);
+        entity.setField(EntityField::Yaw, f64::from(yawTowards(info.pos, player.pos)));
     }
 }
 

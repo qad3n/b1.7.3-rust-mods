@@ -1,4 +1,5 @@
 use crate::ids::blockId;
+use b173_api::math::blockOf;
 use b173_api::prelude::*;
 
 const NAME: &str = "floating_block";
@@ -31,11 +32,6 @@ fn canContinue(world: World, pos: BlockPos) -> bool
 {
     let block: i32 = world.block(pos);
     block == 0 || block == blockId(FIRE) || World::blockInfo(block).liquid
-}
-
-fn cell(pos: [f64; 3]) -> BlockPos
-{
-    BlockPos::new(pos[0].floor() as i32, pos[1].floor() as i32, pos[2].floor() as i32)
 }
 
 // BlockFloating: gravitite ore rises whenever nothing holds it down, enchanted gravitite only while powered
@@ -156,7 +152,7 @@ impl EntityBehavior for FloatingBlock
             return;
         }
 
-        let here: BlockPos = cell(info.pos);
+        let here: BlockPos = blockOf(info.pos);
         if !canContinue(world, here.offset(0, 1, 0))
         {
             let _ = world.setBlock(here, carried.m_block, carried.m_meta);
