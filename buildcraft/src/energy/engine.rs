@@ -258,13 +258,14 @@ fn start(row: &EngineRow, state: &mut EngineState)
     state.m_provider = Provider::new(0, 1, row.m_maxReceived, 1, row.m_maxEnergy);
 }
 
-// Engine.addEnergy, an engine past its store explodes
+// Engine.addEnergy, an engine past its store explodes from its block corner as createExplosion is given
 fn addEnergy(row: &EngineRow, world: World, pos: BlockPos, state: &mut EngineState, amount: i32)
 {
     state.m_energy += amount;
 
+    let corner: [f64; 3] = [f64::from(pos.x), f64::from(pos.y), f64::from(pos.z)];
     if stageOf(row, state.m_energy) == Stage::Explosion
-        && let Err(error) = world.explode(crate::core::dir::center(pos), row.m_explosion)
+        && let Err(error) = world.explode(corner, row.m_explosion)
     {
         warn(&format!("an engine could not explode: {error}"));
     }
