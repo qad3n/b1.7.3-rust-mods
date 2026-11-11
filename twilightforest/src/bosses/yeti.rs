@@ -78,6 +78,10 @@ mod ice
     pub const NEAR_RANGE: i32 = 15;
     pub const CHILL: i32 = 2;
     pub const CHILL_TICKS: i32 = 100;
+    // EntityTFFallingIce.fall shatters into two hundred bits of ice around a spot two blocks up
+    pub const SHARDS: i32 = 200;
+    pub const SHARD_SPREAD: f64 = 3.0;
+    pub const SHARD_RISE: f64 = 2.0;
 }
 
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
@@ -724,8 +728,9 @@ impl EntityBehavior for FallingIce
             for _ in 0..2
             {
                 let spread = || f64::from(ids::fraction(world) - ids::fraction(world));
-                world.particle(
-                    "snowballpoof",
+                crate::particles::spawn(
+                    world,
+                    "snowwarning",
                     [info.pos[0] + 2.0 * spread(), info.pos[1] - 3.0 + 3.0 * spread(), info.pos[2] + 2.0 * spread()],
                     [0.0, -1.0, 0.0],
                 );
@@ -788,6 +793,16 @@ impl EntityBehavior for FallingIce
                 }
             }
 
+            for _ in 0..ice::SHARDS
+            {
+                let spread = || f64::from(ids::fraction(world) - ids::fraction(world)) * ice::SHARD_SPREAD;
+                let at: [f64; 3] =
+                    [info.pos[0] + spread(), info.pos[1] + ice::SHARD_RISE + spread(), info.pos[2] + spread()];
+                crate::particles::crack(world, "minecraft:ice", 0, at, [0.0; 3]);
+            }
+
+            // the anvil's step sound breaks as stone does in beta
+            world.playSound(info.pos, "step.stone", 3.0, 0.5);
             world.playSound(info.pos, "random.glass", 3.0, 0.5);
             entity.kill();
             return;
