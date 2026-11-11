@@ -219,7 +219,7 @@ pub(crate) const SHOTS: [Shot; 11] = [
     Shot
     {
         m_name: THROWN_PICK,
-        m_gravity: 0.001,
+        m_gravity: 0.015,
         m_damage: 3,
         m_kind: kind::THROWN,
         m_impact: Impact::Plain,
