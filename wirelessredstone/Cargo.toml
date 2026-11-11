@@ -9,6 +9,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 b173_api = { path = "../../b1.7.3_rewrite/vendor/b1.7.3-modding-sdk/b173_api" }
+wirelessredstone_api = { path = "api" }
 serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
 
 [lints.rust]

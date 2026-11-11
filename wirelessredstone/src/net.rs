@@ -1,8 +1,9 @@
-use crate::blocks::{self, FREQUENCIES, Kind, SIDES, Tile};
+use crate::blocks::{self, Kind, SIDES, Tile};
 use crate::{ether, items, screens};
 use b173_api::prelude::*;
 use b173_api::world::{Player, World};
 use std::cell::RefCell;
+use wirelessredstone_api::FREQUENCIES;
 
 pub(crate) const FREQ: &str = "freq";
 pub(crate) const PERIOD: &str = "period";

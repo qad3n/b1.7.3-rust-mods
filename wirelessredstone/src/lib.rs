@@ -8,6 +8,7 @@ mod math;
 mod net;
 mod recipes;
 mod screens;
+mod service;
 mod triangulator;
 
 fn registerEvents(ctx: &mut RegisterCtx) -> Result<()>
@@ -49,5 +50,6 @@ fn register(ctx: &mut RegisterCtx) -> Result<()>
     recipes::register(ctx)?;
     screens::register(ctx)?;
     net::register(ctx)?;
+    service::register(ctx)?;
     registerEvents(ctx)
 }

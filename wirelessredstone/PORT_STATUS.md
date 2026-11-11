@@ -27,6 +27,31 @@ Build: `./build.sh`. Test: `../../tools/modport/test.sh deploy ports/wirelessred
 - Threads become ticks. The clocker thread checked every 10 ms; the port adds 50 ms per tick and toggles each time the
   elapsed time passes the period (minimum 200 ms, so 4 ticks). The remote's 1 second pulse is 20 ticks.
 
+## Registered with the loader
+
+- Blocks `receiver`, `transmitter`, `clocker` with the named `powered` state and its textures (`ctx.blocks()`
+  `register` and `states`), tile entities of the same names with synced tile data (`ctx.tileEntities()`): `blocks.rs`.
+- Items `remote`, `power_configurator`, `sniffer`, `triangulator` (`ctx.items()`), the frequency on a stack as the
+  component `wirelessredstone:freq`: `items.rs`.
+- Seven shaped recipes (`ctx.recipes()`). Iron and redstone keys are the tags `c:ingots/iron` and `c:dusts/redstone`
+  (`keyTag`), so other mods' iron and redstone craft them too; lever, torch, repeater and compass have no tag and stay
+  by name: `recipes.rs`.
+- Screens (`ctx.screens()`): `screens.rs`. Channels for every gui button and the sniffer and triangulator answers
+  (`ctx.channels()`): `net.rs`. Tick, chunk unload and world unload events (`ctx.events()`): `lib.rs`.
+- Service `wirelessredstone:ether` version 1 with `state`, `active` and `closest`, and lookup `wirelessredstone:node`
+  with `frequency` on all three blocks (`ctx.services()`): `service.rs`. Other mods depend on the `api/` crate
+  `wirelessredstone_api` for the names and message types, as the SDK's energy example does.
+- Names and screen text come from `assets/wirelessredstone/lang/en_US.lang`.
+
+Kept in the mod on purpose:
+- The ether is an index of the loaded transmitters and receivers, rebuilt from tile ticks as the source rebuilt it from
+  `updateEntity`. Its truth is the tile data and the `powered` state, which the loader already saves and syncs. Saving
+  the index as world data would write the save on every clock toggle and keep entries for unloaded chunks. Other
+  mods read it through the service.
+- Remote pulses are timers of at most 20 ticks and are not saved, as in the source. Screen and triangulator needle
+  state is client display state.
+- No config: the source's properties file held only block and item ids, which the loader assigns by name.
+
 ## Beta and multiplayer adaptations
 
 - The source is single player only. The remote's pulse, the sniffer grid and the triangulator needle need the server

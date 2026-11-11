@@ -1,8 +1,9 @@
-use crate::blocks::{CLOCKER, FREQUENCIES, Kind, RECEIVER, TRANSMITTER, Tile};
+use crate::blocks::{CLOCKER, Kind, RECEIVER, TRANSMITTER, Tile};
 use crate::{items, net};
 use b173_api::prelude::*;
 use b173_api::world::World;
 use std::cell::{Cell, RefCell};
+use wirelessredstone_api::FREQUENCIES;
 
 pub(crate) const REMOTE: &str = "remote";
 pub(crate) const CONFIGURATOR: &str = "power_configurator";

@@ -3,11 +3,11 @@ use b173_api::prelude::*;
 use b173_api::world::{BlockCtx, Player, World};
 use std::collections::BTreeMap;
 use std::rc::Rc;
+use wirelessredstone_api::FREQUENCIES;
 
 pub(crate) const RECEIVER: &str = "receiver";
 pub(crate) const TRANSMITTER: &str = "transmitter";
 pub(crate) const CLOCKER: &str = "clocker";
-pub(crate) const FREQUENCIES: i32 = 10000;
 pub(crate) const SIDES: usize = 6;
 
 mod clock
