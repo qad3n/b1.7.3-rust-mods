@@ -15,7 +15,18 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 ## Port decisions
 
 - Every block variant that has its own item is its own block (loader block items place meta 0). In-world state
-  (leaf decay, device activity, jet phases, facing) uses named states or meta.
+  (device activity, jet phases, facing, axes) uses named states; leaf decay keeps vanilla BlockLeaves metadata.
+- Blocks, items and groups are named, never numbered (loader api 1.39). Code asks `world.is`, `blockIs`,
+  `blockTagged`, `ItemRef::tagged` and reads properties through `stateOf` (`names.rs` `stateAt`, `flag`, `pick`,
+  `setProperty`). Groups are tags (`tags.rs`): soil is `minecraft:flower_soil`, logs `minecraft:logs`, decaying
+  leaves `minecraft:leaves`, and the forest's own `twilightforest:leaves` (plus darkwood), `stony` (base stone,
+  cobblestones, sandstone, ores, obsidian, deadrock, trollsteinn), `giant_blocks`, `mazestone`, `plains_plants`,
+  `cave_plants`. TF logs, leaves, planks and saplings join the vanilla block and item tags, its ingots `c:ingots/*`,
+  knightmetal block `c:storage_blocks/knightmetal`, tools `minecraft:pickaxes` and the rest, armor the slot tags.
+- Generators and structure builders place through per epoch `StateHandle`s (`world/palette.rs`), so a remap never
+  leaves them stale; terrain and caves compare chunk buffer cells with those handles. 1.7 metadata stays only as the
+  input language of the transcribed Java (`structures/legacy.rs`, `trees.rs` log and leaf meta), translated to states
+  or vanilla `meta` at the palette.
 - Twilight logs keep their 1.7 axis as an `axis` state (y, x, z, bark). Vanilla logs the source lays sideways stand
   upright, beta logs have no axis.
 - Source class is cited here, never in code comments.
@@ -269,6 +280,28 @@ Second pass (every entity, boss, item, block and tile entity class against the p
 - Checked and matching: every other mob and boss, magic leaves tints, trollsteinn's lit faces, force fields, lily
   pads, castle runes, the uncrafting table and the tower devices.
 
+## Names, tags and states (2026-11-11)
+
+Moved off numeric ids: the private `ids.rs` id cache and its hand lists are gone, the structure resolver no longer
+caches ids forever, the reverter keeps its snapshot in memory per content generation instead of saving numeric ids,
+vanilla textures are sprite names (`minecraft:block/<sprite>`, `minecraft:item/<sprite>`). Shield facing and latent,
+trophy pedestal turn and latent, trophy facing, slider axis and stagger, boss spawner kind, castle door and rune
+colors, magic core stop, thorn axis, lily pad pieces, aurora phase and cinder log axis are read and written as named
+states. Small behaviour changes from tags: other mods' blocks in the matching tags now count (ores for the ore magnet
+and cinder furnace, chests for the sorting core, buttons for protection), magic cores and the cinder log hold leaves
+as their `sustains_leaves` flag says, and the ore magnet no longer takes any block with "ore" in its name.
+
+Not converted, and why:
+- Template leaves decay and the moonworm and critter facings are vanilla template metadata (BlockLeaves, BlockTorch);
+  the loader has no named state for template blocks, so they write it through the `meta` property.
+- Nagastone shapes reach the `texture(face, meta)` callback and block model cuboids filter by stored metadata
+  (`Cuboid::metas`); pedestal, trophy and slider tables keep the source's metadata layout so those still line up.
+- Shot icons draw a cell of `minecraft:gui/items` in an entity model program, which binds texture files, not sprites.
+- Engine calls that take a numeric id (`digSpeed`, `swapBlock`, `breakEffect`, `EntityField::Block`, the reactor
+  blob, the moving slide block, `blockcrack_<id>_<meta>`) get it from `Blocks.id` or the block just read.
+- Air is still id 0 in `isAir` style checks.
+- Checked by build only, not in a game.
+
 ## Bugs to check at the end
 
 - TFClientProxy.spawnParticle classes are loader mod particles (api 1.24, `particles.rs`): a beta particle recolored, resized, retimed or weighted toward each EntityFX; their own textures and animated fading are not reproduced.
@@ -282,7 +315,7 @@ Second pass (every entity, boss, item, block and tile entity class against the p
   cannot tick them.
 - Not checked in a client yet: mob models, poses and textures, the uncrafting table ghosts, portal visuals.
 - Cinder furnace: the title sits left like other mod screens instead of centred.
-- A player placed trophy pedestal is never latent (beta block items place meta 0).
+- A player placed trophy pedestal is never latent (beta block items place the default state).
 - Moss patches puff a gray spore one tick in ten (BlockTFPlant), a recolored smoke since beta has no townaura.
 
 ## Remaining, in order
