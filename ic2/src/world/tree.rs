@@ -3,6 +3,9 @@ use crate::core::dir;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
+// one rubber tree, placed by saplings, the terraformer and the worldgen trees alike
+pub(crate) const TREE: &str = "rubber_tree";
+
 mod shape
 {
     pub const MAX_HEIGHT: i32 = 8;
@@ -172,16 +175,16 @@ fn grower(world: World) -> Option<Grower>
     }
 }
 
-// BlockRubSapling.growTree, with the world's random
+// BlockRubSapling.growTree, with the world's random, through the named feature so players can turn it off
 pub(crate) fn grow(world: World, pos: BlockPos)
 {
-    let Some(grower) = grower(world)
-    else
-    {
-        return;
-    };
     let random: Random = Random::withSeed(i64::from(world.random(i32::MAX)));
-    grower.grow(&random, pos);
+    world.placeFeature(TREE, pos, &random);
+}
+
+pub(crate) fn place(ctx: &FeatureCtx) -> bool
+{
+    grower(ctx.world).is_some_and(|grower| grower.grow(ctx.random, ctx.origin))
 }
 
 // WorldGenRubTree.generate: count tries across the area, each from the surface of its column

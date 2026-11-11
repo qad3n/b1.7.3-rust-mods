@@ -1,54 +1,32 @@
-mod minable;
 pub(crate) mod tree;
 
 use crate::blocks::{COPPER_ORE, TIN_ORE, URANIUM_ORE};
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
-const FEATURE: &str = "ic2:surface";
+const TREES: &str = "rubber_trees";
 const CHUNK: i32 = 16;
 const PERCENT: i32 = 100;
 
-// one ore of mod_IC2.GenerateSurface: veins per chunk, vein size and the height draw
+// one ore of mod_IC2.GenerateSurface: veins per chunk, vein size and the draws its height sums
 struct Ore
 {
+    m_name: &'static str,
     m_block: &'static str,
     m_veins: i32,
     m_size: i32,
-    m_height: fn(&Random) -> i32,
+    m_draws: &'static [i32],
+    m_floor: i32,
 }
-
-const ORES: [Ore; 3] = [
-    Ore { m_block: COPPER_ORE, m_veins: 15, m_size: 10, m_height: copperHeight },
-    Ore { m_block: TIN_ORE, m_veins: 25, m_size: 6, m_height: tinHeight },
-    Ore { m_block: URANIUM_ORE, m_veins: 20, m_size: 3, m_height: uraniumHeight },
-];
 
 // copper favours the middle depths, two draws added up from ten blocks above the bottom
-fn copperHeight(random: &Random) -> i32
-{
-    const DEEP: i32 = 40;
-    const SHALLOW: i32 = 20;
-    const FLOOR: i32 = 10;
+const ORES: [Ore; 3] = [
+    Ore { m_name: "copper_ore", m_block: COPPER_ORE, m_veins: 15, m_size: 10, m_draws: &[40, 20], m_floor: 10 },
+    Ore { m_name: "tin_ore", m_block: TIN_ORE, m_veins: 25, m_size: 6, m_draws: &[40], m_floor: 0 },
+    Ore { m_name: "uranium_ore", m_block: URANIUM_ORE, m_veins: 20, m_size: 3, m_draws: &[64], m_floor: 0 },
+];
 
-    random.nextIntBounded(DEEP) + random.nextIntBounded(SHALLOW) + FLOOR
-}
-
-fn tinHeight(random: &Random) -> i32
-{
-    const DEPTH: i32 = 40;
-
-    random.nextIntBounded(DEPTH)
-}
-
-fn uraniumHeight(random: &Random) -> i32
-{
-    const DEPTH: i32 = 64;
-
-    random.nextIntBounded(DEPTH)
-}
-
-// rubber trees in a chunk: forests sometimes, rainforests often and swamps most of all
+// rubber trees in a chunk: forests sometimes, rainforests often and swamps most of all, any mod's biomes by tag
 fn treeCount(world: World, random: &Random, x: i32, z: i32) -> i32
 {
     const FOREST: i32 = 3;
@@ -56,76 +34,52 @@ fn treeCount(world: World, random: &Random, x: i32, z: i32) -> i32
     const SWAMP: i32 = 10;
     const SWAMP_FLOOR: i32 = 5;
 
-    let biome: String = world.biomeAt(x + CHUNK, z + CHUNK).map(|id| id.to_string()).unwrap_or_default();
-
-    match biome.as_str()
+    let Some(biome) = world.biomeAt(x + CHUNK, z + CHUNK)
+    else
     {
-        "minecraft:forest" | "minecraft:seasonal_forest" => random.nextIntBounded(FOREST),
-        "minecraft:rainforest" => random.nextIntBounded(RAINFOREST) + 1,
-        "minecraft:swampland" => random.nextIntBounded(SWAMP) + SWAMP_FLOOR,
-        _ => 0,
+        return 0;
+    };
+    let tagged = |tag: &str| tagMembers(RegistryKind::Biome, tag).contains(&biome);
+
+    if tagged("minecraft:is_jungle")
+    {
+        return random.nextIntBounded(RAINFOREST) + 1;
     }
+    if tagged("c:is_swamp")
+    {
+        return random.nextIntBounded(SWAMP) + SWAMP_FLOOR;
+    }
+    if tagged("minecraft:is_forest")
+    {
+        return random.nextIntBounded(FOREST);
+    }
+
+    0
 }
 
-// a stable seed per chunk from the world seed and the feature's name, so other mods never shift the ores
-fn seed(world: World, chunkX: i32, chunkZ: i32) -> i64
+// the rubber tree half of mod_IC2.GenerateSurface, the loader seeds the random from the feature's name
+fn populate(ctx: &FeatureCtx) -> bool
 {
-    const SPREAD_X: i64 = 341873128712;
-    const SPREAD_Z: i64 = 132897987541;
-    const HASH: i64 = 31;
-
-    let name: i64 = FEATURE.bytes().fold(0i64, |hash, byte| hash.wrapping_mul(HASH).wrapping_add(i64::from(byte)));
-    world.seed() ^ name ^ i64::from(chunkX).wrapping_mul(SPREAD_X) ^ i64::from(chunkZ).wrapping_mul(SPREAD_Z)
-}
-
-// mod_IC2.GenerateSurface
-fn populate(world: World, chunkX: i32, chunkZ: i32)
-{
-    let random: Random = Random::withSeed(seed(world, chunkX, chunkZ));
-    let (x, z): (i32, i32) = (chunkX * CHUNK, chunkZ * CHUNK);
-    let trees: i32 = treeCount(world, &random, x, z);
-
-    if random.nextIntBounded(PERCENT) < trees * 2
+    let (x, z): (i32, i32) = (ctx.origin.x, ctx.origin.z);
+    let trees: i32 = treeCount(ctx.world, ctx.random, x, z);
+    if ctx.random.nextIntBounded(PERCENT) >= trees * 2
     {
-        let start: [i32; 2] = [x + random.nextIntBounded(CHUNK), z + random.nextIntBounded(CHUNK)];
-        tree::generate(world, &random, start, trees);
+        return false;
     }
 
-    for ore in &ORES
-    {
-        let block: StateHandle = match StateHandle::named(ore.m_block)
-        {
-            Ok(block) => block,
-            Err(error) =>
-            {
-                warn(&format!("{} names no ore block: {error}", ore.m_block));
-                continue;
-            }
-        };
-
-        for _ in 0..ore.m_veins
-        {
-            let at: [i32; 3] =
-                [x + random.nextIntBounded(CHUNK), (ore.m_height)(&random), z + random.nextIntBounded(CHUNK)];
-            minable::generate(world, &random, &block, ore.m_size, at);
-        }
-    }
+    let start: [i32; 2] = [x + ctx.random.nextIntBounded(CHUNK), z + ctx.random.nextIntBounded(CHUNK)];
+    tree::generate(ctx.world, ctx.random, start, trees);
+    true
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.events().on::<ChunkPopulate>(Priority::Normal, |event|
+    for ore in &ORES
     {
-        let EventData::Chunk { world, x, z } = *event.data()
-        else
-        {
-            return;
-        };
-        let world: World = World { dimension: world };
+        let height: HeightSpec = HeightSpec::Sum { draws: ore.m_draws.to_vec(), offset: ore.m_floor };
+        ctx.worldgen().add(ore.m_name, FeatureBuilder::ore(ore.m_block, ore.m_size, ore.m_veins, height)?)?;
+    }
 
-        if world.dimension == World::OVERWORLD.dimension && world.isAuthority()
-        {
-            populate(world, x, z);
-        }
-    })
+    ctx.worldgen().custom(TREES, FeatureBuilder::custom(FeatureStep::VegetalDecoration), populate)?;
+    ctx.worldgen().custom(tree::TREE, FeatureBuilder::custom(FeatureStep::VegetalDecoration).placed(), tree::place)
 }
