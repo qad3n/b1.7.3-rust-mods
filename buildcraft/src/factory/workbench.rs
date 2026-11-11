@@ -253,6 +253,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .tileEntity(NAME)
             .behavior(WorkbenchBlock),
     )?;
+    ctx.machines().workstation("minecraft:crafting", NAME)?;
 
     let mut screen: ScreenBuilder = ScreenBuilder::new("", gui::WIDTH, gui::HEIGHT)
         .background(gui::BACKGROUND)

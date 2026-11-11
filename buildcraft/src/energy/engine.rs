@@ -579,6 +579,68 @@ fn onView(packet: ViewPacket)
     world.markBlockForRender(packet.m_pos);
 }
 
+// the engines as recipe viewers show them, what each burns and the energy it gives
+pub(crate) fn registerPages(ctx: &mut RegisterCtx) -> Result<()>
+{
+    // beta's furnace fuels, read through the loader so the burn times stay the furnace's own
+    const STEAM_FUELS: [&str; 15] = [
+        "minecraft:coal",
+        "minecraft:log",
+        "minecraft:planks",
+        "minecraft:stick",
+        "minecraft:sapling",
+        "minecraft:lava_bucket",
+        "minecraft:oak_stairs",
+        "minecraft:fence",
+        "minecraft:chest",
+        "minecraft:crafting_table",
+        "minecraft:bookshelf",
+        "minecraft:noteblock",
+        "minecraft:jukebox",
+        "minecraft:wooden_pressure_plate",
+        "minecraft:trapdoor",
+    ];
+
+    for row in &ENGINES
+    {
+        ctx.machines().register(row.m_name, None, &[row.m_name])?;
+    }
+
+    let [redstone, steam, combustion] = [&ENGINES[0], &ENGINES[1], &ENGINES[2]].map(|row| row.m_name);
+
+    ctx.machines()
+        .recipe(redstone)
+        .note(&format!("1 MJ every {} ticks while redstone powered", timing::REDSTONE_PERIOD))
+        .build()?;
+
+    for name in STEAM_FUELS
+    {
+        let stack: ItemStack = ItemStack::of(name, 1);
+        let ticks: i32 = fuelTicks(&stack);
+        if ticks <= 0
+        {
+            continue;
+        }
+
+        let per: i32 = fuel::STEAM_PER_TICK;
+        ctx.machines()
+            .recipe(steam)
+            .input(stack.withDamage(-1))
+            .note(&format!("{} MJ at {per} MJ/t", ticks * per))
+            .note("Takes new fuel only while redstone powered")
+            .build()?;
+    }
+
+    let per: i32 = fuel::COMBUSTION_PER_TICK;
+    ctx.machines()
+        .recipe(combustion)
+        .input(ItemStack::of(fuel::OIL_BUCKET, 1))
+        .output(ItemStack::of(fuel::EMPTY_BUCKET, 1))
+        .note(&format!("{} MJ at {per} MJ/t", fuel::OIL_BUCKET_TIME * per))
+        .note(&format!("Oil by pipe too, the chamber holds {} buckets", fuel::CHAMBER_BUCKETS))
+        .build()
+}
+
 pub(crate) fn registerChannel(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.channels().register(VIEW_CHANNEL, Direction::ToClient, |packet: ViewPacket, _player| onView(packet))

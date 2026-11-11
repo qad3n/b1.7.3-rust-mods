@@ -203,6 +203,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     }
 
     engine::registerChannel(ctx)?;
+    engine::registerPages(ctx)?;
     oil::register(ctx)?;
     oil_fx::register(ctx)
 }
