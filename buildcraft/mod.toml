@@ -4,7 +4,7 @@ name = "BuildCraft"
 description = "Pipes, engines, quarries, pumps and builders: BuildCraft 2.1.1 (core, transport, energy, factory and builders) in one mod"
 authors = ["SpaceToad and the BuildCraft team", "b173 port"]
 license = "see the original mod, assets extracted from the user's jar"
-api = "1.39"
+api = "1.40"
 side = "both"
 
 [network]

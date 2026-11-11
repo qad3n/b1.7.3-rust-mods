@@ -80,7 +80,6 @@ mod fuel
     pub const STEAM_PER_TICK: i32 = 1;
     pub const COMBUSTION_PER_TICK: i32 = 2;
     pub const SCALE: i32 = 1000;
-    pub const OIL: &str = "buildcraft:oil";
     pub const LAVA_BUCKET: &str = "minecraft:lava_bucket";
     pub const EMPTY_BUCKET: &str = "minecraft:bucket";
 }
@@ -131,6 +130,8 @@ pub(crate) struct EngineState
     pub(crate) m_totalBurnTime: i32,
     m_provider: Provider,
     m_sync: Tracker,
+    // the energy a tick of the fuel now burning gives, from the job that filled the chamber
+    m_rate: i32,
 }
 
 // what a client needs to draw and show an engine, sent when it changes as TileEngine's network updates
@@ -176,6 +177,39 @@ fn shownStage(row: &EngineRow, energy: i32) -> Stage
         Stage::Explosion => Stage::Red,
         stage => stage,
     }
+}
+
+// the burn ticks a combustion chamber holds, ten oil buckets' worth
+fn chamber() -> i32 { fuel::OIL_BUCKET_TIME * fuel::CHAMBER_BUCKETS }
+
+// what a tick of a job's fuel gives, a total spread over its duration, nothing for a job that names no energy
+fn rate(job: &JobMatch) -> i32
+{
+    let Some(energy) = &job.energy_out
+    else
+    {
+        return 0;
+    };
+
+    let amount: i64 = if energy.per_tick
+    {
+        energy.amount
+    }
+    else
+    {
+        energy.amount / i64::from(job.duration.max(1))
+    };
+    i32::try_from(amount).unwrap_or(i32::MAX)
+}
+
+// the job burning a fluid and the millibuckets it takes, asked with the most a chamber could hold since a job needs a
+// whole bucket to match and a pipe pours less
+fn fluidJob(row: &EngineRow, stack: &FluidStack) -> Option<(JobMatch, i32)>
+{
+    let offered: FluidStack = FluidStack { fluid: stack.fluid.clone(), amount: i32::MAX };
+    let job: JobMatch = matchJob(row.m_name, &[], &[offered])?;
+    let bucket: i32 = job.fluid_inputs.first()?.amount;
+    (bucket > 0 && job.duration > 0).then_some((job, bucket))
 }
 
 fn stageIndex(stage: Stage) -> usize { STAGES.iter().position(|shown| *shown == stage).unwrap_or(STAGES.len() - 1) }
@@ -339,7 +373,7 @@ fn burnSteam(world: World, pos: BlockPos, state: &mut EngineState, powered: bool
         return;
     };
 
-    let ticks: i32 = fuelTicks(&stack);
+    let ticks: i32 = machineFuel(row.m_name, &stack, true);
     state.m_burnTime = ticks;
     state.m_totalBurnTime = ticks;
     if ticks <= 0
@@ -363,22 +397,41 @@ fn burnOil(world: World, pos: BlockPos, state: &mut EngineState, powered: bool, 
     if powered && state.m_burnTime > 0
     {
         state.m_burnTime -= 1;
-        addEnergy(row, world, pos, state, fuel::COMBUSTION_PER_TICK);
+        addEnergy(row, world, pos, state, state.m_rate);
     }
 
-    let bucket: bool = world.tileSlot(pos, SLOT).is_some_and(|stack| stack.item.tagged(super::oil::OIL_BUCKETS));
-    if !bucket
+    let Some(stack) = world.tileSlot(pos, SLOT)
+    else
+    {
+        return;
+    };
+    let Some(job) = matchJob(row.m_name, &[Some(stack.clone())], &[])
+    else
+    {
+        return;
+    };
+
+    state.m_totalBurnTime = chamber();
+
+    if state.m_burnTime + job.duration > state.m_totalBurnTime
     {
         return;
     }
 
-    state.m_totalBurnTime = fuel::OIL_BUCKET_TIME * fuel::CHAMBER_BUCKETS;
-
-    if state.m_burnTime + fuel::OIL_BUCKET_TIME <= state.m_totalBurnTime
+    // the job's first output, the empty bucket, takes the full bucket's place
+    let left: Option<ItemStack> = match job.outputs.first().and_then(|output| output.stack.clone())
     {
-        let _ = world.setTileSlot(pos, SLOT, Some(ItemStack::of(fuel::EMPTY_BUCKET, 1)));
-        state.m_burnTime += fuel::OIL_BUCKET_TIME;
+        Some(output) => Some(ItemStack::fromRaw(output)),
+        None => (stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }),
+    };
+    if let Err(error) = world.setTileSlot(pos, SLOT, left)
+    {
+        warn(&format!("a combustion engine at {pos:?} could not empty its bucket: {error}"));
+        return;
     }
+
+    state.m_burnTime += job.duration;
+    state.m_rate = rate(&job);
 }
 
 // TileEngine.updateEntity on the server: the piston pushes a packet at half stroke
@@ -555,22 +608,32 @@ impl TileBehavior for EngineTile
     fn fillFluid(&self, ctx: &mut BlockCtx, _face: i32, stack: &FluidStack, simulate: bool) -> i32
     {
         let world: World = ctx.world();
-        let combustion: bool = rowOf(world, ctx.pos()).is_some_and(|row| row.m_kind == Kind::Combustion);
-        if !combustion || stack.fluid.to_string() != fuel::OIL
+        let Some(row) = rowOf(world, ctx.pos()).filter(|row| row.m_kind == Kind::Combustion)
+        else
         {
             return 0;
-        }
+        };
+        let Some((job, bucket)) = fluidJob(row, stack)
+        else
+        {
+            return 0;
+        };
 
         let mut state: EngineState = ctx.tileData();
-        let capacity: i32 = fuel::OIL_BUCKET_TIME * fuel::CHAMBER_BUCKETS;
-        let room: i32 = (capacity - state.m_burnTime).max(0) * fuel::BUCKET / fuel::OIL_BUCKET_TIME;
+        let capacity: i32 = chamber();
+        let room: i32 = (capacity - state.m_burnTime).max(0) * bucket / job.duration;
         let used: i32 = stack.amount.min(room);
 
         if !simulate
         {
             state.m_totalBurnTime = capacity;
-            state.m_burnTime += used * fuel::OIL_BUCKET_TIME / fuel::BUCKET;
-            let _ = ctx.setTileData(&state);
+            state.m_burnTime += used * job.duration / bucket;
+            state.m_rate = rate(&job);
+
+            if let Err(error) = ctx.setTileData(&state)
+            {
+                warn(&format!("a combustion engine at {:?} could not save: {error}", ctx.pos()));
+            }
         }
 
         used
@@ -598,6 +661,7 @@ pub(crate) fn registerPages(ctx: &mut RegisterCtx) -> Result<()>
     }
 
     let [redstone, steam, combustion] = [&ENGINES[0], &ENGINES[1], &ENGINES[2]].map(|row| row.m_name);
+    let chambers: String = format!("The chamber holds {} buckets", fuel::CHAMBER_BUCKETS);
 
     ctx.machines()
         .recipe(redstone)
@@ -608,7 +672,7 @@ pub(crate) fn registerPages(ctx: &mut RegisterCtx) -> Result<()>
     let mut listed: HashSet<ItemRef> = HashSet::new();
     for stack in itemCatalog()
     {
-        let ticks: i32 = fuelTicks(&stack);
+        let ticks: i32 = machineFuel(steam, &stack, true);
         if ticks <= 0 || !listed.insert(stack.item.clone())
         {
             continue;
@@ -625,13 +689,20 @@ pub(crate) fn registerPages(ctx: &mut RegisterCtx) -> Result<()>
             .build()?;
     }
 
-    let per: i32 = fuel::COMBUSTION_PER_TICK;
+    // TileEngine burns oil only, other mods add jobs for their fuels to the same machine
+    let per: i64 = i64::from(fuel::COMBUSTION_PER_TICK);
     ctx.machines()
-        .recipe(combustion)
+        .job(combustion, fuel::OIL_BUCKET_TIME)
         .inputTag(super::oil::OIL_BUCKETS, 1)
-        .output(ItemStack::of(fuel::EMPTY_BUCKET, 1))
-        .note(&format!("{} MJ at {per} MJ/t", fuel::OIL_BUCKET_TIME * per))
-        .note(&format!("Oil by pipe too, the chamber holds {} buckets", fuel::CHAMBER_BUCKETS))
+        .output(fuel::EMPTY_BUCKET, 1)
+        .energyOut(power::MJ, per, true)
+        .note(&chambers)
+        .build()?;
+    ctx.machines()
+        .job(combustion, fuel::OIL_BUCKET_TIME)
+        .fluidInputTag(super::oil::OIL_TAG, fuel::BUCKET)
+        .energyOut(power::MJ, per, true)
+        .note(&chambers)
         .build()
 }
 

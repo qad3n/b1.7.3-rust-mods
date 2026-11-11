@@ -127,9 +127,10 @@ Every subsystem goes through a loader registry, so other mods' content takes par
 | Blocks, items, block states | `ctx.blocks()`, `ctx.items()`, `ctx.blocks().states` | every module; states in `core/state.rs` |
 | Tags | block and item specs `.tag(...)`: `c:gears/*`, `c:tools/wrench`, `c:oil`, `c:buckets/oil`, `buildcraft:pipes`, `buildcraft:engines`, `buildcraft:machines`, `buildcraft:pipe_connections` | `core/items.rs`, `energy/`, `factory/`, `transport/mod.rs` |
 | Recipes | `ctx.recipes()` with tag keys: gears by tier tag, ingots, gems, cobblestone, planks, stone, obsidian, glass, redstone, sticks, chests and crafting tables by `c:` or `minecraft:` tag | `core/items.rs`, `transport/mod.rs`, `energy/mod.rs`, `factory/`, `builders/` |
-| Fuel | the loader's furnace fuel registry (`fuelTicks`) for the steam engine; the `c:buckets/oil` item tag for the combustion engine | `energy/engine.rs` |
-| Recipe viewer pages | `ctx.machines()`: engines with every catalog fuel and the oil bucket tag | `energy/engine.rs` |
-| Fluids | `ctx.fluids()`: oil with its still and flowing blocks and bucket | `energy/oil.rs` |
+| Fuel | steam engine: `machineFuel(steam_engine, stack, furnace)`, its own `ctx.machines().fuel` entries over furnace burn times; combustion engine: `ctx.machines().job` entries, read with `matchJob` for duration and `energy_out` | `energy/engine.rs` |
+| Machine jobs | `buildcraft:combustion_engine`: a `c:buckets/oil` bucket giving back an empty bucket, and 1000 mB of the `c:oil` fluid tag, each 10000 ticks at 2 MJ a tick; other mods add their fuels as jobs on the same machine | `energy/engine.rs` |
+| Recipe viewer pages | `ctx.machines()`: redstone engine note, steam engine pages for every catalog fuel; combustion pages come from its jobs | `energy/engine.rs` |
+| Fluids | `ctx.fluids()`: oil with its still and flowing blocks and bucket, in the `c:oil` fluid tag | `energy/oil.rs` |
 | Oil deposits | `ctx.dimensions().generator("minecraft:overworld")`, seeded per chunk from the feature name | `energy/oil.rs` |
 | Energy | `ctx.energy()`: `buildcraft:mj`, worth 10; engines push with `sendEnergy`, machines take any convertible kind | `core/power.rs`, `energy/engine.rs` |
 | Items, fluids, energy between blocks | tile capabilities (`insertItem`, `extractItem`, `fillFluid`, `drainFluid`, `energyDemand`, `receiveEnergy`) on pipes, tanks, engines and machines, and the same calls on any neighbour | `transport/`, `factory/`, `energy/`, `core/stacks.rs` |
@@ -139,13 +140,14 @@ Every subsystem goes through a loader registry, so other mods' content takes par
 Not registered, and why:
 
 - 2.1.1 has no assembly table, refinery, fuel liquid, loot or achievements, so there is nothing for `ctx.loot()`,
-  `ctx.achievements()` or machine recipes the engines look up.
+  `ctx.achievements()` or more machine jobs.
+- The steam engine has no job: a job input needs an item or a tag, and the steam engine burns any furnace fuel. It
+  reads `machineFuel` instead, so other mods can still add steam fuels with `ctx.machines().fuel`.
+- An engine's tile data gained the burning fuel's energy rate, so engines saved before API 1.40 start empty once.
 - Plain vanilla inventories (no item handler) keep BuildCraft's own slot walk in `core/stacks.rs`: the loader's
   `insertItem` uses modern furnace sides (fuel from the sides), while 2.1.1 fills the fuel slot only from below and
   joins double chests its own way. Inventories with a handler, any mod's machine, go through `insertItem` and
   `extractItem`.
-- The combustion engine takes liquid oil by fluid name `buildcraft:oil`. The loader has no fluid tags, so another
-  mod's oil fluid would need one.
 - The steam engine returns an empty bucket for a lava bucket by name, as TileEngine does; it does not ask the
   container item registry, since beta's lava bucket has no container item.
 - Dye ingredients (ink, lapis, yellow) are damage values of `minecraft:dye`. Tags hold whole items, so they stay

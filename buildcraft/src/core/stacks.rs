@@ -46,12 +46,7 @@ impl Stored
 
     pub(crate) fn stack(&self) -> ItemStack
     {
-        // pipes draw and move many stacks a tick, the resolved id saves cloning the name
-        let item: ItemRef = match resolve(RegistryKind::Item, &self.m_item)
-        {
-            Ok(id) => ItemRef::Numeric(id),
-            Err(_) => ItemRef::Named(self.m_item.clone()),
-        };
+        let item: ItemRef = ItemRef::Named(self.m_item.clone());
         ItemStack { item, count: self.m_count, damage: self.m_damage }
     }
 }

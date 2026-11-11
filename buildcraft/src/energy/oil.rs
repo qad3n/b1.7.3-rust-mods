@@ -43,7 +43,8 @@ const DESERT: &str = "minecraft:desert";
 const SAND: &str = "minecraft:sand";
 const WATER: &str = "minecraft:water";
 // a deposit's well looks down through trees and grass for the ground, dirt already counts as ground
-const TREES: [&str; 2] = ["minecraft:leaves", "minecraft:logs"];
+const LEAVES: &str = "minecraft:leaves";
+const LOGS: &str = "minecraft:logs";
 const GRASS: &str = "minecraft:grass";
 
 struct Placer
@@ -216,7 +217,7 @@ impl Placer
             }
 
             let block: i32 = self.block(x, y, z);
-            let open: bool = blockIs(block, GRASS) || TREES.iter().any(|tag| blockTagged(block, tag));
+            let open: bool = blockIs(block, GRASS) || blockTagged(block, LEAVES) || blockTagged(block, LOGS);
             if blockIs(block, AIR) || open
             {
                 continue;
@@ -294,6 +295,9 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .tag(OIL_TAG),
         )?;
     }
+
+    // the fluid tag lets other mods' engines, tanks and machines take BuildCraft oil
+    ctx.tags().add(RegistryKind::Fluid, OIL_TAG, &[OIL])?;
 
     ctx.items().register(
         "oil_bucket",
