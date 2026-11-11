@@ -15,18 +15,20 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 ## Port decisions
 
 - Every block variant that has its own item is its own block (loader block items place meta 0). In-world state
-  (device activity, jet phases, facing, axes) uses named states; leaf decay keeps vanilla BlockLeaves metadata.
+  (device activity, jet phases, facing, axes, leaf decay) uses named states.
 - Blocks, items and groups are named, never numbered (loader api 1.39). Code asks `world.is`, `blockIs`,
-  `blockTagged`, `ItemRef::tagged` and reads properties through `stateOf` (`names.rs` `stateAt`, `flag`, `pick`,
-  `setProperty`). Groups are tags (`tags.rs`): soil is `minecraft:flower_soil`, logs `minecraft:logs`, decaying
+  `blockTagged`, `ItemRef::tagged` and reads properties through the SDK's `World::stateAt`, `BlockCtx::stateAt`
+  and `World::setProperty` (`names.rs` `flag`, `number`, `pick`). Groups are tags (`tags.rs`): soil is `minecraft:flower_soil`, logs `minecraft:logs`, decaying
   leaves `minecraft:leaves`, and the forest's own `twilightforest:leaves` (plus darkwood), `stony` (base stone,
   cobblestones, sandstone, ores, obsidian, deadrock, trollsteinn), `giant_blocks`, `mazestone`, `plains_plants`,
   `cave_plants`. TF logs, leaves, planks and saplings join the vanilla block and item tags, its ingots `c:ingots/*`,
   knightmetal block `c:storage_blocks/knightmetal`, tools `minecraft:pickaxes` and the rest, armor the slot tags.
 - Generators and structure builders place through per epoch `StateHandle`s (`world/palette.rs`), so a remap never
-  leaves them stale; terrain and caves compare chunk buffer cells with those handles. 1.7 metadata stays only as the
-  input language of the transcribed Java (`structures/legacy.rs`, `trees.rs` log and leaf meta), translated to states
-  or vanilla `meta` at the palette.
+  leaves them stale; terrain and caves compare chunk buffer cells with those handles. The transcribed Java still names
+  blocks by their 1.7 name and data value; `structures/legacy.rs` is the one table turning those into a beta block
+  with its metadata or a forest block with named properties (`Resolved`), and `trees.rs` does the same for TF log and
+  leaf data values. Unit tests check the castle rune, castle door, pedestal, shield, critter and boss spawner rows keep
+  the metadata they stored before, so generation stays the same for a seed.
 - Twilight logs keep their 1.7 axis as an `axis` state (y, x, z, bark). Vanilla logs the source lays sideways stand
   upright, beta logs have no axis.
 - Source class is cited here, never in code comments.
@@ -292,15 +294,26 @@ and cinder furnace, chests for the sorting core, buttons for protection), magic 
 as their `sustains_leaves` flag says, and the ore magnet no longer takes any block with "ore" in its name.
 
 Not converted, and why:
-- Template leaves decay and the moonworm and critter facings are vanilla template metadata (BlockLeaves, BlockTorch);
-  the loader has no named state for template blocks, so they write it through the `meta` property.
-- Nagastone shapes reach the `texture(face, meta)` callback and block model cuboids filter by stored metadata
-  (`Cuboid::metas`); pedestal, trophy and slider tables keep the source's metadata layout so those still line up.
+- Nagastone shapes still reach the `texture(face, meta)` callback and block model cuboids filter by stored metadata
+  (`Cuboid::metas`); the nagastone, pedestal, trophy, slider and critter tables keep the source's metadata layout, and
+  the forest's leaves name BlockLeaves' bits, so the engine and those callbacks read the same values the states store.
+- Leaves of vanilla and other mods without named states get BlockLeaves' check decay bit through their `meta`
+  property when a forest log breaks (`wood.rs` `checkDecay`).
 - Shot icons draw a cell of `minecraft:gui/items` in an entity model program, which binds texture files, not sprites.
-- Engine calls that take a numeric id (`digSpeed`, `swapBlock`, `breakEffect`, `EntityField::Block`, the reactor
-  blob, the moving slide block, `blockcrack_<id>_<meta>`) get it from `Blocks.id` or the block just read.
 - Air is still id 0 in `isAir` style checks.
-- Checked by build only, not in a game.
+- Checked by build and unit tests, not in a game; worldgen output was not compared with the golden harness.
+
+`tools/modport/audit.sh` hits that stay:
+- `world/generate.rs` `GenWorld::set` and `setNotify`: the one place generators hand the palette's resolved handles
+  (`world/palette.rs`, refreshed every epoch) to `setBlockQuiet` and `setBlock`, kept numeric so generation does no
+  per block allocation.
+- Name lists that are not groups: drops and loot entries (magic leaf ores in `blocks/wood.rs`, the lich's gold gear,
+  the snow queen's pools, `record_cat`), recipe ingredients (`recipes.rs`), held items, textures and sprite names
+  (`entities/mobs.rs`, tower device sprites), the quest ram's ordered reward blocks, the cinder furnace's wooden tool
+  fuels (registered with `ctx.machines().fuel`), single placements (`minecraft:air`, the dark forest mushrooms, the
+  clay disc's dirt and clay), and tag definitions (`tags.rs`).
+- Lists the audit counts that are already tags (`minecraft:dirt`, `minecraft:base_stone_overworld`, `c:gravels`,
+  `c:glass_blocks`, `minecraft:ice` in `decorate.rs`, `scatter.rs`, `component.rs`, `yeti.rs`).
 
 ## Registries, what the loader knows (2026-11-11)
 
