@@ -21,7 +21,7 @@ const fn turn(input: &'static str, output: &'static str, ticks: i32) -> Recipe
 }
 
 // AetherRegistries.initializeEnchantments rows whose items exist in b1.7.3 and this port
-const ENCHANTING: [Recipe; 76] = [
+const ENCHANTING: [Recipe; 77] = [
     repair("skyroot_pickaxe", 225),
     repair("skyroot_axe", 225),
     repair("skyroot_shovel", 225),
@@ -53,6 +53,7 @@ const ENCHANTING: [Recipe; 76] = [
     turn(block::HOLYSTONE, "healing_stone", 750),
     turn(block::GRAVITITE_ORE, block::ENCHANTED_GRAVITITE, 1000),
     turn(block::QUICKSOIL, "quicksoil_glass", 250),
+    turn("skyroot_poison_bucket", "skyroot_remedy_bucket", 1000),
     turn(item::BLUEBERRY, "enchanted_blueberry", 300),
     repair("minecraft:bow", 4000),
     repair("minecraft:fishing_rod", 600),
