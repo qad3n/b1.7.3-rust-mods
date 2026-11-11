@@ -43,6 +43,13 @@ pub(crate) struct Entry
     pub m_name: String,
     pub m_search: String,
     pub m_namespace: String,
+    pub m_vanilla: bool,
+}
+
+impl Entry
+{
+    // vanilla first then each mod by namespace keeping id order inside a group
+    fn group(&self) -> (bool, &str) { (!self.m_vanilla, &self.m_namespace) }
 }
 
 pub(crate) struct Catalog
@@ -92,7 +99,9 @@ impl Catalog
 {
     fn build(generation: i32) -> Self
     {
-        let entries: Vec<Entry> = itemCatalog().into_iter().filter_map(Self::listed).collect();
+        let mut entries: Vec<Entry> = itemCatalog().into_iter().filter_map(Self::listed).collect();
+        entries.sort_by(|left, right| left.group().cmp(&right.group()));
+
         let byKey: HashMap<Key, usize> =
             entries.iter().enumerate().map(|(index, entry)| (entry.m_key, index)).collect();
         let names: HashMap<String, String> = names(&entries);
@@ -116,8 +125,8 @@ impl Catalog
     {
         let key: Key = Key::ofStack(&stack)?;
         let name: String = displayName(&key.stack(1));
-        let namespace: String =
-            nameOf(RegistryKind::Item, key.m_id).map(|id| id.namespace().to_owned()).unwrap_or_default();
+        let registered: Option<Identifier> = nameOf(RegistryKind::Item, key.m_id);
+        let namespace: String = registered.as_ref().map(|id| id.namespace().to_owned()).unwrap_or_default();
 
         Some(Entry
         {
@@ -126,6 +135,7 @@ impl Catalog
             m_search: name.to_lowercase(),
             m_name: name,
             m_namespace: namespace,
+            m_vanilla: registered.as_ref().is_some_and(Identifier::isVanilla),
         })
     }
 
