@@ -3,6 +3,7 @@ use crate::models::{Program, combine, slime_inner, slime_outer};
 use crate::names::{block, item};
 use b173_api::math::{distance, yawTowards};
 use b173_api::prelude::*;
+use b173_api::terrain::Random;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
@@ -211,32 +212,6 @@ impl EntityBehavior for Swet
         HUNTS.with(|hunts| hunts.borrow_mut().insert(entity.id, hunt));
     }
 
-    fn onDeath(&self, entity: Entity, _source: Option<i32>)
-    {
-        let current: SwetState = state(entity);
-
-        let Some(info) = entity.info().filter(|_| entity.world.isAuthority())
-        else
-        {
-            return;
-        };
-        let count: i32 = entity.world.random(2);
-        if count == 0
-        {
-            return;
-        }
-
-        if current.m_kind == GOLDEN
-        {
-            let _ = entity.world.spawnItem(info.pos, ItemStack::of("minecraft:glowstone", count));
-        }
-        else
-        {
-            let _ = entity.world.spawnItem(info.pos, ItemStack::of(block::BLUE_AERCLOUD, count));
-            let _ = entity.world.spawnItem(info.pos, ItemStack::of(item::SWET_BALL, count));
-        }
-    }
-
     // SwetRenderer: the inner slime, then the translucent gel stretched by the jump and the swallowed player
     fn pose(&self, input: &PoseInput) -> Pose
     {
@@ -300,6 +275,42 @@ impl EntityBehavior for Swet
         body.blend(true).rest(outer).blend(false).color(1.0, 1.0, 1.0, 1.0);
         Pose { pre: pre.take(), model: body.take() }
     }
+}
+
+// one coin per death, the same for every pool asking in that tick, as the source rolls once for all its drops
+fn deathRoll(query: &LootQuery) -> i32
+{
+    const SPREAD: i64 = 341873128712;
+
+    let Some(entity) = query.entity
+    else
+    {
+        return 0;
+    };
+    Random::withSeed(i64::from(entity.id).wrapping_mul(SPREAD) ^ query.world.time()).nextIntBounded(2)
+}
+
+// EntitySwet.onDeath: half the time a golden swet drops glowstone, a blue one a blue aercloud and a swet ball
+pub(crate) fn loot(ctx: &mut RegisterCtx) -> Result<()>
+{
+    const GOLDEN_SWET: &str = "golden_swet";
+    const HALF: &str = "swet_half";
+
+    let golden = |query: &LootQuery| query.entity.is_some_and(|entity| state(entity).m_kind == GOLDEN);
+    ctx.loot().condition(GOLDEN_SWET, "Golden swet", golden)?;
+    ctx.loot().count(HALF, "Half the time", deathRoll)?;
+
+    let drops: PoolBuilder = PoolBuilder::new(1, 1)
+        .entry("minecraft:glowstone", 1, 1, 1)?
+        .when(GOLDEN_SWET)?
+        .countBy(HALF)?
+        .entry(block::BLUE_AERCLOUD, 1, 1, 1)?
+        .unless(GOLDEN_SWET)?
+        .countBy(HALF)?;
+    let balls: PoolBuilder =
+        PoolBuilder::new(1, 1).entry(item::SWET_BALL, 1, 1, 1)?.unless(GOLDEN_SWET)?.countBy(HALF)?;
+    ctx.loot().pool(LootTarget::Entity, NAME, drops.m_spec)?;
+    ctx.loot().pool(LootTarget::Entity, NAME, balls.m_spec)
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>

@@ -1,10 +1,10 @@
-use super::mount::{Saddle, WINGED, dropSaddle, forget, saddleInteract, travel, wingPose};
+use super::mount::{Saddle, WINGED, forget, saddleInteract, travel, wingPose};
 use super::{creature, drop, onAetherGrass};
 use crate::models::{Program, combine, phyg_wing, pig, pig_saddle, quadruped, quadrupedPose};
 use crate::progress::{self, Award};
 use b173_api::prelude::*;
 
-const NAME: &str = "phyg";
+pub(crate) const NAME: &str = "phyg";
 const TEXTURE: &str = "aether:entity/phyg/phyg";
 const WINGS: &str = "aether:entity/phyg/wings";
 const SADDLE_TEXTURE: &str = "minecraft:mob/saddle";
@@ -48,11 +48,7 @@ impl EntityBehavior for Phyg
         }
     }
 
-    fn onDeath(&self, entity: Entity, _source: Option<i32>)
-    {
-        dropSaddle(entity);
-        forget(entity);
-    }
+    fn onDeath(&self, entity: Entity, _source: Option<i32>) { forget(entity); }
 
     fn onTravel(&self, entity: Entity, _info: &EntityInfo, _strafe: f32, _forward: f32) -> bool
     {

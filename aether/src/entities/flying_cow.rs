@@ -1,9 +1,9 @@
-use super::mount::{Saddle, WINGED, dropSaddle, forget, saddleInteract, travel, wingPose};
+use super::mount::{Saddle, WINGED, forget, saddleInteract, travel, wingPose};
 use super::{creature, drop, onAetherGrass};
 use crate::models::{Program, combine, flying_cow, flying_cow_saddle, flying_cow_wing, quadruped, quadrupedPose};
 use b173_api::prelude::*;
 
-const NAME: &str = "flying_cow";
+pub(crate) const NAME: &str = "flying_cow";
 const TEXTURE: &str = "aether:entity/flying_cow/flying_cow";
 const WINGS: &str = "aether:entity/flying_cow/wings";
 const SADDLE_TEXTURE: &str = "aether:entity/flying_cow/saddle";
@@ -65,11 +65,7 @@ impl EntityBehavior for FlyingCow
         }
     }
 
-    fn onDeath(&self, entity: Entity, _source: Option<i32>)
-    {
-        dropSaddle(entity);
-        forget(entity);
-    }
+    fn onDeath(&self, entity: Entity, _source: Option<i32>) { forget(entity); }
 
     fn onTravel(&self, entity: Entity, _info: &EntityInfo, _strafe: f32, _forward: f32) -> bool
     {

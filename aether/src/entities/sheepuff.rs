@@ -261,18 +261,6 @@ impl EntityBehavior for Sheepuff
         false
     }
 
-    fn onDeath(&self, entity: Entity, _source: Option<i32>)
-    {
-        let state: Fleece = fleece(entity);
-        if let Some(info) = entity.info()
-            && !state.m_sheared
-            && entity.world.isAuthority()
-        {
-            let count: i32 = 1 + entity.world.random(puff::DEATH_WOOL_SPREAD);
-            let _ = entity.world.spawnItem(info.pos, ItemStack::of(WOOL, count).withDamage(state.m_color as i32));
-        }
-    }
-
     fn canSpawn(&self, entity: Entity, info: &EntityInfo) -> bool
     {
         crate::config::spawnRoll(entity, "sheepuff") && onAetherGrass(info)
@@ -313,6 +301,53 @@ impl EntityBehavior for Sheepuff
 
         Pose { pre: Vec::new(), model: body.take() }
     }
+}
+
+// the wool colours in damage order, conditions name a fleece by them
+const WOOL_COLORS: [&str; 16] = [
+    "white",
+    "orange",
+    "magenta",
+    "light_blue",
+    "yellow",
+    "lime",
+    "pink",
+    "gray",
+    "light_gray",
+    "cyan",
+    "purple",
+    "blue",
+    "brown",
+    "green",
+    "red",
+    "black",
+];
+
+// EntitySheepuff.onDeath: unsheared it drops one or two wool of its fleece's colour
+pub(crate) fn loot(ctx: &mut RegisterCtx) -> Result<()>
+{
+    const UNSHEARED: &str = "unsheared";
+
+    ctx.loot()
+        .condition(UNSHEARED, "Not sheared", |query| query.entity.is_some_and(|entity| !fleece(entity).m_sheared))?;
+    let mut pool: PoolBuilder = PoolBuilder::new(1, 1);
+
+    for (shade, color) in (0u8..).zip(WOOL_COLORS)
+    {
+        let condition: String = format!("fleece/{color}");
+        let label: String = format!("{} fleece", color.replace('_', " "));
+        ctx.loot().condition(&condition, &label, move |query|
+        {
+            query.entity.is_some_and(|entity| fleece(entity).m_color == shade)
+        })?;
+        pool = pool
+            .entry(WOOL, 1, 1, puff::DEATH_WOOL_SPREAD)?
+            .damage(i32::from(shade))
+            .when(UNSHEARED)?
+            .when(&condition)?;
+    }
+
+    ctx.loot().pool(LootTarget::Entity, NAME, pool.m_spec)
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>

@@ -67,15 +67,23 @@ pub(crate) fn saddleInteract(entity: Entity, player: Player) -> bool
     true
 }
 
-pub(crate) fn dropSaddle(entity: Entity)
+// EntityPhyg and EntityFlyingCow.onDeath: a saddled mount drops its saddle
+pub(crate) fn loot(ctx: &mut RegisterCtx, mounts: &[&str]) -> Result<()>
 {
-    let saddle: Saddle = entity.synced();
-    if let Some(info) = entity.info()
-        && saddle.m_saddled
-        && entity.world.isAuthority()
+    const SADDLED: &str = "saddled";
+
+    ctx.loot().condition(SADDLED, "Saddled", |query|
     {
-        let _ = entity.world.spawnItem(info.pos, ItemStack::of(SADDLE, 1));
+        query.entity.is_some_and(|entity| entity.synced::<Saddle>().m_saddled)
+    })?;
+
+    for mount in mounts
+    {
+        let pool: PoolBuilder = PoolBuilder::new(1, 1).entry(SADDLE, 1, 1, 1)?.when(SADDLED)?;
+        ctx.loot().pool(LootTarget::Entity, mount, pool.m_spec)?;
     }
+
+    Ok(())
 }
 
 // EntityLiving.moveEntityWithHeading and EntityMountable values the flight model reuses

@@ -117,5 +117,15 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     present::register(ctx)?;
     crystal::register(ctx)?;
     mini_cloud::register(ctx)?;
-    bosses::register(ctx)
+    bosses::register(ctx)?;
+    loot(ctx)
+}
+
+// drops that depend on a mob's state go through loot conditions, so recipe viewers list them
+fn loot(ctx: &mut RegisterCtx) -> Result<()>
+{
+    sheepuff::loot(ctx)?;
+    swet::loot(ctx)?;
+    mount::loot(ctx, &[phyg::NAME, flying_cow::NAME])?;
+    moa::loot(ctx)
 }

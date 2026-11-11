@@ -246,18 +246,7 @@ impl EntityBehavior for Moa
         }
     }
 
-    fn onDeath(&self, entity: Entity, _source: Option<i32>)
-    {
-        let current: MoaState = state(entity);
-        if let Some(info) = entity.info()
-            && current.m_saddled
-            && entity.world.isAuthority()
-        {
-            let _ = entity.world.spawnItem(info.pos, ItemStack::of(SADDLE, 1));
-        }
-
-        forget(entity);
-    }
+    fn onDeath(&self, entity: Entity, _source: Option<i32>) { forget(entity); }
 
     // a moa leaps high from the ground, then flaps as many times as its type allows once it falls
     fn onTravel(&self, entity: Entity, _info: &EntityInfo, _strafe: f32, _forward: f32) -> bool
@@ -321,6 +310,16 @@ impl EntityBehavior for Moa
 
         Pose { pre: pre.take(), model: body.take() }
     }
+}
+
+// EntityMoa.onDeath: a saddled moa drops its saddle
+pub(crate) fn loot(ctx: &mut RegisterCtx) -> Result<()>
+{
+    const SADDLED: &str = "moa_saddled";
+
+    ctx.loot().condition(SADDLED, "Saddled", |query| query.entity.is_some_and(|entity| state(entity).m_saddled))?;
+    let pool: PoolBuilder = PoolBuilder::new(1, 1).entry(SADDLE, 1, 1, 1)?.when(SADDLED)?;
+    ctx.loot().pool(LootTarget::Entity, NAME, pool.m_spec)
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
