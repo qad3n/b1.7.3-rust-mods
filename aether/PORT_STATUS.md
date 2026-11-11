@@ -149,6 +149,8 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Poison, remedy and milk skyroot buckets are drunk over 32 ticks with the drink pose (ItemSkyrootBucket). The remedy
   and the white apple cure inebriation, milk clears regeneration and weakness but not inebriation, as the source's
   curative items; the port had milk curing inebriation. The remedy's cure vignette overlay is not ported.
+- The zanite sword hits harder the more worn it is (ItemZaniteSword's 3 to 7 against the iron sword's 6), added to
+  a player's own melee blow in LivingHurt since the loader has no per stack attack attribute.
 - The phoenix bow draws while the use key is held (bow pose, the three `bow_pulling` icons after 0, 13 and 17
   ticks) and looses its flaming arrow on release at three times the draw power, as ItemPhoenixBow. Power, Punch,
   Flame and Infinity and the full draw critical have no beta counterpart.

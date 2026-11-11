@@ -4,6 +4,7 @@ use b173_api::prelude::*;
 pub mod kind
 {
     pub const MOB: &str = "minecraft:mob";
+    pub const PLAYER: &str = "minecraft:player";
     pub const ARROW: &str = "minecraft:arrow";
     pub const THROWN: &str = "minecraft:thrown";
     pub const FIREBALL: &str = "minecraft:fireball";
@@ -36,3 +37,6 @@ pub fn burning() -> bool { hurtBy(&[kind::IN_FIRE, kind::ON_FIRE, kind::LAVA, ki
 pub fn magic() -> bool { hurtBy(&[kind::MAGIC]) }
 
 pub fn explosion() -> bool { hurtBy(&[kind::EXPLOSION]) }
+
+// a player's own blow with what it holds
+pub fn melee() -> bool { hurtBy(&[kind::PLAYER]) }

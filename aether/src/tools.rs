@@ -11,6 +11,9 @@ mod tool
     // ItemZaniteTool.level, the speed for each band of wear, the most worn band fastest
     pub const ZANITE_LEVELS: [f32; 5] = [2.0, 4.0, 6.0, 8.0, 12.0];
     pub const ZANITE_BANDS: [i32; 4] = [50, 110, 200, 239];
+    // ItemZaniteSword.level, its attack for each band of wear, beside the source's iron sword the port registers it as
+    pub const SWORD_LEVELS: [i32; 5] = [3, 4, 5, 6, 7];
+    pub const IRON_SWORD: i32 = 6;
 }
 
 // ItemHolystoneTool.onBlockDestroyed
@@ -60,26 +63,53 @@ impl ItemBehavior for Gravitite
     }
 }
 
-// ItemZaniteTool.calculateIncrease: the more worn the zanite, the faster it digs what it is made for
-fn zaniteSpeed(event: &mut Event)
+// ItemZaniteTool.calculateIncrease: the band of wear a zanite stack is in, the most worn band last
+fn zaniteBand(held: &ItemStack) -> Option<usize>
 {
-    let Some(held) = event.player().and_then(Player::held).filter(|held| {
-        held.item.name().is_some_and(|name| name.namespace() == "aether" && name.path().starts_with("zanite_"))
-    })
-    else
-    {
-        return;
-    };
-    let Some(limit) = held.item.name().and_then(|name| crate::items::toolUses(name.path()))
-    else
-    {
-        return;
-    };
+    let name: Identifier =
+        held.item.name().filter(|name| name.namespace() == "aether" && name.path().starts_with("zanite_"))?;
+    let limit: i32 = crate::items::toolUses(name.path())?;
     let left: i32 = limit - held.damage;
     let band: usize = tool::ZANITE_BANDS
         .iter()
         .position(|edge| left <= *edge)
         .map_or(0, |index| tool::ZANITE_LEVELS.len() - 1 - index);
+    Some(band)
+}
+
+// ItemZaniteSword.getAttributeModifiers: the more worn the sword, the harder a player's own blow with it lands
+fn zaniteHit(event: &mut Event)
+{
+    let EventData::Attack { source: Some(source), .. } = event.data().clone()
+    else
+    {
+        return;
+    };
+    let Some(band) =
+        Player { id: source }.held().filter(|held| held.item.is("zanite_sword")).as_ref().and_then(zaniteBand)
+    else
+    {
+        return;
+    };
+    if !crate::damage::melee()
+    {
+        return;
+    }
+
+    if let EventData::Attack { amount, .. } = event.dataMut()
+    {
+        *amount += tool::SWORD_LEVELS[band] - tool::IRON_SWORD;
+    }
+}
+
+// ItemZaniteTool.calculateIncrease: the more worn the zanite, the faster it digs what it is made for
+fn zaniteSpeed(event: &mut Event)
+{
+    let Some(band) = event.player().and_then(Player::held).as_ref().and_then(zaniteBand)
+    else
+    {
+        return;
+    };
     if let EventData::BreakSpeed { speed, .. } = event.dataMut()
         && *speed > 1.0
     {
@@ -93,5 +123,6 @@ pub fn gravitite() -> impl ItemBehavior { Gravitite }
 
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.events().on::<PlayerBreakSpeed>(Priority::Normal, zaniteSpeed)
+    ctx.events().on::<PlayerBreakSpeed>(Priority::Normal, zaniteSpeed)?;
+    ctx.events().on::<LivingHurt>(Priority::Normal, zaniteHit)
 }
