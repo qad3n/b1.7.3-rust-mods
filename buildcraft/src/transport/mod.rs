@@ -10,7 +10,11 @@ use crate::core::items::material;
 use crate::core::{dir, state};
 use b173_api::prelude::*;
 pub(crate) use pipe::toRandomPipe;
+use std::collections::BTreeMap;
 use std::rc::Rc;
+
+// the states a model cuboid shows in, one when entry each
+type Whens = Vec<BTreeMap<String, String>>;
 
 pub(crate) const ALWAYS_CONNECT: &str = "pipes.always_connect";
 pub(crate) const EXCLUSION: &str = "wooden_pipe.exclusion";
@@ -179,9 +183,11 @@ pub(crate) fn joins(world: World, pos: BlockPos, face: i32) -> bool
     pipeJoins(world, kind, other, face) && crate::machines::acceptsPipe(world, other, pos)
 }
 
-fn cuboid(from: [f32; 3], to: [f32; 3], texture: &str, metas: Vec<i32>, connect: Option<i32>) -> Cuboid
+// a pipe cuboid in the states given, every state for none
+fn cuboid(from: [f32; 3], to: [f32; 3], texture: &str, whens: Whens, connect: Option<i32>) -> Vec<StateCuboid>
 {
-    Cuboid { from, to, texture: Some(texture.to_owned()), metas, connect }
+    let cuboid: Cuboid = Cuboid { from, to, texture: Some(texture.to_owned()), metas: Vec::new(), connect };
+    state::cuboids(&cuboid, whens)
 }
 
 // an arm from the core to one face, the box the model and collision share
@@ -213,15 +219,15 @@ pub(crate) fn arm(face: i32) -> ([f32; 3], [f32; 3])
 fn texture(name: &str) -> String { format!("buildcraft:block/{name}") }
 
 // the states whose value is or is not the one given, for cuboids drawn only in them
-fn when(values: &[&str], value: &str, equal: bool) -> Vec<i32>
+fn when(property: &str, values: &[&str], value: &str, equal: bool) -> Whens
 {
-    state::metas(values, |known| (known == value) == equal)
+    state::when(property, values, |known| (known == value) == equal)
 }
 
 // each arm's sprite: IBlockPipe.getTextureForConnection by face and state
-fn arms(kind: Kind, name: &str) -> Vec<Cuboid>
+fn arms(kind: Kind, name: &str) -> Vec<StateCuboid>
 {
-    let mut cuboids: Vec<Cuboid> = Vec::new();
+    let mut cuboids: Vec<StateCuboid> = Vec::new();
     let plain: String = texture(name);
 
     for face in dir::all()
@@ -234,19 +240,23 @@ fn arms(kind: Kind, name: &str) -> Vec<Cuboid>
             Kind::Wooden =>
             {
                 let sources: &[&str] = &property::SOURCES;
-                cuboids.push(cuboid(from, to, &texture("wooden_pipe_plain"), when(sources, side, true), Some(face)));
-                cuboids.push(cuboid(from, to, &plain, when(sources, side, false), Some(face)));
+                let source: &str = property::SOURCE;
+                let plainArm: String = texture("wooden_pipe_plain");
+                cuboids.extend(cuboid(from, to, &plainArm, when(source, sources, side, true), Some(face)));
+                cuboids.extend(cuboid(from, to, &plain, when(source, sources, side, false), Some(face)));
             }
 
             Kind::Iron =>
             {
-                cuboids.push(cuboid(from, to, &plain, when(&dir::NAMES, side, true), Some(face)));
-                cuboids.push(cuboid(from, to, &texture("iron_pipe_plain"), when(&dir::NAMES, side, false), Some(face)));
+                let output: &str = property::OUTPUT;
+                let plainArm: String = texture("iron_pipe_plain");
+                cuboids.extend(cuboid(from, to, &plain, when(output, &dir::NAMES, side, true), Some(face)));
+                cuboids.extend(cuboid(from, to, &plainArm, when(output, &dir::NAMES, side, false), Some(face)));
             }
 
             Kind::Diamond =>
             {
-                cuboids.push(cuboid(from, to, &texture(&format!("diamond_pipe_{side}")), Vec::new(), Some(face)));
+                cuboids.extend(cuboid(from, to, &texture(&format!("diamond_pipe_{side}")), Vec::new(), Some(face)));
             }
 
             Kind::Golden =>
@@ -254,7 +264,7 @@ fn arms(kind: Kind, name: &str) -> Vec<Cuboid>
                 cuboids.extend(powered(from, to, &plain, Some(face)));
             }
 
-            _ => cuboids.push(cuboid(from, to, &plain, Vec::new(), Some(face))),
+            _ => cuboids.extend(cuboid(from, to, &plain, Vec::new(), Some(face))),
         }
     }
 
@@ -262,27 +272,28 @@ fn arms(kind: Kind, name: &str) -> Vec<Cuboid>
 }
 
 // BlockGoldenPipe draws its powered sprite while redstone reaches it
-fn powered(from: [f32; 3], to: [f32; 3], plain: &str, connect: Option<i32>) -> [Cuboid; 2]
+fn powered(from: [f32; 3], to: [f32; 3], plain: &str, connect: Option<i32>) -> Vec<StateCuboid>
 {
     let [off, on] = property::POWER;
-    [
-        cuboid(from, to, &texture("golden_pipe_powered"), when(&property::POWER, on, true), connect),
-        cuboid(from, to, plain, when(&property::POWER, off, true), connect),
-    ]
+    let powered: &str = property::POWERED;
+    let mut cuboids: Vec<StateCuboid> =
+        cuboid(from, to, &texture("golden_pipe_powered"), when(powered, &property::POWER, on, true), connect);
+    cuboids.extend(cuboid(from, to, plain, when(powered, &property::POWER, off, true), connect));
+    cuboids
 }
 
-fn model(kind: Kind, name: &str) -> BlockModelSpec
+fn model(kind: Kind, name: &str) -> StateModelSpec
 {
     let core: [f32; 3] = [shape::MIN; 3];
     let far: [f32; 3] = [shape::MAX; 3];
-    let mut cuboids: Vec<Cuboid> = match kind
+    let mut cuboids: Vec<StateCuboid> = match kind
     {
-        Kind::Golden => powered(core, far, &texture(name), None).to_vec(),
-        _ => vec![cuboid(core, far, &texture(name), Vec::new(), None)],
+        Kind::Golden => powered(core, far, &texture(name), None),
+        _ => cuboid(core, far, &texture(name), Vec::new(), None),
     };
     cuboids.extend(arms(kind, name));
 
-    BlockModelSpec { cuboids, ..BlockModelSpec::default() }
+    StateModelSpec { cuboids }
 }
 
 struct PipeBlock
@@ -345,12 +356,12 @@ fn registerPipe(ctx: &mut RegisterCtx, row: &'static Pipe) -> Result<()>
             .hardness(shape::HARDNESS)
             .texture(&texture(row.m_name))
             .opacity(0)
-            .model(model(row.m_kind, row.m_name))
             .tileEntity(row.m_name)
             .tag("buildcraft:pipes")
             .behavior(PipeBlock { m_kind: row.m_kind }),
     )?;
 
+    ctx.blocks().stateModel(row.m_name, model(row.m_kind, row.m_name))?;
     ctx.blocks().itemModel(row.m_name, crate::core::render::column(Some(&texture(row.m_name))))?;
 
     // BuildCraftTransport: eight pipes from two ingredient blocks around a glass pane

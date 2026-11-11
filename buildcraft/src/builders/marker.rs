@@ -288,7 +288,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .material("circuits")
             .texture(super::landmark::SPRITE)
             .light(LIGHT)
-            .model(BlockModelSpec { cuboids: super::landmark::cuboids(), ..BlockModelSpec::default() })
             .collision(Vec::new())
             .tileEntity(NAME)
             .behavior(MarkerBlock),

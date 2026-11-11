@@ -36,7 +36,8 @@ fn lean(world: World, pos: BlockPos, support: i32) { state::set(world, pos, SUPP
 
 pub(crate) fn register(ctx: &mut RegisterCtx, block: &str) -> Result<()>
 {
-    state::register(ctx, block, SUPPORT, &SUPPORTS)
+    state::register(ctx, block, SUPPORT, &SUPPORTS)?;
+    ctx.blocks().stateModel(block, model())
 }
 
 // canPlaceBlockAt: any neighbour drawn as a full block
@@ -95,7 +96,7 @@ pub(crate) fn neighborChanged(ctx: &mut BlockCtx)
 }
 
 // the selection stick per support, drawn invisibly so only the tile's marker model shows
-pub(crate) fn cuboids() -> Vec<Cuboid>
+fn model() -> StateModelSpec
 {
     let boxes: [([f32; 3], [f32; 3]); 6] = [
         ([shape::NEAR, shape::EDGE - shape::LENGTH, shape::NEAR], [shape::FAR, shape::EDGE, shape::FAR]),
@@ -106,18 +107,17 @@ pub(crate) fn cuboids() -> Vec<Cuboid>
         ([shape::NEAR, 0.0, shape::NEAR], [shape::FAR, shape::LENGTH, shape::FAR]),
     ];
 
-    boxes
+    let cuboids: Vec<StateCuboid> = boxes
         .into_iter()
         .zip(SUPPORTS)
-        .map(|((from, to), support)| Cuboid
+        .flat_map(|((from, to), support)|
         {
-            from,
-            to,
-            texture: Some(INVISIBLE.to_owned()),
-            metas: state::metas(&SUPPORTS, |value| value == support),
-            connect: None,
+            let cuboid: Cuboid =
+                Cuboid { from, to, texture: Some(INVISIBLE.to_owned()), metas: Vec::new(), connect: None };
+            state::cuboids(&cuboid, state::when(SUPPORT, &SUPPORTS, |value| value == support))
         })
-        .collect()
+        .collect();
+    StateModelSpec { cuboids }
 }
 
 // rotateFace, the four corners of a face shifted one along
