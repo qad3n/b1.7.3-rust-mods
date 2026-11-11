@@ -61,7 +61,6 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   - grass and leaves: beta colours them by climate only, so every twilight biome uses the colorizer colour of its
     temperature and rainfall; TF's per biome tints (dark forest, swamp, fire swamp, enchanted rings, dark forest
     center patches) are left out, and TF's own leaves use the same climate colours;
-  - the ore meter of 2.4.3 counts but says nothing, the older meters' chat report is restored;
   - structures: no top slabs (bottom halves), stairs lose their upside down bit, iron bars and nether brick fences
     are fences, glass panes glass, cobblestone walls cobblestone, quartz sandstone, redstone lamps glowstone,
     trapped chests chests, vines, flower pots, skulls, tripwire and item frames are left out, stone bricks as above;
@@ -229,6 +228,37 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   map's level with ores shaded by depth), saves the picture in world data and sends it to the holder.
 - Dev command `/twilightforest:tffeature info|center [x z]` (CommandTFFeature), coordinates for the console, plus
   `locate [ring] <label words>` (port test aid) giving the nearest center of a feature kind.
+
+## Audit against 2.4.3 (2026-11-11)
+
+Checked one to one with `reference/src`: tool materials, damage, speed, harvest level and durability of every tool and
+weapon; armor materials; knightly, fiery, ice and glass weapon hits; giant pick and mazebreaker dig speed; crumble
+horn, peacock fan, lamp of cinders, ore magnet and ore meter; cinder furnace fuel, cook speed, multipliers and
+cinderizing; every registered item and entity is present; projectile trails and bursts; mob ambient particles; falling
+ice; TF sound keys (all present, the boggard's are undefined in the jar's sounds.json and silent as in 2.4.3).
+
+Fixed:
+- Knightly pick hit as a plain pickaxe (5); it hits as hard as the knightly sword, as its attribute modifier sets.
+- Giant pick and mazebreaker never sped up on their blocks (tool component blocks skip item behaviors); they now
+  boost through the break speed event: giant rock 4 x 64, giant obsidian x 64 again, other giant blocks 64,
+  mazestone 8 x 16 plus efficiency 4.
+- Ore meter: 2.4.3 counts and shows nothing; the restored chat report scanned 3.2 million blocks in one guest call,
+  past the 500 ms budget. It now does nothing visible, as in the source.
+- Cinder furnace burned only a hand list of fuels; it takes the furnace's fuel (any wood material block and mod
+  fuels) plus 1.7's wooden slab and wooden tools, and leaves container items.
+- Shots: twilight wand and lich bolts trail spell specks, nature bolt happy villager specks, tome bolt crits, slime
+  blob slime, ice snowball snow, lich bomb a flame, ur-ghast fireball smoke; nature bolt and moonworm shot burst into
+  leaf and moonworm bits; the glass sword shatters into glass bits (loader `blockcrack_<id>_<meta>` particles).
+- Snow guardians and ice cores shed snow specks, the carminite golem kicks up ground and red dust.
+- Falling ice warns with snowwarning specks and shatters into 200 ice bits with stone and glass sounds.
+
+Still differs or unverified:
+- Minotaur axe charge bonus needs sprinting, which beta lacks.
+- Maze slime lands with slime specks, not mazestone bits (the slime template draws its own).
+- Peacock fan pushes every entity in its box, not only pushable ones; fiery weapons also light fire immune mobs.
+- Cinder furnace output stacks to 64 without asking the item's own limit; the cinderized log's 2004 burst is two
+  flames and smokes.
+- Everything above is checked by build and code review only, not in a game.
 
 ## Bugs to check at the end
 
