@@ -49,6 +49,12 @@ struct Breathing
     m_on: bool,
 }
 
+// whether a breather's synced state says it breathes, for drawing on the client
+pub(crate) fn breathing(synced: &[u8]) -> bool
+{
+    b173_api::fromBytes::<Breathing>(synced).is_ok_and(|state| state.m_on)
+}
+
 thread_local!
 {
     static LEFT: RefCell<HashMap<(i32, i32), i32>> = RefCell::new(HashMap::new());

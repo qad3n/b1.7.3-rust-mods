@@ -74,6 +74,18 @@ pub(crate) struct Mob
     // setCurrentItemOrArmor slots 1 to 4, drawn by RenderBiped's armor passes
     pub m_armor: &'static [Worn],
     pub m_aura: Aura,
+    pub m_glow: Glow,
+}
+
+// getBrightnessForRender at full light, the mob draws unshaded by the light around it
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum Glow
+{
+    Never,
+    // EntityTFMobileFirefly
+    Always,
+    // EntityTFFireBeetle while it breathes fire
+    Breathing,
 }
 
 // the specks a mob gives off every tick on the client in onLivingUpdate
@@ -166,6 +178,7 @@ const fn mob(
         m_headed: &[],
         m_armor: &[],
         m_aura: Aura::None,
+        m_glow: Glow::Never,
     }
 }
 
@@ -180,6 +193,8 @@ const fn voiced(mob: Mob, living: Option<&'static str>, hurt: &'static str, deat
 }
 
 const fn aura(mob: Mob, aura: Aura) -> Mob { Mob { m_aura: aura, ..mob } }
+
+const fn glowing(mob: Mob, glow: Glow) -> Mob { Mob { m_glow: glow, ..mob } }
 
 const fn shadow(mob: Mob, shadow: f32) -> Mob { Mob { m_shadow: shadow, ..mob } }
 
@@ -449,21 +464,24 @@ pub(crate) static MOBS: [Mob; 44] = [
         &[("minecraft:feather", [0, 2])],
     ),
     acting(
-        shadow(
-            mob(
-                "firefly",
-                "Firefly",
-                CHICKEN,
-                tf("firefly-tiny"),
-                [0.5, 0.5],
-                6,
-                0.2,
-                0,
-                model!(tf_firefly),
-                Look::Rest,
-                Spawning::Ambient(10, [8, 8]),
+        glowing(
+            shadow(
+                mob(
+                    "firefly",
+                    "Firefly",
+                    CHICKEN,
+                    tf("firefly-tiny"),
+                    [0.5, 0.5],
+                    6,
+                    0.2,
+                    0,
+                    model!(tf_firefly),
+                    Look::Rest,
+                    Spawning::Ambient(10, [8, 8]),
+                ),
+                0.0,
             ),
-            0.0,
+            Glow::Always,
         ),
         Ai::Flyer { speed: 0.1 },
     ),
@@ -808,22 +826,25 @@ pub(crate) static MOBS: [Mob; 44] = [
         "minecraft:golden_axe",
     ),
     acting(
-        chitinous(drops(
-            mob(
-                "fire_beetle",
-                "Fire Beetle",
-                MONSTER,
-                tf("firebeetle"),
-                [1.1, 0.75],
-                25,
-                0.23,
-                4,
-                model!(tf_fire_beetle),
-                Look::Posed(models::animated::fireBeetlePose),
-                Spawning::Monster,
-            ),
-            &[("minecraft:gunpowder", [0, 2])],
-        )),
+        glowing(
+            chitinous(drops(
+                mob(
+                    "fire_beetle",
+                    "Fire Beetle",
+                    MONSTER,
+                    tf("firebeetle"),
+                    [1.1, 0.75],
+                    25,
+                    0.23,
+                    4,
+                    model!(tf_fire_beetle),
+                    Look::Posed(models::animated::fireBeetlePose),
+                    Spawning::Monster,
+                ),
+                &[("minecraft:gunpowder", [0, 2])],
+            )),
+            Glow::Breathing,
+        ),
         Ai::Breather(&super::breath::FIRE),
     ),
     acting(
@@ -1426,6 +1447,18 @@ impl EntityBehavior for Posed
         }
 
         let mut body: Program = Program::new();
+        let bright: bool = match mob.m_glow
+        {
+            Glow::Never => false,
+            Glow::Always => true,
+            Glow::Breathing => super::breath::breathing(&input.synced),
+        };
+
+        // beta lights a model by the glColor its renderer set, full white draws it as a 1.7 full light mob
+        if bright
+        {
+            body.color(1.0, 1.0, 1.0, 1.0);
+        }
 
         if !mob.m_variants.is_empty()
         {
@@ -1436,7 +1469,15 @@ impl EntityBehavior for Posed
 
         match mob.m_look
         {
-            Look::Rest => return Pose::default(),
+            Look::Rest if !bright => return Pose::default(),
+
+            Look::Rest =>
+            {
+                for part in 0..mob.m_pivots.len() as u16
+                {
+                    body.rest(part);
+                }
+            }
             Look::Spider => return models::spiderPose(input),
             Look::Wolf => return models::wolfPose(input),
             Look::Ghast => return models::ghastPose(input),
