@@ -80,7 +80,6 @@ mod fuel
     pub const STEAM_PER_TICK: i32 = 1;
     pub const COMBUSTION_PER_TICK: i32 = 2;
     pub const SCALE: i32 = 1000;
-    pub const LAVA_BUCKET: &str = "minecraft:lava_bucket";
     pub const EMPTY_BUCKET: &str = "minecraft:bucket";
 }
 
@@ -381,13 +380,11 @@ fn burnSteam(world: World, pos: BlockPos, state: &mut EngineState, powered: bool
         return;
     }
 
-    let left: Option<ItemStack> = if stack.item.is(fuel::LAVA_BUCKET)
+    // a burnt container leaves what it drains to, as the lava bucket leaves a bucket
+    let left: Option<ItemStack> = match drainItem(&stack)
     {
-        Some(ItemStack::of(fuel::EMPTY_BUCKET, 1))
-    }
-    else
-    {
-        (stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack })
+        Some((empty, _)) => empty,
+        None => (stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }),
     };
     let _ = world.setTileSlot(pos, SLOT, left);
 }
