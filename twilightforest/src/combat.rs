@@ -49,10 +49,6 @@ thread_local!
     static SMELT_AT: Cell<Option<(i32, BlockPos)>> = const { Cell::new(None) };
 }
 
-// TF mobs that wear armor, for the knightly bonuses, EntityLivingBase.getTotalArmorValue above zero
-const ARMORED: [&str; 6] =
-    ["goblin_knight_upper", "goblin_knight_lower", "helmet_crab", "armored_giant", "knight_phantom", "block_goblin"];
-
 fn armored(target: &EntityInfo) -> bool
 {
     if target.player.is_some()
@@ -61,7 +57,7 @@ fn armored(target: &EntityInfo) -> bool
         return (0..4).any(|slot| player.slot(crate::items::ARMOR_FIRST_SLOT + slot).is_some());
     }
 
-    target.kind.as_ref().is_some_and(|kind| kind.namespace() == "twilightforest" && ARMORED.contains(&kind.path()))
+    crate::tags::entityTagged(target, crate::tags::ARMORED)
 }
 
 fn holding(player: Player, name: &str) -> bool { player.held().is_some_and(|stack| stack.item.is(name)) }

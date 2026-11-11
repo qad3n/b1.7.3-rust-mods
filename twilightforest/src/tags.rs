@@ -16,6 +16,12 @@ pub(crate) const MAZESTONE: &str = "twilightforest:mazestone";
 pub(crate) const CROPS: &str = "minecraft:crops";
 pub(crate) const PLAINS_PLANTS: &str = "twilightforest:plains_plants";
 pub(crate) const CAVE_PLANTS: &str = "twilightforest:cave_plants";
+// mobs that wear armor for the knightly weapons, EntityLivingBase.getTotalArmorValue above zero
+pub(crate) const ARMORED: &str = "twilightforest:armored";
+// the plain monsters a lich tears apart, EntityTFLich.popNearbyMob's instanceof checks
+pub(crate) const LICH_POPPABLE: &str = "twilightforest:lich_poppable";
+// the animals a naga's body bites harder
+pub(crate) const NAGA_PREY: &str = "twilightforest:naga_prey";
 
 struct TagRow
 {
@@ -25,7 +31,7 @@ struct TagRow
 }
 
 // groups other mods share with the forest, most of its own blocks join their tags where they register
-const ROWS: [TagRow; 13] = [
+const ROWS: [TagRow; 16] = [
     blockTag(LEAVES, &["#minecraft:leaves"]),
     blockTag(
         STONY,
@@ -42,11 +48,38 @@ const ROWS: [TagRow; 13] = [
     blockTag("c:storage_blocks/knightmetal", &[block::KNIGHTMETAL_BLOCK]),
     itemTag("c:storage_blocks", &[block::KNIGHTMETAL_BLOCK]),
     itemTag("c:storage_blocks/knightmetal", &[block::KNIGHTMETAL_BLOCK]),
+    entityTag(
+        ARMORED,
+        &[
+            "goblin_knight_upper",
+            "goblin_knight_lower",
+            "helmet_crab",
+            "armored_giant",
+            "knight_phantom",
+            "block_goblin",
+        ],
+    ),
+    entityTag(
+        LICH_POPPABLE,
+        &["minecraft:skeleton", "minecraft:zombie", "minecraft:spider", "minecraft:creeper", "swarm_spider"],
+    ),
+    entityTag(NAGA_PREY, &["minecraft:pig", "minecraft:cow", "minecraft:sheep", "minecraft:chicken", "minecraft:wolf"]),
 ];
 
 const fn blockTag(tag: &'static str, entries: &'static [&'static str]) -> TagRow
 {
     TagRow { m_registry: RegistryKind::Block, m_tag: tag, m_entries: entries }
+}
+
+const fn entityTag(tag: &'static str, entries: &'static [&'static str]) -> TagRow
+{
+    TagRow { m_registry: RegistryKind::Entity, m_tag: tag, m_entries: entries }
+}
+
+// an entity's kind sits in a tag, other mods' entities count when they join it
+pub(crate) fn entityTagged(info: &EntityInfo, tag: &str) -> bool
+{
+    info.kind.as_ref().is_some_and(|kind| tagMembers(RegistryKind::Entity, tag).contains(kind))
 }
 
 const fn itemTag(tag: &'static str, entries: &'static [&'static str]) -> TagRow

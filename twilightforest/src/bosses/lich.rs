@@ -244,11 +244,9 @@ fn launch(entity: Entity, info: &EntityInfo, goal: &EntityInfo, bomb: bool)
 fn popNearby(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
-    let poppable: [&str; 5] = ["skeleton", "zombie", "spider", "creeper", "swarm_spider"];
-
     let victim: Option<EntityInfo> = world.entitiesNear(info.pos, lich::SEARCH).into_iter().find(|other|
     {
-        other.kind.as_ref().is_some_and(|kind| poppable.contains(&kind.path()))
+        crate::tags::entityTagged(other, crate::tags::LICH_POPPABLE)
             && world.rayTrace(eyes(entity, info), other.pos, false).is_none()
     });
     if let Some(victim) = victim

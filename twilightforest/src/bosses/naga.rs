@@ -346,10 +346,7 @@ fn segmentBites(entity: Entity, brain: &mut Brain)
 
             brain.m_cooldown = naga::SEGMENT_COOLDOWN;
 
-            let animal: bool = other
-                .kind
-                .as_ref()
-                .is_some_and(|kind| ["pig", "cow", "sheep", "chicken", "wolf"].contains(&kind.path()));
+            let animal: bool = crate::tags::entityTagged(&other, crate::tags::NAGA_PREY);
 
             let bite: i32 = if animal
             {
