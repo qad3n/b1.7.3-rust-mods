@@ -12,6 +12,7 @@ mod items;
 mod lore;
 mod machines;
 mod models;
+mod particles;
 mod player;
 mod portal;
 mod portal_overlay;
@@ -31,6 +32,7 @@ fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     config::register(ctx)?;
     effects::register(ctx)?;
+    particles::register(ctx)?;
     blocks::register(ctx)?;
     shapes::register(ctx)?;
     sun_altar::register(ctx)?;

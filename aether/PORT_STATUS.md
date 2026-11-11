@@ -151,6 +151,9 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
   curative items; the port had milk curing inebriation. The remedy's cure vignette overlay is not ported.
 - The zanite sword hits harder the more worn it is (ItemZaniteSword's 3 to 7 against the iron sword's 6), added to
   a player's own melee blow in LivingHurt since the loader has no per stack attack attribute.
+- Golden oak, crystal and holiday leaf motes and whirlwind puffs are loader mod particles (`src/particles.rs`) with
+  the source's colours, sizes and lifetimes. A whirlwind's own tint and rainbow puffs are one fixed grey; portal
+  motes keep the loader `tintportal_RRGGBB` particle for their random brightness.
 - The phoenix bow draws while the use key is held (bow pose, the three `bow_pulling` icons after 0, 13 and 17
   ticks) and looses its flaming arrow on release at three times the draw power, as ItemPhoenixBow. Power, Punch,
   Flame and Infinity and the full draw critical have no beta counterpart.

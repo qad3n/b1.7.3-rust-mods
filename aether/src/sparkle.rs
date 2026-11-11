@@ -1,22 +1,24 @@
 use crate::entities::fraction;
+use crate::particles;
 use b173_api::prelude::*;
 
 const HALF: f64 = 0.5;
 const DRIFT: f64 = 0.5;
 
-// BlockAetherLeaves.randomDisplayTick: tinted portal motes drift around golden oak, crystal and holiday leaves
+// BlockAetherLeaves.randomDisplayTick: the source's leaf motes drift around golden oak, crystal and holiday leaves
 pub struct LeafSparkle
 {
-    pub m_color: &'static str,
+    pub m_particle: &'static str,
     pub m_count: i32,
     pub m_spread: f64,
     // one display tick in this many sparkles, one sparkles every tick
     pub m_odds: i32,
 }
 
-pub const GOLDEN_OAK: LeafSparkle = LeafSparkle { m_color: "tintportal_F9BE00", m_count: 2, m_spread: 10.0, m_odds: 1 };
-pub const CRYSTAL: LeafSparkle = LeafSparkle { m_color: "tintportal_00A4BE", m_count: 6, m_spread: 6.0, m_odds: 5 };
-pub const HOLIDAY: LeafSparkle = LeafSparkle { m_color: "tintportal_FFFFFF", m_count: 6, m_spread: 8.0, m_odds: 5 };
+pub const GOLDEN_OAK: LeafSparkle =
+    LeafSparkle { m_particle: particles::GOLDEN_OAK, m_count: 2, m_spread: 10.0, m_odds: 1 };
+pub const CRYSTAL: LeafSparkle = LeafSparkle { m_particle: particles::CRYSTAL, m_count: 6, m_spread: 6.0, m_odds: 5 };
+pub const HOLIDAY: LeafSparkle = LeafSparkle { m_particle: particles::HOLIDAY, m_count: 6, m_spread: 8.0, m_odds: 5 };
 
 fn around(world: World, pos: BlockPos, spread: f64) -> [f64; 3]
 {
@@ -38,7 +40,7 @@ impl BlockBehavior for LeafSparkle
         for _ in 0..self.m_count
         {
             let at: [f64; 3] = around(world, ctx.pos(), self.m_spread);
-            world.particle(self.m_color, at, drift(world));
+            world.particle(self.m_particle, at, drift(world));
         }
     }
 }

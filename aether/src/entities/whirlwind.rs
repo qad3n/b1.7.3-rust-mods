@@ -226,7 +226,14 @@ impl EntityBehavior for Whirlwind
             return;
         }
         let state: Wind = entity.synced();
-        let name: &str = if state.m_evil { "largesmoke" } else { "smoke" };
+        let name: &str = if state.m_evil
+        {
+            crate::particles::EVIL_WHIRLY
+        }
+        else
+        {
+            crate::particles::WHIRLY
+        };
         for _ in 0..wind::PARTICLES
         {
             let angle: f64 = (fraction(entity.world) * wind::FULL_TURN).to_radians();
