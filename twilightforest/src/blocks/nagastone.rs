@@ -147,8 +147,6 @@ fn bodySource(ctx: &BlockCtx) -> usize
     names::pick(ctx.stateAt(), "shape", &BODY_SHAPES).unwrap_or(0) + naga::FIRST_BODY as usize
 }
 
-fn sprite(sprite: Sprite) -> i32 { b173_api::world::terrainSlot(&texture(SPRITES[sprite as usize])).unwrap_or(0) }
-
 fn nagastone(world: World, pos: BlockPos) -> bool
 {
     let found: i32 = world.block(pos);
@@ -227,7 +225,10 @@ impl BlockBehavior for Head
         }
     }
 
-    fn texture(&self, face: i32, meta: i32) -> i32 { faceSprite(sourceHead(meta), face) }
+    fn textureFor(&self, face: i32, state: &StateData) -> Option<String>
+    {
+        source(state, "facing", &HEAD_FACINGS).map(|source| faceTexture(source, face))
+    }
 
     fn faceRotations(&self, ctx: &mut BlockCtx) -> Option<[u8; 6]> { Some(SHAPES[headSource(ctx)].m_turns) }
 }
@@ -262,15 +263,24 @@ impl BlockBehavior for Body
         }
     }
 
-    fn texture(&self, face: i32, meta: i32) -> i32 { faceSprite(sourceBody(meta), face) }
+    fn textureFor(&self, face: i32, state: &StateData) -> Option<String>
+    {
+        source(state, "shape", &BODY_SHAPES).map(|source| faceTexture(source + naga::FIRST_BODY as usize, face))
+    }
 
     fn faceRotations(&self, ctx: &mut BlockCtx) -> Option<[u8; 6]> { Some(SHAPES[bodySource(ctx)].m_turns) }
 }
 
-fn faceSprite(source: i32, face: i32) -> i32
+// the source meta a named state stands for, its value's place in the source's own order
+fn source(state: &StateData, property: &str, values: &[&str]) -> Option<usize>
 {
-    let shape: &Shape = &SHAPES[source.clamp(0, SHAPES.len() as i32 - 1) as usize];
-    sprite(shape.m_faces[face.clamp(0, 5) as usize])
+    values.iter().position(|value| state.get(property) == Some(*value))
+}
+
+fn faceTexture(source: usize, face: i32) -> String
+{
+    let shape: &Shape = &SHAPES[source.min(SHAPES.len() - 1)];
+    texture(SPRITES[shape.m_faces[face.clamp(0, 5) as usize] as usize])
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
@@ -298,7 +308,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .behavior(Body),
     )?;
 
-    // values in stored metadata order, which the texture callback still hands over
+    // values in stored metadata order, so saved nagastone keeps its shape
     let heads: Vec<&str> = (0..naga::HEADS).map(|meta| HEAD_FACINGS[sourceHead(meta) as usize]).collect();
     let bodies: Vec<&str> =
         (0..naga::BODIES).map(|meta| BODY_SHAPES[(sourceBody(meta) - naga::FIRST_BODY) as usize]).collect();
