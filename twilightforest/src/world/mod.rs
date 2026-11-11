@@ -34,6 +34,52 @@ mod sky
     pub const TIME: i64 = 12216;
 }
 
+// the forest's biomes in the shared groups, so other mods' features and spawns that follow tags reach them
+const BIOME_TAGS: [(&str, &[&str]); 8] = [
+    (
+        "twilightforest:is_twilight",
+        &[
+            "twilight_lake",
+            "twilight_forest",
+            "dense_twilight_forest",
+            "twilight_highlands",
+            "mushroom_forest",
+            "twilight_swamp",
+            "twilight_stream",
+            "snowy_forest",
+            "twilight_glacier",
+            "twilight_clearing",
+            "oak_savanna",
+            "firefly_forest",
+            "deep_mushroom_forest",
+            "dark_forest",
+            "enchanted_forest",
+            "fire_swamp",
+            "dark_forest_center",
+            "highlands_center",
+            "thornlands",
+        ],
+    ),
+    (
+        "minecraft:is_forest",
+        &[
+            "twilight_forest",
+            "dense_twilight_forest",
+            "firefly_forest",
+            "dark_forest",
+            "enchanted_forest",
+            "snowy_forest",
+            "dark_forest_center",
+        ],
+    ),
+    ("minecraft:is_savanna", &["oak_savanna"]),
+    ("c:is_swamp", &["twilight_swamp", "fire_swamp"]),
+    ("c:is_snowy", &["snowy_forest", "twilight_glacier"]),
+    ("c:is_plains", &["twilight_clearing"]),
+    ("c:is_mushroom", &["mushroom_forest", "deep_mushroom_forest"]),
+    ("c:is_magical", &["enchanted_forest"]),
+];
+
 fn own(name: &str) -> Option<Identifier> { Identifier::parse(&format!("twilightforest:{name}")).ok() }
 
 fn biomeColumns(chunk: &ChunkInfo) -> ChunkBiomes
@@ -60,6 +106,11 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         )?;
     }
 
+    for (tag, members) in BIOME_TAGS
+    {
+        ctx.tags().add(RegistryKind::Biome, tag, members)?;
+    }
+
     let twilight: Dimension = ctx.dimensions().register(
         DIMENSION,
         DimensionSpec
@@ -79,6 +130,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         },
     )?;
 
+    decorate::register(ctx)?;
     let names: Vec<&str> = biomes::BIOMES.iter().map(|row| row.m_name).collect();
     twilight
         .height(WORLD_HEIGHT, BUILD_LIMIT)?

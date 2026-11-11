@@ -135,7 +135,7 @@ impl Decorator<'_>
             let y: i32 = self.height(x, z);
             if y < height::RUINS
             {
-                ruins::generate(self.m_world, self.m_random, x, y, z);
+                self.m_world.m_world.placeFeature(RUINS, BlockPos::new(x, y, z), self.m_random);
             }
         }
 
@@ -806,6 +806,49 @@ impl Decorator<'_>
 }
 
 // ChunkProviderTwilightForest.populate, the chunk seed then every decoration of the chunk
+// the parts of ChunkProviderTwilightForest.populate other mods and players see by name, placed in their place in the
+// populate order on its random so the sequence stays the source's
+const STRUCTURES: &str = "structures";
+const HOLLOW_TREES: &str = "hollow_trees";
+const RUINS: &str = "ruins";
+
+// structures crossing the chunk, hollow hills and the rest, true when one was built
+fn structures(ctx: &FeatureCtx) -> bool
+{
+    let world: GenWorld = GenWorld::new(ctx.world);
+    super::structures::generate(&world, ctx.random, ctx.world.seed(), ctx.origin.x >> 4, ctx.origin.z >> 4)
+}
+
+fn hollowTrees(ctx: &FeatureCtx) -> bool
+{
+    let world: GenWorld = GenWorld::new(ctx.world);
+    super::structures::hollowTrees(&world, ctx.random, ctx.world.seed(), ctx.origin.x >> 4, ctx.origin.z >> 4);
+    true
+}
+
+fn ruins(ctx: &FeatureCtx) -> bool
+{
+    let world: GenWorld = GenWorld::new(ctx.world);
+    ruins::generate(&world, ctx.random, ctx.origin.x, ctx.origin.y, ctx.origin.z);
+    true
+}
+
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
+{
+    let rows: [(&str, FeatureStep, fn(&FeatureCtx) -> bool); 3] = [
+        (STRUCTURES, FeatureStep::SurfaceStructures, structures),
+        (HOLLOW_TREES, FeatureStep::VegetalDecoration, hollowTrees),
+        (RUINS, FeatureStep::SurfaceStructures, ruins),
+    ];
+
+    for (name, step, place) in rows
+    {
+        ctx.worldgen().custom(name, FeatureBuilder::custom(step).dimension(super::DIMENSION)?.placed(), place)?;
+    }
+
+    Ok(())
+}
+
 pub(crate) fn populate(chunk: ChunkInfo)
 {
     let world: GenWorld = GenWorld::new(World { dimension: chunk.world });
@@ -820,9 +863,10 @@ pub(crate) fn populate(chunk: ChunkInfo)
     let biome: Biome = biomes::at(chunk.seed, mapX + 16, mapZ + 16);
     let decor: &'static Decor = flora::decor(biome);
     // ChunkProviderTwilightForest.populate, a structure crossing the chunk keeps lakes out, a nearby feature also the decorations
-    let built: bool = super::structures::generate(&world, &random, chunk.seed, chunk.x, chunk.z);
+    let origin: BlockPos = BlockPos::new(mapX, 0, mapZ);
+    let built: bool = world.m_world.placeFeature(STRUCTURES, origin, &random);
 
-    super::structures::hollowTrees(&world, &random, chunk.seed, chunk.x, chunk.z);
+    world.m_world.placeFeature(HOLLOW_TREES, origin, &random);
 
     let decorated: bool = features::row(features::nearest(chunk.seed, chunk.x, chunk.z).0).m_decorated;
     let open: bool = decorated && !built;
