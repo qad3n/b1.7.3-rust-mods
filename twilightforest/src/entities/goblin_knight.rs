@@ -176,18 +176,16 @@ fn attackerOf(entity: Entity, source: Option<i32>) -> Option<EntityInfo>
 pub fn upperHurt(entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
 {
     let info: EntityInfo = entity.info()?;
+    // a rider stuck in its mount's block does not suffocate
+    if entity.riding().is_some() && crate::combat::hurtBy(crate::combat::kind::IN_WALL)
+    {
+        return None;
+    }
+
     let Some(attacker) = attackerOf(entity, source)
     else
     {
-        // a rider stuck in its mount's block does not suffocate
-        return if entity.riding().is_some()
-        {
-            None
-        }
-        else
-        {
-            Some(amount)
-        };
+        return Some(amount);
     };
 
     let mut current: Gear = gear(entity);
@@ -300,7 +298,12 @@ fn landSpear(entity: Entity, info: &EntityInfo)
     {
         if other.id != entity.id && Some(other.id) != mount && other.health.is_some()
         {
-            Entity { world, id: other.id }.damage(tuning::ATTACK as i32, Some(entity.id));
+            crate::combat::hit(
+                Entity { world, id: other.id },
+                tuning::ATTACK as i32,
+                Some(entity.id),
+                crate::combat::kind::MOB,
+            );
         }
     }
 }

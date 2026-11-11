@@ -122,7 +122,10 @@ fn hitLiving(world: World, from: [f64; 3], to: [f64; 3], owner: i32, damage: i32
 {
     let hit: Option<EntityInfo> =
         world.entitiesAlong(from, to, chain::HIT_RADIUS, Some(owner)).into_iter().find(|hit| hit.health.is_some());
-    hit.is_some_and(|hit| Entity { world, id: hit.id }.damage(damage, Some(owner)))
+    hit.is_some_and(|hit|
+    {
+        crate::combat::hit(Entity { world, id: hit.id }, damage, Some(owner), crate::combat::kind::PLAYER)
+    })
 }
 
 struct ChainBall;

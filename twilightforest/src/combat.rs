@@ -23,6 +23,22 @@ mod aura
     pub const FIERY_ROLL: i32 = 25;
 }
 
+// the vanilla damage types the source's DamageSources stand for, other mods read them through damageType
+pub mod kind
+{
+    pub const MOB: &str = "minecraft:mob";
+    pub const PLAYER: &str = "minecraft:player";
+    pub const THROWN: &str = "minecraft:thrown";
+    pub const FIREBALL: &str = "minecraft:fireball";
+    pub const EXPLOSION: &str = "minecraft:explosion";
+    pub const IN_FIRE: &str = "minecraft:in_fire";
+    pub const ON_FIRE: &str = "minecraft:on_fire";
+    pub const LAVA: &str = "minecraft:lava";
+    pub const IN_WALL: &str = "minecraft:in_wall";
+    pub const CACTUS: &str = "minecraft:cactus";
+    pub const MAGIC: &str = "minecraft:magic";
+}
+
 thread_local!
 {
     // the block a fiery pick just broke, its drops come out smelted
@@ -165,6 +181,31 @@ fn smeltDrops(event: &mut Event)
         }
     }
 }
+
+pub fn hit(victim: Entity, amount: i32, source: Option<i32>, kind: &str) -> bool
+{
+    victim.damageAs(amount, source, kind).unwrap_or_else(|error|
+    {
+        warn(&format!("damage as {kind}: {}", error.0));
+        false
+    })
+}
+
+// a body part passes its hit on to the body under the type the hit came with
+pub fn forward(victim: Entity, amount: i32, source: Option<i32>) -> bool
+{
+    match damageType()
+    {
+        Some(current) => hit(victim, amount, source, &current.to_string()),
+        None => victim.damage(amount, source),
+    }
+}
+
+// the type of the hit an onHurt call is handling, as the source compares its DamageSource
+pub fn hurtBy(kind: &str) -> bool { damageType().is_some_and(|current| current.to_string() == kind) }
+
+// DamageSource.isFireDamage
+pub fn burning() -> bool { [kind::IN_FIRE, kind::ON_FIRE, kind::LAVA, kind::FIREBALL].into_iter().any(hurtBy) }
 
 pub fn register(ctx: &mut RegisterCtx) -> Result<()>
 {

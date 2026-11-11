@@ -147,7 +147,7 @@ impl ItemBehavior for LifeDrain
             if !held(victim) && health >= 1
             {
                 world.playSound(info.pos, "fire.ignite", 1.0, 1.0);
-                victim.damage(scepter::DRAIN, Some(player.id));
+                crate::combat::hit(victim, scepter::DRAIN, Some(player.id), crate::combat::kind::MAGIC);
                 let _ = victim.setMotion([0.0, target.motion[1], 0.0]);
                 hold(victim);
             }
@@ -158,11 +158,11 @@ impl ItemBehavior for LifeDrain
                 {
                     world.particle("explode", target.pos, [0.0; 3]);
                 }
-                victim.damage(health.max(1) * 10, Some(player.id));
+                crate::combat::hit(victim, health.max(1) * 10, Some(player.id), crate::combat::kind::MAGIC);
             }
             else
             {
-                victim.damage(scepter::SIPHON, Some(player.id));
+                crate::combat::hit(victim, scepter::SIPHON, Some(player.id), crate::combat::kind::MAGIC);
                 let _ = victim.setMotion([0.0, 0.2, 0.0]);
                 hold(victim);
                 let own: Entity = Entity { world, id: player.id };
@@ -279,7 +279,7 @@ impl EntityBehavior for LoyalZombie
             && distance(foe.pos, info.pos) < zombie::REACH
         {
             let victim: Entity = Entity { world, id: foe.id };
-            if victim.damage(zombie::ATTACK, Some(entity.id))
+            if crate::combat::hit(victim, zombie::ATTACK, Some(entity.id), crate::combat::kind::MOB)
             {
                 let _ = victim.setMotion([foe.motion[0], foe.motion[1] + zombie::LEAP, foe.motion[2]]);
             }

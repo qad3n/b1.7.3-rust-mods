@@ -472,7 +472,7 @@ fn punish(world: World, player: Player, info: &EntityInfo, biome: Biome, now: i6
     let entity: Entity = Entity { world, id: player.id };
     if biome == Biome::Highlands
     {
-        entity.damage(1, None);
+        crate::combat::hit(entity, 1, None, crate::combat::kind::MAGIC);
         world.playSound(info.pos, "random.fizz", 1.0, 1.0);
     }
     if now % enforce::CHECK != 0

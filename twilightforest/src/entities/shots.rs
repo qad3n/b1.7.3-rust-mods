@@ -1,3 +1,4 @@
+use crate::combat::kind;
 use crate::models::Program;
 use b173_api::prelude::*;
 
@@ -8,6 +9,8 @@ pub struct Shot
     // EntityThrowable.getGravityVelocity
     pub m_gravity: f64,
     pub m_damage: i32,
+    // the vanilla damage type of the source's DamageSource for this shot
+    pub m_kind: &'static str,
     pub m_impact: Impact,
     pub m_icon: Icon,
     pub m_puff: &'static str,
@@ -85,6 +88,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: NATURE_BOLT,
         m_gravity: 0.003,
         m_damage: 2,
+        m_kind: kind::MAGIC,
         m_impact: Impact::Nature,
         m_icon: Icon::Sheet(sheet::SEEDS),
         m_puff: "snowballpoof",
@@ -95,6 +99,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: TOME_BOLT,
         m_gravity: 0.003,
         m_damage: 6,
+        m_kind: kind::THROWN,
         m_impact: Impact::Tome,
         m_icon: Icon::Sheet(sheet::PAPER),
         m_puff: "snowballpoof",
@@ -105,6 +110,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: WAND_BOLT,
         m_gravity: 0.003,
         m_damage: 6,
+        m_kind: kind::MAGIC,
         m_impact: Impact::Plain,
         m_icon: Icon::Texture(TWILIGHT_ORB),
         m_puff: "portal",
@@ -115,6 +121,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: SLIME_BLOB,
         m_gravity: 0.006,
         m_damage: 0,
+        m_kind: kind::THROWN,
         m_impact: Impact::Plain,
         m_icon: Icon::Sheet(sheet::SLIME_BALL),
         m_puff: "slime",
@@ -125,6 +132,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: ICE_SNOWBALL,
         m_gravity: 0.006,
         m_damage: 0,
+        m_kind: kind::THROWN,
         m_impact: Impact::Plain,
         m_icon: Icon::Sheet(sheet::SNOWBALL),
         m_puff: "snowballpoof",
@@ -135,6 +143,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: LICH_BOLT,
         m_gravity: 0.001,
         m_damage: 6,
+        m_kind: kind::MAGIC,
         m_impact: Impact::Plain,
         m_icon: Icon::Texture(TWILIGHT_ORB),
         m_puff: "portal",
@@ -146,6 +155,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: LICH_BOMB,
         m_gravity: 0.001,
         m_damage: 0,
+        m_kind: kind::THROWN,
         m_impact: Impact::Bomb,
         m_icon: Icon::Sheet(sheet::FIRE),
         m_puff: "smoke",
@@ -156,6 +166,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: THROWN_AXE,
         m_gravity: 0.001,
         m_damage: 6,
+        m_kind: kind::THROWN,
         m_impact: Impact::Plain,
         m_icon: Icon::Texture("twilightforest:item/knightlyaxe"),
         m_puff: "crit",
@@ -166,6 +177,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: THROWN_PICK,
         m_gravity: 0.001,
         m_damage: 3,
+        m_kind: kind::THROWN,
         m_impact: Impact::Plain,
         m_icon: Icon::Texture("twilightforest:item/knightlypick"),
         m_puff: "crit",
@@ -176,6 +188,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: UR_FIREBALL,
         m_gravity: 0.0,
         m_damage: 16,
+        m_kind: kind::FIREBALL,
         m_impact: Impact::Fireball,
         m_icon: Icon::Sheet(sheet::FIRE),
         m_puff: "smoke",
@@ -186,6 +199,7 @@ pub const SHOTS: [Shot; 11] = [
         m_name: MOONWORM_SHOT,
         m_gravity: 0.03,
         m_damage: 0,
+        m_kind: kind::THROWN,
         m_impact: Impact::Moonworm,
         m_icon: Icon::Texture("twilightforest:block/tfmoonworm"),
         m_puff: "slime",
@@ -259,7 +273,7 @@ fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, 
         && shot.m_damage > 0
     {
         let victim: Entity = Entity { world, id: target.id };
-        victim.damage(shot.m_damage, owner);
+        crate::combat::hit(victim, shot.m_damage, owner, shot.m_kind);
         // the source's normal difficulty lengths, beta keeps no difficulty a mod can read
         match shot.m_impact
         {
@@ -416,6 +430,6 @@ pub fn blast(world: World, at: [f64; 3], power: f32, source: Option<i32>)
         }
         let impact: f64 = 1.0 - gap;
         let damage: i32 = ((impact * impact + impact) / 2.0 * 8.0 * reach + 1.0) as i32;
-        Entity { world, id: other.id }.damage(damage, source);
+        crate::combat::hit(Entity { world, id: other.id }, damage, source, kind::EXPLOSION);
     }
 }

@@ -85,6 +85,10 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   lightning, travel both ways, portals remembered in world data instead of the source's 200 block scan.
 - Progression (TFAchievementPage on the loader's mod achievements with beta toasts, old player data bits adopted once), biome enforcement
   (TFBiome*.enforceProgession), item pickups that advance it, config (TwilightForestMod.loadConfiguration).
+- Damage types: hits carry the vanilla type of the source's DamageSource (mob, player, thrown, fireball, explosion,
+  in_fire, cactus, magic), parts pass their hit on under its type, and the ur-ghast, knight phantoms, goblin knight
+  riders, death tome and termites check the type as the source does. Wither and anvil hits have no beta type and
+  stay generic; the hydra breaking blocks around a part stuck in a wall is not ported.
 - Items with behaviors: ore meter, ore magnet, crumble horn, peacock fan, lamp of cinders, magic beans, tower key,
   charms of life and keeping (TFEventListener), magic tree cores (BlockTFMagicLogSpecial), uberous soil.
 - Machines: uncrafting table (ContainerTFUncrafting on a tile inventory, ghost ingredients drawn over the assembly

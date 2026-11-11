@@ -102,7 +102,7 @@ pub fn tick(entity: Entity, info: &EntityInfo)
         for hit in struck
         {
             let victim: Entity = Entity { world, id: hit.id };
-            if victim.damage(tuning::DAMAGE, Some(entity.id))
+            if crate::combat::hit(victim, tuning::DAMAGE, Some(entity.id), crate::combat::kind::MOB)
             {
                 let _ = victim.setMotion([hit.motion[0], hit.motion[1] + tuning::TOSS, hit.motion[2]]);
                 world.playSound(block, HIT_SOUND, 1.0, 1.0);

@@ -139,6 +139,7 @@ const fn mob(
 }
 
 const NO_DROPS: &[(&str, [i32; 2])] = &[];
+const DEATH_TOME: &str = "death_tome";
 
 const fn drops(mob: Mob, drops: &'static [(&'static str, [i32; 2])]) -> Mob { Mob { m_drops: drops, ..mob } }
 
@@ -730,7 +731,7 @@ pub const MOBS: [Mob; 44] = [
     acting(
         drops(
             mob(
-                "death_tome",
+                DEATH_TOME,
                 "Death Tome",
                 MONSTER,
                 "minecraft:item/book",
@@ -1283,6 +1284,8 @@ impl EntityBehavior for Posed
                 ai::termiteHurt(entity, source);
                 Some(amount)
             }
+            // EntityTFDeathTome.attackEntityFrom, fire burns the book twice as hard
+            _ if self.m_mob.m_name == DEATH_TOME && crate::combat::burning() => Some(amount * 2),
             _ => Some(amount),
         }
     }

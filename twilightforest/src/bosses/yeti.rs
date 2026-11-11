@@ -242,7 +242,7 @@ fn stomp(entity: Entity, info: &EntityInfo)
         }
 
         let victim: Entity = Entity { world, id: near.id };
-        if victim.damage(yeti::STOMP, Some(entity.id))
+        if crate::combat::hit(victim, yeti::STOMP, Some(entity.id), crate::combat::kind::MOB)
         {
             let _ = victim.setMotion([near.motion[0], near.motion[1] + yeti::STOMP_LIFT, near.motion[2]]);
         }
@@ -561,7 +561,7 @@ fn zone(entity: Entity, at: [f64; 3], owner: Option<i32>)
         else
         {
             // EntityTFIceBomb, a chill of five seconds at slowness three
-            victim.damage(1, owner);
+            crate::combat::hit(victim, 1, owner, crate::combat::kind::MAGIC);
             crate::effects::give(victim, crate::effects::Effect::Slowness, ice::CHILL, ice::CHILL_TICKS);
         }
     }

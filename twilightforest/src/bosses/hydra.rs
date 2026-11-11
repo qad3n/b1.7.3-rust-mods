@@ -656,7 +656,12 @@ fn attack(entity: Entity, at: [f64; 3], head: &mut Head)
             {
                 if near.health.is_some() && !hydraPart(&near) && (near.pos[1] - at[1]).abs() <= hydra::HEAD_SIZE + 1.0
                 {
-                    Entity { world, id: near.id }.damage(hydra::BITE_DAMAGE, Some(entity.id));
+                    crate::combat::hit(
+                        Entity { world, id: near.id },
+                        hydra::BITE_DAMAGE,
+                        Some(entity.id),
+                        crate::combat::kind::MOB,
+                    );
                 }
             }
         }
@@ -674,7 +679,7 @@ fn attack(entity: Entity, at: [f64; 3], head: &mut Head)
                 return;
             }
             let victim: Entity = Entity { world, id: hit.id };
-            if victim.damage(hydra::FLAME_DAMAGE, None)
+            if crate::combat::hit(victim, hydra::FLAME_DAMAGE, None, crate::combat::kind::IN_FIRE)
             {
                 victim.setField(EntityField::FireTicks, hydra::FLAME_BURN);
             }
@@ -1374,7 +1379,7 @@ fn hurtFromPart(entity: Entity, source: Option<i32>, amount: i32)
     if let Some(dealt) = dealt.filter(|dealt| *dealt > 0)
     {
         DIRECT.with(|direct| direct.set(true));
-        hydraEntity.damage(dealt, source);
+        crate::combat::forward(hydraEntity, dealt, source);
         DIRECT.with(|direct| direct.set(false));
     }
 }
@@ -1472,7 +1477,7 @@ fn detonate(entity: Entity, at: [f64; 3], state: &Shell)
         if near.health.is_some() && !hydraPart(&near)
         {
             let victim: Entity = Entity { world, id: near.id };
-            if victim.damage(mortar::DAMAGE, state.m_owner)
+            if crate::combat::hit(victim, mortar::DAMAGE, state.m_owner, crate::combat::kind::FIREBALL)
             {
                 victim.setField(EntityField::FireTicks, mortar::BURN);
             }

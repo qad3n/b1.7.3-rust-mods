@@ -368,7 +368,8 @@ fn outward(reach: i32) -> impl Iterator<Item = i32>
 
 pub fn termiteHurt(entity: Entity, source: Option<i32>)
 {
-    if source.is_some() && timer(entity) <= 0
+    let called: bool = source.is_some() || crate::combat::hurtBy(crate::combat::kind::MAGIC);
+    if called && timer(entity) <= 0
     {
         setTimer(entity, tuning::SUMMON_DELAY);
     }

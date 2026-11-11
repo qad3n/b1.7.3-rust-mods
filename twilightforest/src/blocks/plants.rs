@@ -497,7 +497,7 @@ impl BlockBehavior for Thorns
         }
         if !self.m_burnt
         {
-            entity.damage(thorns::DAMAGE, None);
+            crate::combat::hit(entity, thorns::DAMAGE, None, crate::combat::kind::CACTUS);
             return;
         }
         if entity.info().is_some_and(|info| info.health.is_some())

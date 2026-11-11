@@ -669,6 +669,11 @@ impl EntityBehavior for UrGhast
     // EntityTFUrGhast.attackEntityFrom, tantrums soften blows and every 48 damage flips the phase
     fn onHurt(&self, entity: Entity, _source: Option<i32>, amount: i32) -> Option<i32>
     {
+        if crate::combat::hurtBy(crate::combat::kind::IN_WALL)
+        {
+            return None;
+        }
+
         let world: World = entity.world;
         BRAINS.with(|brains|
         {

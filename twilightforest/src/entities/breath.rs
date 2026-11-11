@@ -93,7 +93,7 @@ fn scorch(entity: Entity, info: &EntityInfo)
     };
     let victim: Entity = Entity { world, id: hit.id };
     let burning: bool = victim.field(EntityField::FireTicks) > 0.0;
-    if !burning && victim.damage(tuning::BURN_DAMAGE, Some(entity.id))
+    if !burning && crate::combat::hit(victim, tuning::BURN_DAMAGE, Some(entity.id), crate::combat::kind::IN_FIRE)
     {
         victim.setField(EntityField::FireTicks, tuning::BURN_TICKS);
     }

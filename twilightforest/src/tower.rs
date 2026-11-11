@@ -142,7 +142,8 @@ fn scorch(world: World, pos: BlockPos)
             continue;
         }
         let entity: Entity = Entity { world, id: found.id };
-        if entity.field(EntityField::FireTicks) >= 0.0 || entity.damage(jet::DAMAGE, None)
+        if entity.field(EntityField::FireTicks) >= 0.0
+            || crate::combat::hit(entity, jet::DAMAGE, None, crate::combat::kind::IN_FIRE)
         {
             entity.setField(EntityField::FireTicks, f64::from(jet::BURN_SECONDS * 20));
         }

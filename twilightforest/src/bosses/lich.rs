@@ -265,7 +265,12 @@ fn caster(entity: Entity, info: &EntityInfo, lich: &mut Lich, brain: &mut Brain,
             {
                 if gap < lich::MELEE
                 {
-                    Entity { world, id: goal.id }.damage(lich::BITE, Some(entity.id));
+                    crate::combat::hit(
+                        Entity { world, id: goal.id },
+                        lich::BITE,
+                        Some(entity.id),
+                        crate::combat::kind::MOB,
+                    );
                     brain.m_attack = lich::MELEE_COOLDOWN;
                 }
                 else if gap < lich::RANGE && seen
@@ -286,7 +291,12 @@ fn caster(entity: Entity, info: &EntityInfo, lich: &mut Lich, brain: &mut Brain,
             let height: f64 = entity.field(EntityField::Height);
             if brain.m_attack <= 0 && gap < lich::MELEE && goal.pos[1] < info.pos[1] + height
             {
-                Entity { world, id: goal.id }.damage(lich::BITE, Some(entity.id));
+                crate::combat::hit(
+                    Entity { world, id: goal.id },
+                    lich::BITE,
+                    Some(entity.id),
+                    crate::combat::kind::MOB,
+                );
                 brain.m_attack = lich::MELEE_COOLDOWN;
             }
         }

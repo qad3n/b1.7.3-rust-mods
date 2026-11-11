@@ -387,7 +387,12 @@ fn think(entity: Entity, info: &EntityInfo, state: &mut Knight)
         {
             0
         };
-        Entity { world, id: target.id }.damage(knight::ATTACK + bonus, Some(entity.id));
+        crate::combat::hit(
+            Entity { world, id: target.id },
+            knight::ATTACK + bonus,
+            Some(entity.id),
+            crate::combat::kind::MOB,
+        );
     }
     if state.m_formation == Formation::AttackStrike && state.m_ticks % knight::THROW_PERIOD == 0
     {
@@ -449,6 +454,12 @@ impl EntityBehavior for KnightPhantom
     }
 
     fn onTick(&self, entity: Entity, info: &EntityInfo) { trail(entity, info); }
+
+    // EntityTFKnightPhantom.attackEntityFrom, a phantom inside a wall does not suffocate
+    fn onHurt(&self, _entity: Entity, _source: Option<i32>, amount: i32) -> Option<i32>
+    {
+        (!crate::combat::hurtBy(crate::combat::kind::IN_WALL)).then_some(amount)
+    }
 
     // EntityTFKnightPhantom.onDeath, the last one to fall leaves the stronghold's treasure at the spawner
     fn onDeath(&self, entity: Entity, source: Option<i32>)

@@ -334,7 +334,7 @@ fn act(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brain
     if brain.m_cooldown <= 0 && distance(info.pos, target.pos) < queen::REACH
     {
         brain.m_cooldown = queen::COOLDOWN;
-        Entity { world, id: target.id }.damage(queen::ATTACK, Some(entity.id));
+        crate::combat::hit(Entity { world, id: target.id }, queen::ATTACK, Some(entity.id), crate::combat::kind::MOB);
     }
 }
 
@@ -381,7 +381,7 @@ fn shields(entity: Entity, info: &EntityInfo, brain: &mut Brain)
             }
 
             let victim: Entity = Entity { world, id: near.id };
-            if victim.damage(queen::ATTACK, Some(entity.id))
+            if crate::combat::hit(victim, queen::ATTACK, Some(entity.id), crate::combat::kind::MOB)
             {
                 let _ = victim.setMotion([near.motion[0], near.motion[1] + queen::SHIELD_LIFT, near.motion[2]]);
                 world.playSound(info.pos, "mob.zombie.wood", 1.0, 1.0);

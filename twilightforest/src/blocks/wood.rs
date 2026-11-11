@@ -344,7 +344,7 @@ impl BlockBehavior for Hedge
     {
         if ctx.isAuthority() && hurtsOnTouch(entity)
         {
-            entity.damage(HEDGE_DAMAGE, None);
+            crate::combat::hit(entity, HEDGE_DAMAGE, None, crate::combat::kind::CACTUS);
         }
     }
 
@@ -352,20 +352,30 @@ impl BlockBehavior for Hedge
     {
         if ctx.isAuthority() && hurtsOnTouch(entity)
         {
-            entity.damage(HEDGE_DAMAGE, None);
+            crate::combat::hit(entity, HEDGE_DAMAGE, None, crate::combat::kind::CACTUS);
         }
     }
 
     fn onHarvest(&self, ctx: &mut BlockCtx, player: Player)
     {
-        Entity { world: ctx.world(), id: player.id }.damage(HEDGE_DAMAGE, None);
+        crate::combat::hit(
+            Entity { world: ctx.world(), id: player.id },
+            HEDGE_DAMAGE,
+            None,
+            crate::combat::kind::CACTUS,
+        );
     }
 
     fn onClicked(&self, ctx: &mut BlockCtx, player: Player)
     {
         if ctx.isAuthority()
         {
-            Entity { world: ctx.world(), id: player.id }.damage(HEDGE_DAMAGE, None);
+            crate::combat::hit(
+                Entity { world: ctx.world(), id: player.id },
+                HEDGE_DAMAGE,
+                None,
+                crate::combat::kind::CACTUS,
+            );
         }
     }
 }

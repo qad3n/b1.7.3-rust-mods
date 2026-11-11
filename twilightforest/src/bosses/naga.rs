@@ -337,7 +337,7 @@ fn segmentBites(entity: Entity, brain: &mut Brain)
             {
                 naga::SEGMENT_BITE
             };
-            Entity { world, id: other.id }.damage(bite, Some(entity.id));
+            crate::combat::hit(Entity { world, id: other.id }, bite, Some(entity.id), crate::combat::kind::MOB);
         }
     }
 }
@@ -532,7 +532,7 @@ fn bite(entity: Entity, info: &EntityInfo, target: &EntityInfo, brain: &mut Brai
     }
     brain.m_cooldown = naga::ATTACK_COOLDOWN;
     let victim: Entity = Entity { world: entity.world, id: target.id };
-    victim.damage(naga::BITE, Some(entity.id));
+    crate::combat::hit(victim, naga::BITE, Some(entity.id), crate::combat::kind::MOB);
     if brain.m_speed > 0.8
     {
         let yaw: f64 = f64::from(info.yaw).to_radians();
@@ -578,7 +578,7 @@ impl EntityBehavior for Segment
         if source.is_some() && entity.world.isAuthority()
         {
             let passed: i32 = (f64::from(amount) * 2.0 / 3.0).round() as i32;
-            Entity { world: entity.world, id: owner.m_naga }.damage(passed, source);
+            crate::combat::forward(Entity { world: entity.world, id: owner.m_naga }, passed, source);
         }
         None
     }

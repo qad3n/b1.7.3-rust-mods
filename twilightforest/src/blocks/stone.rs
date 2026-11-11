@@ -500,7 +500,7 @@ impl BlockBehavior for Knightmetal
     {
         if ctx.isAuthority()
         {
-            entity.damage(knightmetal::DAMAGE, None);
+            crate::combat::hit(entity, knightmetal::DAMAGE, None, crate::combat::kind::CACTUS);
         }
     }
 }
