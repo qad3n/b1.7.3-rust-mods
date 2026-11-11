@@ -1,6 +1,6 @@
 use super::{closestPlayer, fraction, sounds};
 use crate::models::{Program, slime_outer};
-use b173_api::math::{distance, yawTowards};
+use b173_api::math::{distance, flatLength, yawTowards};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -64,7 +64,7 @@ fn burst(entity: Entity, info: &EntityInfo, target: &EntityInfo)
     crate::damage::hit(victim, sentry::DAMAGE, Some(entity.id), crate::damage::kind::MOB);
 
     let [dx, dz] = [target.pos[0] - info.pos[0], target.pos[2] - info.pos[2]];
-    let length: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-4);
+    let length: f64 = flatLength(dx, dz).max(1.0e-4);
     let _ = victim.setMotion([
         dx / length * sentry::KNOCKBACK * 0.4,
         target.motion[1] * sentry::KNOCKBACK + 0.4,

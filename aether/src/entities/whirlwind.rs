@@ -1,5 +1,5 @@
 use super::{closestPlayer, fraction, monster, onAetherGrass};
-use b173_api::math::{blockOf, distance};
+use b173_api::math::{blockOf, distance, flatLength};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -177,7 +177,7 @@ impl EntityBehavior for Whirlwind
             Some(target) =>
             {
                 let [dx, dz] = [target.pos[0] - info.pos[0], target.pos[2] - info.pos[2]];
-                let length: f64 = (dx * dx + dz * dz).sqrt().max(1.0e-4);
+                let length: f64 = flatLength(dx, dz).max(1.0e-4);
                 let chase: f64 = current.m_speed * wind::CHASE / length;
                 let _ = entity.setMotion([dx * chase, info.motion[1], dz * chase]);
             }
