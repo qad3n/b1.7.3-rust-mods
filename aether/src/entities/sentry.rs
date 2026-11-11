@@ -228,7 +228,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             template: Identifier::parse("minecraft:monster").ok(),
             texture: Some(SLEEPING.to_owned()),
             size: Some([0.85, 0.85]),
-            health: Some(10),
+            // 1.7 max health default, the class sets none
+            health: Some(20),
             drops: Some(Vec::new()),
             sounds: sounds("", SLIME, SLIME),
             model: Some(EntityModelSpec { shadow: 0.3, ..slime_outer::model() }),

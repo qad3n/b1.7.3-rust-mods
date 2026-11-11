@@ -205,7 +205,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             template: Identifier::parse("minecraft:ghast").ok(),
             texture: Some(TEXTURE.to_owned()),
             size: Some([0.5, 0.45]),
-            health: Some(10),
+            // 1.7 max health default, the class sets none
+            health: Some(20),
             drops: Some(Vec::new()),
             sounds: super::sounds("", "", ""),
             model: Some(EntityModelSpec { shadow: 0.5, ..model::model() }),

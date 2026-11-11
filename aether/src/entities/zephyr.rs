@@ -245,7 +245,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             template: Identifier::parse("minecraft:ghast").ok(),
             texture: Some(TEXTURE.to_owned()),
             size: Some([4.0, 4.0]),
-            health: Some(5),
+            // 1.7 max health default, the class sets none
+            health: Some(20),
             spawn: monster(50),
             // EntityZephyr.dropFewItems
             drops: Some(vec![super::drop(crate::ids::block::COLD_AERCLOUD, [1, 1])]),
