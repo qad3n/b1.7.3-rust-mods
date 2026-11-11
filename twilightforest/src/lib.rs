@@ -37,6 +37,7 @@ fn register(ctx: &mut RegisterCtx) -> Result<()>
     blocks::register(ctx)?;
     items::register(ctx)?;
     recipes::register(ctx)?;
+    treasure::register(ctx)?;
     machines::register(ctx)?;
     bosses::register(ctx)?;
     // the dimension and its biomes come before anything that spawns in them

@@ -470,11 +470,59 @@ mod chest
 {
     pub const SLOTS: i32 = 27;
     pub const TRIES: i32 = 100;
-    pub const COMMON: i32 = 4;
-    pub const UNCOMMON: i32 = 2;
-    pub const RARE: i32 = 1;
     // one draw in four comes from the useless or ultra rare side table when it has entries
     pub const SIDE_ODDS: i32 = 4;
+}
+
+// the loot table each TFTreasure registers as, in the loader's chest loot so recipe viewers and other mods see it
+struct TableRow
+{
+    m_table: Table,
+    m_name: &'static str,
+}
+
+const TABLES: [TableRow; 22] = [
+    TableRow { m_table: Table::Hill1, m_name: "hill_1" },
+    TableRow { m_table: Table::Hill2, m_name: "hill_2" },
+    TableRow { m_table: Table::Hill3, m_name: "hill_3" },
+    TableRow { m_table: Table::HedgeMaze, m_name: "hedge_maze" },
+    TableRow { m_table: Table::LabyrinthRoom, m_name: "labyrinth_room" },
+    TableRow { m_table: Table::LabyrinthDeadEnd, m_name: "labyrinth_dead_end" },
+    TableRow { m_table: Table::TowerRoom, m_name: "tower_room" },
+    TableRow { m_table: Table::TowerLibrary, m_name: "tower_library" },
+    TableRow { m_table: Table::Basement, m_name: "basement" },
+    TableRow { m_table: Table::LabyrinthVault, m_name: "labyrinth_vault" },
+    TableRow { m_table: Table::DarkTowerCache, m_name: "dark_tower_cache" },
+    TableRow { m_table: Table::DarkTowerKey, m_name: "dark_tower_key" },
+    TableRow { m_table: Table::DarkTowerBoss, m_name: "dark_tower_boss" },
+    TableRow { m_table: Table::TreeCache, m_name: "tree_cache" },
+    TableRow { m_table: Table::StrongholdCache, m_name: "stronghold_cache" },
+    TableRow { m_table: Table::StrongholdRoom, m_name: "stronghold_room" },
+    TableRow { m_table: Table::StrongholdBoss, m_name: "stronghold_boss" },
+    TableRow { m_table: Table::AuroraCache, m_name: "aurora_cache" },
+    TableRow { m_table: Table::AuroraRoom, m_name: "aurora_room" },
+    TableRow { m_table: Table::AuroraBoss, m_name: "aurora_boss" },
+    TableRow { m_table: Table::TrollGarden, m_name: "troll_garden" },
+    TableRow { m_table: Table::TrollVault, m_name: "troll_vault" },
+];
+
+// TFTreasure.generate's draws: four from the common tier or its useless side, two uncommon, one rare or ultra rare
+struct Draw
+{
+    m_side: Tier,
+    m_tier: Tier,
+    m_rolls: i32,
+}
+
+const DRAWS: [Draw; 3] = [
+    Draw { m_side: Tier::Useless, m_tier: Tier::Common, m_rolls: 4 },
+    Draw { m_side: Tier::Uncommon, m_tier: Tier::Uncommon, m_rolls: 2 },
+    Draw { m_side: Tier::UltraRare, m_tier: Tier::Rare, m_rolls: 1 },
+];
+
+fn tableName(table: Table) -> &'static str
+{
+    TABLES.iter().find(|row| row.m_table == table).expect("every treasure table has a row").m_name
 }
 
 fn entries(table: Table, tier: Tier) -> impl Iterator<Item = &'static Treasure>
@@ -482,47 +530,76 @@ fn entries(table: Table, tier: Tier) -> impl Iterator<Item = &'static Treasure>
     TREASURES.iter().filter(move |row| row.m_table == table && row.m_tier == tier)
 }
 
-// TFTreasureTable.getRandomItem
-fn draw(random: &Random, table: Table, tier: Tier) -> Option<ItemStack>
+fn total(table: Table, tier: Tier) -> i32 { entries(table, tier).map(|row| row.m_rarity).sum() }
+
+// TFTreasure.getCommonItem and getRareItem pick the side tier one time in four when it has entries and the main tier
+// otherwise, as one weighted pick: side rarities scale by the main total and main rarities by three side totals, and
+// an empty main tier leaves its three quarters to nothing; answers side and main multipliers and the nothing weight
+fn scales(side: i32, main: i32) -> (i32, i32, i32)
 {
-    let total: i32 = entries(table, tier).map(|row| row.m_rarity).sum();
-    if total <= 0
+    let rest: i32 = chest::SIDE_ODDS - 1;
+
+    match (side, main)
     {
-        return None;
+        (0, _) => (0, 1, 0),
+        (_, 0) => (1, 0, rest * side),
+        _ => (main, rest * side, 0),
     }
-
-    let mut value: i32 = random.nextIntBounded(total);
-
-    for row in entries(table, tier)
-    {
-        if row.m_rarity > value
-        {
-            let count: i32 = random.nextIntBounded(row.m_quantity) + 1;
-            return Some(ItemStack::of(row.m_item, count).withDamage(row.m_damage));
-        }
-
-        value -= row.m_rarity;
-    }
-
-    None
 }
 
-fn hasEntries(table: Table, tier: Tier) -> bool { entries(table, tier).next().is_some() }
-
-// TFTreasure.getCommonItem and getRareItem
-fn drawWithSide(random: &Random, table: Table, side: Tier, tier: Tier) -> Option<ItemStack>
+fn add(pool: PoolBuilder, table: Table, tier: Tier, scale: i32) -> Result<PoolBuilder>
 {
-    if hasEntries(table, side) && random.nextIntBounded(chest::SIDE_ODDS) == 0
+    entries(table, tier).filter(|_| scale > 0).try_fold(pool, |pool, row|
     {
-        draw(random, table, side)
+        Ok(pool.entry(row.m_item, row.m_rarity * scale, 1, row.m_quantity)?.damage(row.m_damage))
+    })
+}
+
+fn pool(table: Table, draw: &Draw) -> Result<Option<PoolBuilder>>
+{
+    let main: i32 = total(table, draw.m_tier);
+    let side: i32 = if draw.m_side == draw.m_tier
+    {
+        0
     }
     else
     {
-        draw(random, table, tier)
+        total(table, draw.m_side)
+    };
+    if main + side == 0
+    {
+        return Ok(None);
     }
+
+    let (sideScale, mainScale, nothing): (i32, i32, i32) = scales(side, main);
+    let mut pool: PoolBuilder = PoolBuilder::new(draw.m_rolls, draw.m_rolls);
+    pool = add(pool, table, draw.m_side, sideScale)?;
+    pool = add(pool, table, draw.m_tier, mainScale)?;
+    if nothing > 0
+    {
+        pool = pool.nothing(nothing);
+    }
+
+    Ok(Some(pool))
 }
 
-// TFTreasure.generate, a chest filled from the table with a random seeded by its position
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
+{
+    for row in &TABLES
+    {
+        for draw in &DRAWS
+        {
+            if let Some(pool) = pool(row.m_table, draw)?
+            {
+                ctx.loot().pool(LootTarget::Chest, row.m_name, pool.m_spec)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+// TFTreasure.generate, a chest filled from its loot table with a random seeded by its position
 pub(crate) fn place(world: &GenWorld, _random: &Random, table: Table, x: i32, y: i32, z: i32)
 {
     let seed: i64 = world.m_world.seed().wrapping_mul(i64::from(x)).wrapping_add(i64::from(y)) ^ i64::from(z);
@@ -531,33 +608,70 @@ pub(crate) fn place(world: &GenWorld, _random: &Random, table: Table, x: i32, y:
 
     world.set(x, y, z, palette::plain("minecraft:chest"));
 
-    let mut filled: [bool; chest::SLOTS as usize] = [false; chest::SLOTS as usize];
-    let draws: [(Tier, Tier, i32); 3] = [
-        (Tier::Useless, Tier::Common, chest::COMMON),
-        (Tier::Uncommon, Tier::Uncommon, chest::UNCOMMON),
-        (Tier::UltraRare, Tier::Rare, chest::RARE),
-    ];
-
-    for (side, tier, count) in draws
+    let Ok(id) = Identifier::parseIn(tableName(table), &modId())
+    else
     {
-        for _ in 0..count
+        return;
+    };
+
+    let mut filled: [bool; chest::SLOTS as usize] = [false; chest::SLOTS as usize];
+
+    for stack in rollLoot(&id, seed)
+    {
+        let slot: Option<i32> =
+            (0..chest::TRIES).map(|_| random.nextIntBounded(chest::SLOTS)).find(|slot| !filled[*slot as usize]);
+        let Some(slot) = slot
+        else
         {
-            let stack: Option<ItemStack> = drawWithSide(&random, table, side, tier);
-            let slot: Option<i32> =
-                (0..chest::TRIES).map(|_| random.nextIntBounded(chest::SLOTS)).find(|slot| !filled[*slot as usize]);
+            continue;
+        };
 
-            let (Some(stack), Some(slot)) = (stack, slot)
-            else
-            {
-                continue;
-            };
+        filled[slot as usize] = true;
 
-            filled[slot as usize] = true;
+        if let Err(error) = world.m_world.setTileSlot(pos, slot, Some(stack))
+        {
+            b173_api::warn(&format!("treasure {table:?} at {x} {y} {z}: {}", error.0));
+        }
+    }
+}
 
-            if let Err(error) = world.m_world.setTileSlot(pos, slot, Some(stack))
-            {
-                b173_api::warn(&format!("treasure {table:?} at {x} {y} {z}: {}", error.0));
-            }
+#[cfg(test)]
+mod tests
+{
+    use super::*;
+
+    #[test]
+    fn side_tier_takes_a_quarter_of_the_picks()
+    {
+        let (side, main): (i32, i32) = (30, 70);
+        let (sideScale, mainScale, nothing): (i32, i32, i32) = scales(side, main);
+        let sideWeight: i32 = side * sideScale;
+        let all: i32 = sideWeight + main * mainScale + nothing;
+        assert_eq!(sideWeight * chest::SIDE_ODDS, all);
+    }
+
+    #[test]
+    fn empty_main_tier_leaves_three_quarters_to_nothing()
+    {
+        let side: i32 = 20;
+        let (sideScale, mainScale, nothing): (i32, i32, i32) = scales(side, 0);
+        assert_eq!(mainScale, 0);
+        assert_eq!(side * sideScale * chest::SIDE_ODDS, side * sideScale + nothing);
+    }
+
+    #[test]
+    fn without_a_side_tier_the_main_tier_takes_every_pick()
+    {
+        assert_eq!(scales(0, 50), (0, 1, 0));
+    }
+
+    #[test]
+    fn every_table_has_a_unique_name_and_some_treasure()
+    {
+        for (index, row) in TABLES.iter().enumerate()
+        {
+            assert!(TABLES.iter().skip(index + 1).all(|other| other.m_name != row.m_name));
+            assert!(DRAWS.iter().any(|draw| total(row.m_table, draw.m_tier) + total(row.m_table, draw.m_side) > 0));
         }
     }
 }
