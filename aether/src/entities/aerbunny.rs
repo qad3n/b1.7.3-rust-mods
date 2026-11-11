@@ -1,4 +1,4 @@
-use super::{creature, drop, onAetherGrass, sounds};
+use super::{creature, drop, fraction, onAetherGrass, sounds};
 use crate::models::{DEGREES_PER_RADIAN, HALF_PI, Program, aerbunny as model};
 use b173_api::math;
 use b173_api::prelude::*;
@@ -19,7 +19,9 @@ mod hop
     pub const DOUBLE_JUMP: f64 = 0.125;
     pub const PUFF_TICKS: f32 = 11.0;
     pub const PUFF_SCALE: f32 = 0.5;
-    pub const SMOKE: i32 = 3;
+    // EntityAerbunny.jump puffs five times over its 0.4 block body
+    pub const SMOKE: i32 = 5;
+    pub const SIZE: [f32; 2] = [0.4, 0.4];
 }
 
 // the client works the puff out from the hops it sees, EntityAerbunny.puffiness counts down from 11 after a jump
@@ -59,7 +61,15 @@ impl EntityBehavior for Aerbunny
             let _ = entity.setMotion([motionX, hop::JUMP, motionZ]);
             for _ in 0..hop::SMOKE
             {
-                entity.world.particle("explode", info.pos, [0.0; 3]);
+                // EntityLiving.spawnExplosionParticle spreads the puffs over the bunny
+                let world: World = entity.world;
+                let [width, height]: [f64; 2] = hop::SIZE.map(f64::from);
+                let at: [f64; 3] = [
+                    info.pos[0] + fraction(world) * width * 2.0 - width,
+                    info.pos[1] + fraction(world) * height,
+                    info.pos[2] + fraction(world) * width * 2.0 - width,
+                ];
+                world.particle("explode", at, [0.0; 3]);
             }
         }
         else if motionY < hop::MAX_FALL
@@ -182,7 +192,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         {
             template: Identifier::parse("minecraft:pig").ok(),
             texture: Some(TEXTURE.to_owned()),
-            size: Some([0.4, 0.4]),
+            size: Some(hop::SIZE),
             health: Some(5),
             spawn: creature(6),
             drops: Some(vec![drop("minecraft:string", [1, 1])]),
