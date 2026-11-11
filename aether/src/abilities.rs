@@ -118,7 +118,8 @@ pub fn repel(player: Player, worn: &mut Worn)
     }
 }
 
-// AbilityRepulsion.onPlayerAttacked: hits the shield wearer takes from projectiles do no harm
+// PlayerAetherEvents.onLivingAttack: the full phoenix set shrugs off fire, and AbilityRepulsion.onPlayerAttacked
+// lets no projectile through the shield
 fn shielded(event: &mut Event)
 {
     let EventData::Attack { entity, .. } = event.data().clone()
@@ -126,7 +127,14 @@ fn shielded(event: &mut Event)
     {
         return;
     };
-    if entity.player.is_some() && crate::damage::projectile() && Worn::of(Player { id: entity.id }).wearing(SHIELD)
+    if entity.player.is_none()
+    {
+        return;
+    }
+
+    let player: Player = Player { id: entity.id };
+    let fireproof: bool = crate::damage::burning() && crate::player::wearingSet(player, "phoenix");
+    if fireproof || (crate::damage::projectile() && Worn::of(player).wearing(SHIELD))
     {
         event.cancel();
     }

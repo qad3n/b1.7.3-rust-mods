@@ -144,6 +144,8 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Regeneration and weakness are loader effects beside inebriation (`src/effects.rs`): the healing stone gives 610
   ticks of regeneration on eating, the regeneration stone eighty ticks whenever a hurt wearer has none, and ice
   and cloud crystals ten ticks of weakness, as the source's potions.
+- The full phoenix set cancels fire damage (in_fire, on_fire, lava, fireball) as PlayerAetherEvents does, and the
+  Slider only takes a player's own blow, never a projectile, magic, explosion or fire hit, as EntitySlider.
 - The phoenix bow draws while the use key is held (bow pose, the three `bow_pulling` icons after 0, 13 and 17
   ticks) and looses its flaming arrow on release at three times the draw power, as ItemPhoenixBow. Power, Punch,
   Flame and Infinity and the full draw critical have no beta counterpart.

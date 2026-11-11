@@ -451,6 +451,16 @@ impl EntityBehavior for Slider
     fn onHurt(&self, entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
     {
         let world: World = entity.world;
+        // EntitySlider.attackEntityFrom only takes a player's own blow, no shot, spell, blast or fire
+        let indirect: bool = crate::damage::projectile()
+            || crate::damage::magic()
+            || crate::damage::explosion()
+            || crate::damage::burning();
+        if indirect
+        {
+            return None;
+        }
+
         let player: EntityInfo =
             source.and_then(|id| Entity { world, id }.info()).filter(|attacker| attacker.player.is_some())?;
         let info: EntityInfo = entity.info()?;
