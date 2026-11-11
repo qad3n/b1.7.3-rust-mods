@@ -97,6 +97,8 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   release after a short hold (ItemTFCrumbleHorn, ItemTFLampOfCinders, ItemTFOreMagnet); trophies are tile entities
   drawing the bosses' heads (TileEntityTFTrophyRenderer) on a floor turned in sixteenths or against a wall, and drop
   their trophy when broken.
+- Uberous soil joins the `minecraft:crop_soil` and `minecraft:flower_soil` tags, so crops, flowers and saplings stay on
+  it as BlockTFUberousSoil.canSustainPlant allows.
 - Fireflies, cicadas and moonworms are tile entity models (loader api 1.20) as TileEntityTFFireflyRenderer and kin:
   turned to the face they cling to, twitching every ten to twenty seconds, the firefly pulsing its glow and
   letting tiny fireflies drift when a player is near, the cicada singing with notes after each rest, and the

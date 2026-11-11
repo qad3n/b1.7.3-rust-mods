@@ -919,6 +919,9 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
             .tickRandomly()
             .model(BlockModelSpec { cuboids: vec![top], ..BlockModelSpec::default() })
             .drops(vec![drop("minecraft:dirt", vec![1], 1.0)?])
+            // BlockTFUberousSoil.canSustainPlant takes crops and plains plants
+            .tag("minecraft:crop_soil")
+            .tag("minecraft:flower_soil")
             .behavior(UberousSoil),
     )?;
     let stalkHardness: f32 = 1.25;
