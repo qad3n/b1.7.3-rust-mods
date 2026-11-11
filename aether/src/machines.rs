@@ -3,6 +3,7 @@ use crate::names::{block, item};
 use crate::progress::{self, Award};
 use b173_api::prelude::*;
 use b173_api::screen::Draw;
+use b173_api::{JobBuilder, JobMatch, JobOutput, machineFuel, matchJob};
 use std::rc::Rc;
 
 // one AetherEnchantment or AetherFreezable row, a None output gives back the input fully repaired
@@ -236,33 +237,31 @@ struct Hatch
     m_power: i32,
 }
 
-fn recipeFor(machine: &Machine, stack: &ItemStack) -> Option<u16>
-{
-    machine.m_recipes.iter().position(|recipe| stack.item.is(recipe.m_input)).map(|index| index as u16)
-}
+// the machine's job for what sits in one slot, from every mod's jobs in the machine registry
+fn jobFor(machine: &str, stack: &ItemStack) -> Option<JobMatch> { matchJob(machine, &[Some(stack.clone())], &[]) }
 
-fn output(recipe: &Recipe, input: &ItemStack) -> ItemStack
+// a job's one output, or the input itself handed back mended
+fn output(job: &JobMatch, input: &ItemStack) -> Option<ItemStack>
 {
-    match recipe.m_output
+    let made: &JobOutput = job.outputs.first()?;
+    match made.from_input
     {
-        Some(name) => ItemStack::of(name, 1),
-        None => ItemStack { count: 1, damage: 0, ..input.clone() },
+        Some(_) => Some(ItemStack { count: made.count, damage: made.damage.unwrap_or(input.damage), ..input.clone() }),
+        None => made.stack.clone().map(ItemStack::fromRaw),
     }
 }
 
 // repaired tools never stack, so they only go into an empty output slot
-fn fits(recipe: &Recipe, result: &ItemStack, current: &Option<ItemStack>) -> bool
+fn fits(job: &JobMatch, result: &ItemStack, current: &Option<ItemStack>) -> bool
 {
+    let returned: bool = job.outputs.first().is_some_and(|made| made.from_input.is_some());
     match current
     {
         None => true,
 
         Some(stack) =>
         {
-            recipe.m_output.is_some()
-                && stack.item == result.item
-                && stack.damage == result.damage
-                && stack.count < slot::MAX_STACK
+            !returned && stack.item == result.item && stack.damage == result.damage && stack.count < slot::MAX_STACK
         }
     }
 }
@@ -280,9 +279,13 @@ fn setLit(ctx: &mut BlockCtx, was: bool, now: bool)
     }
 }
 
-fn finish(world: World, pos: BlockPos, recipe: &Recipe, input: &ItemStack)
+fn finish(world: World, pos: BlockPos, job: &JobMatch, input: &ItemStack)
 {
-    let result: ItemStack = output(recipe, input);
+    let Some(result) = output(job, input)
+    else
+    {
+        return;
+    };
 
     let merged: ItemStack = match world.tileSlot(pos, slot::OUTPUT)
     {
@@ -297,11 +300,13 @@ fn finish(world: World, pos: BlockPos, recipe: &Recipe, input: &ItemStack)
 
 fn refuel(machine: &Machine, world: World, pos: BlockPos, state: &mut Work)
 {
-    match world.tileSlot(pos, slot::FUEL).filter(|fuel| fuel.item.is(machine.m_fuel))
+    let fuel: Option<ItemStack> = world.tileSlot(pos, slot::FUEL);
+    let ticks: i32 = fuel.as_ref().map_or(0, |fuel| machineFuel(machine.m_name, fuel, false));
+    match fuel.filter(|_| ticks > 0)
     {
         Some(fuel) =>
         {
-            state.m_power += machine::FUEL_TICKS;
+            state.m_power += ticks;
 
             let _ = world.setTileSlot(pos, slot::FUEL, takeOne(fuel));
         }
@@ -351,17 +356,20 @@ fn work(machine: &Machine, ctx: &mut BlockCtx)
     {
         Some(index) =>
         {
-            let recipe: &Recipe = &machine.m_recipes[index as usize];
-
-            if state.m_progress >= state.m_required
-                && let Some(stack) = &input
+            let job: Option<JobMatch> = input.as_ref().and_then(|stack| jobFor(machine.m_name, stack));
+            let done: bool = state.m_progress >= state.m_required;
+            if done
+                && let (Some(stack), Some(job)) = (&input, &job)
+                && job.index == u32::from(index)
             {
-                finish(world, pos, recipe, stack);
+                finish(world, pos, job, stack);
                 state.m_progress = 0;
             }
 
             let current: Option<ItemStack> = world.tileSlot(pos, slot::INPUT);
-            if current.as_ref().and_then(|stack| recipeFor(machine, stack)) != Some(index)
+            let still: bool = current.as_ref().and_then(|stack| jobFor(machine.m_name, stack)).map(|job| job.index)
+                == Some(u32::from(index));
+            if !still
             {
                 state.m_recipe = None;
                 state.m_progress = 0;
@@ -376,14 +384,12 @@ fn work(machine: &Machine, ctx: &mut BlockCtx)
         None =>
         {
             if let Some(stack) = &input
-                && let Some(index) = recipeFor(machine, stack)
+                && let Some(job) = jobFor(machine.m_name, stack)
+                && let Some(result) = output(&job, stack)
+                && fits(&job, &result, &world.tileSlot(pos, slot::OUTPUT))
             {
-                let recipe: &Recipe = &machine.m_recipes[index as usize];
-                if fits(recipe, &output(recipe, stack), &world.tileSlot(pos, slot::OUTPUT))
-                {
-                    state.m_recipe = Some(index);
-                    state.m_required = recipe.m_ticks;
-                }
+                state.m_recipe = u16::try_from(job.index).ok();
+                state.m_required = job.duration;
             }
         }
     }
@@ -445,7 +451,7 @@ fn incubate(ctx: &mut BlockCtx)
     {
         None => state.m_progress = 0,
 
-        Some(stack) if state.m_progress >= machine::HATCH_TICKS =>
+        Some(stack) if jobFor(INCUBATOR, &stack).is_some_and(|job| state.m_progress >= job.duration) =>
         {
             hatchEgg(world, pos, stack);
             state.m_progress = 0;
@@ -457,13 +463,14 @@ fn incubate(ctx: &mut BlockCtx)
 
     if state.m_power <= 0
     {
-        let torch: Option<ItemStack> = world.tileSlot(pos, slot::TORCH).filter(|torch| torch.item.is(AMBROSIUM_TORCH));
-        let fertile: bool = world.tileSlot(pos, slot::EGG).is_some_and(|stack| moa::isEgg(&stack));
-        match torch.filter(|_| fertile)
+        let torch: Option<ItemStack> = world.tileSlot(pos, slot::TORCH);
+        let ticks: i32 = torch.as_ref().map_or(0, |torch| machineFuel(INCUBATOR, torch, false));
+        let fertile: bool = world.tileSlot(pos, slot::EGG).is_some_and(|stack| jobFor(INCUBATOR, &stack).is_some());
+        match torch.filter(|_| fertile && ticks > 0)
         {
             Some(torch) =>
             {
-                state.m_power += machine::TORCH_TICKS;
+                state.m_power += ticks;
 
                 let _ = world.setTileSlot(pos, slot::TORCH, takeOne(torch));
             }
@@ -666,37 +673,27 @@ fn containerScreen(title: &str) -> ScreenBuilder
     ScreenBuilder::new(title, gui::WIDTH, gui::HEIGHT).playerInventory(gui::INVENTORY[0], gui::INVENTORY[1])
 }
 
-// every recipe as a recipe viewer page, its fuel counted at 500 ticks an item
-fn registerPages(ctx: &mut RegisterCtx, machine: &Machine) -> Result<()>
+// every row as a job of the machine registry, which runs it and shows it to recipe viewers
+fn registerJobs(ctx: &mut RegisterCtx, machine: &Machine) -> Result<()>
 {
-    const ANY_DAMAGE: i32 = -1;
-
     ctx.machines().register(machine.m_name, Some(machine.m_title), &[machine.m_name])?;
+    ctx.machines().fuel(machine.m_name, machine.m_fuel, machine::FUEL_TICKS)?;
 
     for recipe in machine.m_recipes
     {
-        let input: ItemStack = ItemStack::of(recipe.m_input, 1);
-        let made: ItemStack = ItemStack::of(recipe.m_output.unwrap_or(recipe.m_input), 1);
-        let fuel: i32 = (recipe.m_ticks + machine::FUEL_TICKS - 1) / machine::FUEL_TICKS;
-        let mut page = ctx
-            .machines()
-            .recipe(machine.m_name)
-            .input(input.withDamage(ANY_DAMAGE))
-            .input(ItemStack::of(machine.m_fuel, fuel))
-            .output(made)
-            .note(&format!("{} ticks", recipe.m_ticks));
-
-        if recipe.m_output.is_none()
+        let mut job: JobBuilder = ctx.machines().job(machine.m_name, recipe.m_ticks).input(recipe.m_input, 1);
+        job = match recipe.m_output
         {
-            page = page.note("Repairs it fully");
-        }
+            Some(made) => job.output(made, 1),
+            None => job.returns(0, Some(0)).note("Repairs it fully"),
+        };
 
         if machine.m_booster.is_some()
         {
-            page = page.note("Faster on enchanted gravitite");
+            job = job.note("Faster on enchanted gravitite");
         }
 
-        page.build()?;
+        job.build()?;
     }
 
     Ok(())
@@ -704,7 +701,7 @@ fn registerPages(ctx: &mut RegisterCtx, machine: &Machine) -> Result<()>
 
 fn registerMachine(ctx: &mut RegisterCtx, machine: &'static Machine) -> Result<()>
 {
-    registerPages(ctx, machine)?;
+    registerJobs(ctx, machine)?;
 
     registerBlock(
         ctx,
@@ -730,15 +727,13 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     registerMachine(ctx, &FREEZER)?;
     registerBlock(ctx, INCUBATOR, INCUBATOR_FACES, "flame", Rc::new(IncubatorTile))?;
     ctx.machines().register(INCUBATOR, Some(INCUBATOR_TITLE), &[INCUBATOR])?;
-    let torches: i32 = (machine::HATCH_TICKS + machine::TORCH_TICKS - 1) / machine::TORCH_TICKS;
+    ctx.machines().fuel(INCUBATOR, AMBROSIUM_TORCH, machine::TORCH_TICKS)?;
     for (kind, egg) in moa::eggs()
     {
         ctx.machines()
-            .recipe(INCUBATOR)
-            .input(ItemStack::of(egg.as_str(), 1))
-            .input(ItemStack::of(AMBROSIUM_TORCH, torches))
-            .note(&format!("Hatches a {kind} moa after {} ticks", machine::HATCH_TICKS))
-            .note(&format!("Each torch burns {} ticks", machine::TORCH_TICKS))
+            .job(INCUBATOR, machine::HATCH_TICKS)
+            .input(&egg, 1)
+            .note(&format!("Hatches a {kind} moa"))
             .build()?;
     }
     ctx.screens().register(

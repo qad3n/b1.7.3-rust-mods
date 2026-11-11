@@ -107,8 +107,6 @@ pub(crate) fn hatch(world: World, egg: &ItemStack, pos: [f64; 3]) -> bool
     moa.setSynced(&state).is_ok()
 }
 
-pub(crate) fn isEgg(stack: &ItemStack) -> bool { TYPES.iter().any(|kind| stack.item.is(&eggName(kind))) }
-
 // every moa egg item with its kind's name, as recipe viewers list what hatches
 pub(crate) fn eggs() -> impl Iterator<Item = (&'static str, String)>
 {
