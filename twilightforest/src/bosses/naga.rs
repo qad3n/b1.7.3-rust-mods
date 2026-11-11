@@ -571,11 +571,12 @@ impl EntityBehavior for Segment
         }
     }
 
-    // EntityTFNagaSegment.attackEntityFrom, two thirds of the hit goes to the naga
+    // EntityTFNagaSegment.attackEntityFrom, two thirds of the hit goes to the naga and blasts and fire pass by
     fn onHurt(&self, entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
     {
         let owner: Owner = entity.data();
-        if source.is_some() && entity.world.isAuthority()
+        let shrugged: bool = crate::combat::hurtBy(crate::combat::kind::EXPLOSION) || crate::combat::burning();
+        if source.is_some() && !shrugged && entity.world.isAuthority()
         {
             let passed: i32 = (f64::from(amount) * 2.0 / 3.0).round() as i32;
             crate::combat::forward(Entity { world: entity.world, id: owner.m_naga }, passed, source);
