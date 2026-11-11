@@ -13,7 +13,7 @@ const STILL: &str = "buildcraft:oil_still";
 const BUCKET: &str = "buildcraft:oil_bucket";
 const HARDNESS: f32 = 100.0;
 const OPACITY: i32 = 3;
-const FEATURE: &str = "buildcraft:oil_deposits";
+const FEATURE: &str = "oil_deposits";
 
 mod deposit
 {
@@ -47,13 +47,13 @@ const LEAVES: &str = "minecraft:leaves";
 const LOGS: &str = "minecraft:logs";
 const GRASS: &str = "minecraft:grass";
 
-struct Placer
+struct Placer<'a>
 {
     m_world: World,
-    m_random: Random,
+    m_random: &'a Random,
 }
 
-impl Placer
+impl Placer<'_>
 {
     fn block(&self, x: i32, y: i32, z: i32) -> i32 { self.m_world.block(BlockPos::new(x, y, z)) }
 
@@ -244,23 +244,14 @@ impl Placer
     }
 }
 
-// a stable seed per chunk from the world seed and the feature's name, so other mods never shift the deposits
-fn seed(world: World, chunkX: i32, chunkZ: i32) -> i64
+// OilPopulate, the loader seeds the random from the feature's name so other mods never shift the deposits
+fn populate(ctx: &FeatureCtx) -> bool
 {
-    const SPREAD_X: i64 = 341873128712;
-    const SPREAD_Z: i64 = 132897987541;
+    let placer: Placer = Placer { m_world: ctx.world, m_random: ctx.random };
 
-    let name: i64 = FEATURE.bytes().fold(0i64, |hash, byte| hash.wrapping_mul(31).wrapping_add(i64::from(byte)));
-    world.seed() ^ name ^ i64::from(chunkX).wrapping_mul(SPREAD_X) ^ i64::from(chunkZ).wrapping_mul(SPREAD_Z)
-}
-
-fn populate(world: World, chunkX: i32, chunkZ: i32)
-{
-    let placer: Placer = Placer { m_world: world, m_random: Random::withSeed(seed(world, chunkX, chunkZ)) };
-    let (x, z): (i32, i32) = (chunkX * 16, chunkZ * 16);
-
-    placer.desert(x, z);
-    placer.deposit(x, z);
+    placer.desert(ctx.origin.x, ctx.origin.z);
+    placer.deposit(ctx.origin.x, ctx.origin.z);
+    true
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
@@ -304,7 +295,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         ItemSpecBuilder::template("minecraft:water_bucket").texture("buildcraft:item/oil_bucket").tag(OIL_BUCKETS),
     )?;
 
-    // the loader runs the overworld's registered generators once per populated chunk on the side that owns it
-    ctx.dimensions()
-        .generator("minecraft:overworld", |chunk| populate(World { dimension: chunk.world }, chunk.x, chunk.z))
+    // a named feature, so the loader lists it and players can turn it off in config/loader.toml
+    ctx.worldgen().custom(FEATURE, FeatureBuilder::custom(FeatureStep::Lakes), populate)
 }
