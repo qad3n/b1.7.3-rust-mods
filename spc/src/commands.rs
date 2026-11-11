@@ -1,4 +1,5 @@
 use crate::abilities::{self, Abilities};
+use b173_api::math::blockOf;
 use b173_api::prelude::*;
 
 mod limits
@@ -228,8 +229,7 @@ fn locate(args: &[String], player: Player) -> Result<String>
     let kind: Identifier = vanillaId(name)?;
     let radius: i32 = number(args, 1, limits::LOCATE)?;
     let (entity, info): (Entity, EntityInfo) = entityOf(player)?;
-    let from: BlockPos =
-        BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32, info.pos[2].floor() as i32);
+    let from: BlockPos = blockOf(info.pos);
 
     let Some(found) = entity.world.locate(&kind, from, radius)?
     else
