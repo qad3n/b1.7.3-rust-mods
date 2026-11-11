@@ -73,6 +73,36 @@ pub(crate) struct Mob
     pub m_headed: &'static [u16],
     // setCurrentItemOrArmor slots 1 to 4, drawn by RenderBiped's armor passes
     pub m_armor: &'static [Worn],
+    pub m_aura: Aura,
+}
+
+// the specks a mob gives off every tick on the client in onLivingUpdate
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum Aura
+{
+    None,
+    // EntityTFSnowGuardian and the ice cores, three snow specks around the eyes at this share of the height
+    Snow(f64),
+    // EntityTFTowerGolem, ground kicked up while it walks and red dust over its body
+    Golem,
+}
+
+mod aura
+{
+    pub const SNOW_SPECKS: i32 = 3;
+    pub const SNOW_SIDE: f64 = 0.3;
+    pub const SNOW_UP: f64 = 0.5;
+    pub const WALKING: f64 = 2.5000003e-7;
+    pub const KICK_ODDS: i32 = 5;
+    pub const KICK_BELOW: f64 = 0.2;
+    pub const KICK_LIFT: f64 = 0.1;
+    pub const KICK_PUSH: f64 = 4.0;
+    pub const KICK_RISE: f64 = 0.5;
+    pub const DUST_DROP: f64 = 0.25;
+    // EntityLivingBase.getEyeHeight
+    pub const EYES: f64 = 0.85;
+    // EntityTFIceShooter and EntityTFIceExploder.getEyeHeight
+    pub const CORE_EYES: f64 = 0.6;
 }
 
 mod speed
@@ -135,6 +165,7 @@ const fn mob(
         m_hidden: &[],
         m_headed: &[],
         m_armor: &[],
+        m_aura: Aura::None,
     }
 }
 
@@ -147,6 +178,8 @@ const fn voiced(mob: Mob, living: Option<&'static str>, hurt: &'static str, deat
 {
     Mob { m_sounds: [living, Some(hurt), Some(death)], ..mob }
 }
+
+const fn aura(mob: Mob, aura: Aura) -> Mob { Mob { m_aura: aura, ..mob } }
 
 const fn shadow(mob: Mob, shadow: f32) -> Mob { Mob { m_shadow: shadow, ..mob } }
 
@@ -844,26 +877,29 @@ pub(crate) static MOBS: [Mob; 44] = [
         ),
         &[("minecraft:slime_ball", [0, 2])],
     ),
-    voiced(
-        drops(
-            mob(
-                "tower_golem",
-                "Tower Golem",
-                MONSTER,
-                tf("carminitegolem"),
-                [1.4, 2.9],
-                40,
-                0.25,
-                9,
-                model!(tf_tower_golem),
-                Look::Posed(models::animated::towerGolemPose),
-                Spawning::Monster,
+    aura(
+        voiced(
+            drops(
+                mob(
+                    "tower_golem",
+                    "Tower Golem",
+                    MONSTER,
+                    tf("carminitegolem"),
+                    [1.4, 2.9],
+                    40,
+                    0.25,
+                    9,
+                    model!(tf_tower_golem),
+                    Look::Posed(models::animated::towerGolemPose),
+                    Spawning::Monster,
+                ),
+                &[("minecraft:iron_ingot", [0, 2]), (crate::ids::block::TOWERWOOD, [0, 2])],
             ),
-            &[("minecraft:iron_ingot", [0, 2]), (crate::ids::block::TOWERWOOD, [0, 2])],
+            None,
+            "random.break",
+            "random.break",
         ),
-        None,
-        "random.break",
-        "random.break",
+        Aura::Golem,
     ),
     acting(
         chitinous(drops(
@@ -987,67 +1023,76 @@ pub(crate) static MOBS: [Mob; 44] = [
         ),
         Ai::Grabber,
     ),
-    iced(drops(
-        mob(
-            "snow_guardian",
-            "Snow Guardian",
-            MONSTER,
-            "twilightforest:armor/yetiarmor_1",
-            [0.6, 1.8],
-            10,
-            0.23,
-            3,
-            model!(tf_snow_guardian),
-            Look::Biped,
-            Spawning::Monster,
-        ),
-        &[(SNOWBALL, [0, 2])],
-    )),
-    acting(
+    aura(
         iced(drops(
             mob(
-                "stable_ice_core",
-                "Stable Ice Core",
+                "snow_guardian",
+                "Snow Guardian",
                 MONSTER,
-                tf("iceshooter"),
-                [0.8, 1.8],
+                "twilightforest:armor/yetiarmor_1",
+                [0.6, 1.8],
                 10,
                 0.23,
                 3,
-                (
-                    models::animated::iceShooterModel,
-                    &models::tf_ice_shooter::PIVOTS,
-                    &models::tf_ice_shooter::ROTATIONS,
-                ),
-                Look::Posed(models::animated::iceShooterPose),
+                model!(tf_snow_guardian),
+                Look::Biped,
                 Spawning::Monster,
             ),
             &[(SNOWBALL, [0, 2])],
         )),
-        Ai::Shooter { shot: shots::ICE_SNOWBALL, period: 20, sound: "random.bow" },
+        Aura::Snow(aura::EYES),
     ),
-    acting(
-        iced(drops(
-            mob(
-                "unstable_ice_core",
-                "Unstable Ice Core",
-                MONSTER,
-                tf("iceexploder"),
-                [0.8, 1.8],
-                10,
-                0.23,
-                3,
-                (
-                    models::animated::iceExploderModel,
-                    &models::tf_ice_exploder::PIVOTS,
-                    &models::tf_ice_exploder::ROTATIONS,
+    aura(
+        acting(
+            iced(drops(
+                mob(
+                    "stable_ice_core",
+                    "Stable Ice Core",
+                    MONSTER,
+                    tf("iceshooter"),
+                    [0.8, 1.8],
+                    10,
+                    0.23,
+                    3,
+                    (
+                        models::animated::iceShooterModel,
+                        &models::tf_ice_shooter::PIVOTS,
+                        &models::tf_ice_shooter::ROTATIONS,
+                    ),
+                    Look::Posed(models::animated::iceShooterPose),
+                    Spawning::Monster,
                 ),
-                Look::Posed(models::animated::iceExploderPose),
-                Spawning::Monster,
-            ),
-            &[(SNOWBALL, [0, 2])],
-        )),
-        Ai::Exploder,
+                &[(SNOWBALL, [0, 2])],
+            )),
+            Ai::Shooter { shot: shots::ICE_SNOWBALL, period: 20, sound: "random.bow" },
+        ),
+        Aura::Snow(aura::CORE_EYES),
+    ),
+    aura(
+        acting(
+            iced(drops(
+                mob(
+                    "unstable_ice_core",
+                    "Unstable Ice Core",
+                    MONSTER,
+                    tf("iceexploder"),
+                    [0.8, 1.8],
+                    10,
+                    0.23,
+                    3,
+                    (
+                        models::animated::iceExploderModel,
+                        &models::tf_ice_exploder::PIVOTS,
+                        &models::tf_ice_exploder::ROTATIONS,
+                    ),
+                    Look::Posed(models::animated::iceExploderPose),
+                    Spawning::Monster,
+                ),
+                &[(SNOWBALL, [0, 2])],
+            )),
+            Ai::Exploder,
+        ),
+        Aura::Snow(aura::CORE_EYES),
     ),
     acting(
         rare(
@@ -1230,6 +1275,75 @@ fn texture(mob: &Mob) -> String
     }
 }
 
+fn spread(world: World) -> f64 { f64::from(crate::ids::fraction(world) - crate::ids::fraction(world)) }
+
+fn half(world: World) -> f64 { f64::from(crate::ids::fraction(world)) - 0.5 }
+
+// onLivingUpdate's specks around a mob
+fn give(mob: &Mob, entity: Entity, info: &EntityInfo)
+{
+    let world: World = entity.world;
+    let [width, height]: [f64; 2] = mob.m_size.map(f64::from);
+
+    match mob.m_aura
+    {
+        Aura::None =>
+        {}
+
+        Aura::Snow(eyes) =>
+        {
+            for _ in 0..aura::SNOW_SPECKS
+            {
+                let at: [f64; 3] = [
+                    info.pos[0] + spread(world) * aura::SNOW_SIDE,
+                    info.pos[1] + height * eyes + spread(world) * aura::SNOW_UP,
+                    info.pos[2] + spread(world) * aura::SNOW_SIDE,
+                ];
+                crate::particles::spawn(world, "snowguardian", at, [0.0; 3]);
+            }
+        }
+
+        Aura::Golem =>
+        {
+            let walking: bool = info.motion[0] * info.motion[0] + info.motion[2] * info.motion[2] > aura::WALKING;
+            if walking && world.random(aura::KICK_ODDS) == 0
+            {
+                kick(world, info, width);
+            }
+
+            if world.random(2) == 0
+            {
+                let at: [f64; 3] = [
+                    info.pos[0] + half(world) * width,
+                    info.pos[1] + f64::from(crate::ids::fraction(world)) * height - aura::DUST_DROP,
+                    info.pos[2] + half(world) * width,
+                ];
+                world.particle("reddust", at, [0.0; 3]);
+            }
+        }
+    }
+}
+
+// EntityTFTowerGolem.onLivingUpdate, bits of the ground under its feet fly up
+fn kick(world: World, info: &EntityInfo, width: f64)
+{
+    let below: BlockPos = BlockPos::new(
+        info.pos[0].floor() as i32,
+        (info.pos[1] - aura::KICK_BELOW).floor() as i32,
+        info.pos[2].floor() as i32,
+    );
+    let block: i32 = world.block(below);
+    if block == 0
+    {
+        return;
+    }
+
+    let at: [f64; 3] =
+        [info.pos[0] + half(world) * width, info.pos[1] + aura::KICK_LIFT, info.pos[2] + half(world) * width];
+    let motion: [f64; 3] = [aura::KICK_PUSH * half(world), aura::KICK_RISE, half(world) * aura::KICK_PUSH];
+    world.particle(&format!("blockcrack_{block}_{}", world.meta(below)), at, motion);
+}
+
 struct Posed
 {
     m_mob: &'static Mob,
@@ -1248,6 +1362,11 @@ impl EntityBehavior for Posed
             {
                 warn(&format!("mob variant: {}", error.0));
             }
+        }
+
+        if !entity.world.isAuthority()
+        {
+            give(self.m_mob, entity, info);
         }
 
         ai::tick(self.m_mob.m_ai, entity, info);
