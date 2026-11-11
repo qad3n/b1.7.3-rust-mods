@@ -541,7 +541,7 @@ pub(crate) fn carve(chunk: &ChunkInfo, blocks: &mut [u16], ids: &Carvable)
     {
         m_blocks: blocks,
         m_ids: ids,
-        m_trollsteinn: crate::ids::blockId(crate::ids::block::TROLLSTEINN),
+        m_trollsteinn: super::palette::id(crate::names::block::TROLLSTEINN),
         m_seed: chunk.seed,
         m_chunkX: chunk.x,
         m_chunkZ: chunk.z,

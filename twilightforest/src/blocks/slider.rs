@@ -1,5 +1,5 @@
 use super::{Kind, Look, base, faces, property, texture, when};
-use crate::ids::{self, block};
+use crate::names::block;
 use b173_api::math::{Face, blockOf, distance};
 use b173_api::prelude::*;
 use std::rc::Rc;
@@ -62,7 +62,7 @@ fn along(meta: i32) -> [i32; 3]
 
 fn playerNear(world: World, pos: BlockPos) -> bool
 {
-    let center: [f64; 3] = ids::center(pos);
+    let center: [f64; 3] = crate::math::center(pos);
 
     world
         .players()
@@ -181,7 +181,7 @@ impl BlockBehavior for Slider
 
         if info.health.is_some()
         {
-            hurt(ctx.world(), &info, ids::center(ctx.pos()), None);
+            hurt(ctx.world(), &info, crate::math::center(ctx.pos()), None);
         }
     }
 }
@@ -227,7 +227,7 @@ fn launch(world: World, pos: BlockPos, meta: i32)
 {
     let state: Slide = Slide { m_block: world.block(pos), m_meta: meta, m_ticks: 0, m_way: way(world, pos, meta) };
 
-    let entity: Entity = match world.spawnEntity(&format!("twilightforest:{}", slide::NAME), ids::center(pos))
+    let entity: Entity = match world.spawnEntity(&format!("twilightforest:{}", slide::NAME), crate::math::center(pos))
     {
         Ok(entity) => entity,
 
@@ -304,7 +304,7 @@ impl EntityBehavior for SlideBlock
 
         if state.m_ticks % slide::SOUND_EVERY == 0
         {
-            let pitch: f32 = 0.9 + ids::fraction(world) * 0.4;
+            let pitch: f32 = 0.9 + crate::math::fraction(world) * 0.4;
             world.playSound(info.pos, slide::SOUND, 1.0, pitch);
         }
 
@@ -345,7 +345,7 @@ fn settle(world: World, entity: Entity, here: BlockPos, state: Slide)
     let placed: bool = world.isAir(here) && world.setBlock(here, state.m_block, state.m_meta).unwrap_or(false);
     if !placed
     {
-        spill(world, ids::center(here));
+        spill(world, crate::math::center(here));
     }
 }
 

@@ -1,7 +1,7 @@
 use super::{dropAt, killer, showBar};
-use crate::ids::{self, item};
 use crate::math::look;
 use crate::models::{Program, tf_hydra, tf_hydra_head, tf_hydra_mortar, tf_hydra_neck};
+use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::math::{distance, flatLength, floor, length, sub, yawTowards};
 use b173_api::prelude::*;
@@ -739,7 +739,7 @@ fn mouthParticles(world: World, info: &EntityInfo, shown: HeadShown)
         info.pos[2] + aim[2] * hydra::MOUTH_REACH,
     ];
 
-    let jitter = || [0, 1, 2].map(|axis| mouth[axis] + f64::from(ids::fraction(world)) - 0.5);
+    let jitter = || [0, 1, 2].map(|axis| mouth[axis] + f64::from(crate::math::fraction(world)) - 0.5);
 
     match shown.m_state
     {
@@ -753,10 +753,10 @@ fn mouthParticles(world: World, info: &EntityInfo, shown: HeadShown)
         {
             for _ in 0..5
             {
-                let speed: f64 = 1.0 + f64::from(ids::fraction(world));
-                let spread: f64 = (5.0 + f64::from(ids::fraction(world)) * 2.5) * 0.0075;
+                let speed: f64 = 1.0 + f64::from(crate::math::fraction(world));
+                let spread: f64 = (5.0 + f64::from(crate::math::fraction(world)) * 2.5) * 0.0075;
                 let motion: [f64; 3] =
-                    aim.map(|axis| (axis + (f64::from(ids::fraction(world)) - 0.5) * spread * 2.0) * speed);
+                    aim.map(|axis| (axis + (f64::from(crate::math::fraction(world)) - 0.5) * spread * 2.0) * speed);
                 world.particle("flame", mouth, motion);
             }
         }
@@ -870,24 +870,28 @@ fn updateHead(entity: Entity, info: &EntityInfo, ticks: i32, number: usize, head
 
     if head.m_state == State::RoarRawr && head.m_progress == 1
     {
-        world.playSound(at, "twilightforest.mob.hydra.roar", 1.25, 0.7 + ids::fraction(world) * 0.3);
+        world.playSound(at, "twilightforest.mob.hydra.roar", 1.25, 0.7 + crate::math::fraction(world) * 0.3);
     }
 
     if head.m_state == State::BiteReady && head.m_progress == hydra::WARN_TICK
     {
-        world.playSound(at, "twilightforest.mob.hydra.warn", 2.0, 0.7 + ids::fraction(world) * 0.3);
+        world.playSound(at, "twilightforest.mob.hydra.warn", 2.0, 0.7 + crate::math::fraction(world) * 0.3);
     }
 
     if head.m_state == State::FlameBreathing && ticks % 5 == 0
     {
-        world.playSound(at, "mob.ghast.fireball", 0.5 + ids::fraction(world), 0.3 + ids::fraction(world) * 0.7);
+        world.playSound(
+            at,
+            "mob.ghast.fireball",
+            0.5 + crate::math::fraction(world),
+            0.3 + crate::math::fraction(world) * 0.7,
+        );
     }
 }
 
 // EntityTFHydra.destroyBlocksInAABB, all but obsidian and bedrock
 fn destroyAround(world: World, center: [f64; 3], half: f64, height: f64)
 {
-    let unbreakable: [i32; 2] = [ids::blockId("minecraft:obsidian"), ids::blockId("minecraft:bedrock")];
     let low: [i32; 3] = [floor(center[0] - half), floor(center[1]), floor(center[2] - half)];
     let high: [i32; 3] = [floor(center[0] + half), floor(center[1] + height), floor(center[2] + half)];
 
@@ -899,7 +903,8 @@ fn destroyAround(world: World, center: [f64; 3], half: f64, height: f64)
             {
                 let pos: BlockPos = BlockPos::new(x, y, z);
                 let (block, meta): (i32, i32) = (world.block(pos), world.meta(pos));
-                if block != 0 && !unbreakable.contains(&block)
+                let unbreakable: bool = blockTagged(block, "c:obsidians") || blockIs(block, "minecraft:bedrock");
+                if block != 0 && !unbreakable
                 {
                     let _ = world.setBlock(pos, 0, 0);
                     let _ = world.breakEffect(pos, block, meta);
@@ -1052,7 +1057,7 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         }
     }
 
-    if ids::fraction(world) < hydra::LOOK_CHANCE
+    if crate::math::fraction(world) < hydra::LOOK_CHANCE
     {
         match crate::entities::closestPlayer(world, info, hydra::SEARCH)
         {
@@ -1062,7 +1067,7 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
                 brain.m_targetTime = hydra::TARGET_TIME + world.random(hydra::TARGET_SPREAD);
             }
 
-            None => brain.m_spin = (ids::fraction(world) - 0.5) * hydra::SPIN,
+            None => brain.m_spin = (crate::math::fraction(world) - 0.5) * hydra::SPIN,
         }
     }
 
@@ -1103,9 +1108,9 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         {
             brain.m_target = None;
 
-            if ids::fraction(world) < hydra::SPIN_CHANCE
+            if crate::math::fraction(world) < hydra::SPIN_CHANCE
             {
-                brain.m_spin = (ids::fraction(world) - 0.5) * hydra::SPIN;
+                brain.m_spin = (crate::math::fraction(world) - 0.5) * hydra::SPIN;
             }
 
             entity.setField(EntityField::Yaw, f64::from(wrap(info.yaw + brain.m_spin)));
@@ -1240,8 +1245,11 @@ fn dying(entity: Entity, info: &EntityInfo, brain: &mut Brain) -> bool
 fn deathPuffs(world: World, info: &EntityInfo)
 {
     let size: f64 = hydra::BODY_SIZE;
-    let jitter =
-        || crate::math::gaussian(f64::from(ids::fraction(world)), f64::from(ids::fraction(world))) * death::SPREAD;
+    let jitter = ||
+    {
+        crate::math::gaussian(f64::from(crate::math::fraction(world)), f64::from(crate::math::fraction(world)))
+            * death::SPREAD
+    };
 
     for _ in 0..death::PUFFS
     {
@@ -1254,9 +1262,9 @@ fn deathPuffs(world: World, info: &EntityInfo)
             "explode"
         };
         let at: [f64; 3] = [
-            info.pos[0] + f64::from(ids::fraction(world)) * size * 2.0 - size,
-            info.pos[1] + f64::from(ids::fraction(world)) * size,
-            info.pos[2] + f64::from(ids::fraction(world)) * size * 2.0 - size,
+            info.pos[0] + f64::from(crate::math::fraction(world)) * size * 2.0 - size,
+            info.pos[1] + f64::from(crate::math::fraction(world)) * size,
+            info.pos[2] + f64::from(crate::math::fraction(world)) * size * 2.0 - size,
         ];
         crate::particles::spawn(world, name, at, [jitter(), jitter(), jitter()]);
     }

@@ -1,5 +1,5 @@
-use crate::ids::{block, item};
 use crate::items::armorName;
+use crate::names::{block, item};
 use b173_api::prelude::*;
 
 // one recipe key, a symbol and the item it stands for

@@ -1,10 +1,12 @@
 use super::generate::GenWorld;
-use crate::ids::{self, block};
+use super::palette;
+use crate::names::block;
+use crate::tags;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
 // the small twilight decorations, TFGenPlantRoots through TFGenCaveStalactite
-const DIRECTIONS: [[i32; 3]; 6] = ids::NEIGHBORS;
+const DIRECTIONS: [[i32; 3]; 6] = crate::math::NEIGHBORS;
 
 mod reach
 {
@@ -46,35 +48,35 @@ fn scatter(random: &Random, x: i32, y: i32, z: i32) -> [i32; 3]
 fn rootHold(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 {
     let block: i32 = world.block(x, y, z);
-    ids::soil(block) || block == world.id(block::ROOT_STRAND) || block == world.id(block::ROOT)
+    blockTagged(block, tags::SOIL) || blockIs(block, block::ROOT_STRAND) || blockIs(block, block::ROOT)
 }
 
 fn trollHold(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 {
     let block: i32 = world.block(x, y, z);
-    ids::stony(block)
-        || [block::TROLL_ROOT, block::TROLLBER, block::UNRIPE_TROLLBER].iter().any(|name| block == world.id(name))
+    blockTagged(block, tags::STONY)
+        || [block::TROLL_ROOT, block::TROLLBER, block::UNRIPE_TROLLBER].iter().any(|name| blockIs(block, name))
 }
 
 fn water(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 {
     let block: i32 = world.block(x, y, z);
-    block == world.id("minecraft:water") || block == world.id("minecraft:flowing_water")
+    blockTagged(block, "minecraft:water")
 }
 
 fn lava(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 {
     let block: i32 = world.block(x, y, z);
-    block == world.id("minecraft:lava") || block == world.id("minecraft:flowing_lava")
+    blockTagged(block, "minecraft:lava")
 }
 
-fn leafy(world: &GenWorld, block: i32) -> bool { block == world.id("minecraft:leaves") || ids::leaves(block) }
+fn leafy(block: i32) -> bool { blockTagged(block, tags::LEAVES) }
 
 // Material.ground and Material.rock, what TFGenerator.isAreaSuitable lets a ruin stand on
 fn ground(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 {
     let block: i32 = world.block(x, y, z);
-    ids::soil(block) || ids::stony(block)
+    blockTagged(block, tags::SOIL) || blockTagged(block, tags::STONY)
 }
 
 // TFGenerator.isAreaSuitable, solid ground under the whole footprint and air above it
@@ -165,7 +167,7 @@ pub(crate) fn trollRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i
 // TFGenWoodRoots, a root line through the stone with an occasional knot of liveroot
 pub(crate) fn woodRoots(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
-    if world.block(x, y, z) != world.id("minecraft:stone")
+    if !world.is(x, y, z, "minecraft:stone")
     {
         return;
     }
@@ -191,7 +193,7 @@ fn woodRoot(world: &GenWorld, random: &Random, origin: [i32; 3], from: [i32; 3],
     let mut dest: [i32; 3] = super::trees::translate(from, f64::from(length), f64::from(angle), f64::from(tilt));
     dest[0] = dest[0].clamp(origin[0] - limit, origin[0] + limit);
     dest[2] = dest[2].clamp(origin[2] - limit, origin[2] + limit);
-    if world.block(dest[0], dest[1], dest[2]) != world.id("minecraft:stone")
+    if !world.is(dest[0], dest[1], dest[2], "minecraft:stone")
     {
         return;
     }
@@ -234,7 +236,7 @@ fn woodRoot(world: &GenWorld, random: &Random, origin: [i32; 3], from: [i32; 3],
 pub(crate) fn groundBlob(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32, size: i32)
 {
     let range: i32 = random.nextIntBounded(size - 2) + 2;
-    let turns: [i32; 3] = [world.id("minecraft:dirt"), world.id("minecraft:grass"), world.id("minecraft:stone")];
+    let turns: [&str; 2] = ["minecraft:dirt", "minecraft:base_stone_overworld"];
 
     for bx in x - range..=x + range
     {
@@ -247,7 +249,8 @@ pub(crate) fn groundBlob(world: &GenWorld, random: &Random, x: i32, y: i32, z: i
 
             for by in y - 1..=y + 1
             {
-                if turns.contains(&world.block(bx, by, bz))
+                let there: i32 = world.block(bx, by, bz);
+                if turns.iter().any(|tag| blockTagged(there, tag))
                 {
                     world.set(bx, by, bz, block);
                 }
@@ -260,7 +263,7 @@ pub(crate) fn groundBlob(world: &GenWorld, random: &Random, x: i32, y: i32, z: i
 pub(crate) fn plants(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, plant: &'static str, amount: i32)
 {
     let mut y: i32 = y;
-    while leafy(world, world.block(x, y, z))
+    while leafy(world.block(x, y, z))
     {
         y -= 1;
         if y <= 0
@@ -303,7 +306,7 @@ const HANG: i32 = 8;
 fn holdsLamp(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 {
     let block: i32 = world.block(x, y, z);
-    block != 0 && (world.info(block).solid || leafy(world, block))
+    block != 0 && (world.info(block).solid || leafy(block))
 }
 
 // TFGenHangingLamps, a firefly jar on a fence chain under the canopy
@@ -335,7 +338,7 @@ pub(crate) fn hangingLamp(world: &GenWorld, x: i32, y: i32, z: i32)
 // TFGenLampposts, a fence post on the grass topped with a firefly jar
 pub(crate) fn lamppost(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
-    if world.block(x, y - 1, z) != world.id("minecraft:grass")
+    if !world.is(x, y - 1, z, "minecraft:grass")
     {
         return;
     }
@@ -358,7 +361,6 @@ pub(crate) fn lamppost(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
 // TFGenFireJet, a smoker or fire jet in the grass over a pocket of lava ringed in stone
 pub(crate) fn fireJet(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, jet: &'static str)
 {
-    let grass: i32 = world.id("minecraft:grass");
     let (stone, flowing): (i32, i32) = (world.id("minecraft:stone"), world.id("minecraft:flowing_lava"));
 
     for _ in 0..4
@@ -366,7 +368,7 @@ pub(crate) fn fireJet(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32,
         let [bx, by, bz] = scatter(random, x, y, z);
         let grassy: bool = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]
             .iter()
-            .all(|[dx, dz]| world.block(bx + dx, by - 1, bz + dz) == grass);
+            .all(|[dx, dz]| world.is(bx + dx, by - 1, bz + dz, "minecraft:grass"));
 
         if !world.isAir(bx, by, bz) || world.height(bx, bz) > by || !grassy
         {
@@ -417,7 +419,7 @@ pub(crate) fn thorns(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 fn thornSpot(world: &GenWorld, at: [i32; 3]) -> bool
 {
     let block: i32 = world.block(at[0], at[1], at[2]);
-    block == 0 || leafy(world, block)
+    block == 0 || leafy(block)
 }
 
 fn step(from: [i32; 3], dir: [i32; 3], distance: i32) -> [i32; 3]
@@ -436,9 +438,9 @@ fn thornArm(
 )
 {
     let spread: i32 = 7;
-    let (thorn, leaves, rose): (i32, i32, i32) =
-        (world.id(block::BROWN_THORNS), world.id(block::THORN_LEAVES), world.id(block::THORN_ROSE));
-    let axis: i32 = i32::from(crate::blocks::axisOf(dir));
+    let axis: &'static str = crate::blocks::AXES[crate::blocks::axisOf(dir)];
+    let thorn: (i32, i32) = palette::with(block::BROWN_THORNS, "axis", axis);
+    let (leaves, rose): (i32, i32) = (world.id(block::THORN_LEAVES), world.id(block::THORN_ROSE));
     let mut complete: bool = false;
 
     for i in 0..length
@@ -449,7 +451,7 @@ fn thornArm(
             break;
         }
 
-        world.setMeta(at[0], at[1], at[2], thorn, axis);
+        world.setMeta(at[0], at[1], at[2], thorn.0, thorn.1);
 
         if i < length - 1
         {
@@ -511,7 +513,6 @@ fn thornArm(
 // TFGenHugeLilyPad, two by two pads on still water turned by a hash of their spot
 pub(crate) fn lilyPads(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 {
-    let pad: i32 = world.id(block::HUGE_LILY_PAD);
     let pieces: [[i32; 2]; 4] = crate::blocks::PAD_PIECES;
 
     for _ in 0..10
@@ -527,7 +528,10 @@ pub(crate) fn lilyPads(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
 
         for (piece, [dx, dz]) in pieces.iter().enumerate()
         {
-            world.setMeta(bx + dx, by, bz + dz, pad, crate::blocks::padMeta(piece, turn));
+            let quarter: [(&str, &str); 2] =
+                [("piece", crate::blocks::QUARTERS[piece]), ("orient", crate::blocks::QUARTERS[turn as usize])];
+            let (pad, meta): (i32, i32) = palette::withTwo(block::HUGE_LILY_PAD, quarter);
+            world.setMeta(bx + dx, by, bz + dz, pad, meta);
         }
     }
 }
@@ -556,17 +560,17 @@ pub(crate) fn bigMushgloom(world: &GenWorld, random: &Random, x: i32, y: i32, z:
         return false;
     }
     let below: i32 = world.block(x, y - 1, z);
-    if below != world.id("minecraft:dirt") && below != world.id("minecraft:grass")
+    if !blockTagged(below, "minecraft:dirt")
     {
         return false;
     }
 
     let gloom: i32 = world.id(block::HUGE_GLOOM);
-    let stem: i32 = 1;
+    let stem: (i32, i32) = palette::with(block::HUGE_GLOOM, "part", "stem");
 
     for dy in 0..height - 2
     {
-        world.setMeta(x, y + dy, z, gloom, stem);
+        world.setMeta(x, y + dy, z, stem.0, stem.1);
     }
 
     let cap = |cy: i32|
@@ -657,7 +661,7 @@ pub(crate) fn randomOre(random: &Random, hill: i32) -> &'static Spike
 }
 
 // Material.ground and Material.rock, grass is neither
-fn earthy(world: &GenWorld, block: i32) -> bool { block == world.id("minecraft:dirt") || ids::stony(block) }
+fn earthy(block: i32) -> bool { blockIs(block, "minecraft:dirt") || blockTagged(block, tags::STONY) }
 
 // TFGenCaveStalactite.generate, a spike from the ceiling or floor of the cave around the spot
 pub(crate) fn stalactite(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, spike: &Spike) -> bool
@@ -668,7 +672,7 @@ pub(crate) fn stalactite(world: &GenWorld, random: &Random, x: i32, y: i32, z: i
     {
         return false;
     };
-    if !earthy(world, world.block(x, ceiling, z))
+    if !earthy(world.block(x, ceiling, z))
     {
         return false;
     }
@@ -683,7 +687,7 @@ pub(crate) fn stalactite(world: &GenWorld, random: &Random, x: i32, y: i32, z: i
         {
             continue;
         }
-        if !earthy(world, block) && !spike.m_hang && !water(world, x, ty, z) && !lava(world, x, ty, z)
+        if !earthy(block) && !spike.m_hang && !water(world, x, ty, z) && !lava(world, x, ty, z)
         {
             return false;
         }

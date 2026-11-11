@@ -1,7 +1,7 @@
 use super::generate::GenWorld;
 use super::scatter::suitable;
 use super::trees::{Placed, leaves, log};
-use crate::ids::block;
+use crate::names::block;
 use crate::treasure::{self, Table};
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
@@ -175,12 +175,7 @@ fn well(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 fn shaft(world: &GenWorld, random: &Random, top: [i32; 3], treasure: bool)
 {
     let [x, y, z] = top;
-    let digs: [i32; 4] = [
-        world.id("minecraft:dirt"),
-        world.id("minecraft:grass"),
-        world.id("minecraft:gravel"),
-        world.id("minecraft:stone"),
-    ];
+    let digs: [&str; 3] = ["minecraft:dirt", "c:gravels", "minecraft:base_stone_overworld"];
 
     let water: i32 = world.id("minecraft:water");
     let deepest: i32 = 20;
@@ -190,7 +185,8 @@ fn shaft(world: &GenWorld, random: &Random, top: [i32; 3], treasure: bool)
     for depth in 1..=deepest
     {
         let by: i32 = y - depth;
-        if !digs.contains(&world.block(x, by, z)) || !world.isSolid(x, by - 1, z)
+        let there: i32 = world.block(x, by, z);
+        if !digs.iter().any(|tag| blockTagged(there, tag)) || !world.isSolid(x, by - 1, z)
         {
             break;
         }

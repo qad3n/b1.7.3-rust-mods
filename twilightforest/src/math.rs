@@ -1,4 +1,5 @@
 use b173_api::math::{cos, sin};
+use b173_api::prelude::{BlockPos, World};
 
 // java.awt.Color.RGBtoHSB
 pub(crate) fn toHsb(red: u32, green: u32, blue: u32) -> (f32, f32, f32)
@@ -129,4 +130,19 @@ pub(crate) fn javaHash(text: &str) -> i32
 {
     let factor: i32 = 31;
     text.encode_utf16().fold(0, |hash: i32, unit| hash.wrapping_mul(factor).wrapping_add(i32::from(unit)))
+}
+
+pub(crate) fn center(pos: BlockPos) -> [f64; 3]
+{
+    [f64::from(pos.x) + 0.5, f64::from(pos.y) + 0.5, f64::from(pos.z) + 0.5]
+}
+
+// the six neighbours of a block, down up north south west east
+pub(crate) const NEIGHBORS: [[i32; 3]; 6] = [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]];
+
+// a random fraction from the world random, the SDK only hands out bounded integers
+pub(crate) fn fraction(world: World) -> f32
+{
+    let resolution: i32 = 1 << 16;
+    world.random(resolution) as f32 / resolution as f32
 }

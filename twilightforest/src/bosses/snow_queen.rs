@@ -1,8 +1,8 @@
 use super::{dropAt, killer, showBar};
 use crate::entities::ai::{eyes, face};
-use crate::ids::{self, item};
 use crate::math::look;
 use crate::models::{Program, bipedPose, tf_snow_queen};
+use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::math::{blockOf, distance, floor, length, sub};
 use b173_api::prelude::*;
@@ -137,7 +137,7 @@ fn hoverSpot(world: World, own: [f64; 3], target: &EntityInfo, height: f64, radi
 
     for _ in 0..queen::SPOT_TRIES
     {
-        let spread = || f64::from((ids::fraction(world) - ids::fraction(world)) * radius);
+        let spread = || f64::from((crate::math::fraction(world) - crate::math::fraction(world)) * radius);
         spot = [target.pos[0] + spread(), target.pos[1] + height, target.pos[2] + spread()];
         let blocked: bool = world.block(blockOf(spot)) != 0;
 
@@ -170,7 +170,7 @@ fn summon(world: World, target: &EntityInfo, brain: &mut Brain)
 
     for _ in 0..queen::SPOT_TRIES
     {
-        let gaussian = |spread: f64| f64::from(ids::fraction(world) - ids::fraction(world)) * spread;
+        let gaussian = |spread: f64| f64::from(crate::math::fraction(world) - crate::math::fraction(world)) * spread;
         let mut at: [f64; 3] =
             [target.pos[0] + gaussian(16.0), target.pos[1] + gaussian(8.0), target.pos[2] + gaussian(16.0)];
 
@@ -216,7 +216,6 @@ fn ageMinions(world: World, brain: &mut Brain)
 // EntityTFSnowQueen.destroyBlocksInAABB, only ice gives way under her drop
 fn smashIce(world: World, info: &EntityInfo)
 {
-    let ice: i32 = ids::blockId("minecraft:ice");
     let below: [i32; 3] = info.pos.map(floor);
 
     for x in -1..=1
@@ -226,7 +225,8 @@ fn smashIce(world: World, info: &EntityInfo)
             for z in -1..=1
             {
                 let pos: BlockPos = BlockPos::new(below[0] + x, below[1] + y, below[2] + z);
-                if world.block(pos) == ice
+                let ice: i32 = world.block(pos);
+                if blockTagged(ice, "minecraft:ice")
                 {
                     let _ = world.setBlock(pos, 0, 0);
                     let _ = world.breakEffect(pos, ice, 0);
@@ -394,7 +394,7 @@ fn shields(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         let Some(live) = live.or_else(||
         {
             let spawned: Entity = world.spawnEntity(&format!("twilightforest:{SHIELD}"), at).ok()?;
-            spawned.setField(EntityField::Block, f64::from(ids::blockId("minecraft:ice")));
+            spawned.setField(EntityField::Block, f64::from(Blocks.id("minecraft:ice").unwrap_or(0)));
             Some(spawned)
         })
         else
@@ -484,7 +484,7 @@ fn sparkle(entity: Entity, info: &EntityInfo)
 
     for _ in 0..3
     {
-        let spread = |by: f32| f64::from((ids::fraction(world) - ids::fraction(world)) * by);
+        let spread = |by: f32| f64::from((crate::math::fraction(world) - crate::math::fraction(world)) * by);
         world.particle(
             "snowballpoof",
             [info.pos[0] + spread(0.3), info.pos[1] + height + spread(0.5), info.pos[2] + spread(0.3)],
@@ -502,10 +502,10 @@ fn sparkle(entity: Entity, info: &EntityInfo)
 
     for _ in 0..10
     {
-        let speed: f64 = 2.0 + f64::from(ids::fraction(world)) * 0.15;
-        let spread: f64 = (2.0 + f64::from(ids::fraction(world)) * 2.5) * 0.0075;
-        let motion: [f64; 3] =
-            [aim[0], 0.0, aim[2]].map(|axis| (axis + (f64::from(ids::fraction(world)) - 0.5) * spread * 2.0) * speed);
+        let speed: f64 = 2.0 + f64::from(crate::math::fraction(world)) * 0.15;
+        let spread: f64 = (2.0 + f64::from(crate::math::fraction(world)) * 2.5) * 0.0075;
+        let motion: [f64; 3] = [aim[0], 0.0, aim[2]]
+            .map(|axis| (axis + (f64::from(crate::math::fraction(world)) - 0.5) * spread * 2.0) * speed);
         world.particle("snowshovel", mouth, motion);
     }
 }

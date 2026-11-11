@@ -1,4 +1,5 @@
 use super::trees::{Builder, Placed, Woods};
+use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
 // TFGenLargeWinter, a two wide spruce of the snowy forest with layered leaves and rows of branches
@@ -50,20 +51,19 @@ pub(crate) fn tree(builder: &Builder, random: &Random, x: i32, y: i32, z: i32) -
     }
 
     let world: &super::generate::GenWorld = builder.m_world;
-    let below: i32 = world.block(x, y - 1, z);
-    let grounded: bool = below == world.id("minecraft:grass") || below == world.id("minecraft:dirt");
+    let grounded: bool = blockTagged(world.block(x, y - 1, z), "minecraft:dirt");
     if !grounded || y >= super::terrain::height() - height
     {
         return false;
     }
 
-    let log: Placed = (world.id("minecraft:log"), winter::SPRUCE);
+    let log: Placed = super::palette::meta("minecraft:log", winter::SPRUCE);
 
     let woods: Woods = Woods
     {
         m_trunk: log,
         m_branch: log,
-        m_leaf: (world.id("minecraft:leaves"), winter::SPRUCE),
+        m_leaf: super::palette::meta("minecraft:leaves", winter::SPRUCE),
         m_root: super::trees::root(),
     };
 

@@ -1,4 +1,3 @@
-use crate::ids;
 use crate::models::{Program, tf_cube_of_annihilation};
 use b173_api::math::{flatLength, floor};
 use b173_api::prelude::*;
@@ -33,10 +32,9 @@ struct Symbol
 // a free block ringed by redstone wire on all eight sides
 fn symbol(world: World, x: i32, y: i32, z: i32) -> bool
 {
-    let wire: i32 = ids::blockId("minecraft:redstone_wire");
     let ring: [[i32; 2]; 8] = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]];
     world.block(BlockPos::new(x, y, z)) == 0
-        && ring.iter().all(|[dx, dz]| world.block(BlockPos::new(x + dx, y, z + dz)) == wire)
+        && ring.iter().all(|[dx, dz]| world.is(BlockPos::new(x + dx, y, z + dz), "minecraft:redstone_wire"))
 }
 
 fn search(world: World, pos: [f64; 3]) -> Option<[i32; 3]>
@@ -60,7 +58,7 @@ fn sparks(world: World, info: &EntityInfo)
 {
     for _ in 0..tuning::SPARKS
     {
-        let spread = || (ids::fraction(world) - ids::fraction(world)) * tuning::SPREAD;
+        let spread = || (crate::math::fraction(world) - crate::math::fraction(world)) * tuning::SPREAD;
         let at: [f64; 3] = [
             info.pos[0] + f64::from(spread()),
             info.pos[1] + f64::from(EYE + spread()),

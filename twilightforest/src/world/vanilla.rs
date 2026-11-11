@@ -1,4 +1,6 @@
 use super::generate::GenWorld;
+use super::palette;
+use crate::tags;
 use b173_api::prelude::*;
 use b173_api::terrain::{Random, math};
 
@@ -7,14 +9,11 @@ const TOP: i32 = 128;
 
 fn grassOrDirt(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 {
-    let below: i32 = world.block(x, y, z);
-    below == world.id("minecraft:grass") || below == world.id("minecraft:dirt")
+    world.is(x, y, z, "minecraft:grass") || world.is(x, y, z, "minecraft:dirt")
 }
 
 fn clearForTree(world: &GenWorld, x: i32, y: i32, z: i32, height: i32, widthAt: impl Fn(i32) -> i32) -> bool
 {
-    let leaves: i32 = world.id("minecraft:leaves");
-
     for cy in y..=y + 1 + height
     {
         let width: i32 = widthAt(cy);
@@ -27,7 +26,7 @@ fn clearForTree(world: &GenWorld, x: i32, y: i32, z: i32, height: i32, widthAt: 
                     return false;
                 }
                 let there: i32 = world.block(cx, cy, cz);
-                if there != 0 && there != leaves
+                if there != 0 && !blockIs(there, "minecraft:leaves")
                 {
                     return false;
                 }
@@ -244,12 +243,10 @@ pub(crate) fn taiga2(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) 
 // WorldGenShrub from 1.7, a log stump wrapped in a leafy mound
 pub(crate) fn shrub(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32) -> bool
 {
-    let leaves: i32 = world.id("minecraft:leaves");
-
     while y > 0
     {
         let there: i32 = world.block(x, y, z);
-        if there != 0 && there != leaves
+        if there != 0 && !blockIs(there, "minecraft:leaves")
         {
             break;
         }
@@ -277,7 +274,7 @@ pub(crate) fn shrub(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i3
 
                 if !corner && !world.isOpaque(cx, cy, cz)
                 {
-                    world.set(cx, cy, cz, leaves);
+                    world.set(cx, cy, cz, world.id("minecraft:leaves"));
                 }
             }
         }
@@ -288,12 +285,10 @@ pub(crate) fn shrub(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i3
 
 fn surfaceBelow(world: &GenWorld, x: i32, mut y: i32, z: i32) -> i32
 {
-    let leaves: i32 = world.id("minecraft:leaves");
-
     loop
     {
         let there: i32 = world.block(x, y, z);
-        if !((there == 0 || there == leaves || crate::ids::leaves(there)) && y > 0)
+        if !((there == 0 || blockTagged(there, tags::LEAVES)) && y > 0)
         {
             return y;
         }
@@ -359,7 +354,10 @@ pub(crate) fn flowers(
     true
 }
 
-pub(crate) fn onSoil(world: &GenWorld, x: i32, y: i32, z: i32) -> bool { crate::ids::soil(world.block(x, y - 1, z)) }
+pub(crate) fn onSoil(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
+{
+    blockTagged(world.block(x, y - 1, z), tags::SOIL)
+}
 
 pub(crate) fn lit(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 {
@@ -372,14 +370,13 @@ pub(crate) fn deadBush(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
 {
     let ground: i32 = surfaceBelow(world, x, y, z);
     let bush: i32 = world.id("minecraft:deadbush");
-    let sand: i32 = world.id("minecraft:sand");
 
     for _ in 0..4
     {
         let (px, py, pz): (i32, i32, i32) = scatter(random, x, ground, z, 8, 4);
         // beta dead bushes need sand, the twilight forest scatters them on any soil
         let below: i32 = world.block(px, py - 1, pz);
-        if world.isAir(px, py, pz) && (below == sand || crate::ids::soil(below))
+        if world.isAir(px, py, pz) && (blockIs(below, "minecraft:sand") || blockTagged(below, tags::SOIL))
         {
             world.set(px, py, pz, bush);
         }
@@ -391,9 +388,8 @@ pub(crate) fn deadBush(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
 // WorldGenReed, sugar cane beside water
 pub(crate) fn reeds(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
-    let water: [i32; 2] = [world.id("minecraft:water"), world.id("minecraft:flowing_water")];
     let reed: i32 = world.id("minecraft:reeds");
-    let wet = |px: i32, py: i32, pz: i32| water.contains(&world.block(px, py, pz));
+    let wet = |px: i32, py: i32, pz: i32| blockTagged(world.block(px, py, pz), "minecraft:water");
 
     for _ in 0..20
     {
@@ -409,7 +405,7 @@ pub(crate) fn reeds(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -
         for dy in 0..tall
         {
             let below: i32 = world.block(px, y + dy - 1, pz);
-            if below == reed || crate::ids::soil(below) || below == world.id("minecraft:sand")
+            if blockIs(below, "minecraft:reeds") || blockTagged(below, tags::SOIL) || blockIs(below, "minecraft:sand")
             {
                 world.set(px, y + dy, pz, reed);
             }
@@ -422,12 +418,12 @@ pub(crate) fn reeds(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -
 // WorldGenPumpkin
 pub(crate) fn pumpkins(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32) -> bool
 {
-    let (pumpkin, grass): (i32, i32) = (world.id("minecraft:pumpkin"), world.id("minecraft:grass"));
+    let pumpkin: i32 = world.id("minecraft:pumpkin");
 
     for _ in 0..64
     {
         let (px, py, pz): (i32, i32, i32) = scatter(random, x, y, z, 8, 4);
-        if world.isAir(px, py, pz) && world.block(px, py - 1, pz) == grass
+        if world.isAir(px, py, pz) && world.is(px, py - 1, pz, "minecraft:grass")
         {
             world.setMeta(px, py, pz, pumpkin, random.nextIntBounded(4));
         }
@@ -439,7 +435,6 @@ pub(crate) fn pumpkins(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
 // WorldGenMinable, an ore vein of this many blocks through stone
 pub(crate) fn ore(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, block: i32, size: i32)
 {
-    let stone: i32 = world.id("minecraft:stone");
     let pi: f32 = std::f32::consts::PI;
     let angle: f32 = random.nextFloat() * pi;
     let spread: f32 = size as f32 / 8.0;
@@ -481,7 +476,7 @@ pub(crate) fn ore(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, blo
                 for bz in minZ..=maxZ
                 {
                     let dz: f64 = (f64::from(bz) + 0.5 - cz) / (swell / 2.0);
-                    if dx * dx + dy * dy + dz * dz < 1.0 && world.block(bx, by, bz) == stone
+                    if dx * dx + dy * dy + dz * dz < 1.0 && world.is(bx, by, bz, "minecraft:stone")
                     {
                         world.set(bx, by, bz, block);
                     }
@@ -499,12 +494,11 @@ pub(crate) fn disc(
     block: i32,
     radius: i32,
     depth: i32,
-    replaces: &[i32],
+    replaces: &[&str],
 )
 {
     let [x, y, z] = at;
-    let water: [i32; 2] = [world.id("minecraft:water"), world.id("minecraft:flowing_water")];
-    if !water.contains(&world.block(x, y, z))
+    if !blockTagged(world.block(x, y, z), "minecraft:water")
     {
         return;
     }
@@ -521,7 +515,8 @@ pub(crate) fn disc(
 
             for by in y - depth..=y + depth
             {
-                if replaces.contains(&world.block(bx, by, bz))
+                let there: i32 = world.block(bx, by, bz);
+                if replaces.iter().any(|name| blockIs(there, name))
                 {
                     world.set(bx, by, bz, block);
                 }
@@ -632,7 +627,7 @@ pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, li
         }
     }
 
-    let (dirt, grass): (i32, i32) = (world.id("minecraft:dirt"), world.id("minecraft:grass"));
+    let grass: i32 = world.id("minecraft:grass");
 
     for lx in 0..LAKE_WIDTH
     {
@@ -641,7 +636,9 @@ pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, li
             for ly in 4..LAKE_HEIGHT
             {
                 let (bx, by, bz): (i32, i32, i32) = (x + lx, y + ly, z + lz);
-                if shape[lakeIndex(lx, lz, ly)] && world.block(bx, by - 1, bz) == dirt && world.height(bx, bz) <= by
+                if shape[lakeIndex(lx, lz, ly)]
+                    && world.is(bx, by - 1, bz, "minecraft:dirt")
+                    && world.height(bx, bz) <= by
                 {
                     world.set(bx, by - 1, bz, grass);
                 }
@@ -649,7 +646,7 @@ pub(crate) fn lake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32, li
         }
     }
 
-    if liquid == world.id("minecraft:lava") || liquid == world.id("minecraft:flowing_lava")
+    if blockTagged(liquid, "minecraft:lava")
     {
         let stone: i32 = world.id("minecraft:stone");
 
@@ -839,19 +836,19 @@ pub(crate) fn dungeon(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
 // WorldGenLiquids, a spring in a stone wall
 pub(crate) fn spring(world: &GenWorld, x: i32, y: i32, z: i32, liquid: i32) -> bool
 {
-    let stone: i32 = world.id("minecraft:stone");
-    if world.block(x, y + 1, z) != stone || world.block(x, y - 1, z) != stone
+    let stone = |x: i32, y: i32, z: i32| world.is(x, y, z, "minecraft:stone");
+    if !stone(x, y + 1, z) || !stone(x, y - 1, z)
     {
         return false;
     }
     let there: i32 = world.block(x, y, z);
-    if there != 0 && there != stone
+    if there != 0 && !blockIs(there, "minecraft:stone")
     {
         return false;
     }
 
     let sides: [[i32; 2]; 4] = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-    let walls: usize = sides.iter().filter(|[dx, dz]| world.block(x + dx, y, z + dz) == stone).count();
+    let walls: usize = sides.iter().filter(|[dx, dz]| stone(x + dx, y, z + dz)).count();
     let open: usize = sides.iter().filter(|[dx, dz]| world.isAir(x + dx, y, z + dz)).count();
     if walls == 3 && open == 1
     {
@@ -871,8 +868,6 @@ pub(crate) fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: 
         return false;
     }
 
-    let leaves: i32 = world.id("minecraft:leaves");
-
     for by in y..=y + 1 + height
     {
         let reach: i32 = if by <= y + 3 { 0 } else { 3 };
@@ -881,7 +876,7 @@ pub(crate) fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: 
             for bz in z - reach..=z + reach
             {
                 let there: i32 = world.block(bx, by, bz);
-                if there != 0 && there != leaves && !crate::ids::leaves(there)
+                if there != 0 && !blockTagged(there, tags::LEAVES)
                 {
                     return false;
                 }
@@ -890,7 +885,7 @@ pub(crate) fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: 
     }
 
     let below: i32 = world.block(x, y - 1, z);
-    if below != world.id("minecraft:dirt") && below != world.id("minecraft:grass")
+    if !blockTagged(below, "minecraft:dirt")
     {
         return false;
     }
@@ -898,11 +893,11 @@ pub(crate) fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: 
     let block: i32 = world.id(
         if red
         {
-            crate::ids::block::HUGE_RED_MUSHROOM
+            crate::names::block::HUGE_RED_MUSHROOM
         }
         else
         {
-            crate::ids::block::HUGE_BROWN_MUSHROOM
+            crate::names::block::HUGE_BROWN_MUSHROOM
         },
     );
 
@@ -947,9 +942,9 @@ pub(crate) fn bigMushroom(world: &GenWorld, random: &Random, x: i32, y: i32, z: 
 // WorldGenBlockBlob, three overlapping balls rolling downhill from the ground
 pub(crate) fn boulder(world: &GenWorld, random: &Random, x: i32, mut y: i32, z: i32, block: i32) -> bool
 {
-    let ground: [i32; 3] = [world.id("minecraft:grass"), world.id("minecraft:dirt"), world.id("minecraft:stone")];
+    let ground = |block: i32| blockTagged(block, "minecraft:dirt") || blockIs(block, "minecraft:stone");
     let lowest: i32 = 3;
-    while y > lowest && (world.isAir(x, y - 1, z) || !ground.contains(&world.block(x, y - 1, z)))
+    while y > lowest && (world.isAir(x, y - 1, z) || !ground(world.block(x, y - 1, z)))
     {
         y -= 1;
     }
@@ -1020,10 +1015,10 @@ pub(crate) fn doublePlant(world: &GenWorld, random: &Random, x: i32, y: i32, z: 
 {
     let plant: (i32, i32) = match kind
     {
-        0 => (world.id("minecraft:yellow_flower"), 0),
-        2 => (world.id("minecraft:tallgrass"), 1),
-        3 => (world.id("minecraft:tallgrass"), 2),
-        _ => (world.id("minecraft:red_flower"), 0),
+        0 => palette::plain("minecraft:yellow_flower"),
+        2 => palette::meta("minecraft:tallgrass", 1),
+        3 => palette::meta("minecraft:tallgrass", 2),
+        _ => palette::plain("minecraft:red_flower"),
     };
 
     let mut placed: bool = false;

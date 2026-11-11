@@ -1,5 +1,5 @@
 use super::{put, texture};
-use crate::ids::{self, item};
+use crate::names::item;
 use crate::progress::{self, Gate};
 use crate::world::biomes::{self, Biome};
 use crate::world::features::{self, Feature};
@@ -160,18 +160,17 @@ const BIOME_SLOTS: usize = u8::MAX as usize + 1;
 // the 1.7 MapColor rgb ItemTFMazeMap gives each ore on an ore map
 struct OreColor
 {
-    m_block: &'static str,
+    m_tag: &'static str,
     m_rgb: u32,
 }
 
-const ORE_COLORS: [OreColor; 7] = [
-    OreColor { m_block: "minecraft:coal_ore", m_rgb: 0x15141F },
-    OreColor { m_block: "minecraft:gold_ore", m_rgb: 0xFAEE4D },
-    OreColor { m_block: "minecraft:iron_ore", m_rgb: 0xA7A7A7 },
-    OreColor { m_block: "minecraft:lapis_ore", m_rgb: 0x4A80FF },
-    OreColor { m_block: "minecraft:redstone_ore", m_rgb: 0x993333 },
-    OreColor { m_block: "minecraft:lit_redstone_ore", m_rgb: 0x993333 },
-    OreColor { m_block: "minecraft:diamond_ore", m_rgb: 0x5CDBD5 },
+const ORE_COLORS: [OreColor; 6] = [
+    OreColor { m_tag: "c:ores/coal", m_rgb: 0x15141F },
+    OreColor { m_tag: "c:ores/gold", m_rgb: 0xFAEE4D },
+    OreColor { m_tag: "c:ores/iron", m_rgb: 0xA7A7A7 },
+    OreColor { m_tag: "c:ores/lapis", m_rgb: 0x4A80FF },
+    OreColor { m_tag: "c:ores/redstone", m_rgb: 0x993333 },
+    OreColor { m_tag: "c:ores/diamond", m_rgb: 0x5CDBD5 },
 ];
 
 // TFMagicMapData and TFMazeMapData, a pixel is a palette slot times four plus its shade, slot 0 is blank
@@ -432,12 +431,10 @@ fn magicPixel(world: World, chart: &mut Chart, step: [i32; 2], offset: [i32; 2])
 // the block an ore map shows under stone, searching three up and down, with its shade
 fn underStone(world: World, x: i32, level: i32, z: i32) -> (i32, u8)
 {
-    let stone: i32 = ids::blockId("minecraft:stone");
-
     for dy in -maze::LEVELS..=maze::LEVELS
     {
         let block: i32 = world.block(BlockPos::new(x, level + dy, z));
-        if block != stone
+        if !blockIs(block, "minecraft:stone")
         {
             let tint: u8 = match dy.signum()
             {
@@ -449,7 +446,7 @@ fn underStone(world: World, x: i32, level: i32, z: i32) -> (i32, u8)
         }
     }
 
-    (stone, shade::FLAT)
+    (Blocks.id("minecraft:stone").unwrap_or(0), shade::FLAT)
 }
 
 fn mazePixel(world: World, chart: &mut Chart, step: [i32; 2], offset: [i32; 2], ores: bool) -> bool
@@ -464,13 +461,12 @@ fn mazePixel(world: World, chart: &mut Chart, step: [i32; 2], offset: [i32; 2], 
     let mut block: i32 = world.block(BlockPos::new(x, chart.m_level, z));
     let mut tint: u8 = shade::FLAT;
 
-    if ores && block == ids::blockId("minecraft:stone")
+    if ores && blockIs(block, "minecraft:stone")
     {
         (block, tint) = underStone(world, x, chart.m_level, z);
     }
 
-    let ore: Option<u32> =
-        ORE_COLORS.iter().find(|ore| ores && ids::blockId(ore.m_block) == block).map(|ore| ore.m_rgb);
+    let ore: Option<u32> = ORE_COLORS.iter().find(|ore| ores && blockTagged(block, ore.m_tag)).map(|ore| ore.m_rgb);
     let rgb: u32 = ore.unwrap_or_else(|| World::mapColor(block));
     let slot: u8 = if rgb == 0 { 0 } else { chart.slot(rgb) };
     let pixel: u8 = slot * shade::LEVELS + tint;

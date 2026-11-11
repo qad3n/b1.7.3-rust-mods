@@ -1,9 +1,9 @@
 use super::{home, killer};
 use crate::entities::ai::{eyes, face};
-use crate::ids::{self, item};
 use crate::items::{put, texture};
 use crate::math::look;
 use crate::models::{Program, bipedPose, tf_yeti_alpha};
+use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::math::{blockOf, distance, flatLength, floor, length, sub};
 use b173_api::prelude::*;
@@ -114,7 +114,6 @@ fn key(entity: Entity) -> (i32, i32) { (entity.world.dimension, entity.id) }
 // EntityTFYetiAlpha.destroyBlocksInAABB, all but obsidian, end stone and bedrock
 fn destroyBox(world: World, low: [f64; 3], high: [f64; 3])
 {
-    let unbreakable: [i32; 2] = [ids::blockId("minecraft:obsidian"), ids::blockId("minecraft:bedrock")];
     let (low, high): (BlockPos, BlockPos) = (blockOf(low), blockOf(high));
     for x in low.x..=high.x
     {
@@ -124,7 +123,7 @@ fn destroyBox(world: World, low: [f64; 3], high: [f64; 3])
             {
                 let pos: BlockPos = BlockPos::new(x, y, z);
                 let (block, meta): (i32, i32) = (world.block(pos), world.meta(pos));
-                if block == 0 || unbreakable.contains(&block)
+                if block == 0 || blockTagged(block, "c:obsidians") || blockIs(block, "minecraft:bedrock")
                 {
                     continue;
                 }
@@ -162,12 +161,12 @@ fn dropAbove(world: World, x: i32, y: i32, z: i32)
 
     let pos: BlockPos = BlockPos::new(x, y + up, z);
     let (block, meta): (i32, i32) = (world.block(pos), world.meta(pos));
-    let _ = world.setBlock(pos, ids::blockId("minecraft:ice"), 0);
+    let _ = world.place(pos, "minecraft:ice");
     let _ = world.breakEffect(pos, block, meta);
     let at: [f64; 3] = [f64::from(x) + 0.5, f64::from(y + up - ice::DROP_FROM), f64::from(z) + 0.5];
     match world.spawnEntity(&format!("twilightforest:{FALLING_ICE}"), at)
     {
-        Ok(spawned) => spawned.setField(EntityField::Block, f64::from(ids::blockId("minecraft:ice"))),
+        Ok(spawned) => spawned.setField(EntityField::Block, f64::from(Blocks.id("minecraft:ice").unwrap_or(0))),
         Err(error) => warn(&format!("cannot drop ice: {}", error.0)),
     }
 }
@@ -206,11 +205,11 @@ fn throwBomb(world: World, from: [f64; 3], to: [f64; 3], owner: Option<i32>)
     let delta: [f64; 3] = sub(aim, from);
     let length: f64 = length(delta).max(1.0e-4);
     // RenderTFThrownIce draws the bomb as a block of ice
-    bomb.setField(EntityField::Block, f64::from(ids::blockId("minecraft:ice")));
+    bomb.setField(EntityField::Block, f64::from(Blocks.id("minecraft:ice").unwrap_or(0)));
 
     let _ = bomb.setMotion(delta.map(|axis| axis / length * bomb::SPEED));
     let _ = bomb.setData(&Bomb { m_owner: owner, ..Bomb::default() });
-    let pitch: f32 = 1.0 / (ids::fraction(world) * 0.4 + 0.8);
+    let pitch: f32 = 1.0 / (crate::math::fraction(world) * 0.4 + 0.8);
     world.playSound(from, "random.bow", 1.0, pitch);
 }
 
@@ -241,7 +240,7 @@ fn throwRider(entity: Entity, info: &EntityInfo, brain: &mut Brain)
 fn stomp(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
-    world.playSound(info.pos, "random.bow", 1.0, 1.0 / (ids::fraction(world) * 0.4 + 0.8));
+    world.playSound(info.pos, "random.bow", 1.0, 1.0 / (crate::math::fraction(world) * 0.4 + 0.8));
 
     for near in world.entitiesNear(info.pos, yeti::STOMP_RANGE)
     {
@@ -446,7 +445,7 @@ fn effects(entity: Entity, info: &EntityInfo)
 
         for _ in 0..20
         {
-            let spread = || f64::from(ids::fraction(world)) - 0.5;
+            let spread = || f64::from(crate::math::fraction(world)) - 0.5;
             let at: [f64; 3] =
                 [info.pos[0] + spread() * width * 0.5, info.pos[1] + eyes, info.pos[2] + spread() * width * 0.5];
             world.particle("splash", at, [spread() * 0.75, 0.0, spread() * 0.75]);
@@ -547,9 +546,6 @@ struct Bomb
 fn chill(world: World, at: [f64; 3])
 {
     let center: BlockPos = blockOf(at);
-    let (water, flowingWater): (i32, i32) = (ids::blockId("minecraft:water"), ids::blockId("minecraft:flowing_water"));
-    let (lava, flowingLava): (i32, i32) = (ids::blockId("minecraft:lava"), ids::blockId("minecraft:flowing_lava"));
-    let snow: i32 = ids::blockId("minecraft:snow_layer");
 
     for x in -bomb::TERRAIN..=bomb::TERRAIN
     {
@@ -559,16 +555,16 @@ fn chill(world: World, at: [f64; 3])
             {
                 let pos: BlockPos = center.offset(x, y, z);
                 let block: i32 = world.block(pos);
-                let replaced: Option<i32> = match block
+                let replaced: Option<&str> = match block
                 {
-                    _ if block == water || block == flowingWater => Some(ids::blockId("minecraft:ice")),
-                    _ if block == lava || block == flowingLava => Some(ids::blockId("minecraft:obsidian")),
-                    0 if World::blockInfo(world.block(pos.offset(0, -1, 0))).opaque => Some(snow),
+                    _ if blockTagged(block, "minecraft:water") => Some("minecraft:ice"),
+                    _ if blockTagged(block, "minecraft:lava") => Some("minecraft:obsidian"),
+                    0 if World::blockInfo(world.block(pos.offset(0, -1, 0))).opaque => Some("minecraft:snow_layer"),
                     _ => None,
                 };
                 if let Some(replaced) = replaced
                 {
-                    let _ = world.setBlock(pos, replaced, 0);
+                    let _ = world.place(pos, replaced);
                 }
             }
         }
@@ -593,8 +589,8 @@ fn zone(entity: Entity, at: [f64; 3], owner: Option<i32>)
             victim.kill();
 
             let pos: BlockPos = blockOf(near.pos);
-            let _ = world.setBlock(pos, ids::blockId("minecraft:ice"), 0);
-            let _ = world.setBlock(pos.offset(0, 1, 0), ids::blockId("minecraft:ice"), 0);
+            let _ = world.place(pos, "minecraft:ice");
+            let _ = world.place(pos.offset(0, 1, 0), "minecraft:ice");
         }
         else
         {
@@ -618,7 +614,7 @@ impl EntityBehavior for IceBomb
         {
             for _ in 0..20
             {
-                let spread = || f64::from(ids::fraction(world) - ids::fraction(world)) * 3.0;
+                let spread = || f64::from(crate::math::fraction(world) - crate::math::fraction(world)) * 3.0;
                 world.particle(
                     "snowballpoof",
                     [info.pos[0] + spread(), info.pos[1] + spread(), info.pos[2] + spread()],
@@ -727,7 +723,7 @@ impl EntityBehavior for FallingIce
         {
             for _ in 0..2
             {
-                let spread = || f64::from(ids::fraction(world) - ids::fraction(world));
+                let spread = || f64::from(crate::math::fraction(world) - crate::math::fraction(world));
                 crate::particles::spawn(
                     world,
                     "snowwarning",
@@ -758,23 +754,24 @@ impl EntityBehavior for FallingIce
             [info.motion[0] * ice::DRAG, (info.motion[1] - fall) * ice::DRAG, info.motion[2] * ice::DRAG];
         let _ = entity.setMotion(motion);
         let below: BlockPos = blockOf([info.pos[0], info.pos[1] - 0.1, info.pos[2]]);
-        let breakable: [i32; 3] =
-            [ids::blockId("minecraft:ice"), ids::blockId("minecraft:stone"), ids::blockId("minecraft:glass")];
+        let breakable = |block: i32|
+        {
+            ["minecraft:ice", "minecraft:stone", "minecraft:glass"].iter().any(|name| blockIs(block, name))
+        };
         let half: i32 = 2;
         for x in -half..=half
         {
             for z in -half..=half
             {
                 let pos: BlockPos = below.offset(x, 0, z);
-                if breakable.contains(&world.block(pos))
+                if breakable(world.block(pos))
                 {
                     let _ = world.setBlock(pos, 0, 0);
                 }
             }
         }
 
-        let landed: bool =
-            state.m_ticks > ice::HANG && world.block(below) != 0 && !breakable.contains(&world.block(below));
+        let landed: bool = state.m_ticks > ice::HANG && world.block(below) != 0 && !breakable(world.block(below));
 
         if landed
         {
@@ -795,7 +792,8 @@ impl EntityBehavior for FallingIce
 
             for _ in 0..ice::SHARDS
             {
-                let spread = || f64::from(ids::fraction(world) - ids::fraction(world)) * ice::SHARD_SPREAD;
+                let spread =
+                    || f64::from(crate::math::fraction(world) - crate::math::fraction(world)) * ice::SHARD_SPREAD;
                 let at: [f64; 3] =
                     [info.pos[0] + spread(), info.pos[1] + ice::SHARD_RISE + spread(), info.pos[2] + spread()];
                 crate::particles::crack(world, "minecraft:ice", 0, at, [0.0; 3]);

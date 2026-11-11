@@ -1,5 +1,4 @@
 use super::ai::{eyes, face, target};
-use crate::ids;
 use crate::math::{gaussian, look};
 use b173_api::math::distance;
 use b173_api::prelude::*;
@@ -122,7 +121,7 @@ pub(crate) fn tick(entity: Entity, info: &EntityInfo, breath: &Breath)
     let next: i32 = match goal
     {
         Some(_) if left > 0 => left - 1,
-        Some(_) if ids::fraction(entity.world) < tuning::CHANCE => tuning::TICKS,
+        Some(_) if crate::math::fraction(entity.world) < tuning::CHANCE => tuning::TICKS,
         _ => 0,
     };
     LEFT.with(|left| left.borrow_mut().insert(key, next));
@@ -156,7 +155,7 @@ pub(crate) fn puff(entity: Entity, info: &EntityInfo, breath: &Breath)
     let [ahead, height] = breath.m_mouth;
     let mouth: [f64; 3] =
         [info.pos[0] + aim[0] * ahead, info.pos[1] + height + aim[1] * ahead, info.pos[2] + aim[2] * ahead];
-    let draw = || f64::from(ids::fraction(world));
+    let draw = || f64::from(crate::math::fraction(world));
 
     for _ in 0..breath.m_puffs
     {
@@ -167,6 +166,6 @@ pub(crate) fn puff(entity: Entity, info: &EntityInfo, breath: &Breath)
     }
 
     let (volume, pitch): (f32, f32) =
-        (ids::fraction(world) * tuning::SOUND_SPREAD, ids::fraction(world) * tuning::SOUND_SPREAD);
+        (crate::math::fraction(world) * tuning::SOUND_SPREAD, crate::math::fraction(world) * tuning::SOUND_SPREAD);
     world.playSound(info.pos, "mob.ghast.fireball", volume, pitch);
 }

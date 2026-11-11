@@ -1,6 +1,7 @@
 use b173_api::prelude::*;
+use std::rc::Rc;
 
-// registry names, shared by registration, generation and behaviors
+// registry names shared by registration generation and behaviors
 pub(crate) mod block
 {
     pub(crate) const KNIGHTMETAL_BLOCK: &str = "knightmetal_block";
@@ -203,146 +204,61 @@ pub(crate) mod item
     pub(crate) const TOWER_KEY: &str = "tower_key";
 }
 
-pub(crate) fn blockId(name: &str) -> i32 { b173_api::Blocks.id(name).unwrap_or(0) }
+// the loader property that carries metadata for blocks without named states, vanilla ones included
+pub(crate) const META: &str = "meta";
 
-pub(crate) fn itemId(name: &str) -> i32 { b173_api::Items.get(name).and_then(|item| item.id()).unwrap_or(0) }
-
-pub(crate) fn center(pos: BlockPos) -> [f64; 3]
+// a vanilla block with the metadata beta stores for it
+pub(crate) fn vanilla(path: &str, meta: i32) -> StateData
 {
-    [f64::from(pos.x) + 0.5, f64::from(pos.y) + 0.5, f64::from(pos.z) + 0.5]
+    StateData::of(Identifier::minecraft(path)).with(META, meta)
 }
 
-// the six neighbours of a block, down up north south west east
-pub(crate) const NEIGHBORS: [[i32; 3]; 6] = [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]];
-
-// what plants and saplings take root in, grass dirt and farmland as in beta
-pub(crate) fn soil(block: i32) -> bool
+// a block's default state, a bare name means one of the forest's own
+pub(crate) fn state(name: &str) -> StateData
 {
-    ["minecraft:grass", "minecraft:dirt", "minecraft:farmland", block::UBEROUS_SOIL]
-        .iter()
-        .any(|name| blockId(name) == block)
+    StateData::of(Identifier::parseIn(name, &modId()).expect("block names in code are valid identifiers"))
 }
 
-// a random fraction from the world random, the SDK only hands out bounded integers
-pub(crate) fn fraction(world: World) -> f32
+// the named state a block and its metadata hold, cached per content epoch
+pub(crate) fn stateAt(world: World, pos: BlockPos) -> Option<Rc<StateData>>
 {
-    let resolution: i32 = 1 << 16;
-    world.random(resolution) as f32 / resolution as f32
+    stateOf(world.block(pos), world.meta(pos))
 }
 
-fn anyOf(block: i32, names: &[&str]) -> bool { names.iter().any(|name| blockId(name) == block) }
+pub(crate) fn stateIn(ctx: &BlockCtx) -> Option<Rc<StateData>> { stateOf(ctx.block(), i32::from(ctx.meta())) }
 
-// blocks of rock material that troll roots hang from
-pub(crate) fn stony(block: i32) -> bool
+// a true or false property, false when the block has no such state
+pub(crate) fn flag(state: Option<Rc<StateData>>, property: &str) -> bool
 {
-    anyOf(
-        block,
-        &[
-            "minecraft:stone",
-            "minecraft:cobblestone",
-            "minecraft:mossy_cobblestone",
-            "minecraft:sandstone",
-            "minecraft:coal_ore",
-            "minecraft:iron_ore",
-            "minecraft:gold_ore",
-            "minecraft:diamond_ore",
-            "minecraft:lapis_ore",
-            "minecraft:redstone_ore",
-            "minecraft:obsidian",
-            block::DEADROCK,
-            block::CRACKED_DEADROCK,
-            block::SOLID_DEADROCK,
-            block::TROLLSTEINN,
-        ],
-    )
+    state.is_some_and(|state| state.flag(property))
 }
 
-// logs and thorns, BlockLog.canSustainLeaves and the blocks that override it
-pub(crate) fn holdsLeaves(block: i32) -> bool
+// a numbered property such as a color or a phase, zero when absent
+pub(crate) fn number(state: Option<Rc<StateData>>, property: &str) -> i32
 {
-    anyOf(
-        block,
-        &[
-            "minecraft:log",
-            block::OAK_LOG,
-            block::CANOPY_LOG,
-            block::MANGROVE_LOG,
-            block::DARKWOOD_LOG,
-            block::TIMEWOOD,
-            block::TRANSWOOD,
-            block::MINEWOOD,
-            block::SORTINGWOOD,
-            block::BROWN_THORNS,
-            block::GREEN_THORNS,
-            block::HUGE_STALK,
-        ],
-    )
+    state.and_then(|state| state.get(property)?.parse().ok()).unwrap_or(0)
 }
 
-// BlockLeaves and the leaves built on it, the ones a broken log tells to decay
-pub(crate) fn decayingLeaves(block: i32) -> bool
+// where a property's value sits in a list, so callers index their own tables
+pub(crate) fn pick(state: Option<Rc<StateData>>, property: &str, values: &[&str]) -> Option<usize>
 {
-    anyOf(
-        block,
-        &[
-            "minecraft:leaves",
-            self::block::OAK_LEAVES,
-            self::block::CANOPY_LEAVES,
-            self::block::MANGROVE_LEAVES,
-            self::block::RAINBOW_LEAVES,
-            self::block::TIME_LEAVES,
-            self::block::TRANS_LEAVES,
-            self::block::MINE_LEAVES,
-            self::block::SORT_LEAVES,
-            self::block::THORN_LEAVES,
-            self::block::BEANSTALK_LEAVES,
-        ],
-    )
+    let state: Rc<StateData> = state?;
+    let value: &str = state.get(property)?;
+    values.iter().position(|known| *known == value)
 }
 
-pub(crate) fn giantBlock(block: i32) -> bool
+// rewrites one property of the block at a spot and keeps the others
+pub(crate) fn setProperty(world: World, pos: BlockPos, property: &str, value: impl ToString) -> Result<bool>
 {
-    anyOf(
-        block,
-        &[self::block::GIANT_COBBLE, self::block::GIANT_LOG, self::block::GIANT_LEAVES, self::block::GIANT_OBSIDIAN],
-    )
+    let state: Rc<StateData> = stateAt(world, pos).ok_or("no block state to change")?;
+    world.setBlockState(pos, StateData::clone(&state).with(property, value))
 }
 
-pub(crate) fn mazestone(block: i32) -> bool
-{
-    anyOf(
-        block,
-        &[
-            self::block::MAZESTONE,
-            self::block::MAZESTONE_BRICK,
-            "chiseled_mazestone",
-            "decorative_mazestone",
-            self::block::CRACKED_MAZESTONE,
-            self::block::MOSSY_MAZESTONE,
-            self::block::MAZESTONE_MOSAIC,
-            self::block::MAZESTONE_BORDER,
-        ],
-    )
-}
+// a block's default state with its stored id and metadata resolved once per content epoch
+pub(crate) fn handle(name: &str) -> StateHandle { StateHandle::new(state(name)) }
 
-// every leaf block the forest grows, so generators treat them as vanilla leaves
-pub(crate) fn leaves(block: i32) -> bool
+// a still source of a fluid, beta keeps the fluid level in metadata and a source holds zero
+pub(crate) fn source(world: World, pos: BlockPos, fluid: &str) -> bool
 {
-    anyOf(
-        block,
-        &[
-            "minecraft:leaves",
-            self::block::OAK_LEAVES,
-            self::block::CANOPY_LEAVES,
-            self::block::MANGROVE_LEAVES,
-            self::block::RAINBOW_LEAVES,
-            self::block::TIME_LEAVES,
-            self::block::TRANS_LEAVES,
-            self::block::MINE_LEAVES,
-            self::block::SORT_LEAVES,
-            self::block::DARK_LEAVES,
-            self::block::THORN_LEAVES,
-            self::block::BEANSTALK_LEAVES,
-        ],
-    )
+    world.tagged(pos, fluid) && stateAt(world, pos).is_some_and(|state| state.get(META) == Some("0"))
 }

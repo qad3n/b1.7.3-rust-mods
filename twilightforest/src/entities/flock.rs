@@ -1,5 +1,4 @@
 use super::ai::target;
-use crate::ids;
 use b173_api::math::{blockOf, distance, flatLength, floor};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
@@ -186,9 +185,9 @@ fn sweat(entity: Entity, info: &EntityInfo)
     for _ in 0..tuning::SPLASHES
     {
         let at: [f64; 3] = [
-            info.pos[0] + (f64::from(ids::fraction(world)) - 0.5) * width,
+            info.pos[0] + (f64::from(crate::math::fraction(world)) - 0.5) * width,
             info.pos[1] + height,
-            info.pos[2] + (f64::from(ids::fraction(world)) - 0.5) * width,
+            info.pos[2] + (f64::from(crate::math::fraction(world)) - 0.5) * width,
         ];
         world.particle("splash", at, [0.0; 3]);
     }

@@ -278,7 +278,7 @@ fn standable(world: &GenWorld, x: i32, y: i32, z: i32) -> bool
 {
     let floor: i32 = world.block(x, y - 1, z);
     world.isOpaque(x, y - 1, z)
-        && floor != world.id("minecraft:bedrock")
+        && !blockIs(floor, "minecraft:bedrock")
         && !world.isOpaque(x, y, z)
         && !world.isLiquid(x, y, z)
         && !world.isOpaque(x, y + 1, z)

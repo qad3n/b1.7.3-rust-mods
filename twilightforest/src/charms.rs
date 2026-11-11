@@ -1,5 +1,5 @@
-use crate::ids::item;
 use crate::items::ARMOR_FIRST_SLOT;
+use crate::names::item;
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;

@@ -1,5 +1,7 @@
 use super::generate::GenWorld;
-use crate::ids::{self, block};
+use super::palette;
+use crate::names::block;
+use crate::tags;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
@@ -37,29 +39,29 @@ const MAGIC_LEAVES: [&str; 4] = [block::TIME_LEAVES, block::TRANS_LEAVES, block:
 const CORES: [&str; 4] = [block::TIME_CORE, block::TRANS_CORE, block::MINE_CORE, block::SORT_CORE];
 
 // TF log metadata to this port's block and axis state
-fn logFrom(names: &[&str; 4], meta: i32) -> Placed
+fn logFrom(woods: &[&'static str; 4], meta: i32) -> Placed
 {
-    let axis: i32 = match meta & orient::BARK
+    let axis: &str = match meta & orient::BARK
     {
-        orient::X => 1,
-        orient::Z => 2,
-        orient::BARK => 3,
-        _ => 0,
+        orient::X => "x",
+        orient::Z => "z",
+        orient::BARK => "none",
+        _ => "y",
     };
-    (ids::blockId(names[(meta & 3) as usize]), axis)
+    palette::with(woods[(meta & 3) as usize], "axis", axis)
 }
 
 pub(crate) fn log(meta: i32) -> Placed { logFrom(&PLAIN_WOODS, meta) }
 
 pub(crate) fn magicLog(meta: i32) -> Placed { logFrom(&MAGIC_WOODS, meta) }
 
-pub(crate) fn leaves(meta: i32) -> Placed { (ids::blockId(PLAIN_LEAVES[(meta & 3) as usize]), 0) }
+pub(crate) fn leaves(meta: i32) -> Placed { palette::plain(PLAIN_LEAVES[(meta & 3) as usize]) }
 
-pub(crate) fn magicLeaves(meta: i32) -> Placed { (ids::blockId(MAGIC_LEAVES[(meta & 3) as usize]), 0) }
+pub(crate) fn magicLeaves(meta: i32) -> Placed { palette::plain(MAGIC_LEAVES[(meta & 3) as usize]) }
 
-pub(crate) fn core(kind: i32) -> Placed { (ids::blockId(CORES[(kind & 3) as usize]), 0) }
+pub(crate) fn core(kind: i32) -> Placed { palette::plain(CORES[(kind & 3) as usize]) }
 
-pub(crate) fn root() -> Placed { (ids::blockId(block::ROOT), 0) }
+pub(crate) fn root() -> Placed { palette::plain(block::ROOT) }
 
 // the woods a TF tree generator draws with, TFTreeGenerator treeBlock branchBlock leafBlock rootBlock
 #[derive(Clone, Copy)]
@@ -198,7 +200,7 @@ impl Builder<'_>
     pub(crate) fn putLeaf(&self, x: i32, y: i32, z: i32, placed: Placed)
     {
         let there: i32 = self.block(x, y, z);
-        if there == 0 || !self.m_world.info(there).opaque || ids::leaves(there)
+        if there == 0 || !self.m_world.info(there).opaque || blockTagged(there, tags::LEAVES)
         {
             self.set(x, y, z, placed);
         }
@@ -323,9 +325,7 @@ impl Builder<'_>
             return self.nearSolid(x, y, z);
         }
 
-        there != self.m_world.id("minecraft:bedrock")
-            && there != self.m_world.id("minecraft:obsidian")
-            && there != self.m_world.id(block::SHIELD)
+        !blockIs(there, "minecraft:bedrock") && !blockIs(there, "minecraft:obsidian") && !blockIs(there, block::SHIELD)
     }
 
     pub(crate) fn placeRoot(&self, x: i32, y: i32, z: i32, placed: Placed)
@@ -381,8 +381,7 @@ impl Builder<'_>
 
     pub(crate) fn soilBelow(&self, x: i32, y: i32, z: i32) -> bool
     {
-        let below: i32 = self.block(x, y - 1, z);
-        below == self.m_world.id("minecraft:grass") || below == self.m_world.id("minecraft:dirt")
+        blockTagged(self.block(x, y - 1, z), "minecraft:dirt")
     }
 }
 
@@ -421,7 +420,10 @@ mod small
                 for cz in z - width..=z + width
                 {
                     let there: i32 = builder.block(cx, cy, cz);
-                    let clear: bool = there == 0 || ids::leaves(there) || ids::soil(there) || ids::holdsLeaves(there);
+                    let clear: bool = there == 0
+                        || blockTagged(there, tags::LEAVES)
+                        || blockTagged(there, tags::SOIL)
+                        || blockTagged(there, tags::LOGS);
                     if !clear
                     {
                         return false;
@@ -460,7 +462,7 @@ mod small
         for dy in 0..height
         {
             let there: i32 = builder.block(x, y + dy, z);
-            if there == 0 || ids::leaves(there)
+            if there == 0 || blockTagged(there, tags::LEAVES)
             {
                 builder.set(x, y + dy, z, woods.m_trunk);
             }
@@ -881,7 +883,7 @@ mod swamp
     pub fn mangrove(builder: &Builder, random: &Random, x: i32, y: i32, z: i32, onWater: bool) -> bool
     {
         let woods: Woods = Woods::plain(2, 2);
-        let wet: bool = builder.block(x, y - 1, z) == builder.m_world.id("minecraft:water");
+        let wet: bool = blockIs(builder.block(x, y - 1, z), "minecraft:water");
         if (onWater && !wet) || y >= 109
         {
             return false;
@@ -956,14 +958,14 @@ mod dark
         while dy >= super::super::terrain::SEA_LEVEL
         {
             let under: i32 = builder.block(x, dy - 1, z);
-            if ids::soil(under)
+            if blockTagged(under, tags::SOIL)
             {
                 found = true;
                 y = dy;
                 break;
             }
 
-            if builder.m_world.isOpaque(x, dy - 1, z) && !ids::leaves(under)
+            if builder.m_world.isOpaque(x, dy - 1, z) && !blockTagged(under, tags::LEAVES)
             {
                 break;
             }
@@ -975,7 +977,7 @@ mod dark
         {
             return false;
         }
-        let woody = |bx: i32, bz: i32| ids::holdsLeaves(builder.block(bx, y, bz));
+        let woody = |bx: i32, bz: i32| blockTagged(builder.block(bx, y, bz), tags::LOGS);
         if woody(x + 1, z) || woody(x - 1, z) || woody(x, z + 1) || woody(x, z - 1)
         {
             return false;
@@ -1013,7 +1015,7 @@ mod dark
     }
 }
 
-pub(crate) fn soil(block: i32) -> bool { ids::soil(block) }
+pub(crate) fn soil(block: i32) -> bool { blockTagged(block, tags::SOIL) }
 
 // BlockTFSapling.growTree, the sapling steps aside for its tree and comes back when the tree does not fit
 pub(crate) fn growSapling(world: World, pos: BlockPos, sapling: i32, tree: Tree)

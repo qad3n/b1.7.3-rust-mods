@@ -1,8 +1,8 @@
 use super::{Home, home, killer};
 use crate::entities::ai::face;
 use crate::entities::shots::{self, THROWN_AXE, THROWN_PICK};
-use crate::ids;
 use crate::models::{Program, bipedPose, combine, tf_knight_phantom, tf_phantom_armor};
+use crate::names;
 use crate::progress::{self, Gate};
 use crate::treasure::{self, Table};
 use crate::world::generate::GenWorld;
@@ -310,7 +310,7 @@ fn throwWeapon(entity: Entity, info: &EntityInfo, state: &Knight, target: &Entit
 {
     let world: World = entity.world;
     let height: f64 = entity.field(EntityField::Height) * knight::HAND;
-    let pitch: f32 = (ids::fraction(world) - ids::fraction(world)) * 0.2 + 0.4;
+    let pitch: f32 = (crate::math::fraction(world) - crate::math::fraction(world)) * 0.2 + 0.4;
     world.playSound(info.pos, "random.bow", 1.0, pitch);
 
     match state.m_weapon
@@ -447,9 +447,11 @@ fn trail(entity: Entity, info: &EntityInfo)
     {
         let spot = ||
         {
-            let x: f64 = info.pos[0] + (f64::from(ids::fraction(world) * ids::fraction(world)) - 0.5) * width;
-            let y: f64 = info.pos[1] + f64::from(ids::fraction(world)) * (height - 0.75) + 0.5;
-            let z: f64 = info.pos[2] + (f64::from(ids::fraction(world) * ids::fraction(world)) - 0.5) * width;
+            let x: f64 =
+                info.pos[0] + (f64::from(crate::math::fraction(world) * crate::math::fraction(world)) - 0.5) * width;
+            let y: f64 = info.pos[1] + f64::from(crate::math::fraction(world)) * (height - 0.75) + 0.5;
+            let z: f64 =
+                info.pos[2] + (f64::from(crate::math::fraction(world) * crate::math::fraction(world)) - 0.5) * width;
             [x, y, z]
         };
         world.particle("smoke", spot(), [0.0, 0.1, 0.0]);
@@ -531,9 +533,9 @@ impl EntityBehavior for KnightPhantom
         let shown: Shown = b173_api::fromBytes(&input.synced).unwrap_or_default();
         let weapon: &str = match shown.m_weapon
         {
-            Weapon::Sword => ids::item::KNIGHTLY_SWORD,
-            Weapon::Axe => ids::item::KNIGHTLY_AXE,
-            Weapon::Pick => ids::item::KNIGHTLY_PICK,
+            Weapon::Sword => names::item::KNIGHTLY_SWORD,
+            Weapon::Axe => names::item::KNIGHTLY_AXE,
+            Weapon::Pick => names::item::KNIGHTLY_PICK,
         };
         body.held(crate::models::biped::RIGHT_ARM, weapon);
 
@@ -565,7 +567,7 @@ pub(crate) fn spawnGroup(world: World, pos: BlockPos)
             f64::from(pos.z) + 0.5 + angle.sin() * knight::RING,
         ];
 
-        let yaw: f32 = ids::fraction(world) * 360.0;
+        let yaw: f32 = crate::math::fraction(world) * 360.0;
         let Some(spawned) = crate::entities::spawnAt(world, &format!("twilightforest:{NAME}"), at, yaw)
         else
         {

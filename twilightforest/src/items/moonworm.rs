@@ -1,8 +1,8 @@
 use super::magic::{held, holdInUse};
 use super::{put, texture};
 use crate::entities::shots::{self, MOONWORM_SHOT};
-use crate::ids::{self, block, item};
 use crate::math::look;
+use crate::names::{self, block, item};
 use b173_api::math::add;
 use b173_api::prelude::*;
 
@@ -36,10 +36,11 @@ pub(crate) fn attach(world: World, pos: BlockPos, face: i32) -> bool
         return false;
     }
 
-    let placed: bool = world.setBlock(at, ids::blockId(block::MOONWORM), meta).is_ok();
+    // the moonworm keeps the torch template's metadata, which has no named state
+    let placed: bool = world.setBlockState(at, names::state(block::MOONWORM).with(names::META, meta)).is_ok();
     if placed
     {
-        world.playSound(ids::center(at), "mob.slime", 0.5, 0.8);
+        world.playSound(crate::math::center(at), "mob.slime", 0.5, 0.8);
     }
 
     placed
@@ -52,7 +53,7 @@ impl ItemBehavior for MoonwormQueen
 {
     fn onUseOnBlock(&self, world: World, player: Player, stack: ItemStack, pos: BlockPos, face: i32) -> Use
     {
-        if stack.damage >= queen::CHARGES || world.block(pos) == ids::blockId(block::MOONWORM)
+        if stack.damage >= queen::CHARGES || world.is(pos, block::MOONWORM)
         {
             return Use::Pass;
         }

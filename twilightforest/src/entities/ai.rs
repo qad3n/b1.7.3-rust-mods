@@ -162,7 +162,7 @@ fn shoot(entity: Entity, info: &EntityInfo, shot: &str, period: i32, sound: &str
 
     if shots::fire(entity.world, shot, start, aim, tuning::SHOT_SPEED, tuning::SHOT_SPREAD, Some(entity.id)).is_some()
     {
-        let pitch: f32 = 1.0 / (crate::ids::fraction(entity.world) * 0.4 + 0.8);
+        let pitch: f32 = 1.0 / (crate::math::fraction(entity.world) * 0.4 + 0.8);
         entity.world.playSound(info.pos, sound, 1.0, pitch);
     }
 
@@ -341,8 +341,6 @@ pub(crate) fn ripen(entity: Entity, info: &EntityInfo)
         return;
     }
 
-    let (unripe, ripe): (i32, i32) =
-        (crate::ids::blockId(crate::ids::block::UNRIPE_TROLLBER), crate::ids::blockId(crate::ids::block::TROLLBER));
     let [x, y, z]: [i32; 3] = info.pos.map(floor);
     let range: i32 = tuning::RIPEN_RANGE;
     for dx in -range..range
@@ -352,12 +350,12 @@ pub(crate) fn ripen(entity: Entity, info: &EntityInfo)
             for dz in -range..range
             {
                 let pos: BlockPos = BlockPos::new(x + dx, y + dy, z + dz);
-                if world.block(pos) != unripe || world.random(2) != 0
+                if !world.is(pos, crate::names::block::UNRIPE_TROLLBER) || world.random(2) != 0
                 {
                     continue;
                 }
 
-                if let Err(error) = world.setBlock(pos, ripe, 0)
+                if let Err(error) = world.place(pos, crate::names::block::TROLLBER)
                 {
                     warn(&format!("trollber ripen: {}", error.0));
                     continue;
@@ -401,7 +399,6 @@ pub(crate) fn termiteHurt(entity: Entity, source: Option<i32>)
 fn summon(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
-    let infested: i32 = crate::ids::blockId(crate::ids::block::INFESTED_TOWERWOOD);
     let [x, y, z]: [i32; 3] = info.pos.map(floor);
 
     for dy in outward(tuning::SUMMON_RISE)
@@ -411,7 +408,8 @@ fn summon(entity: Entity, info: &EntityInfo)
             for dz in outward(tuning::SUMMON_REACH)
             {
                 let pos: BlockPos = BlockPos::new(x + dx, y + dy, z + dz);
-                if world.block(pos) != infested
+                let infested: i32 = world.block(pos);
+                if !blockIs(infested, crate::names::block::INFESTED_TOWERWOOD)
                 {
                     continue;
                 }
@@ -457,15 +455,15 @@ fn burrow(entity: Entity, info: &EntityInfo)
     }
 
     let world: World = entity.world;
-    let [dx, dy, dz]: [i32; 3] = crate::ids::NEIGHBORS[world.random(6) as usize];
+    let [dx, dy, dz]: [i32; 3] = crate::math::NEIGHBORS[world.random(6) as usize];
     let pos: BlockPos = BlockPos::new(floor(info.pos[0]) + dx, floor(info.pos[1] + 0.5) + dy, floor(info.pos[2]) + dz);
 
-    if world.block(pos) != crate::ids::blockId(crate::ids::block::TOWERWOOD)
+    if !world.is(pos, crate::names::block::TOWERWOOD)
     {
         return;
     }
 
-    if let Err(error) = world.setBlock(pos, crate::ids::blockId(crate::ids::block::INFESTED_TOWERWOOD), 0)
+    if let Err(error) = world.place(pos, crate::names::block::INFESTED_TOWERWOOD)
     {
         warn(&format!("termite burrow: {}", error.0));
         return;

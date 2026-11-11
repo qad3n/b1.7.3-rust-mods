@@ -1,8 +1,8 @@
 use super::ai::{self, Ai};
 use super::{drop, shots};
-use crate::ids::item;
 use crate::models::armor::{Piece, Worn};
 use crate::models::{self, Program, bipedPose, quadrupedPose};
+use crate::names::item;
 use crate::world::biomes::Biome;
 use b173_api::prelude::*;
 use std::rc::Rc;
@@ -914,7 +914,7 @@ pub(crate) static MOBS: [Mob; 44] = [
                     Look::Posed(models::animated::towerGolemPose),
                     Spawning::Monster,
                 ),
-                &[("minecraft:iron_ingot", [0, 2]), (crate::ids::block::TOWERWOOD, [0, 2])],
+                &[("minecraft:iron_ingot", [0, 2]), (crate::names::block::TOWERWOOD, [0, 2])],
             ),
             None,
             "random.break",
@@ -1296,9 +1296,9 @@ fn texture(mob: &Mob) -> String
     }
 }
 
-fn spread(world: World) -> f64 { f64::from(crate::ids::fraction(world) - crate::ids::fraction(world)) }
+fn spread(world: World) -> f64 { f64::from(crate::math::fraction(world) - crate::math::fraction(world)) }
 
-fn half(world: World) -> f64 { f64::from(crate::ids::fraction(world)) - 0.5 }
+fn half(world: World) -> f64 { f64::from(crate::math::fraction(world)) - 0.5 }
 
 // onLivingUpdate's specks around a mob
 fn give(mob: &Mob, entity: Entity, info: &EntityInfo)
@@ -1336,7 +1336,7 @@ fn give(mob: &Mob, entity: Entity, info: &EntityInfo)
             {
                 let at: [f64; 3] = [
                     info.pos[0] + half(world) * width,
-                    info.pos[1] + f64::from(crate::ids::fraction(world)) * height - aura::DUST_DROP,
+                    info.pos[1] + f64::from(crate::math::fraction(world)) * height - aura::DUST_DROP,
                     info.pos[2] + half(world) * width,
                 ];
                 world.particle("reddust", at, [0.0; 3]);

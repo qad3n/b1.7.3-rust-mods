@@ -1,6 +1,6 @@
 use super::{Cube, Kind, Look, base, drop, texture, tough, vanillaTexture};
 use crate::colors;
-use crate::ids::{self, block};
+use crate::names::{self, block};
 use b173_api::prelude::*;
 
 mod towerwood
@@ -392,15 +392,15 @@ fn deviceRow(device: Device) -> &'static DeviceRow
     DEVICES.iter().find(|row| row.m_device == device).expect("every device has a row")
 }
 
-pub(crate) fn deviceId(device: Device) -> i32 { ids::blockId(deviceRow(device).m_name) }
+pub(crate) fn deviceName(device: Device) -> &'static str { deviceRow(device).m_name }
 
 fn deviceAt(world: World, pos: BlockPos) -> Option<Device>
 {
     let block: i32 = world.block(pos);
-    DEVICES.iter().find(|row| ids::blockId(row.m_name) == block).map(|row| row.m_device)
+    DEVICES.iter().find(|row| blockIs(block, row.m_name)).map(|row| row.m_device)
 }
 
-fn center(pos: BlockPos) -> [f64; 3] { ids::center(pos) }
+fn center(pos: BlockPos) -> [f64; 3] { crate::math::center(pos) }
 
 fn click(world: World, pos: BlockPos, volume: f32, pitch: f32)
 {
@@ -410,13 +410,13 @@ fn click(world: World, pos: BlockPos, volume: f32, pitch: f32)
 // BlockTFTowerDevice.areNearbyLockBlocks
 pub(crate) fn locked(world: World, pos: BlockPos) -> bool
 {
-    let lock: i32 = deviceId(Device::Locked);
+    let lock: &str = deviceName(Device::Locked);
     let range: i32 = device::LOCK_RANGE;
     (-range..=range)
-        .any(|dx| (-range..=range).any(|dy| (-range..=range).any(|dz| world.block(pos.offset(dx, dy, dz)) == lock)))
+        .any(|dx| (-range..=range).any(|dy| (-range..=range).any(|dz| world.is(pos.offset(dx, dy, dz), lock))))
 }
 
-fn swap(world: World, pos: BlockPos, to: Device) { let _ = world.setBlock(pos, deviceId(to), 0); }
+fn swap(world: World, pos: BlockPos, to: Device) { let _ = world.place(pos, deviceName(to)); }
 
 fn delayFor(world: World, to: Device) -> i32
 {
@@ -438,7 +438,7 @@ pub(crate) fn activate(world: World, pos: BlockPos, to: Device)
     swap(world, pos, to);
     world.playSound(center(pos), "random.pop", 0.3, 0.6);
 
-    let _ = world.scheduleTick(pos, deviceId(to), delayFor(world, to));
+    let _ = world.scheduleTick(pos, world.block(pos), delayFor(world, to));
 }
 
 // BlockTFTowerDevice.checkAndActivateVanishBlock
@@ -485,14 +485,7 @@ pub(crate) fn unlock(world: World, pos: BlockPos) -> bool
 
 fn reactorReady(world: World, pos: BlockPos) -> bool
 {
-    let redstone: i32 = ids::blockId("minecraft:redstone_ore");
-    let glowing: i32 = ids::blockId("minecraft:lit_redstone_ore");
-
-    NEIGHBORS.iter().all(|[dx, dy, dz]|
-    {
-        let around: i32 = world.block(pos.offset(*dx, *dy, *dz));
-        around == redstone || around == glowing
-    })
+    NEIGHBORS.iter().all(|[dx, dy, dz]| world.tagged(pos.offset(*dx, *dy, *dz), "c:ores/redstone"))
 }
 
 struct DeviceBlock
@@ -516,7 +509,7 @@ impl DeviceBlock
                 swap(world, pos, Device::BuilderActive);
                 click(world, pos, 0.3, 0.6);
 
-                let _ = world.scheduleTick(pos, deviceId(Device::BuilderActive), device::BUILDER_DELAY);
+                let _ = world.scheduleTick(pos, world.block(pos), device::BUILDER_DELAY);
             }
 
             Device::BuilderActive if !powered =>
@@ -524,7 +517,7 @@ impl DeviceBlock
                 swap(world, pos, Device::Builder);
                 click(world, pos, 0.3, 0.6);
 
-                let _ = world.scheduleTick(pos, deviceId(Device::Builder), device::BUILDER_DELAY);
+                let _ = world.scheduleTick(pos, world.block(pos), device::BUILDER_DELAY);
             }
 
             Device::BuilderTimeout if !powered => swap(world, pos, Device::Builder),
@@ -552,7 +545,7 @@ impl DeviceBlock
                 {
                     swap(world, pos, Device::Ghost);
 
-                    let _ = world.scheduleTick(pos, deviceId(Device::Ghost), device::REAPPEAR_DELAY);
+                    let _ = world.scheduleTick(pos, world.block(pos), device::REAPPEAR_DELAY);
                 }
                 else
                 {
@@ -857,15 +850,15 @@ const JETS: [JetRow; 9] = [
     },
 ];
 
-pub(crate) fn jetId(jet: Jet) -> i32
+pub(crate) fn jetName(jet: Jet) -> &'static str
 {
-    ids::blockId(JETS.iter().find(|row| row.m_jet == jet).expect("every jet has a row").m_name)
+    JETS.iter().find(|row| row.m_jet == jet).expect("every jet has a row").m_name
 }
 
 fn jetAt(world: World, pos: BlockPos) -> Option<Jet>
 {
     let block: i32 = world.block(pos);
-    JETS.iter().find(|row| ids::blockId(row.m_name) == block).map(|row| row.m_jet)
+    JETS.iter().find(|row| blockIs(block, row.m_name)).map(|row| row.m_jet)
 }
 
 // what a popping or flaming jet turns into when its tile runs out, TileEntityTFPoppingJet and TileEntityTFFlameJet
@@ -886,11 +879,7 @@ struct JetBlock
     m_jet: Jet,
 }
 
-fn stillLava(world: World, pos: BlockPos) -> bool
-{
-    let block: i32 = world.block(pos);
-    (block == ids::blockId("minecraft:lava") || block == ids::blockId("minecraft:flowing_lava")) && world.meta(pos) == 0
-}
+fn stillLava(world: World, pos: BlockPos) -> bool { names::source(world, pos, "minecraft:lava") }
 
 // BlockTFFireJet.findLavaAround tries the spot below then three random spots beside it
 fn findLava(world: World, below: BlockPos) -> Option<BlockPos>
@@ -919,7 +908,7 @@ impl BlockBehavior for JetBlock
         if let Some(lava) = findLava(world, ctx.pos().offset(0, -1, 0))
         {
             let _ = world.setBlock(lava, 0, 0);
-            let _ = world.setBlockQuiet(ctx.pos(), jetId(Jet::Popping), 0);
+            let _ = names::handle(jetName(Jet::Popping)).place(world, ctx.pos(), false);
         }
     }
 
@@ -942,7 +931,7 @@ impl BlockBehavior for JetBlock
         };
         if let Some(next) = next
         {
-            let _ = world.setBlock(ctx.pos(), jetId(next), 0);
+            let _ = world.place(ctx.pos(), jetName(next));
 
             click(world, ctx.pos(), 0.3, 0.6);
         }

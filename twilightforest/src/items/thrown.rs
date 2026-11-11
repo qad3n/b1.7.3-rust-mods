@@ -1,8 +1,8 @@
 use super::magic::{held, holdInUse};
 use super::{put, texture};
-use crate::ids::{self, block, item};
 use crate::math::look;
 use crate::models::{Program, tf_cube_of_annihilation, tf_spike_block};
+use crate::names::{block, item};
 use b173_api::math::{blockOf, distance, length, sub};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
@@ -105,7 +105,7 @@ fn launch(world: World, player: Player, kind: &'static str, speed: f64) -> bool
     let _ = thrown.setData(&Flight { m_owner: player.id, m_velocity: velocity, ..Flight::default() });
 
     setOut(player.id, kind, Some(thrown.id));
-    world.playSound(info.pos, "random.bow", 1.0, 1.0 / (ids::fraction(world) * 0.4 + 1.2));
+    world.playSound(info.pos, "random.bow", 1.0, 1.0 / (crate::math::fraction(world) * 0.4 + 1.2));
     true
 }
 
@@ -184,7 +184,7 @@ impl EntityBehavior for ChainBall
         {
             if !state.m_returning
             {
-                world.playSound(to, "random.anvil_land", 0.125, ids::fraction(world));
+                world.playSound(to, "random.anvil_land", 0.125, crate::math::fraction(world));
             }
 
             if state.m_smashed < chain::MAX_SMASH
@@ -252,7 +252,7 @@ fn annihilable(world: World, pos: BlockPos) -> bool
         block::GREEN_THORNS,
         block::CASTLE_RUNE_BRICK,
     ];
-    castle.iter().any(|name| ids::blockId(name) == block) || breakable(world, pos, cube::BREAKABLE)
+    castle.iter().any(|name| blockIs(block, name)) || breakable(world, pos, cube::BREAKABLE)
 }
 
 struct Cube;
@@ -329,8 +329,13 @@ impl EntityBehavior for Cube
             {
                 let _ = world.setBlock(pos, 0, 0);
 
-                world.playSound(ids::center(pos), "random.fizz", 0.125, ids::fraction(world) * 0.25 + 0.75);
-                world.particle("largesmoke", ids::center(pos), [0.0; 3]);
+                world.playSound(
+                    crate::math::center(pos),
+                    "random.fizz",
+                    0.125,
+                    crate::math::fraction(world) * 0.25 + 0.75,
+                );
+                world.particle("largesmoke", crate::math::center(pos), [0.0; 3]);
             }
             else
             {

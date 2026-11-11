@@ -1,8 +1,8 @@
 use super::{killer, showBar};
 use crate::entities::shots::{self, UR_FIREBALL};
-use crate::ids;
 use crate::math::look;
 use crate::models::{Program, cuboid, part};
+use crate::names;
 use crate::progress::{self, Gate};
 use crate::treasure::{self, Table};
 use crate::world::generate::GenWorld;
@@ -195,7 +195,7 @@ thread_local!
 fn trapAt(world: World, pos: BlockPos) -> bool
 {
     let block: i32 = world.block(pos);
-    block == ids::blockId(ids::block::GHAST_TRAP) || block == ids::blockId("ghast_trap_active")
+    blockIs(block, names::block::GHAST_TRAP) || blockIs(block, "ghast_trap_active")
 }
 
 // EntityTFUrGhast.scanForTraps
@@ -292,14 +292,15 @@ fn minionsAt(world: World, trap: [i32; 3])
 
     for _ in 0..boss::MINION_TRIES
     {
-        let spread = || f64::from(ids::fraction(world) - ids::fraction(world)) * boss::MINION_XZ;
-        let at: [f64; 3] = [x + spread(), y + f64::from(ids::fraction(world)) * boss::MINION_Y, z + spread()];
+        let spread = || f64::from(crate::math::fraction(world) - crate::math::fraction(world)) * boss::MINION_XZ;
+        let at: [f64; 3] = [x + spread(), y + f64::from(crate::math::fraction(world)) * boss::MINION_Y, z + spread()];
         if world.block(blockOf(at)) != 0
         {
             continue;
         }
 
-        if crate::entities::spawnAt(world, crate::entities::MINI_GHAST, at, ids::fraction(world) * 360.0).is_some()
+        if crate::entities::spawnAt(world, crate::entities::MINI_GHAST, at, crate::math::fraction(world) * 360.0)
+            .is_some()
         {
             spawned += 1;
         }
@@ -363,9 +364,12 @@ fn makeWaypoint(world: World, info: &EntityInfo, brain: &mut Brain)
 
     for _ in 0..boss::WAYPOINT_TRIES
     {
-        let wander = || f64::from(ids::fraction(world) * 2.0 - 1.0) * boss::WANDER;
-        let spot: [f64; 3] =
-            [info.pos[0] + wander(), course[1] + f64::from(ids::fraction(world)) * 8.0 - 4.0, info.pos[2] + wander()];
+        let wander = || f64::from(crate::math::fraction(world) * 2.0 - 1.0) * boss::WANDER;
+        let spot: [f64; 3] = [
+            info.pos[0] + wander(),
+            course[1] + f64::from(crate::math::fraction(world)) * 8.0 - 4.0,
+            info.pos[2] + wander(),
+        ];
         let away: f64 = distance(spot, course).powi(2);
         if away < best
         {
@@ -416,7 +420,7 @@ fn spit(entity: Entity, info: &EntityInfo, target: &EntityInfo)
             }
             else
             {
-                f64::from((ids::fraction(world) - ids::fraction(world)) * boss::SHOT_SPREAD)
+                f64::from((crate::math::fraction(world) - crate::math::fraction(world)) * boss::SHOT_SPREAD)
             }
         };
         let toward: [f64; 3] = [goal[0] + scatter(), goal[1], goal[2] + scatter()];
@@ -712,9 +716,9 @@ impl EntityBehavior for UrGhast
         let width: f64 = entity.field(EntityField::Width);
         let height: f64 = entity.field(EntityField::Height);
         let at: [f64; 3] = [
-            info.pos[0] + (f64::from(ids::fraction(world)) - 0.5) * width,
-            info.pos[1] + f64::from(ids::fraction(world)) * height - 0.25,
-            info.pos[2] + (f64::from(ids::fraction(world)) - 0.5) * width,
+            info.pos[0] + (f64::from(crate::math::fraction(world)) - 0.5) * width,
+            info.pos[1] + f64::from(crate::math::fraction(world)) * height - 0.25,
+            info.pos[2] + (f64::from(crate::math::fraction(world)) - 0.5) * width,
         ];
         crate::particles::spawn(world, "drip_water", at, [0.0; 3]);
     }

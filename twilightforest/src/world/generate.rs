@@ -2,20 +2,16 @@ use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-// the world a generator writes into, with block ids and properties cached for one populate call
+// the world a generator writes into, with block properties cached for one populate call
 pub(crate) struct GenWorld
 {
     pub m_world: World,
     m_info: RefCell<HashMap<i32, BlockInfo>>,
-    m_ids: RefCell<HashMap<&'static str, i32>>,
 }
 
 impl GenWorld
 {
-    pub(crate) fn new(world: World) -> Self
-    {
-        Self { m_world: world, m_info: RefCell::new(HashMap::new()), m_ids: RefCell::new(HashMap::new()) }
-    }
+    pub(crate) fn new(world: World) -> Self { Self { m_world: world, m_info: RefCell::new(HashMap::new()) } }
 
     pub(crate) fn block(&self, x: i32, y: i32, z: i32) -> i32 { self.m_world.block(BlockPos::new(x, y, z)) }
 
@@ -62,10 +58,10 @@ impl GenWorld
         -1
     }
 
-    pub(crate) fn id(&self, name: &'static str) -> i32
-    {
-        *self.m_ids.borrow_mut().entry(name).or_insert_with(|| crate::ids::blockId(name))
-    }
+    // the id a block's default state is stored as this epoch, for code that places or compares many
+    pub(crate) fn id(&self, name: &'static str) -> i32 { super::palette::id(name) }
+
+    pub(crate) fn is(&self, x: i32, y: i32, z: i32, name: &str) -> bool { blockIs(self.block(x, y, z), name) }
 
     pub(crate) fn info(&self, block: i32) -> BlockInfo
     {
@@ -84,5 +80,5 @@ impl GenWorld
         block == 0 || self.info(block).replaceable
     }
 
-    fn leafy(&self, block: i32) -> bool { block == self.id("minecraft:leaves") || crate::ids::leaves(block) }
+    fn leafy(&self, block: i32) -> bool { blockTagged(block, crate::tags::LEAVES) }
 }

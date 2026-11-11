@@ -1,8 +1,8 @@
 use super::{dropAt, killer, showBar};
 use crate::entities::ai::{eyes, face, target};
 use crate::entities::shots::{self, LICH_BOLT, LICH_BOMB};
-use crate::ids::{self, item};
 use crate::models::{Program, bipedPose, tf_lich};
+use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::math::{distance, floor};
 use b173_api::prelude::*;
@@ -136,7 +136,8 @@ fn spotSeenBy(world: World, target: &EntityInfo) -> Option<[f64; 3]>
 
     for _ in 0..lich::LOS_TRIES
     {
-        let spread = |axis: usize| (ids::fraction(world) - ids::fraction(world)) as f64 * lich::LOS_SPREAD[axis];
+        let spread =
+            |axis: usize| (crate::math::fraction(world) - crate::math::fraction(world)) as f64 * lich::LOS_SPREAD[axis];
         let [x, mut y, z] = [target.pos[0] + spread(0), target.pos[1] + spread(1), target.pos[2] + spread(2)];
         while y > 0.0 && !World::blockInfo(world.block(BlockPos::new(floor(x), floor(y) - 1, floor(z)))).solid
         {
@@ -205,7 +206,7 @@ fn sparkle(entity: Entity, info: &EntityInfo)
 
     for _ in 0..world.random(lich::SPARKLES)
     {
-        let jitter = || f64::from(ids::fraction(world) - ids::fraction(world)) * lich::SPARKLE_JITTER;
+        let jitter = || f64::from(crate::math::fraction(world) - crate::math::fraction(world)) * lich::SPARKLE_JITTER;
         let at: [f64; 3] = [hand[0] + jitter(), hand[1] + jitter(), hand[2] + jitter()];
         crate::particles::spawn(world, "mobSpell", at, color);
     }
@@ -233,7 +234,7 @@ fn launch(entity: Entity, info: &EntityInfo, goal: &EntityInfo, bomb: bool)
     {
         (LICH_BOLT, lich::BOLT_SPEED)
     };
-    let pitch: f32 = (ids::fraction(world) - ids::fraction(world)) * 0.2 + 1.0;
+    let pitch: f32 = (crate::math::fraction(world) - crate::math::fraction(world)) * 0.2 + 1.0;
     world.playSound(info.pos, "mob.ghast.fireball", 1.0, pitch);
 
     let _ = shots::fire(world, shot, from, aim, speed, 1.0, Some(entity.id));
@@ -409,7 +410,7 @@ impl EntityBehavior for TwilightLich
     {
         let world: World = entity.world;
         let mut lich: Lich = state(entity);
-        let pitch: f32 = ((ids::fraction(world) - ids::fraction(world)) * 0.7 + 1.0) * 2.0;
+        let pitch: f32 = ((crate::math::fraction(world) - crate::math::fraction(world)) * 0.7 + 1.0) * 2.0;
         let info: Option<EntityInfo> = entity.info();
         let at: [f64; 3] = info.as_ref().map_or([0.0; 3], |info| info.pos);
 

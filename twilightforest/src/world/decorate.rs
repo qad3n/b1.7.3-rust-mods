@@ -3,7 +3,7 @@ use super::flora::{self, Decor, Flower, Grass, Grow};
 use super::generate::GenWorld;
 use super::trees::Builder;
 use super::{features, ruins, scatter, trees, vanilla};
-use crate::ids::block;
+use crate::names::block;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
@@ -226,28 +226,47 @@ impl Decorator<'_>
 
         self.ores();
 
-        let (sand, gravel, clay, dirt, grass): (i32, i32, i32, i32, i32) = (
-            self.id("minecraft:sand"),
-            self.id("minecraft:gravel"),
-            self.id("minecraft:clay"),
-            self.id("minecraft:dirt"),
-            self.id("minecraft:grass"),
-        );
+        let (sand, gravel, clay): (i32, i32, i32) =
+            (self.id("minecraft:sand"), self.id("minecraft:gravel"), self.id("minecraft:clay"));
 
         for _ in 0..counts::SAND
         {
             let (x, z): (i32, i32) = self.column();
-            vanilla::disc(self.m_world, random, [x, self.m_world.topSolid(x, z), z], sand, 7, 2, &[dirt, grass]);
+            vanilla::disc(
+                self.m_world,
+                random,
+                [x, self.m_world.topSolid(x, z), z],
+                sand,
+                7,
+                2,
+                &["minecraft:dirt", "minecraft:grass"],
+            );
         }
 
         for _ in 0..self.m_decor.m_clay
         {
             let (x, z): (i32, i32) = self.column();
-            vanilla::disc(self.m_world, random, [x, self.m_world.topSolid(x, z), z], clay, 4, 1, &[dirt, clay]);
+            vanilla::disc(
+                self.m_world,
+                random,
+                [x, self.m_world.topSolid(x, z), z],
+                clay,
+                4,
+                1,
+                &["minecraft:dirt", "minecraft:clay"],
+            );
         }
 
         let (x, z): (i32, i32) = self.column();
-        vanilla::disc(self.m_world, random, [x, self.m_world.topSolid(x, z), z], gravel, 6, 2, &[dirt, grass]);
+        vanilla::disc(
+            self.m_world,
+            random,
+            [x, self.m_world.topSolid(x, z), z],
+            gravel,
+            6,
+            2,
+            &["minecraft:dirt", "minecraft:grass"],
+        );
 
         let trees: i32 = self.m_decor.m_trees + i32::from(random.nextIntBounded(odds::EXTRA_TREE) == 0);
         for _ in 0..trees
@@ -566,23 +585,18 @@ impl Decorator<'_>
     // getGroundLevel of the firefly forest, dark forest and thornlands, the first grass above the sea
     fn ground(&self, x: i32, z: i32, extra: &[&'static str]) -> i32
     {
-        let grass: i32 = self.id("minecraft:grass");
-        let earth: Vec<i32> = ["minecraft:dirt", "minecraft:stone", "minecraft:gravel"]
-            .iter()
-            .chain(extra)
-            .map(|name| self.id(name))
-            .collect();
+        let earth: [&str; 3] = ["minecraft:dirt", "minecraft:stone", "minecraft:gravel"];
         let mut last: i32 = height::SEA;
 
         for y in height::SEA..super::terrain::height() - 1
         {
             let block: i32 = self.m_world.block(x, y, z);
-            if block == grass
+            if blockIs(block, "minecraft:grass")
             {
                 return y + 1;
             }
 
-            if earth.contains(&block)
+            if earth.iter().chain(extra).any(|name| blockIs(block, name))
             {
                 last = y + 1;
             }
@@ -854,8 +868,7 @@ pub(crate) fn populate(chunk: ChunkInfo)
 fn freeze(world: &GenWorld, x: i32, z: i32)
 {
     let seed: i64 = world.m_world.seed();
-    let (ice, snow, water): (i32, i32, i32) =
-        (world.id("minecraft:ice"), world.id("minecraft:snow_layer"), world.id("minecraft:water"));
+    let (ice, snow): (i32, i32) = (world.id("minecraft:ice"), world.id("minecraft:snow_layer"));
 
     for dx in 0..16
     {
@@ -869,7 +882,8 @@ fn freeze(world: &GenWorld, x: i32, z: i32)
             }
 
             let top: i32 = world.topSolid(bx, bz).max(world.height(bx, bz));
-            if world.block(bx, top - 1, bz) == water && world.meta(bx, top - 1, bz) == 0
+            // a still source holds metadata zero as beta stores fluid levels
+            if world.is(bx, top - 1, bz, "minecraft:water") && world.meta(bx, top - 1, bz) == 0
             {
                 world.set(bx, top - 1, bz, ice);
             }

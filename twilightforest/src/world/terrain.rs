@@ -1,7 +1,7 @@
 use super::biomes::{self, Biome};
 use super::features::{self, Feature};
 use super::noise::Octaves;
-use crate::ids::{self, block};
+use crate::names::block;
 use b173_api::prelude::*;
 use b173_api::terrain::{ChunkBlocks, NoiseGeneratorOctaves, Random};
 use std::cell::{RefCell, RefMut};
@@ -142,21 +142,21 @@ impl Palette
     {
         Self
         {
-            m_stone: ids::blockId("minecraft:stone"),
-            m_water: ids::blockId("minecraft:water"),
-            m_ice: ids::blockId("minecraft:ice"),
-            m_gravel: ids::blockId("minecraft:gravel"),
-            m_bedrock: ids::blockId("minecraft:bedrock"),
-            m_grass: ids::blockId("minecraft:grass"),
-            m_dirt: ids::blockId("minecraft:dirt"),
-            m_sand: ids::blockId("minecraft:sand"),
-            m_sandstone: ids::blockId("minecraft:sandstone"),
-            m_darkLeaves: ids::blockId(block::DARK_LEAVES),
-            m_wispy: ids::blockId(block::WISPY_CLOUD),
-            m_fluffy: ids::blockId(block::FLUFFY_CLOUD),
-            m_weathered: ids::blockId(block::DEADROCK),
-            m_cracked: ids::blockId(block::CRACKED_DEADROCK),
-            m_solid: ids::blockId(block::SOLID_DEADROCK),
+            m_stone: super::palette::id("minecraft:stone"),
+            m_water: super::palette::id("minecraft:water"),
+            m_ice: super::palette::id("minecraft:ice"),
+            m_gravel: super::palette::id("minecraft:gravel"),
+            m_bedrock: super::palette::id("minecraft:bedrock"),
+            m_grass: super::palette::id("minecraft:grass"),
+            m_dirt: super::palette::id("minecraft:dirt"),
+            m_sand: super::palette::id("minecraft:sand"),
+            m_sandstone: super::palette::id("minecraft:sandstone"),
+            m_darkLeaves: super::palette::id(block::DARK_LEAVES),
+            m_wispy: super::palette::id(block::WISPY_CLOUD),
+            m_fluffy: super::palette::id(block::FLUFFY_CLOUD),
+            m_weathered: super::palette::id(block::DEADROCK),
+            m_cracked: super::palette::id(block::CRACKED_DEADROCK),
+            m_solid: super::palette::id(block::SOLID_DEADROCK),
         }
     }
 }
@@ -944,7 +944,7 @@ impl Palette
             m_dirt: self.m_dirt,
             m_grass: self.m_grass,
             m_water: self.m_water,
-            m_flowingWater: ids::blockId("minecraft:flowing_water"),
+            m_flowingWater: super::palette::id("minecraft:flowing_water"),
             m_deadrock: [self.m_weathered, self.m_cracked, self.m_solid],
             m_height: TALL,
         }

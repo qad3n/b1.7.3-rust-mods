@@ -1,5 +1,5 @@
 use super::{Kind, base, texture};
-use crate::ids::{self, block};
+use crate::names::block;
 use b173_api::math::Face;
 use b173_api::prelude::*;
 
@@ -113,7 +113,7 @@ fn sprite(sprite: Sprite) -> i32 { b173_api::world::terrainSlot(&texture(SPRITES
 fn nagastone(world: World, pos: BlockPos) -> bool
 {
     let found: i32 = world.block(pos);
-    found == ids::blockId(block::NAGASTONE) || found == ids::blockId(block::NAGASTONE_HEAD)
+    blockIs(found, block::NAGASTONE) || blockIs(found, block::NAGASTONE_HEAD)
 }
 
 // BlockTFNagastone.getPosibleConnection, the first direction past the excluded ones with a stone in it

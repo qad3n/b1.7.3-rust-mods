@@ -1,6 +1,6 @@
 use super::{put, texture};
 use crate::entities::arrows::{self, ICE, PLAIN, SEEKER, SIDE};
-use crate::ids::item;
+use crate::names::item;
 use b173_api::prelude::*;
 
 // ItemTFBowBase and its triple, seeker, ice and ender bows, drawn while the use key is held and loosed on release
@@ -136,7 +136,7 @@ impl ItemBehavior for Bow
 
         if fired
         {
-            let pitch: f32 = 1.0 / (crate::ids::fraction(world) * 0.4 + 1.2) + power as f32 * 0.5;
+            let pitch: f32 = 1.0 / (crate::math::fraction(world) * 0.4 + 1.2) + power as f32 * 0.5;
             world.playSound(info.pos, "random.bow", 1.0, pitch);
             super::magic::wearHeld(player, 1);
         }

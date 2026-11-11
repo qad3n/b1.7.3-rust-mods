@@ -1,7 +1,7 @@
 use super::killer;
 use crate::entities::ai::{self, Ai};
-use crate::ids::item;
 use crate::models::{Program, bipedPose, tf_minoshroom};
+use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::prelude::*;
 use std::rc::Rc;
@@ -52,7 +52,7 @@ impl EntityBehavior for Minoshroom
     {
         let mut body: Program = Program::new();
         bipedPose(&mut body, &tf_minoshroom::PIVOTS, &tf_minoshroom::ROTATIONS, input);
-        body.held(crate::models::biped::RIGHT_ARM, crate::ids::item::MINOTAUR_AXE);
+        body.held(crate::models::biped::RIGHT_ARM, crate::names::item::MINOTAUR_AXE);
         Pose { pre: Vec::new(), model: body.take() }
     }
 }

@@ -1,4 +1,4 @@
-use crate::ids::block;
+use crate::names::block;
 
 // a 1.7 block the structure code names, resolved to a beta or port block and its metadata
 pub(crate) type Resolved = (&'static str, i32);

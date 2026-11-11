@@ -1,7 +1,7 @@
 use super::{home, killer, showBar};
 use crate::entities::ai::face;
-use crate::ids::{self, item};
 use crate::models::{Program, tf_naga};
+use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::math::{distance, flatLength, floor, normalize, sqrt, sub};
 use b173_api::prelude::*;
@@ -659,7 +659,7 @@ fn voice(world: World, info: &EntityInfo)
     {
         "twilightforest.mob.naga.rattle"
     };
-    let pitch: f32 = (ids::fraction(world) - ids::fraction(world)) * 0.2 + 1.0;
+    let pitch: f32 = (crate::math::fraction(world) - crate::math::fraction(world)) * 0.2 + 1.0;
     world.playSound(info.pos, sound, 1.0, pitch);
 }
 

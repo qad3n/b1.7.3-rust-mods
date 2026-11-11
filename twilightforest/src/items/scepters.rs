@@ -2,8 +2,8 @@ use super::magic::{held, holdInUse, letGo, wearHeld};
 use super::{put, texture};
 use crate::entities::ai::face;
 use crate::entities::shots::{self, WAND_BOLT};
-use crate::ids::{self, item};
 use crate::math::look;
+use crate::names::item;
 use b173_api::math::{add, distance, flatLength};
 use b173_api::prelude::*;
 use std::rc::Rc;
@@ -117,7 +117,7 @@ impl ItemBehavior for TwilightWand
             return;
         };
 
-        let pitch: f32 = (ids::fraction(world) - ids::fraction(world)) * 0.2 + 1.0;
+        let pitch: f32 = (crate::math::fraction(world) - crate::math::fraction(world)) * 0.2 + 1.0;
         world.playSound(info.pos, "mob.ghast.fireball", 1.0, pitch);
 
         if world.isAuthority()

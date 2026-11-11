@@ -1,5 +1,4 @@
 use super::ai::target;
-use crate::ids;
 use crate::models::
 {
     DEGREES_PER_RADIAN, Program, WALK_RATE, biped, bipedPose, tf_goblin_knight_lower, tf_goblin_knight_upper,
@@ -112,7 +111,7 @@ fn gear(entity: Entity) -> Gear
 
 fn breakSound(entity: Entity, info: &EntityInfo)
 {
-    let pitch: f32 = 0.8 + ids::fraction(entity.world) * 0.4;
+    let pitch: f32 = 0.8 + crate::math::fraction(entity.world) * 0.4;
     entity.world.playSound(info.pos, BREAK_SOUND, 1.0, pitch);
 }
 
@@ -307,7 +306,7 @@ fn landSpear(entity: Entity, info: &EntityInfo)
 
     for _ in 0..tuning::SPEAR_SMOKE
     {
-        let drift = || f64::from(ids::fraction(world) - ids::fraction(world)) * tuning::SMOKE_DRIFT;
+        let drift = || f64::from(crate::math::fraction(world) - crate::math::fraction(world)) * tuning::SMOKE_DRIFT;
         world.particle("largesmoke", point, [drift(), 0.0, drift()]);
     }
 

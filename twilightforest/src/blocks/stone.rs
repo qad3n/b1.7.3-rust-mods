@@ -1,6 +1,6 @@
 use super::{Cube, Kind, Look, base, cube, faces, property, texture, tough, when};
 use crate::colors;
-use crate::ids::{self, block, item};
+use crate::names::{block, item};
 use b173_api::math::{Face, add, floor, offset, scale};
 use b173_api::prelude::*;
 
@@ -406,7 +406,7 @@ impl BlockBehavior for Shield
             return Some(0.0);
         }
 
-        let stone: i32 = ids::blockId("minecraft:stone");
+        let stone: i32 = Blocks.id("minecraft:stone").ok()?;
         Some(player.digSpeed(stone) / shield::SLOWER / shield::SCALE)
     }
 }
@@ -556,7 +556,12 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     // no block spec names the lit face, asking for its slot now gives it room in the atlas
     let _ = b173_api::world::terrainSlot(STEINN_LIT);
 
-    for row in MAZE.iter().chain(CASTLE.iter())
+    for row in &MAZE
+    {
+        super::put(ctx, row.m_name, super::build(row).behavior(Wearing).tag(crate::tags::MAZESTONE))?;
+    }
+
+    for row in &CASTLE
     {
         super::put(ctx, row.m_name, super::build(row).behavior(Wearing))?;
     }
@@ -570,7 +575,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .behavior(Knightmetal)
                 .model(BlockModelSpec { cuboids: knightmetal::spikes(), ..BlockModelSpec::default() })
                 .collision(vec![knightmetal::shell()]),
-            block::TROLLSTEINN => spec.behavior(Trollsteinn),
+            block::TROLLSTEINN => spec.behavior(Trollsteinn).tag(crate::tags::STONY),
+            block::DEADROCK | block::CRACKED_DEADROCK | block::SOLID_DEADROCK => spec.tag(crate::tags::STONY),
             _ => spec,
         };
         super::put(ctx, row.m_name, spec)?;

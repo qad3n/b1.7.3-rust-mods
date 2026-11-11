@@ -2,6 +2,7 @@ use super::legacy;
 use super::piece::Piece;
 use crate::treasure::Table;
 use crate::world::generate::GenWorld;
+use crate::world::palette;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 use b173_api::terrain::structure::StructureBox;
@@ -38,42 +39,23 @@ pub(crate) const fn blk(name: &'static str) -> Blk { Blk::Named(name) }
 
 thread_local!
 {
-    static RESOLVED: RefCell<HashMap<(&'static str, i32), (i32, i32)>> = RefCell::new(HashMap::new());
     static SELECTED: Cell<(Blk, i32)> = const { Cell::new((AIR, 0)) };
     static QUALIFIED: RefCell<HashMap<&'static str, &'static str>> = RefCell::new(HashMap::new());
 }
 
 impl Blk
 {
-    // the beta block id and metadata this block places as
+    // the beta block id and metadata this block places as, resolved again after every remap
     pub(crate) fn resolve(self, meta: i32) -> (i32, i32)
     {
         match self
         {
             Self::Id(id) => (id, meta),
-            Self::Named(name) => RESOLVED.with(|cache|
+            Self::Named(name) =>
             {
-                *cache.borrow_mut().entry((name, meta)).or_insert_with(||
-                {
-                    let (target, meta): legacy::Resolved = legacy::resolve(name, meta);
-
-                    let id: Option<i32> = if name.starts_with("tf:")
-                    {
-                        Blocks.id(target).ok()
-                    }
-                    else
-                    {
-                        Blocks.id(&format!("minecraft:{target}")).ok()
-                    };
-
-                    if id.is_none()
-                    {
-                        warn(&format!("structure block {name} as {target} is not registered"));
-                    }
-
-                    (id.unwrap_or(0), meta)
-                })
-            }),
+                let (target, meta): legacy::Resolved = legacy::resolve(name, meta);
+                palette::meta(qualify(name, target), meta)
+            }
         }
     }
 
@@ -89,22 +71,34 @@ impl Blk
         };
 
         let (target, _): legacy::Resolved = legacy::resolve(name, 0);
-
-        if name.starts_with("tf:")
-        {
-            return target;
-        }
-
-        QUALIFIED.with(|names|
-        {
-            *names.borrow_mut().entry(target).or_insert_with(|| String::leak(format!("minecraft:{target}")))
-        })
+        qualify(name, target)
     }
+}
+
+// a forest block keeps its own bare name, a 1.7 block takes the minecraft namespace
+fn qualify(name: &'static str, target: &'static str) -> &'static str
+{
+    if name.starts_with("tf:")
+    {
+        return target;
+    }
+
+    QUALIFIED
+        .with(|names| *names.borrow_mut().entry(target).or_insert_with(|| String::leak(format!("minecraft:{target}"))))
 }
 
 impl PartialEq for Blk
 {
-    fn eq(&self, other: &Self) -> bool { self.id() == other.id() }
+    // blocks read back from the world compare by id, named blocks by the block they place as
+    fn eq(&self, other: &Self) -> bool
+    {
+        match (self, other)
+        {
+            (Self::Id(left), Self::Id(right)) => left == right,
+            (Self::Id(id), named) | (named, Self::Id(id)) => blockIs(*id, named.qualified()),
+            (Self::Named(_), Self::Named(_)) => self.qualified() == other.qualified(),
+        }
+    }
 }
 
 // pieces compared by address, as Java compares component references
@@ -1155,7 +1149,7 @@ impl Piece
     )
     {
         let (wx, wy, wz): (i32, i32, i32) = (self.xTurned(x, z, turn), self.yAt(y), self.zTurned(x, z, turn));
-        if sbb.contains(wx, wy, wz) && world.block(wx, wy, wz) != world.id("minecraft:chest")
+        if sbb.contains(wx, wy, wz) && !world.is(wx, wy, wz, "minecraft:chest")
         {
             crate::treasure::place(world, random, table, wx, wy, wz);
         }
@@ -1174,7 +1168,7 @@ impl Piece
     )
     {
         let (wx, wy, wz): (i32, i32, i32) = (self.xAt(x, z), self.yAt(y), self.zAt(x, z));
-        if sbb.contains(wx, wy, wz) && world.block(wx, wy, wz) != world.id("minecraft:standing_sign")
+        if sbb.contains(wx, wy, wz) && !world.is(wx, wy, wz, "minecraft:standing_sign")
         {
             world.setBlock(wx, wy, wz, blk("standing_sign"), self.mode() * 2, limits::NOTIFY);
         }
@@ -1292,10 +1286,10 @@ impl Blk
         match id
         {
             0 => Material::Air,
-            _ if id == blk("grass").id() => Material::Grass,
-            _ if id == blk("dirt").id() || id == blk("gravel").id() => Material::Ground,
-            _ if crate::ids::stony(id) => Material::Rock,
-            _ if crate::ids::holdsLeaves(id) || id == blk("planks").id() => Material::Wood,
+            _ if blockIs(id, "minecraft:grass") => Material::Grass,
+            _ if blockIs(id, "minecraft:dirt") || blockTagged(id, "c:gravels") => Material::Ground,
+            _ if blockTagged(id, crate::tags::STONY) => Material::Rock,
+            _ if blockTagged(id, crate::tags::LOGS) || blockTagged(id, "minecraft:planks") => Material::Wood,
             _ => Material::Other,
         }
     }

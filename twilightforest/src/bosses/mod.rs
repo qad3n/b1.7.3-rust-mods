@@ -8,7 +8,6 @@ mod trophy;
 pub(crate) mod ur_ghast;
 pub(crate) mod yeti;
 
-use crate::ids;
 use b173_api::math::{distanceSquared, floor};
 use b173_api::prelude::*;
 use b173_api::screen::Draw;
@@ -44,7 +43,7 @@ pub(crate) mod kind
 
 fn ready(world: World, pos: BlockPos, boss: &Boss) -> bool
 {
-    let center: [f64; 3] = ids::center(pos);
+    let center: [f64; 3] = crate::math::center(pos);
 
     world.players().into_iter().filter_map(Player::info).any(|player|
     {
@@ -74,7 +73,8 @@ impl TileBehavior for SpawnerTile
 
         if !ctx.isAuthority()
         {
-            let at: [f64; 3] = [pos.x, pos.y, pos.z].map(|axis| f64::from(axis) + f64::from(ids::fraction(world)));
+            let at: [f64; 3] =
+                [pos.x, pos.y, pos.z].map(|axis| f64::from(axis) + f64::from(crate::math::fraction(world)));
             world.particle("smoke", at, [0.0; 3]);
             world.particle("flame", at, [0.0; 3]);
             return;
@@ -89,8 +89,8 @@ impl TileBehavior for SpawnerTile
             return;
         }
 
-        let yaw: f32 = ids::fraction(world) * 360.0;
-        if let Some(spawned) = crate::entities::spawnAt(world, boss.m_entity, ids::center(pos), yaw)
+        let yaw: f32 = crate::math::fraction(world) * 360.0;
+        if let Some(spawned) = crate::entities::spawnAt(world, boss.m_entity, crate::math::center(pos), yaw)
         {
             let _ = spawned.setData(&Home { m_home: Some([pos.x, pos.y, pos.z]) });
         }

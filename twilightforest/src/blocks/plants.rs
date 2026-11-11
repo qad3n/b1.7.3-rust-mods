@@ -1,5 +1,6 @@
 use super::{Kind, base, drop, property, texture, vanillaTexture, when};
-use crate::ids::{self, block, item};
+use crate::names::{self, block, item};
+use crate::tags;
 use crate::world::biomes;
 use b173_api::math::{add, scale};
 use b173_api::prelude::*;
@@ -234,11 +235,12 @@ fn footed(footing: Footing, world: World, pos: BlockPos) -> bool
 
     match footing
     {
-        Footing::Soil => ids::soil(below),
+        Footing::Soil => blockTagged(below, tags::SOIL),
 
         Footing::Lit =>
         {
-            ids::soil(below) && (world.light(pos) >= LIT_PLANT_LIGHT || world.height(pos.x, pos.z) <= pos.y)
+            blockTagged(below, tags::SOIL)
+                && (world.light(pos) >= LIT_PLANT_LIGHT || world.height(pos.x, pos.z) <= pos.y)
         }
 
         Footing::Solid => solidTop(world, pos.offset(0, -1, 0)),
@@ -257,15 +259,15 @@ pub(crate) fn plantStays(world: World, pos: BlockPos, name: &str) -> bool
 pub(crate) fn rootHold(world: World, pos: BlockPos) -> bool
 {
     let block: i32 = world.block(pos);
-    ids::soil(block) || block == ids::blockId(block::ROOT_STRAND) || block == ids::blockId(block::ROOT)
+    blockTagged(block, tags::SOIL) || blockIs(block, block::ROOT_STRAND) || blockIs(block, block::ROOT)
 }
 
 // BlockTFTrollRoot.canPlaceRootBelow
 pub(crate) fn trollHold(world: World, pos: BlockPos) -> bool
 {
     let block: i32 = world.block(pos);
-    ids::stony(block)
-        || [block::TROLL_ROOT, block::TROLLBER, block::UNRIPE_TROLLBER].iter().any(|name| block == ids::blockId(name))
+    blockTagged(block, tags::STONY)
+        || [block::TROLL_ROOT, block::TROLLBER, block::UNRIPE_TROLLBER].iter().any(|name| blockIs(block, name))
 }
 
 const MOSS_PATCH: &str = "moss_patch";
@@ -298,9 +300,9 @@ impl BlockBehavior for SmallPlant
         let pos: BlockPos = ctx.pos();
         let rise: f64 = 0.1;
         let at: [f64; 3] = [
-            f64::from(pos.x) + f64::from(ids::fraction(world)),
+            f64::from(pos.x) + f64::from(crate::math::fraction(world)),
             f64::from(pos.y) + rise,
-            f64::from(pos.z) + f64::from(ids::fraction(world)),
+            f64::from(pos.z) + f64::from(crate::math::fraction(world)),
         ];
         crate::particles::spawn(world, "townaura", at, [0.0; 3]);
     }
@@ -326,7 +328,7 @@ impl BlockBehavior for SmallPlant
     {
         if self.m_ripens && ctx.isAuthority() && ctx.world().light(ctx.pos()) >= RIPEN_LIGHT
         {
-            let _ = ctx.world().setBlock(ctx.pos(), ids::blockId(block::TROLLBER), 0);
+            let _ = ctx.world().place(ctx.pos(), block::TROLLBER);
         }
     }
 
@@ -341,7 +343,7 @@ impl BlockBehavior for SmallPlant
             let name: Option<Identifier> = b173_api::nameOf(RegistryKind::Block, ctx.block());
             if let Some(name) = name
             {
-                let _ = world.spawnItem(ids::center(pos), ItemStack::of(name, 1));
+                let _ = world.spawnItem(crate::math::center(pos), ItemStack::of(name, 1));
             }
 
             return;
@@ -404,8 +406,8 @@ fn plantSpec(row: &Plant) -> Result<BlockSpecBuilder>
     Ok(spec)
 }
 
-// BlockTFThorns: rotated like a log, axis kept in metadata 0 1 2
-const AXES: [&str; 3] = ["y", "x", "z"];
+// BlockTFThorns: rotated like a log, the axis kept as a state
+pub(crate) const AXES: [&str; 3] = ["y", "x", "z"];
 
 mod thorns
 {
@@ -423,7 +425,8 @@ mod thorns
 
 const DIRECTIONS: [[i32; 3]; 6] = [[0, -1, 0], [0, 1, 0], [0, 0, -1], [0, 0, 1], [-1, 0, 0], [1, 0, 0]];
 
-pub(crate) fn axisOf(direction: [i32; 3]) -> u8
+// the place in AXES of the axis a direction runs along
+pub(crate) fn axisOf(direction: [i32; 3]) -> usize
 {
     match direction
     {
@@ -456,7 +459,7 @@ struct Thorns
     m_burnt: bool,
 }
 
-fn growArm(world: World, pos: BlockPos, direction: [i32; 3], green: i32)
+fn growArm(world: World, pos: BlockPos, direction: [i32; 3])
 {
     let length: i32 = 1 + world.random(thorns::ARM);
     for step in 1..length
@@ -467,15 +470,14 @@ fn growArm(world: World, pos: BlockPos, direction: [i32; 3], green: i32)
             break;
         }
 
-        let _ = world.setBlock(at, green, i32::from(axisOf(direction)));
+        let _ = world.setBlockState(at, names::state(block::GREEN_THORNS).with("axis", AXES[axisOf(direction)]));
     }
 }
 
 // BlockTFThorns.removedByPlayer, breaking a thorn only turns it green and bursts new thorns
-fn burst(world: World, pos: BlockPos, axis: u8)
+fn burst(world: World, pos: BlockPos, axis: usize)
 {
-    let green: i32 = ids::blockId(block::GREEN_THORNS);
-    let _ = world.setBlock(pos, green, i32::from(axis));
+    let _ = world.setBlockState(pos, names::state(block::GREEN_THORNS).with("axis", AXES[axis]));
 
     let along: usize = match axis
     {
@@ -483,12 +485,12 @@ fn burst(world: World, pos: BlockPos, axis: u8)
         1 => 4,
         _ => 2,
     };
-    growArm(world, pos, DIRECTIONS[along], green);
-    growArm(world, pos, DIRECTIONS[along + 1], green);
+    growArm(world, pos, DIRECTIONS[along]);
+    growArm(world, pos, DIRECTIONS[along + 1]);
 
     for _ in 0..thorns::RANDOM_ARMS
     {
-        growArm(world, pos, DIRECTIONS[world.random(DIRECTIONS.len() as i32) as usize], green);
+        growArm(world, pos, DIRECTIONS[world.random(DIRECTIONS.len() as i32) as usize]);
     }
 }
 
@@ -529,7 +531,7 @@ impl BlockBehavior for Thorns
     {
         if ctx.isAuthority() && !self.m_burnt
         {
-            burst(ctx.world(), ctx.pos(), ctx.meta());
+            burst(ctx.world(), ctx.pos(), names::pick(names::stateIn(ctx), "axis", &AXES).unwrap_or(0));
         }
     }
 }
@@ -572,11 +574,7 @@ struct ThornRose;
 
 fn holdsLeaves(world: World, pos: BlockPos) -> bool
 {
-    DIRECTIONS.iter().any(|direction|
-    {
-        let block: i32 = world.block(pos.offset(direction[0], direction[1], direction[2]));
-        ids::holdsLeaves(block)
-    })
+    DIRECTIONS.iter().any(|direction| world.tagged(pos.offset(direction[0], direction[1], direction[2]), tags::LOGS))
 }
 
 #[block_behavior]
@@ -617,7 +615,7 @@ fn registerThorns(ctx: &mut RegisterCtx) -> Result<()>
     )
 }
 
-// BlockTFHugeLilyPad: a 2x2 pad, each quarter keeps its piece and the pad's turn in metadata
+// BlockTFHugeLilyPad: a 2x2 pad, each quarter keeps its piece and the pad's turn as a state
 mod lily
 {
     pub const COLOR: u32 = 0x208030;
@@ -641,13 +639,15 @@ pub(crate) fn padTurn(bx: i32, bz: i32) -> i32
     hash.nextIntBounded(lily::PIECES)
 }
 
-// the piece property comes first so it is the high part of the state
-pub(crate) fn padMeta(piece: usize, turn: i32) -> i32 { piece as i32 * lily::PIECES + turn }
+// a quarter's piece and the pad's turn as the state values the pad registers
+pub(crate) const QUARTERS: [&str; 4] = ["0", "1", "2", "3"];
 
-fn stillWater(world: World, pos: BlockPos) -> bool
+pub(crate) fn padState(piece: usize, turn: i32) -> StateData
 {
-    world.block(pos) == ids::blockId("minecraft:water") && world.meta(pos) == 0
+    names::state(block::HUGE_LILY_PAD).with("piece", piece).with("orient", turn)
 }
+
+fn stillWater(world: World, pos: BlockPos) -> bool { names::source(world, pos, "minecraft:water") }
 
 // Item.getMovingObjectPositionFromPlayer with liquids, the water surface the player looks at within reach
 fn waterAimed(world: World, player: Player) -> Option<BlockPos>
@@ -694,12 +694,11 @@ impl ItemBehavior for PadItem
 
         if world.isAuthority()
         {
-            let pad: i32 = ids::blockId(block::HUGE_LILY_PAD);
             let turn: i32 = padTurn(corner.x, corner.z);
 
             for (piece, [dx, dz]) in PAD_PIECES.iter().enumerate()
             {
-                let _ = world.setBlock(corner.offset(*dx, 1, *dz), pad, padMeta(piece, turn));
+                let _ = world.setBlockState(corner.offset(*dx, 1, *dz), padState(piece, turn));
             }
         }
 
@@ -723,29 +722,28 @@ impl ItemBehavior for WaterLilyItem
 
         if world.isAuthority()
         {
-            let _ = world.setBlock(water.offset(0, 1, 0), ids::blockId(block::HUGE_WATER_LILY), 0);
+            let _ = world.place(water.offset(0, 1, 0), block::HUGE_WATER_LILY);
         }
 
         spend(stack)
     }
 }
 
-fn padHeld(world: World, pos: BlockPos, pad: i32) -> bool
+fn padHeld(world: World, pos: BlockPos) -> bool
 {
     let base: BlockPos = BlockPos::new(pos.x >> 1 << 1, pos.y, pos.z >> 1 << 1);
-    let water: i32 = ids::blockId("minecraft:water");
 
     (0..2).all(|dx|
     {
         (0..2).all(|dz|
         {
             let at: BlockPos = base.offset(dx, 0, dz);
-            world.block(at) == pad && world.block(at.offset(0, -1, 0)) == water && world.meta(at.offset(0, -1, 0)) == 0
+            world.is(at, block::HUGE_LILY_PAD) && stillWater(world, at.offset(0, -1, 0))
         })
     })
 }
 
-fn clearPad(world: World, pos: BlockPos, pad: i32)
+fn clearPad(world: World, pos: BlockPos)
 {
     let base: BlockPos = BlockPos::new(pos.x >> 1 << 1, pos.y, pos.z >> 1 << 1);
 
@@ -754,7 +752,7 @@ fn clearPad(world: World, pos: BlockPos, pad: i32)
         for dz in 0..2
         {
             let at: BlockPos = base.offset(dx, 0, dz);
-            if at != pos && world.block(at) == pad
+            if at != pos && world.is(at, block::HUGE_LILY_PAD)
             {
                 let _ = world.setBlock(at, 0, 0);
             }
@@ -770,9 +768,9 @@ impl BlockBehavior for HugeLilyPad
 
     fn onNeighborChanged(&self, ctx: &mut BlockCtx, _neighbor: i32)
     {
-        if ctx.isAuthority() && !padHeld(ctx.world(), ctx.pos(), ctx.block())
+        if ctx.isAuthority() && !padHeld(ctx.world(), ctx.pos())
         {
-            clearPad(ctx.world(), ctx.pos(), ctx.block());
+            clearPad(ctx.world(), ctx.pos());
 
             let _ = ctx.world().setBlock(ctx.pos(), 0, 0);
         }
@@ -782,7 +780,7 @@ impl BlockBehavior for HugeLilyPad
     {
         if ctx.isAuthority()
         {
-            clearPad(ctx.world(), ctx.pos(), ctx.block());
+            clearPad(ctx.world(), ctx.pos());
         }
     }
 
@@ -830,11 +828,7 @@ fn padVariants() -> Vec<StateVariantSpec>
 
 struct WaterLily;
 
-fn onStillWater(world: World, pos: BlockPos) -> bool
-{
-    let below: BlockPos = pos.offset(0, -1, 0);
-    world.block(below) == ids::blockId("minecraft:water") && world.meta(below) == 0
-}
+fn onStillWater(world: World, pos: BlockPos) -> bool { stillWater(world, pos.offset(0, -1, 0)) }
 
 #[block_behavior]
 impl BlockBehavior for WaterLily
@@ -903,7 +897,7 @@ impl BlockBehavior for UberousSoil
     {
         if ctx.isAuthority() && covered(ctx.world(), ctx.pos())
         {
-            let _ = ctx.world().setBlock(ctx.pos(), ids::blockId("minecraft:dirt"), 0);
+            let _ = ctx.world().place(ctx.pos(), "minecraft:dirt");
         }
     }
 
@@ -917,7 +911,7 @@ impl BlockBehavior for UberousSoil
         // a covered patch turning to dirt soil by soil within one neighbor chain overflows the wasm stack
         if covered(ctx.world(), ctx.pos())
         {
-            let _ = ctx.world().scheduleTick(ctx.pos(), ids::blockId(block::UBEROUS_SOIL), 1);
+            let _ = ctx.world().scheduleTick(ctx.pos(), ctx.block(), 1);
 
             return;
         }
@@ -1055,7 +1049,11 @@ const WHITE: u32 = 0xFFFFFF;
 #[block_behavior]
 impl BlockBehavior for HugeMushroom
 {
-    fn colorMultiplier(&self, ctx: &mut BlockCtx) -> u32 { if ctx.meta() == 0 { self.m_cap } else { WHITE } }
+    fn colorMultiplier(&self, ctx: &mut BlockCtx) -> u32
+    {
+        let cap: bool = names::stateIn(ctx).is_some_and(|state| state.get("part") == Some("cap"));
+        if cap { self.m_cap } else { WHITE }
+    }
 }
 
 fn registerMushrooms(ctx: &mut RegisterCtx, stem: &FaceTextures) -> Result<()>

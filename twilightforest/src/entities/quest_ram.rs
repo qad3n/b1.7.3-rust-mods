@@ -1,6 +1,6 @@
 use crate::bosses::Home;
-use crate::ids::{self, item};
 use crate::models::{DEGREES_PER_RADIAN, Program, WALK_RATE, quadruped, tf_quest_ram};
+use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::math;
 use b173_api::prelude::*;
@@ -105,9 +105,9 @@ fn sparkle(world: World, info: &EntityInfo, color: usize, count: i32)
     {
         let width: f64 = f64::from(SIZE[0]) * tuning::SPREAD;
         let at: [f64; 3] = [
-            info.pos[0] + (f64::from(ids::fraction(world)) - 0.5) * width,
-            info.pos[1] + f64::from(ids::fraction(world)) * f64::from(SIZE[1]) * tuning::SPREAD,
-            info.pos[2] + (f64::from(ids::fraction(world)) - 0.5) * width,
+            info.pos[0] + (f64::from(crate::math::fraction(world)) - 0.5) * width,
+            info.pos[1] + f64::from(crate::math::fraction(world)) * f64::from(SIZE[1]) * tuning::SPREAD,
+            info.pos[2] + (f64::from(crate::math::fraction(world)) - 0.5) * width,
         ];
         world.particle("reddust", at, [f64::from(red), f64::from(green), f64::from(blue)]);
     }
@@ -115,7 +115,8 @@ fn sparkle(world: World, info: &EntityInfo, color: usize, count: i32)
 
 fn bleat(world: World, info: &EntityInfo)
 {
-    let pitch: f32 = (ids::fraction(world) - ids::fraction(world)) * tuning::PITCH_SPREAD + tuning::PITCH;
+    let pitch: f32 =
+        (crate::math::fraction(world) - crate::math::fraction(world)) * tuning::PITCH_SPREAD + tuning::PITCH;
     world.playSound(info.pos, SOUND, tuning::VOLUME, pitch);
 }
 

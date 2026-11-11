@@ -1,6 +1,6 @@
 use super::{PIXELS, texture};
-use crate::ids::{self, block};
 use crate::models::{Program, tf_cicada, tf_firefly, tf_moonworm};
+use crate::names::block;
 use b173_api::math::distance;
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
@@ -208,8 +208,9 @@ impl Anim
 
         if self.m_singing && self.m_singTicks == 0
         {
-            let pitch: f32 = (ids::fraction(world) - ids::fraction(world)) * critter::PITCH_SPREAD + 1.0;
-            world.playSound(ids::center(pos), critter::SOUND, 1.0, pitch);
+            let pitch: f32 =
+                (crate::math::fraction(world) - crate::math::fraction(world)) * critter::PITCH_SPREAD + 1.0;
+            world.playSound(crate::math::center(pos), critter::SOUND, 1.0, pitch);
         }
 
         if self.m_singing && self.m_singTicks >= critter::SONG_TICKS
@@ -224,7 +225,8 @@ impl Anim
 
             if world.random(critter::NOTE_ODDS) == 0
             {
-                let at: [f64; 3] = [pos.x, pos.y, pos.z].map(|axis| f64::from(axis) + f64::from(ids::fraction(world)));
+                let at: [f64; 3] =
+                    [pos.x, pos.y, pos.z].map(|axis| f64::from(axis) + f64::from(crate::math::fraction(world)));
                 world.particle("note", at, [0.0; 3]);
             }
         }
@@ -240,7 +242,7 @@ impl Anim
 // TileEntityTFFirefly.anyPlayerInRange for the player of this client
 fn playerNear(pos: BlockPos) -> bool
 {
-    let center: [f64; 3] = ids::center(pos);
+    let center: [f64; 3] = crate::math::center(pos);
     localPlayer().and_then(Player::info).is_some_and(|info| distance(info.pos, center) <= critter::FIREFLY_RANGE)
 }
 
@@ -289,7 +291,7 @@ impl TileBehavior for CritterTile
                     if world.random(critter::FIREFLY_ODDS) == 0 && playerNear(pos)
                     {
                         let at: [f64; 3] =
-                            [pos.x, pos.y, pos.z].map(|axis| f64::from(axis) + f64::from(ids::fraction(world)));
+                            [pos.x, pos.y, pos.z].map(|axis| f64::from(axis) + f64::from(crate::math::fraction(world)));
                         crate::particles::tinyFirefly(world, at);
                     }
 
@@ -392,7 +394,7 @@ impl BlockBehavior for Jar
 {
     fn onRandomDisplayTick(&self, ctx: &mut BlockCtx)
     {
-        let pos: [f64; 3] = ids::center(ctx.pos());
+        let pos: [f64; 3] = crate::math::center(ctx.pos());
 
         for _ in 0..2
         {

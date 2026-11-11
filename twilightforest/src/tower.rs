@@ -1,8 +1,10 @@
-use crate::blocks::tower::{Device, deviceId, jetId, nextJet};
-use crate::ids::{self, NEIGHBORS};
-use crate::particles;
+use crate::blocks::tower::{Device, deviceName, jetName, nextJet};
+use crate::math::NEIGHBORS;
+use crate::{names, particles};
 use b173_api::math::{distanceSquared, floor};
 use b173_api::prelude::*;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 pub(crate) const SMOKER_TILE: &str = "smoker";
@@ -105,7 +107,7 @@ fn finishJet(world: World, pos: BlockPos)
 {
     if let Some(next) = nextJet(world, pos)
     {
-        let _ = world.setBlock(pos, jetId(next), 0);
+        let _ = world.place(pos, jetName(next));
     }
 }
 
@@ -198,10 +200,10 @@ impl TileBehavior for JetTile
                     [0.0; 3],
                 );
                 world.playSound(
-                    ids::center(pos),
+                    crate::math::center(pos),
                     "liquid.lavapop",
-                    0.2 + ids::fraction(world) * 0.2,
-                    0.9 + ids::fraction(world) * 0.15,
+                    0.2 + crate::math::fraction(world) * 0.2,
+                    0.9 + crate::math::fraction(world) * 0.15,
                 );
             }
 
@@ -216,19 +218,19 @@ impl TileBehavior for JetTile
         if ticks % 4 == 0
         {
             world.playSound(
-                ids::center(pos),
+                crate::math::center(pos),
                 "mob.ghast.fireball",
-                1.0 + ids::fraction(world),
-                ids::fraction(world) * 0.7 + 0.3,
+                1.0 + crate::math::fraction(world),
+                crate::math::fraction(world) * 0.7 + 0.3,
             );
         }
         else if ticks == 1
         {
             world.playSound(
-                ids::center(pos),
+                crate::math::center(pos),
                 "fire.ignite",
-                1.0 + ids::fraction(world),
-                ids::fraction(world) * 0.7 + 0.3,
+                1.0 + crate::math::fraction(world),
+                crate::math::fraction(world) * 0.7 + 0.3,
             );
         }
 
@@ -323,7 +325,7 @@ impl BuilderTile
 {
     fn step(world: World, pos: BlockPos, state: &mut Builder)
     {
-        let center: [f64; 3] = ids::center(pos);
+        let center: [f64; 3] = crate::math::center(pos);
 
         if state.m_player.is_none()
         {
@@ -343,9 +345,9 @@ impl BuilderTile
             let next: BlockPos = BlockPos::new(last[0] + dx, last[1] + dy, last[2] + dz);
             if state.m_made <= builder::MAX_BLOCKS && world.isAir(next)
             {
-                let _ = world.setBlock(next, deviceId(Device::Built), 0);
+                let _ = world.place(next, deviceName(Device::Built));
 
-                world.playSound(ids::center(next), "random.click", 1.0, 1.0);
+                world.playSound(crate::math::center(next), "random.click", 1.0, 1.0);
                 state.m_last = Some([next.x, next.y, next.z]);
                 state.m_made += 1;
             }
@@ -393,9 +395,8 @@ impl TileBehavior for BuilderTile
 
         if state.m_stopped == builder::TIMEOUT
         {
-            let timeout: i32 = deviceId(Device::BuilderTimeout);
-            let _ = world.setBlock(pos, timeout, 0);
-            let _ = world.scheduleTick(pos, timeout, builder::RESTART_DELAY);
+            let _ = world.place(pos, deviceName(Device::BuilderTimeout));
+            let _ = world.scheduleTick(pos, world.block(pos), builder::RESTART_DELAY);
         }
     }
 }
@@ -419,7 +420,19 @@ struct Reverter
     m_ticks: i32,
     m_slow: bool,
     m_quiet: i32,
+}
+
+// the blocks a reverter remembers, kept in memory as the source keeps them out of its saved data, the ids are only
+// good for the content generation they were read in
+struct Snapshot
+{
+    m_generation: i32,
     m_blocks: Vec<(i32, i32)>,
+}
+
+thread_local!
+{
+    static SNAPSHOTS: RefCell<HashMap<(i32, BlockPos), Snapshot>> = RefCell::new(HashMap::new());
 }
 
 struct ReverterTile;
@@ -461,22 +474,20 @@ pub(crate) fn deviceBlock(world: World, block: i32) -> bool
         Device::FalseDiamond,
     ]
     .iter()
-    .any(|device| deviceId(*device) == block)
+    .any(|device| blockIs(block, deviceName(*device)))
 }
 
 // TileEntityTFReverter.isUnrevertable
 fn unrevertable(world: World, there: i32, wanted: i32) -> bool
 {
-    let pair = |left: &str, right: &str| ids::blockId(left) == there && ids::blockId(right) == wanted;
+    let pair = |left: &str, right: &str| blockIs(there, left) && blockIs(wanted, right);
     deviceBlock(world, there)
         || deviceBlock(world, wanted)
         || pair("minecraft:redstone_lamp", "minecraft:lit_redstone_lamp")
         || pair("minecraft:lit_redstone_lamp", "minecraft:redstone_lamp")
-        || there == ids::blockId("minecraft:water")
-        || there == ids::blockId("minecraft:flowing_water")
-        || wanted == ids::blockId("minecraft:water")
-        || wanted == ids::blockId("minecraft:flowing_water")
-        || wanted == ids::blockId("minecraft:tnt")
+        || blockTagged(there, "minecraft:water")
+        || blockTagged(wanted, "minecraft:water")
+        || blockIs(wanted, "minecraft:tnt")
 }
 
 // TileEntityTFReverter.revertBlock, true when the change is still pending
@@ -495,7 +506,7 @@ fn revert(world: World, pos: BlockPos, there: i32, wanted: (i32, i32)) -> bool
         return true;
     }
 
-    let antibuilt: i32 = deviceId(Device::Antibuilt);
+    let antibuilt: i32 = Blocks.id(deviceName(Device::Antibuilt)).unwrap_or(0);
     let replace: i32 = if wanted.0 == 0 { 0 } else { antibuilt };
 
     if there == 0
@@ -514,14 +525,14 @@ fn revert(world: World, pos: BlockPos, there: i32, wanted: (i32, i32)) -> bool
 
 impl ReverterTile
 {
-    fn scan(world: World, pos: BlockPos, state: &mut Reverter) -> bool
+    fn scan(world: World, pos: BlockPos, blocks: &mut [(i32, i32)]) -> bool
     {
         let mut reverted: bool = false;
 
         for (index, at) in around(pos).enumerate()
         {
             let there: i32 = world.block(at);
-            let wanted: (i32, i32) = state.m_blocks[index];
+            let wanted: (i32, i32) = blocks[index];
             if wanted.0 == there
             {
                 continue;
@@ -533,7 +544,7 @@ impl ReverterTile
             }
             else
             {
-                state.m_blocks[index] = (there, world.meta(at));
+                blocks[index] = (there, world.meta(at));
             }
         }
 
@@ -561,7 +572,7 @@ impl ReverterTile
             [(0, 1), (2, 3), (4, 5), (6, 7), (0, 2), (1, 3), (4, 6), (5, 7), (0, 4), (1, 5), (2, 6), (3, 7)];
         let (from, to): (i32, i32) = edges[edge as usize];
         particles::line(world, "reddust", corner(from), corner(to), reverter::LINE_PARTICLES);
-        particles::line(world, "reddust", ids::center(pos), corner(to), reverter::LINE_PARTICLES);
+        particles::line(world, "reddust", crate::math::center(pos), corner(to), reverter::LINE_PARTICLES);
     }
 }
 
@@ -574,9 +585,10 @@ impl TileBehavior for ReverterTile
         let pos: BlockPos = ctx.pos();
         let mut state: Reverter = ctx.tileData();
 
-        if nearestPlayer(world, ids::center(pos), reverter::RANGE).is_none()
+        if nearestPlayer(world, crate::math::center(pos), reverter::RANGE).is_none()
         {
-            if !state.m_blocks.is_empty() || state.m_ticks != 0
+            SNAPSHOTS.with(|snapshots| snapshots.borrow_mut().remove(&(world.dimension, pos)));
+            if state.m_ticks != 0
             {
                 let _ = ctx.setTileData(&Reverter::default());
             }
@@ -606,15 +618,27 @@ impl TileBehavior for ReverterTile
             return;
         }
 
-        if state.m_blocks.is_empty()
+        let generation: i32 = contentGeneration();
+        let key: (i32, BlockPos) = (world.dimension, pos);
+        let fresh: bool = SNAPSHOTS
+            .with(|snapshots| snapshots.borrow().get(&key).is_some_and(|known| known.m_generation == generation));
+        if !fresh
         {
-            state.m_blocks = around(pos).map(|at| (world.block(at), world.meta(at))).collect();
+            let blocks: Vec<(i32, i32)> = around(pos).map(|at| (world.block(at), world.meta(at))).collect();
+            SNAPSHOTS.with(|snapshots|
+            {
+                snapshots.borrow_mut().insert(key, Snapshot { m_generation: generation, m_blocks: blocks })
+            });
             state.m_slow = true;
         }
 
         if !state.m_slow || state.m_ticks % reverter::SLOW_EVERY == 0
         {
-            if Self::scan(world, pos, &mut state)
+            let reverted: bool = SNAPSHOTS.with(|snapshots|
+            {
+                snapshots.borrow_mut().get_mut(&key).is_some_and(|known| Self::scan(world, pos, &mut known.m_blocks))
+            });
+            if reverted
             {
                 state.m_slow = false;
                 state.m_quiet = 0;
@@ -694,7 +718,7 @@ impl TileBehavior for TrapTile
         if level >= 2
         {
             let at: [f64; 3] = [
-                f64::from(pos.x) + 0.1 + f64::from(ids::fraction(world)) * 0.8,
+                f64::from(pos.x) + 0.1 + f64::from(crate::math::fraction(world)) * 0.8,
                 f64::from(pos.y) + 1.05,
                 f64::from(pos.z) + 0.5,
             ];
@@ -831,7 +855,7 @@ impl TileBehavior for TrapActiveTile
 
         if ticks >= trap::RUN_TICKS
         {
-            let _ = world.setBlock(pos, deviceId(Device::GhastTrap), 0);
+            let _ = world.place(pos, deviceName(Device::GhastTrap));
         }
     }
 }
@@ -871,8 +895,8 @@ fn signedSpread(world: World) -> i32 { reactor::SPREAD * if world.random(2) == 0
 
 fn cage(world: World, pos: BlockPos)
 {
-    let gold: i32 = deviceId(Device::FalseGold);
-    let diamond: i32 = deviceId(Device::FalseDiamond);
+    let gold: StateHandle = names::handle(deviceName(Device::FalseGold));
+    let diamond: StateHandle = names::handle(deviceName(Device::FalseDiamond));
 
     for dx in -1..=1
     {
@@ -887,8 +911,8 @@ fn cage(world: World, pos: BlockPos)
 
                 let edges: i32 = [dx, dy, dz].iter().filter(|value| **value != 0).count() as i32;
                 // corners and face centres are false diamond, edges false gold
-                let block: i32 = if edges == 2 { gold } else { diamond };
-                let _ = world.setBlockQuiet(pos.offset(dx, dy, dz), block, 0);
+                let block: &StateHandle = if edges == 2 { &gold } else { &diamond };
+                let _ = block.place(world, pos.offset(dx, dy, dz), false);
             }
         }
     }
@@ -950,11 +974,11 @@ fn transform(world: World, pos: BlockPos, block: i32, fuzz: i32, nether: bool)
 
     if nether && there != 0
     {
-        let _ = world.setBlock(pos, ids::blockId("minecraft:netherrack"), 0);
+        let _ = world.place(pos, "minecraft:netherrack");
 
         if world.isAir(pos.offset(0, 1, 0)) && fuzz % 3 == 0
         {
-            let _ = world.setBlock(pos.offset(0, 1, 0), ids::blockId("minecraft:fire"), 0);
+            let _ = world.place(pos.offset(0, 1, 0), "minecraft:fire");
         }
 
         return;
@@ -967,9 +991,9 @@ fn spawnGhast(world: World, around: BlockPos)
 {
     let spread: f64 = 3.0;
     let at: [f64; 3] = [
-        f64::from(around.x) - 1.5 + f64::from(ids::fraction(world)) * spread,
-        f64::from(around.y) - 1.5 + f64::from(ids::fraction(world)) * spread,
-        f64::from(around.z) - 1.5 + f64::from(ids::fraction(world)) * spread,
+        f64::from(around.x) - 1.5 + f64::from(crate::math::fraction(world)) * spread,
+        f64::from(around.y) - 1.5 + f64::from(crate::math::fraction(world)) * spread,
+        f64::from(around.z) - 1.5 + f64::from(crate::math::fraction(world)) * spread,
     ];
 
     let _ = world.spawnEntity(crate::entities::MINI_GHAST, at);
@@ -1012,7 +1036,8 @@ impl ReactorTile
 
             if primary <= reactor::SHELL_END
             {
-                blob(world, pos, primary / reactor::GROWTH, deviceId(Device::Debris), ticks, false);
+                let debris: i32 = Blocks.id(deviceName(Device::Debris)).unwrap_or(0);
+                blob(world, pos, primary / reactor::GROWTH, debris, ticks, false);
             }
 
             Self::bubble(world, pos.offset(sx, sy, sz), reactor::SECONDARY_START, ticks);
@@ -1027,7 +1052,7 @@ impl ReactorTile
                 spawnGhast(world, pos.offset(tx, ty, tz));
             }
 
-            let _ = world.explode(ids::center(pos), reactor::POWER);
+            let _ = world.explode(crate::math::center(pos), reactor::POWER);
             let _ = world.setBlock(pos, 0, 0);
         }
     }
@@ -1064,7 +1089,7 @@ impl TileBehavior for ReactorTile
         else if state.m_ticks % reactor::EVERY == 0 && state.m_ticks <= reactor::SOUND_END
         {
             let loud: f32 = state.m_ticks as f32 / 100.0;
-            world.playSound(ids::center(ctx.pos()), "portal.portal", loud, loud);
+            world.playSound(crate::math::center(ctx.pos()), "portal.portal", loud, loud);
         }
     }
 }

@@ -1,5 +1,4 @@
 use super::ai::target;
-use crate::ids;
 use b173_api::math::{blockOf, distance};
 use b173_api::prelude::*;
 use std::cell::RefCell;
@@ -86,10 +85,9 @@ fn watched(info: &EntityInfo, watcher: &EntityInfo) -> bool
 // EntityAITFRedcapBase.findBlockTNTNearby, the first tnt in the cube around it
 fn tntNear(world: World, at: BlockPos, range: i32) -> Option<BlockPos>
 {
-    let tnt: i32 = ids::blockId(TNT);
     (-range..=range)
         .flat_map(|x| (-range..=range).flat_map(move |y| (-range..=range).map(move |z| at.offset(x, y, z))))
-        .find(|pos| world.block(*pos) == tnt)
+        .find(|pos| world.is(*pos, TNT))
 }
 
 fn litNear(world: World, info: &EntityInfo) -> bool
@@ -187,7 +185,7 @@ fn plant(entity: Entity, info: &EntityInfo, redcap: &mut Redcap)
         return;
     }
 
-    if let Err(error) = world.setBlock(feet, ids::blockId(TNT), 0)
+    if let Err(error) = world.place(feet, TNT)
     {
         warn(&format!("sapper tnt: {}", error.0));
         return;

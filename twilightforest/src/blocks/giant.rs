@@ -1,5 +1,5 @@
 use super::{Kind, base, put, vanillaTexture};
-use crate::ids::{self, block};
+use crate::names::block;
 use b173_api::math::Face;
 use b173_api::prelude::*;
 
@@ -143,7 +143,7 @@ fn tile(pos: BlockPos, face: i32) -> (i32, i32)
 
 fn faceSprite(row: &GiantRow, face: i32) -> String { vanillaTexture(if face < 2 { row.m_top } else { row.m_side }) }
 
-fn rowOf(block: i32) -> Option<&'static GiantRow> { GIANTS.iter().find(|row| ids::blockId(row.m_name) == block) }
+fn rowOf(block: i32) -> Option<&'static GiantRow> { GIANTS.iter().find(|row| blockIs(block, row.m_name)) }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
@@ -162,7 +162,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 side: Some(vanillaTexture(row.m_side)),
                 front: None,
             })
-            .behavior(Giant);
+            .behavior(Giant)
+            .tag(crate::tags::GIANT);
 
         if let Some(resistance) = row.m_resistance
         {

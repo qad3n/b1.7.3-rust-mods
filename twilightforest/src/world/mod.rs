@@ -7,6 +7,7 @@ pub(crate) mod generate;
 mod hollow;
 mod layers;
 pub(crate) mod noise;
+pub(crate) mod palette;
 mod rainbow;
 mod ruins;
 pub(crate) mod scatter;

@@ -1,6 +1,7 @@
 use super::{Cube, Kind, Look, base, cube, drop, faces, texture, vanillaTexture};
 use crate::colors::{self, Tint};
-use crate::ids::{self, block, item};
+use crate::names::{self, block, item};
+use crate::tags;
 use crate::world::trees::{self, Tree};
 use b173_api::prelude::*;
 
@@ -284,9 +285,6 @@ const CORES: [Core; 4] = [
     },
 ];
 
-// the core metadata bit the source keeps in its log orientation bits
-const CORE_STOPPED: u8 = 1;
-
 // the source rolls one of five faces and never the top
 const RUNE_FACES: [[i32; 3]; 5] = [[0, -1, 0], [0, 0, 1], [0, 0, -1], [1, 0, 0], [-1, 0, 0]];
 
@@ -414,13 +412,13 @@ impl BlockBehavior for SaplingGrowth
     }
 }
 
-pub(crate) fn isSapling(block: i32) -> bool { SAPLINGS.iter().any(|row| ids::blockId(row.m_name) == block) }
+pub(crate) fn isSapling(block: i32) -> bool { SAPLINGS.iter().any(|row| blockIs(block, row.m_name)) }
 
 // TFEventListener.bonemealUsed, bone meal grows a twilight sapling at once
 pub(crate) fn fertilize(world: World, pos: BlockPos) -> bool
 {
     let here: i32 = world.block(pos);
-    let Some(row) = SAPLINGS.iter().find(|row| ids::blockId(row.m_name) == here)
+    let Some(row) = SAPLINGS.iter().find(|row| blockIs(here, row.m_name))
     else
     {
         return false;
@@ -488,8 +486,17 @@ impl BlockBehavior for MagicCore
 
     fn onActivated(&self, ctx: &mut BlockCtx, _player: Player) -> bool
     {
-        let stopped: bool = ctx.meta() & CORE_STOPPED != 0;
-        ctx.setMeta(if stopped { 0 } else { CORE_STOPPED });
+        let Some(state) = names::stateIn(ctx)
+        else
+        {
+            return true;
+        };
+
+        let stopped: bool = state.flag("stopped");
+        if let Err(error) = ctx.setState(StateData::clone(&state).with("stopped", !stopped))
+        {
+            warn(&format!("magic core at {:?}: {}", ctx.pos(), error.0));
+        }
 
         if stopped && ctx.isAuthority()
         {
@@ -501,7 +508,7 @@ impl BlockBehavior for MagicCore
 
     fn onUpdateTick(&self, ctx: &mut BlockCtx)
     {
-        if ctx.meta() & CORE_STOPPED != 0
+        if names::flag(names::stateIn(ctx), "stopped")
         {
             return;
         }
@@ -528,8 +535,14 @@ pub(crate) fn shedLeaves(world: World, pos: BlockPos)
             for z in -reach..=reach
             {
                 let at: BlockPos = pos.offset(x, y, z);
+                if !world.tagged(at, tags::DECAYING_LEAVES)
+                {
+                    continue;
+                }
+
+                // template leaves keep vanilla BlockLeaves metadata, which has no named state
                 let meta: i32 = world.meta(at);
-                if !ids::decayingLeaves(world.block(at)) || meta & decaying != 0
+                if meta & decaying != 0
                 {
                     continue;
                 }
@@ -568,6 +581,7 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
             .sustainsLeaves()
             .behavior(Log);
         super::put(ctx, row.m_log, spec)?;
+        ctx.tags().add(RegistryKind::Item, tags::LOGS, &[row.m_log])?;
         ctx.blocks().states(
             row.m_log,
             BlockStatesSpec { properties: vec![super::property("axis", &LOG_AXES)], ..BlockStatesSpec::default() },
@@ -619,7 +633,14 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
             1.0,
         )?]),
     )?;
-    super::registerCubes(ctx, &PLANKS)
+    super::registerCubes(ctx, &PLANKS)?;
+
+    for row in &PLANKS
+    {
+        tags::both(ctx, "minecraft:planks", row.m_name)?;
+    }
+
+    Ok(())
 }
 
 fn leafSpec(row: &Leaf) -> Result<BlockSpecBuilder>
@@ -679,6 +700,7 @@ fn registerLeaves(ctx: &mut RegisterCtx) -> Result<()>
         }
 
         super::put(ctx, row.m_name, spec)?;
+        ctx.tags().add(RegistryKind::Item, "minecraft:leaves", &[row.m_name])?;
     }
 
     super::put(
@@ -693,8 +715,10 @@ fn registerLeaves(ctx: &mut RegisterCtx) -> Result<()>
             .sound("grass")
             .flammable(0, 1)
             .drops(vec![drop("darkwood_sapling", vec![1], leaves::SAPLING_CHANCE)?])
-            .behavior(LeafTint { m_tint: Tint::Foliage, m_runes: false }),
+            .behavior(LeafTint { m_tint: Tint::Foliage, m_runes: false })
+            .tag(tags::LEAVES),
     )?;
+    ctx.tags().add(RegistryKind::Item, "minecraft:leaves", &[block::DARK_LEAVES])?;
 
     let sliver: f32 = 15.0;
     super::put(
@@ -728,6 +752,7 @@ fn registerSaplings(ctx: &mut RegisterCtx) -> Result<()>
                 .tickRandomly()
                 .behavior(SaplingGrowth { m_tree: row.m_tree }),
         )?;
+        tags::both(ctx, "minecraft:saplings", row.m_name)?;
     }
 
     Ok(())

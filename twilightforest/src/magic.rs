@@ -1,6 +1,6 @@
 use crate::blocks::wood::Effect;
-use crate::ids;
 use crate::world::biomes::{self, Biome};
+use crate::{names, tags};
 use b173_api::prelude::*;
 
 // BlockTFMagicLogSpecial.updateTick, what each running magic tree core does every second
@@ -16,7 +16,7 @@ mod core
     pub const QUIET: f32 = 0.1;
 }
 
-fn center(pos: BlockPos) -> [f64; 3] { ids::center(pos) }
+fn center(pos: BlockPos) -> [f64; 3] { crate::math::center(pos) }
 
 fn spread(world: World, reach: i32) -> i32 { world.random(reach * 2) - reach }
 
@@ -53,7 +53,7 @@ fn transformation(world: World, pos: BlockPos)
     let reach: i32 = 16;
     let (dx, dz): (i32, i32) = (spread(world, reach), spread(world, reach));
 
-    world.playSound(center(pos), "note.harp", core::QUIET, ids::fraction(world) * 2.0);
+    world.playSound(center(pos), "note.harp", core::QUIET, crate::math::fraction(world) * 2.0);
 
     let (x, z): (i32, i32) = (pos.x + dx, pos.z + dz);
     let inside: bool = f64::from(dx).hypot(f64::from(dz)) < f64::from(reach);
@@ -95,7 +95,6 @@ fn same(a: &ItemStack, b: &ItemStack) -> bool { a.item.name() == b.item.name() }
 // beta has no creative tabs so its kind is the item itself
 fn sorting(world: World, pos: BlockPos)
 {
-    let chest: i32 = ids::blockId("minecraft:chest");
     let reach: i32 = core::SORT_REACH;
     let mut chests: Vec<BlockPos> = Vec::new();
     let mut items: Vec<Held> = Vec::new();
@@ -107,7 +106,7 @@ fn sorting(world: World, pos: BlockPos)
             for z in pos.z - reach..pos.z + reach
             {
                 let at: BlockPos = BlockPos::new(x, y, z);
-                if world.block(at) != chest
+                if !world.tagged(at, "c:chests")
                 {
                     continue;
                 }
@@ -202,13 +201,8 @@ pub(crate) fn coreEffect(world: World, pos: BlockPos, effect: Effect)
     }
 }
 
-// what grows on uberous soil, IPlantable.getPlantType Crop then Plains, anything else is a cave plant
-const CROPS: [&str; 1] = ["minecraft:wheat"];
-const PLAINS: [&str; 4] =
-    ["minecraft:red_flower", "minecraft:yellow_flower", "minecraft:sapling", "minecraft:tallgrass"];
-const CAVE: [&str; 2] = ["minecraft:brown_mushroom", "minecraft:red_mushroom"];
-
-fn anyOf(block: i32, names: &[&str]) -> bool { names.iter().any(|name| block == ids::blockId(name)) }
+// farmland metadata a crop set on uberous soil gets, wet as a hoe and water leave it
+const WET_FARMLAND: i32 = 2;
 
 // BlockTFUberousSoil.onNeighborBlockChange, a plant set on it takes root in the right soil and grows four bone meals
 // at once
@@ -218,24 +212,25 @@ pub(crate) fn uberous(world: World, pos: BlockPos)
     let plant: i32 = world.block(above);
     if World::blockInfo(plant).solid
     {
-        let _ = world.setBlock(pos, ids::blockId("minecraft:dirt"), 0);
+        let _ = world.place(pos, "minecraft:dirt");
 
         return;
     }
 
     let twilight: bool = crate::blocks::wood::isSapling(plant);
 
-    let soil: Option<(&str, i32)> = if anyOf(plant, &CROPS)
+    // what grows on uberous soil, IPlantable.getPlantType Crop then Plains then Cave
+    let soil: Option<(&str, i32)> = if blockTagged(plant, tags::CROPS)
     {
-        Some(("minecraft:farmland", 2))
+        Some(("farmland", WET_FARMLAND))
     }
-    else if anyOf(plant, &PLAINS) || twilight
+    else if blockTagged(plant, tags::PLAINS_PLANTS) || twilight
     {
-        Some(("minecraft:grass", 0))
+        Some(("grass", 0))
     }
-    else if anyOf(plant, &CAVE)
+    else if blockTagged(plant, tags::CAVE_PLANTS)
     {
-        Some(("minecraft:dirt", 0))
+        Some(("dirt", 0))
     }
     else
     {
@@ -248,7 +243,7 @@ pub(crate) fn uberous(world: World, pos: BlockPos)
         return;
     };
 
-    let _ = world.setBlock(pos, ids::blockId(ground), meta);
+    let _ = world.setBlockState(pos, names::vanilla(ground, meta));
     let meals: i32 = 4;
     for _ in 0..meals
     {

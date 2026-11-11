@@ -1,6 +1,7 @@
 use super::{Kind, PIXELS, base, property, texture, when};
-use crate::ids::{self, block};
+use crate::names::{self, block};
 use b173_api::prelude::*;
+use std::rc::Rc;
 
 mod rune
 {
@@ -8,15 +9,11 @@ mod rune
     pub const RESISTANCE: f32 = 15.0;
     // BlockTFCastleMagic.magicColors, the inverted bit flips each to its complement
     pub const COLORS: [u32; 4] = [0x00FFFF, 0xFFFF00, 0xFF00FF, 0x4B0082];
-    pub const INVERTED: u8 = 8;
-    pub const COLOR_MASK: u8 = 3;
     pub const WHITE: u32 = 0xFFFFFF;
 }
 
 mod door
 {
-    pub const ACTIVE: u8 = 8;
-    pub const COLOR_MASK: u8 = 7;
     // a door waits two to six ticks before it vanishes and eighty before it comes back
     pub const VANISH_BASE: i32 = 2;
     pub const VANISH_SPREAD: i32 = 5;
@@ -48,7 +45,7 @@ impl BlockBehavior for Runes
     // RenderBlockTFCastleMagic, the rune shows only where the neighbor is air
     fn overlay(&self, ctx: &mut BlockCtx, face: i32) -> Option<FaceOverlay>
     {
-        let [dx, dy, dz] = *ids::NEIGHBORS.get(usize::try_from(face).ok()?)?;
+        let [dx, dy, dz] = *crate::math::NEIGHBORS.get(usize::try_from(face).ok()?)?;
         let pos: BlockPos = ctx.pos();
         if !ctx.world().isAir(pos.offset(dx, dy, dz))
         {
@@ -56,22 +53,17 @@ impl BlockBehavior for Runes
         }
 
         let sprite: i32 = b173_api::world::terrainSlot(&runeTexture(runeAt(pos)))?;
-        Some(FaceOverlay { sprite, color: runeColor(ctx.meta()), glow: true, lift: RUNE_LIFT })
+        let state: Option<Rc<StateData>> = names::stateIn(ctx);
+        let color: u32 = runeColor(names::number(state.clone(), "color"), names::flag(state, "inverted"));
+        Some(FaceOverlay { sprite, color, glow: true, lift: RUNE_LIFT })
     }
 }
 
-pub(crate) fn runeColor(meta: u8) -> u32
+pub(crate) fn runeColor(index: i32, inverted: bool) -> u32
 {
-    let color: u32 = rune::COLORS[usize::from(meta & rune::COLOR_MASK)];
+    let color: u32 = rune::COLORS[index.rem_euclid(rune::COLORS.len() as i32) as usize];
 
-    if meta & rune::INVERTED != 0
-    {
-        color ^ rune::WHITE
-    }
-    else
-    {
-        color
-    }
+    if inverted { color ^ rune::WHITE } else { color }
 }
 
 // BlockTFCastleDoor: a door that is not locked vanishes when used and pulls its neighbours along
@@ -84,13 +76,20 @@ fn fizz(world: World, pos: BlockPos, base: f32)
 {
     let volume: f32 = 0.125;
     let spread: f32 = 0.25;
-    world.playSound(ids::center(pos), "random.fizz", volume, world.random(1000) as f32 / 1000.0 * spread + base);
+    world.playSound(
+        crate::math::center(pos),
+        "random.fizz",
+        volume,
+        world.random(1000) as f32 / 1000.0 * spread + base,
+    );
 }
 
 fn activateDoor(world: World, pos: BlockPos)
 {
-    let meta: i32 = world.meta(pos);
-    let _ = world.setMeta(pos, meta | i32::from(door::ACTIVE));
+    if let Err(error) = names::setProperty(world, pos, "active", true)
+    {
+        warn(&format!("castle door at {pos:?}: {}", error.0));
+    }
 
     fizz(world, pos, 1.75);
 
@@ -104,7 +103,7 @@ impl BlockBehavior for CastleDoor
 {
     fn onActivated(&self, ctx: &mut BlockCtx, _player: Player) -> bool
     {
-        if ctx.meta() & door::ACTIVE != 0 || self.m_vanished
+        if names::flag(names::stateIn(ctx), "active") || self.m_vanished
         {
             return false;
         }
@@ -115,7 +114,7 @@ impl BlockBehavior for CastleDoor
 
         if crate::progress::doorLocked(ctx.world(), ctx.pos())
         {
-            ctx.world().playSound(ids::center(ctx.pos()), "random.click", 1.0, 0.3);
+            ctx.world().playSound(crate::math::center(ctx.pos()), "random.click", 1.0, 0.3);
         }
         else
         {
@@ -133,14 +132,15 @@ impl BlockBehavior for CastleDoor
 
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
-        let meta: u8 = ctx.meta();
-        let color: i32 = i32::from(meta & door::COLOR_MASK);
+        let state: Option<Rc<StateData>> = names::stateIn(ctx);
+        let color: i32 = names::number(state.clone(), "color");
+        let active: bool = names::flag(state, "active");
 
         if self.m_vanished
         {
-            if meta & door::ACTIVE != 0
+            if active
             {
-                let _ = world.setBlock(pos, ids::blockId(block::CASTLE_DOOR), color);
+                let _ = world.setBlockState(pos, names::state(block::CASTLE_DOOR).with("color", color));
 
                 fizz(world, pos, 1.25);
             }
@@ -151,32 +151,33 @@ impl BlockBehavior for CastleDoor
             return;
         }
 
-        if meta & door::ACTIVE == 0
+        if !active
         {
             return;
         }
 
-        let vanished: i32 = ids::blockId(block::CASTLE_DOOR_VANISHED);
-        let _ = world.setBlock(pos, vanished, color);
-        let _ = world.scheduleTick(pos, vanished, door::RETURN_DELAY);
+        let _ = world.setBlockState(pos, names::state(block::CASTLE_DOOR_VANISHED).with("color", color));
+        let _ = world.scheduleTick(pos, world.block(pos), door::RETURN_DELAY);
 
         fizz(world, pos, 1.25);
-
-        let solid: i32 = ids::blockId(block::CASTLE_DOOR);
 
         for [dx, dy, dz] in NEIGHBORS
         {
             let at: BlockPos = pos.offset(dx, dy, dz);
-            if world.block(at) == solid
-                && world.meta(at) & i32::from(door::ACTIVE) == 0
-                && !crate::progress::doorLocked(world, at)
+            let ready: bool = world.is(at, block::CASTLE_DOOR)
+                && !names::flag(names::stateAt(world, at), "active")
+                && !crate::progress::doorLocked(world, at);
+            if ready
             {
                 activateDoor(world, at);
             }
         }
     }
 
-    fn colorMultiplier(&self, ctx: &mut BlockCtx) -> u32 { runeColor(ctx.meta() & rune::COLOR_MASK) }
+    fn colorMultiplier(&self, ctx: &mut BlockCtx) -> u32
+    {
+        runeColor(names::number(names::stateIn(ctx), "color"), false)
+    }
 }
 
 fn colorValues(count: u8) -> Vec<String> { (0..count).map(|value| value.to_string()).collect() }

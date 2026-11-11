@@ -1,5 +1,5 @@
-use crate::ids::{self, block, item};
 use crate::models::{Program, combine, tf_hydra_head, tf_lich, tf_naga, tf_snow_queen};
+use crate::names::{self, block, item};
 use crate::progress::{self, Gate};
 use b173_api::math::{distance, floor};
 use b173_api::prelude::*;
@@ -51,13 +51,13 @@ fn texture(name: &str) -> String { format!("twilightforest:item/{name}") }
 
 fn latent(meta: i32) -> bool { meta & pedestal::LATENT != 0 }
 
-fn trophyOnTop(world: World, pos: BlockPos) -> bool { world.block(pos.offset(0, 1, 0)) == ids::blockId(BLOCK) }
+fn trophyOnTop(world: World, pos: BlockPos) -> bool { world.is(pos.offset(0, 1, 0), BLOCK) }
 
 // BlockTFTrophyPedestal.updateTick once a trophy sits on it, players are rewarded before the check so the first
 // worthy visit opens it instead of needing a second trophy placement
 fn crown(world: World, pos: BlockPos)
 {
-    let center: [f64; 3] = ids::center(pos);
+    let center: [f64; 3] = crate::math::center(pos);
     let near: Vec<Player> = world
         .players()
         .into_iter()
@@ -89,7 +89,6 @@ fn crown(world: World, pos: BlockPos)
 // BlockTFTrophyPedestal.doPedestalEffect, only the latent shields the access chamber lays under its floor vanish
 fn open(world: World, pos: BlockPos, meta: i32)
 {
-    let shield: i32 = ids::blockId(block::SHIELD);
     let reach: i32 = pedestal::SHIELDS;
     for x in -reach..=reach
     {
@@ -98,7 +97,8 @@ fn open(world: World, pos: BlockPos, meta: i32)
             for z in -reach..=reach
             {
                 let at: BlockPos = pos.offset(x, y, z);
-                if world.block(at) == shield && world.meta(at) == crate::blocks::SHIELD_LATENT
+                let shield: i32 = world.block(at);
+                if blockIs(shield, block::SHIELD) && world.meta(at) == crate::blocks::SHIELD_LATENT
                 {
                     let _ = world.setBlock(at, 0, 0);
                     let _ = world.breakEffect(at, shield, crate::blocks::SHIELD_LATENT);
@@ -107,9 +107,9 @@ fn open(world: World, pos: BlockPos, meta: i32)
         }
     }
 
-    let _ = world.setBlock(pos, ids::blockId(block::TROPHY_PEDESTAL), meta & !pedestal::LATENT);
+    let _ = world.setBlockState(pos, names::state(block::TROPHY_PEDESTAL).with(names::META, meta & !pedestal::LATENT));
 
-    world.playSound(ids::center(pos), "mob.zombie.infect", 4.0, 0.1);
+    world.playSound(crate::math::center(pos), "mob.zombie.infect", 4.0, 0.1);
 }
 
 struct Pedestal;
@@ -303,7 +303,7 @@ impl ItemBehavior for TrophyItem
             {
                 0
             };
-            let _ = world.setBlock(at, ids::blockId(BLOCK), face);
+            let _ = world.setBlockState(at, names::state(BLOCK).with(names::META, face));
             let state: Head = Head { m_kind: self.m_kind as u8, m_turn: turn as u8 };
             if let Err(error) = world.setTileData(at, &state)
             {
@@ -333,7 +333,7 @@ fn dropHead(ctx: &mut BlockCtx)
     };
 
     let name: String = format!("twilightforest:{}", trophy.m_item);
-    if let Err(error) = ctx.world().spawnItem(ids::center(ctx.pos()), ItemStack::of(name.as_str(), 1))
+    if let Err(error) = ctx.world().spawnItem(crate::math::center(ctx.pos()), ItemStack::of(name.as_str(), 1))
     {
         warn(&format!("trophy drop: {}", error.0));
     }

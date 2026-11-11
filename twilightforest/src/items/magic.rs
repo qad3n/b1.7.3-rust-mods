@@ -1,10 +1,12 @@
 use super::{put, texture};
-use crate::ids::{self, block, item};
 use crate::math::look;
+use crate::names::{self, block, item};
+use crate::tags;
 use b173_api::math::{cos, floor, sin};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 // the twilight tools that act on the world, ItemTFOreMagnet through ItemTFTowerKey
 mod reach
@@ -65,11 +67,11 @@ pub(crate) fn wearHeld(player: Player, amount: i32)
     }
 }
 
-fn swap(world: World, pos: BlockPos, block: i32, meta: i32)
+fn swap(world: World, pos: BlockPos, state: StateData)
 {
     let was: i32 = world.block(pos);
 
-    if let Err(error) = world.setBlock(pos, block, meta)
+    if let Err(error) = world.setBlockState(pos, state)
     {
         warn(&format!("block change at {pos:?}: {}", error.0));
         return;
@@ -95,14 +97,14 @@ fn crumble(world: World, pos: BlockPos) -> i32
 
     for (from, to) in rolls
     {
-        if here == ids::blockId(from) && world.random(odds::CRUMBLE) == 0
+        if blockIs(here, from) && world.random(odds::CRUMBLE) == 0
         {
-            swap(world, pos, ids::blockId(to), 0);
+            swap(world, pos, names::state(to));
             cost += 1;
         }
     }
 
-    let soft: bool = here == ids::blockId("minecraft:gravel") || here == ids::blockId("minecraft:dirt");
+    let soft: bool = blockIs(here, "minecraft:gravel") || blockIs(here, "minecraft:dirt");
     if soft && world.random(odds::HARVEST) == 0
     {
         let meta: i32 = world.meta(pos);
@@ -219,7 +221,6 @@ thread_local!
 }
 
 const GUST_TICKS: i64 = 45;
-const FLOWERS: [&str; 2] = ["minecraft:red_flower", "minecraft:yellow_flower"];
 
 // ItemTFPeacockFan, a gust that blows flowers and loose things away or lifts the player in the air
 struct PeacockFan;
@@ -250,14 +251,14 @@ impl PeacockFan
         for pos in cells(low, high)
         {
             let here: i32 = world.block(pos);
-            if FLOWERS.iter().any(|name| here == ids::blockId(name)) && world.random(odds::PICK) == 0
+            if blockTagged(here, "minecraft:small_flowers") && world.random(odds::PICK) == 0
             {
                 if let Err(error) = world.dropBlockItems(pos, here, 0)
                 {
                     warn(&format!("flower drops at {pos:?}: {}", error.0));
                 }
 
-                swap(world, pos, 0, 0);
+                swap(world, pos, names::state("minecraft:air"));
             }
         }
 
@@ -307,13 +308,13 @@ impl ItemBehavior for PeacockFan
             {
                 let at: [f64; 3] = [0, 1, 2].map(|axis|
                 {
-                    f64::from(low[axis]) + f64::from(ids::fraction(world)) * f64::from(high[axis] - low[axis])
+                    f64::from(low[axis]) + f64::from(crate::math::fraction(world)) * f64::from(high[axis] - low[axis])
                 });
                 world.particle("explode", at, aim);
             }
         }
-        let volume: f32 = 1.0 + ids::fraction(world);
-        let pitch: f32 = ids::fraction(world) * 0.7 + 0.3;
+        let volume: f32 = 1.0 + crate::math::fraction(world);
+        let pitch: f32 = crate::math::fraction(world) * 0.7 + 0.3;
         world.playSound(info.pos, "random.breath", volume, pitch);
         holdInUse(player, held::FAN)
     }
@@ -325,8 +326,7 @@ impl ItemBehavior for PeacockFan
 
 fn thorny(world: World, pos: BlockPos) -> bool
 {
-    let here: i32 = world.block(pos);
-    here == ids::blockId(block::BROWN_THORNS) || here == ids::blockId(block::GREEN_THORNS)
+    world.is(pos, block::BROWN_THORNS) || world.is(pos, block::GREEN_THORNS)
 }
 
 // ItemTFLampOfCinders.burnBlock, thorns of either kind burn to ash and keep their axis
@@ -337,7 +337,9 @@ fn burn(world: World, pos: BlockPos) -> bool
         return false;
     }
 
-    if let Err(error) = world.setBlock(pos, ids::blockId(block::BURNT_THORNS), world.meta(pos))
+    let state: Option<Rc<StateData>> = names::stateAt(world, pos);
+    let axis: &str = state.as_ref().and_then(|state| state.get("axis")).unwrap_or("y");
+    if let Err(error) = world.setBlockState(pos, names::state(block::BURNT_THORNS).with("axis", axis))
     {
         warn(&format!("burn thorns at {pos:?}: {}", error.0));
     }
@@ -417,14 +419,16 @@ impl ItemBehavior for LampOfCinders
         }
 
         let (volume, pitch): (f32, f32) = (0.5, 1.5);
-        world.playSound(ids::center(pos), LAMP_SOUND, volume, pitch);
+        world.playSound(crate::math::center(pos), LAMP_SOUND, volume, pitch);
 
         let spread: f32 = 0.75;
 
         for _ in 0..10
         {
-            let at: [f64; 3] = [pos.x, pos.y, pos.z]
-                .map(|axis| f64::from(axis as f32 + 0.5 + (ids::fraction(world) - ids::fraction(world)) * spread));
+            let at: [f64; 3] = [pos.x, pos.y, pos.z].map(|axis|
+            {
+                f64::from(axis as f32 + 0.5 + (crate::math::fraction(world) - crate::math::fraction(world)) * spread)
+            });
             world.particle("smoke", at, [0.0; 3]);
             world.particle("flame", at, [0.0; 3]);
         }
@@ -452,12 +456,13 @@ impl MagicBeans
     {
         let info: BlockInfo = World::blockInfo(world.block(pos));
         let here: i32 = world.block(pos);
-        if here != 0 && !info.replaceable && info.opaque && !ids::leaves(here) && !ids::holdsLeaves(here)
+        let woody: bool = blockTagged(here, tags::LEAVES) || blockTagged(here, tags::LOGS);
+        if here != 0 && !info.replaceable && info.opaque && !woody
         {
             return false;
         }
 
-        let _ = world.setBlock(pos, ids::blockId(block::HUGE_STALK), 0);
+        let _ = world.place(pos, block::HUGE_STALK);
 
         true
     }
@@ -467,13 +472,13 @@ impl MagicBeans
         let here: i32 = world.block(pos);
         if here == 0 || !World::blockInfo(here).opaque
         {
-            let _ = world.setBlock(pos, ids::blockId(block::BEANSTALK_LEAVES), 0);
+            let _ = world.place(pos, block::BEANSTALK_LEAVES);
         }
     }
 
     fn leaves(world: World, pos: BlockPos)
     {
-        let _ = world.setBlock(pos, ids::blockId(block::HUGE_STALK), 0);
+        let _ = world.place(pos, block::HUGE_STALK);
 
         for dx in -1..=1
         {
@@ -500,8 +505,8 @@ impl MagicBeans
     fn grow(world: World, x: i32, z: i32, low: i32, high: i32)
     {
         let offset: i32 = world.random(100);
-        let curl: f32 = ids::fraction(world) * 0.25 + 0.125;
-        let swell: f32 = ids::fraction(world) * 0.25 + 0.125;
+        let curl: f32 = crate::math::fraction(world) * 0.25 + 0.125;
+        let swell: f32 = crate::math::fraction(world) * 0.25 + 0.125;
         let phase = |y: i32, scale: f32| (y + offset) as f32 * scale;
         let start: f32 = 4.0 + sin(phase(low, swell)) * 3.0;
         let x: i32 = (x as f32 - sin(phase(low, curl)) * start) as i32;
@@ -556,7 +561,7 @@ impl ItemBehavior for MagicBeans
     {
         let top: i32 = crate::world::terrain::height();
         let high: i32 = (pos.y + stalk::CLIMB).max(stalk::CLOUDS + stalk::ABOVE_CLOUDS).min(top);
-        if pos.y >= high || world.block(pos) != ids::blockId(block::UBEROUS_SOIL)
+        if pos.y >= high || !world.is(pos, block::UBEROUS_SOIL)
         {
             return Use::Pass;
         }
@@ -588,24 +593,13 @@ impl ItemBehavior for TowerKey
     }
 }
 
-// ItemTFOreMagnet.isOre, anything whose name says ore plus the liveroot
-fn ore(block: i32) -> bool
-{
-    if block == 0
-    {
-        return false;
-    }
-
-    block == ids::blockId(block::LIVEROOT)
-        || nameOf(RegistryKind::Block, block).is_some_and(|name| name.path().contains("ore"))
-}
+// ItemTFOreMagnet.isOre, the ore dictionary's ores plus the liveroot
+fn ore(block: i32) -> bool { blockTagged(block, "c:ores") || blockIs(block, block::LIVEROOT) }
 
 // ItemTFOreMagnet.isReplaceable, the ground an ore vein may be pulled into
 fn ground(block: i32) -> bool
 {
-    ["minecraft:dirt", "minecraft:grass", "minecraft:gravel", "minecraft:stone"]
-        .iter()
-        .any(|name| block == ids::blockId(name))
+    ["minecraft:dirt", "c:gravels", "minecraft:base_stone_overworld"].iter().any(|tag| blockTagged(block, tag))
 }
 
 fn vein(world: World, pos: BlockPos, kind: (i32, i32), found: &mut Vec<BlockPos>)
@@ -617,7 +611,7 @@ fn vein(world: World, pos: BlockPos, kind: (i32, i32), found: &mut Vec<BlockPos>
 
     found.push(pos);
 
-    for [dx, dy, dz] in ids::NEIGHBORS
+    for [dx, dy, dz] in crate::math::NEIGHBORS
     {
         vein(world, pos.offset(dx, dy, dz), kind, found);
     }
@@ -662,7 +656,7 @@ pub(crate) fn pull(world: World, from: [i32; 3], to: [i32; 3]) -> i32
     vein(world, found, kind, &mut blocks);
 
     let offset: [i32; 3] = [base.x - found.x, base.y - found.y, base.z - found.z];
-    let stone: i32 = ids::blockId("minecraft:stone");
+    let stone: StateHandle = names::handle("minecraft:stone");
     let mut moved: i32 = 0;
 
     for pos in blocks
@@ -674,7 +668,7 @@ pub(crate) fn pull(world: World, from: [i32; 3], to: [i32; 3]) -> i32
             continue;
         }
 
-        let _ = world.setBlockQuiet(pos, stone, 0);
+        let _ = stone.place(world, pos, false);
 
         world.markBlockForRender(pos);
 

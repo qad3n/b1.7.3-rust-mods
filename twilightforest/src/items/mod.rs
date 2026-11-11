@@ -7,7 +7,7 @@ mod powder;
 mod scepters;
 mod thrown;
 
-use crate::ids::item;
+use crate::names::item;
 use b173_api::prelude::*;
 pub(crate) use gear::{armorName, armorWorn};
 

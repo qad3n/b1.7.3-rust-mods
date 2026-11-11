@@ -1,4 +1,5 @@
-use crate::ids::{self, block};
+use crate::names::{self, block};
+use crate::tags;
 use crate::world::{dimension, isTwilight};
 use b173_api::math::{centerOf, distanceSquared, floor};
 use b173_api::prelude::*;
@@ -44,36 +45,16 @@ mod look
     pub const DRIFT: f64 = 0.5;
 }
 
-fn water(world: World, x: i32, y: i32, z: i32) -> bool
-{
-    let block: i32 = world.block(BlockPos::new(x, y, z));
-    block == ids::blockId("minecraft:water") || block == ids::blockId("minecraft:flowing_water")
-}
+fn water(world: World, x: i32, y: i32, z: i32) -> bool { world.tagged(BlockPos::new(x, y, z), "minecraft:water") }
 
 // BlockTFPortal.isGrassOrDirt, Material.grass and Material.ground
-fn earth(world: World, x: i32, y: i32, z: i32) -> bool
-{
-    let block: i32 = world.block(BlockPos::new(x, y, z));
-    block == ids::blockId("minecraft:grass")
-        || block == ids::blockId("minecraft:dirt")
-        || block == ids::blockId("minecraft:farmland")
-}
+fn earth(world: World, x: i32, y: i32, z: i32) -> bool { world.tagged(BlockPos::new(x, y, z), tags::SOIL) }
 
 // BlockTFPortal.isNatureBlock, Material.plants, vine and leaves
 fn nature(world: World, x: i32, y: i32, z: i32) -> bool
 {
     let block: i32 = world.block(BlockPos::new(x, y, z));
-    let plants: [&str; 6] = [
-        "minecraft:red_flower",
-        "minecraft:yellow_flower",
-        "minecraft:tallgrass",
-        "minecraft:sapling",
-        "minecraft:red_mushroom",
-        "minecraft:brown_mushroom",
-    ];
-    plants.iter().any(|name| block == ids::blockId(name))
-        || block == ids::blockId("minecraft:leaves")
-        || ids::leaves(block)
+    blockTagged(block, tags::PLAINS_PLANTS) || blockTagged(block, tags::CAVE_PLANTS) || blockTagged(block, tags::LEAVES)
 }
 
 // the twelve blocks ringing a two by two pool
@@ -107,20 +88,20 @@ fn tryCreate(world: World, x: i32, y: i32, z: i32) -> bool
 
     let px: i32 = if water(world, x - 1, y, z) { x - 1 } else { x };
     let pz: i32 = if water(world, px, y, z - 1) { z - 1 } else { z };
-    let portal: i32 = ids::blockId(block::PORTAL);
+    let portal: StateHandle = names::handle(block::PORTAL);
 
     for [dx, dz] in POOL
     {
-        place(world, BlockPos::new(px + dx, y, pz + dz), portal);
+        place(world, BlockPos::new(px + dx, y, pz + dz), &portal);
     }
 
     remember(world.dimension, [px, y, pz]);
     true
 }
 
-fn place(world: World, pos: BlockPos, block: i32)
+fn place(world: World, pos: BlockPos, block: &StateHandle)
 {
-    if let Err(error) = world.setBlockQuiet(pos, block, 0)
+    if let Err(error) = block.place(world, pos, false)
     {
         warn(&format!("portal block not placed at {pos:?}: {}", error.0));
         return;
@@ -145,10 +126,7 @@ fn remember(dimension: i32, corner: [i32; 3])
     }
 }
 
-fn isPortal(world: World, x: i32, y: i32, z: i32) -> bool
-{
-    world.block(BlockPos::new(x, y, z)) == ids::blockId(block::PORTAL)
-}
+fn isPortal(world: World, x: i32, y: i32, z: i32) -> bool { world.is(BlockPos::new(x, y, z), block::PORTAL) }
 
 // TFTeleporter.placeInExistingPortal over the portals this mod made, the nearest one still standing
 fn existing(world: World, at: [f64; 3]) -> Option<[f64; 3]>
@@ -212,8 +190,6 @@ fn arrival(world: World, [x, y, z]: [i32; 3]) -> [f64; 3]
 // TFTeleporter.isIdealPortal and isOkayPortal, a four by four patch of grass or anything solid with room above
 fn fits(world: World, x: i32, y: i32, z: i32, ideal: bool) -> bool
 {
-    let grass: i32 = ids::blockId("minecraft:grass");
-
     for tz in z - 1..z + 3
     {
         for tx in x - 1..x + 3
@@ -222,7 +198,7 @@ fn fits(world: World, x: i32, y: i32, z: i32, ideal: bool) -> bool
 
             let footing: bool = if ideal
             {
-                floor == grass
+                blockIs(floor, "minecraft:grass")
             }
             else
             {
@@ -296,18 +272,19 @@ fn findSpot(world: World, at: [f64; 3], ideal: bool, factor: f64) -> Option<[i32
 fn build(world: World, [x, y, z]: [i32; 3])
 {
     let py: i32 = y.clamp(travel::LOWEST, travel::HIGHEST) - 1;
-    let (grass, dirt, portal): (i32, i32, i32) =
-        (ids::blockId("minecraft:grass"), ids::blockId("minecraft:dirt"), ids::blockId(block::PORTAL));
+    let (grass, dirt, portal): (StateHandle, StateHandle, StateHandle) =
+        (names::handle("minecraft:grass"), names::handle("minecraft:dirt"), names::handle(block::PORTAL));
+    let air: StateHandle = names::handle("minecraft:air");
 
     for [dx, dz] in RING
     {
-        place(world, BlockPos::new(x + dx, py, z + dz), grass);
+        place(world, BlockPos::new(x + dx, py, z + dz), &grass);
     }
 
     for [dx, dz] in POOL
     {
-        place(world, BlockPos::new(x + dx, py - 1, z + dz), dirt);
-        place(world, BlockPos::new(x + dx, py, z + dz), portal);
+        place(world, BlockPos::new(x + dx, py - 1, z + dz), &dirt);
+        place(world, BlockPos::new(x + dx, py, z + dz), &portal);
     }
 
     for dx in -1..=2
@@ -316,25 +293,24 @@ fn build(world: World, [x, y, z]: [i32; 3])
         {
             for dy in 1..=5
             {
-                place(world, BlockPos::new(x + dx, py + dy, z + dz), 0);
+                place(world, BlockPos::new(x + dx, py + dy, z + dz), &air);
             }
         }
     }
 
-    let plants: [&str; 5] = [
-        "minecraft:brown_mushroom",
-        "minecraft:red_mushroom",
-        "minecraft:tallgrass",
-        "minecraft:red_flower",
-        "minecraft:yellow_flower",
+    // beta tall grass needs metadata one to show as grass
+    let plants: [StateHandle; 5] = [
+        StateHandle::new(names::vanilla("brown_mushroom", 0)),
+        StateHandle::new(names::vanilla("red_mushroom", 0)),
+        StateHandle::new(names::vanilla("tallgrass", 1)),
+        StateHandle::new(names::vanilla("red_flower", 0)),
+        StateHandle::new(names::vanilla("yellow_flower", 0)),
     ];
 
     for [dx, dz] in RING
     {
-        let plant: &str = plants[world.random(plants.len() as i32) as usize];
-        // beta tall grass needs metadata one to show as grass
-        let meta: i32 = i32::from(plant == "minecraft:tallgrass");
-        if let Err(error) = world.setBlockQuiet(BlockPos::new(x + dx, py + 1, z + dz), ids::blockId(plant), meta)
+        let plant: &StateHandle = &plants[world.random(plants.len() as i32) as usize];
+        if let Err(error) = plant.place(world, BlockPos::new(x + dx, py + 1, z + dz), false)
         {
             warn(&format!("portal plant: {}", error.0));
         }
@@ -552,7 +528,7 @@ impl BlockBehavior for Portal
         };
         if !axis([-1, 0], [1, 0]) || !axis([0, -1], [0, 1])
         {
-            let _ = world.setBlock(ctx.pos(), ids::blockId("minecraft:water"), 0);
+            let _ = world.place(ctx.pos(), "minecraft:water");
         }
     }
 
@@ -565,7 +541,7 @@ impl BlockBehavior for Portal
 
         if world.random(look::SOUND_ODDS) == 0
         {
-            let (volume, pitch): (f32, f32) = (1.0, ids::fraction(world) * 0.4 + 0.8);
+            let (volume, pitch): (f32, f32) = (1.0, crate::math::fraction(world) * 0.4 + 0.8);
             world.playSound(corner.map(|axis| axis + 0.5), "portal.portal", volume, pitch);
         }
 
@@ -573,12 +549,12 @@ impl BlockBehavior for Portal
 
         for _ in 0..look::MOTES
         {
-            let mut at: [f64; 3] = corner.map(|axis| axis + f64::from(ids::fraction(world)));
+            let mut at: [f64; 3] = corner.map(|axis| axis + f64::from(crate::math::fraction(world)));
             let side: f64 = if world.random(2) == 0 { -1.0 } else { 1.0 };
-            let mut motion: [f64; 3] = [0; 3].map(|_| (f64::from(ids::fraction(world)) - 0.5) * look::DRIFT);
+            let mut motion: [f64; 3] = [0; 3].map(|_| (f64::from(crate::math::fraction(world)) - 0.5) * look::DRIFT);
             let axis: usize = if alongX { 2 } else { 0 };
             at[axis] = corner[axis] + 0.5 + look::EDGE * side;
-            motion[axis] = f64::from(ids::fraction(world)) * 2.0 * side;
+            motion[axis] = f64::from(crate::math::fraction(world)) * 2.0 * side;
             world.particle("portal", at, motion);
         }
     }

@@ -1,4 +1,4 @@
-use crate::ids::{self, NEIGHBORS};
+use crate::math::NEIGHBORS;
 use b173_api::prelude::*;
 
 // TFClientProxy.spawnParticle's own particle classes and the 1.7 particles beta lacks, each a beta particle
@@ -85,7 +85,8 @@ pub(crate) fn spawn(world: World, name: &str, at: [f64; 3], motion: [f64; 3])
 // blockcrack_<id>_<meta>, bits of a block as 1.7 names its digging particle
 pub(crate) fn crack(world: World, block: &str, meta: i32, at: [f64; 3], motion: [f64; 3])
 {
-    world.particle(&format!("blockcrack_{}_{meta}", ids::blockId(block)), at, motion);
+    let id: i32 = Blocks.id(block).unwrap_or(0);
+    world.particle(&format!("blockcrack_{id}_{meta}"), at, motion);
 }
 
 // BlockTFTowerDevice.sparkle, a speck just outside every face that is not covered
@@ -113,9 +114,9 @@ pub(crate) fn outside(world: World, pos: BlockPos, step: [i32; 3]) -> [f64; 3]
 {
     let offset: f64 = 0.0625;
     let mut at: [f64; 3] = [
-        f64::from(pos.x) + f64::from(ids::fraction(world)),
-        f64::from(pos.y) + f64::from(ids::fraction(world)),
-        f64::from(pos.z) + f64::from(ids::fraction(world)),
+        f64::from(pos.x) + f64::from(crate::math::fraction(world)),
+        f64::from(pos.y) + f64::from(crate::math::fraction(world)),
+        f64::from(pos.z) + f64::from(crate::math::fraction(world)),
     ];
 
     for (axis, step) in step.into_iter().enumerate()
@@ -144,7 +145,7 @@ pub(crate) fn line(world: World, name: &str, from: [f64; 3], to: [f64; 3], count
 
         let at: [f64; 3] = std::array::from_fn(|axis|
         {
-            from[axis] + (to[axis] - from[axis]) * along + f64::from(ids::fraction(world)) * jitter
+            from[axis] + (to[axis] - from[axis]) * along + f64::from(crate::math::fraction(world)) * jitter
         });
         spawn(world, name, at, [0.0; 3]);
     }
@@ -155,6 +156,6 @@ pub(crate) fn tinyFirefly(world: World, at: [f64; 3])
 {
     let spread: f64 = 0.3;
     let rise: f64 = 0.4;
-    let wobble = || f64::from(ids::fraction(world) - ids::fraction(world));
+    let wobble = || f64::from(crate::math::fraction(world) - crate::math::fraction(world));
     spawn(world, "firefly", [at[0] + wobble() * spread, at[1] + wobble() * rise, at[2] + wobble() * spread], [0.0; 3]);
 }

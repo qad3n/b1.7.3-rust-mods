@@ -1,5 +1,5 @@
 use super::trees::{Builder, Placed, Woods, core, line, translate};
-use crate::ids::block;
+use crate::names::block;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 
@@ -285,7 +285,7 @@ impl Hollow<'_>
 
         self.base();
         // beta has no vines, a ladder on the same inner wall climbs the same way
-        let ladderOnEastWall: Placed = (self.m_builder.m_world.id("minecraft:ladder"), 4);
+        let ladderOnEastWall: Placed = super::palette::meta("minecraft:ladder", 4);
 
         for dx in -diameter..=diameter
         {
@@ -365,7 +365,8 @@ impl Hollow<'_>
 
         if self.m_builder.isAir(at[0], at[1], at[2])
         {
-            self.m_builder.set(at[0], at[1], at[2], (self.m_builder.m_world.id(name), meta));
+            // critters keep the torch template's facing metadata, which has no named state
+            self.m_builder.set(at[0], at[1], at[2], super::palette::meta(name, meta));
         }
     }
 
@@ -398,8 +399,6 @@ impl Hollow<'_>
 
 fn clearCrown(builder: &Builder, origin: [i32; 3], height: i32, radius: i32) -> bool
 {
-    let leaves: i32 = builder.m_world.id("minecraft:leaves");
-
     for dx in -radius..=radius
     {
         for dz in -radius..=radius
@@ -407,7 +406,7 @@ fn clearCrown(builder: &Builder, origin: [i32; 3], height: i32, radius: i32) -> 
             for dy in height - radius..=height + radius
             {
                 let there: i32 = builder.block(origin[0] + dx, origin[1] + dy, origin[2] + dz);
-                if there != 0 && there != leaves
+                if there != 0 && !blockIs(there, "minecraft:leaves")
                 {
                     return false;
                 }

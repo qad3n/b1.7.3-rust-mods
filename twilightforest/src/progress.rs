@@ -1,4 +1,4 @@
-use crate::ids::item;
+use crate::names::item;
 use crate::world::biomes::{self, Biome};
 use crate::world::features::Feature;
 use b173_api::math::{blockOf, floor};

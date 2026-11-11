@@ -1,7 +1,7 @@
+use crate::bosses;
 use crate::progress::{self, Gate};
 use crate::world::features::{self, Feature};
 use crate::world::structures;
-use crate::{bosses, ids};
 use b173_api::math::blockOf;
 use b173_api::prelude::*;
 use b173_api::terrain::structure::StructureBox;
@@ -24,7 +24,7 @@ fn guarded(world: World, player: Player, pos: BlockPos) -> Option<StructureBox>
     }
 
     let needed: Gate = gate(world, pos.x, pos.z)?;
-    let center: [f64; 3] = ids::center(pos);
+    let center: [f64; 3] = crate::math::center(pos);
     if progress::has(player, needed) || bosses::conquered(world, center)
     {
         return None;
@@ -68,8 +68,9 @@ fn activating(event: &mut Event)
         return;
     };
 
-    let guardedBlocks: [i32; 3] = ["minecraft:chest", "minecraft:stone_button", "minecraft:lever"].map(ids::blockId);
-    if guardedBlocks.contains(&block) || crate::tower::deviceBlock(World { dimension: world }, block)
+    let guarded: bool =
+        blockTagged(block, "c:chests") || blockTagged(block, "minecraft:buttons") || blockIs(block, "minecraft:lever");
+    if guarded || crate::tower::deviceBlock(World { dimension: world }, block)
     {
         refuse(event, pos);
     }

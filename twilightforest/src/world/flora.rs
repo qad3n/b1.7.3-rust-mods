@@ -241,7 +241,7 @@ pub(crate) enum Grass
 }
 
 const MAYAPPLE: Grass = Grass::Twilight("mayapple");
-const FIDDLEHEAD: Grass = Grass::Twilight(crate::ids::block::FIDDLEHEAD);
+const FIDDLEHEAD: Grass = Grass::Twilight(crate::names::block::FIDDLEHEAD);
 
 pub(crate) fn grass(biome: Biome, random: &Random) -> Grass
 {

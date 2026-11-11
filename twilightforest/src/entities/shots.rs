@@ -1,5 +1,4 @@
 use crate::combat::kind;
-use crate::ids;
 use crate::models::Program;
 use b173_api::math::{blockOf, distance, length, sub};
 use b173_api::prelude::*;
@@ -248,7 +247,7 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_kind: kind::THROWN,
         m_impact: Impact::Moonworm,
         m_icon: Icon::Texture("twilightforest:block/tfmoonworm"),
-        m_puff: Puff::Crack(crate::ids::block::MOONWORM),
+        m_puff: Puff::Crack(crate::names::block::MOONWORM),
         m_passes: None,
         m_trail: Trail::None,
     },
@@ -304,7 +303,10 @@ pub(crate) fn wobble(world: World, spread: f64) -> f64
     (f64::from(world.random(steps)) / scale - 1.0) * inaccuracy * spread
 }
 
-fn jitter(world: World) -> f64 { trail::SPREAD * f64::from(ids::fraction(world) - ids::fraction(world)) }
+fn jitter(world: World) -> f64
+{
+    trail::SPREAD * f64::from(crate::math::fraction(world) - crate::math::fraction(world))
+}
 
 fn leaveTrail(kind: Trail, world: World, info: &EntityInfo)
 {
@@ -328,7 +330,7 @@ fn leaveTrail(kind: Trail, world: World, info: &EntityInfo)
             for _ in 0..trail::SPELL_SPECKS
             {
                 let color: [f64; 3] =
-                    trail::SPELL.map(|channel| f64::from((ids::fraction(world) * 0.5 + 0.5) * channel));
+                    trail::SPELL.map(|channel| f64::from((crate::math::fraction(world) * 0.5 + 0.5) * channel));
                 crate::particles::spawn(world, "mobSpell", near(), color);
             }
         }
@@ -385,13 +387,13 @@ fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, 
         // birch leaves grow where the bolt hits stone or wood, grass gets bone meal
         let birch: i32 = 2;
 
-        if here == crate::ids::blockId("minecraft:grass")
+        if blockIs(here, "minecraft:grass")
         {
             let _ = world.fertilize(pos);
         }
         else if info.solid && info.hardness >= 0.0
         {
-            let _ = world.setBlock(pos, crate::ids::blockId("minecraft:leaves"), birch);
+            let _ = world.setBlockState(pos, crate::names::vanilla("leaves", birch));
         }
     }
 
@@ -535,7 +537,7 @@ pub(crate) fn blast(world: World, at: [f64; 3], power: f32, source: Option<i32>)
 {
     let reach: f64 = f64::from(power) * 2.0;
 
-    world.playSound(at, "random.explode", 4.0, 0.7 + crate::ids::fraction(world) * 0.2);
+    world.playSound(at, "random.explode", 4.0, 0.7 + crate::math::fraction(world) * 0.2);
     crate::particles::spawn(world, "hugeexplosion", at, [0.0; 3]);
 
     for other in world.entitiesNear(at, reach)

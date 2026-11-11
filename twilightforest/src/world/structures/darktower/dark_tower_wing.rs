@@ -677,7 +677,7 @@ pub(crate) fn decorateTreasureRoom(
 
     if dark_tower_wing::isKeyTower(this)
     {
-        dark_tower_wing::putItemInTreasure(this, world, x, y + 2, z, crate::ids::item::TOWER_KEY, sbb);
+        dark_tower_wing::putItemInTreasure(this, world, x, y + 2, z, crate::names::item::TOWER_KEY, sbb);
     }
 }
 

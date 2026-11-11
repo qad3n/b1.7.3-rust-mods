@@ -1,6 +1,6 @@
 use super::{put, texture};
-use crate::ids::{self, item};
 use crate::math::look;
+use crate::names::item;
 use b173_api::math::distance;
 use b173_api::prelude::*;
 
@@ -56,7 +56,7 @@ impl ItemBehavior for Powder
 
         for _ in 0..SPARKS
         {
-            let at: [f64; 3] = center.map(|value| value + f64::from(ids::fraction(world)) * 2.0 - 1.0);
+            let at: [f64; 3] = center.map(|value| value + f64::from(crate::math::fraction(world)) * 2.0 - 1.0);
             crate::particles::spawn(world, "magic_crit", at, [0.0; 3]);
         }
 
@@ -97,7 +97,7 @@ impl ItemBehavior for Powder
 
         for _ in 0..30
         {
-            let jitter = || f64::from(ids::fraction(world) - 0.5);
+            let jitter = || f64::from(crate::math::fraction(world) - 0.5);
             crate::particles::spawn(
                 world,
                 "largeexplode",

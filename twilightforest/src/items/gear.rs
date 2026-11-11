@@ -1,5 +1,5 @@
 use super::{put, texture};
-use crate::ids::item;
+use crate::names::item;
 use b173_api::prelude::*;
 
 // TFItems tool materials, damage is the 1.7 bonus a beta tier doubles for swords as beta does
@@ -47,6 +47,20 @@ fn damage(class: Class, tier: Tier) -> i32
         Class::Sword | Class::Heavy(_) => 4.0 + bonus * 2.0,
     };
     value as i32
+}
+
+// the modern item tag that groups a tool class
+fn classTag(class: ToolClass) -> &'static str
+{
+    match class
+    {
+        ToolClass::Pickaxe => "minecraft:pickaxes",
+        ToolClass::Axe => "minecraft:axes",
+        ToolClass::Shovel => "minecraft:shovels",
+        ToolClass::Sword => "minecraft:swords",
+        ToolClass::Hoe => "minecraft:hoes",
+        ToolClass::Shears => "c:tools/shears",
+    }
 }
 
 fn toolClass(class: Class) -> ToolClass
@@ -221,14 +235,21 @@ const ARMOR: [ArmorSet; 8] = [
     },
 ];
 
-const SLOTS: [(ArmorSlot, &str); 4] = [
-    (ArmorSlot::Head, "helmet"),
-    (ArmorSlot::Chest, "chestplate"),
-    (ArmorSlot::Legs, "leggings"),
-    (ArmorSlot::Feet, "boots"),
+struct Slot
+{
+    m_slot: ArmorSlot,
+    m_suffix: &'static str,
+    m_tag: &'static str,
+}
+
+const SLOTS: [Slot; 4] = [
+    Slot { m_slot: ArmorSlot::Head, m_suffix: "helmet", m_tag: "minecraft:head_armor" },
+    Slot { m_slot: ArmorSlot::Chest, m_suffix: "chestplate", m_tag: "minecraft:chest_armor" },
+    Slot { m_slot: ArmorSlot::Legs, m_suffix: "leggings", m_tag: "minecraft:leg_armor" },
+    Slot { m_slot: ArmorSlot::Feet, m_suffix: "boots", m_tag: "minecraft:foot_armor" },
 ];
 
-pub(crate) fn armorName(set: &str, slot: usize) -> String { format!("{set}_{}", SLOTS[slot].1) }
+pub(crate) fn armorName(set: &str, slot: usize) -> String { format!("{set}_{}", SLOTS[slot].m_suffix) }
 
 fn iconTexture(name: &str) -> String
 {
@@ -260,7 +281,8 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
         let mut spec: ItemSpecBuilder = ItemSpecBuilder::new()
             .name(row.m_label)
             .texture(&iconTexture(row.m_texture))
-            .tool(class, row.m_tier.m_level, speed(row), damage(row.m_class, row.m_tier), row.m_tier.m_uses);
+            .tool(class, row.m_tier.m_level, speed(row), damage(row.m_class, row.m_tier), row.m_tier.m_uses)
+            .tag(classTag(class));
 
         spec = match row.m_name
         {
@@ -288,7 +310,7 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
 
             let spec: ArmorSpec = ArmorSpec
             {
-                slot: SLOTS[slot].0,
+                slot: SLOTS[slot].m_slot,
                 protection: set.m_protection[slot],
                 durability: armor::BASE[slot] * set.m_factor,
                 texture: format!("twilightforest:armor/{}", set.m_sheet),
@@ -297,7 +319,7 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
             put(
                 ctx,
                 &armorName(set.m_name, slot),
-                ItemSpecBuilder::new().name(label).texture(&texture(icon)).armor(spec),
+                ItemSpecBuilder::new().name(label).texture(&texture(icon)).armor(spec).tag(SLOTS[slot].m_tag),
             )?;
         }
     }
@@ -317,8 +339,8 @@ mod boost
 // ItemPickaxe.func_150893_a for a giant block, only rock comes at the tier speed
 fn giantSpeed(block: i32) -> f32
 {
-    let obsidian: bool = block == crate::ids::blockId(crate::ids::block::GIANT_OBSIDIAN);
-    let rock: bool = obsidian || block == crate::ids::blockId(crate::ids::block::GIANT_COBBLE);
+    let obsidian: bool = blockIs(block, crate::names::block::GIANT_OBSIDIAN);
+    let rock: bool = obsidian || blockIs(block, crate::names::block::GIANT_COBBLE);
     let base: f32 = if rock { GIANT.m_speed } else { 1.0 };
     let extra: f32 = if obsidian { boost::GIANT } else { 1.0 };
     base * boost::GIANT * extra
@@ -338,11 +360,11 @@ fn pickSpeed(event: &mut Event)
         return;
     };
 
-    if held.item.is(item::GIANT_PICK) && crate::ids::giantBlock(*block)
+    if held.item.is(item::GIANT_PICK) && blockTagged(*block, crate::tags::GIANT)
     {
         *speed = giantSpeed(*block);
     }
-    else if held.item.is(item::MAZEBREAKER_PICK) && crate::ids::mazestone(*block)
+    else if held.item.is(item::MAZEBREAKER_PICK) && blockTagged(*block, crate::tags::MAZESTONE)
     {
         *speed = EMERALD.m_speed * boost::MAZE + efficiency(boost::MAZE_EFFICIENCY);
     }

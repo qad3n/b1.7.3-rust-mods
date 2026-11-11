@@ -1,4 +1,5 @@
 use super::trees::{Builder, Placed, leaves, log};
+use b173_api::prelude::*;
 use b173_api::terrain::{Random, math};
 
 // WorldGenBigTree, drawn in twilight oak with rainbow leaves for TFGenLargeRainboak or in plain beta oak
@@ -33,7 +34,7 @@ impl BigTree<'_>
     {
         if self.m_vanilla
         {
-            (self.m_builder.m_world.id("minecraft:log"), 0)
+            super::palette::plain("minecraft:log")
         }
         else
         {
@@ -45,7 +46,7 @@ impl BigTree<'_>
     {
         if self.m_vanilla
         {
-            (self.m_builder.m_world.id("minecraft:leaves"), 0)
+            super::palette::plain("minecraft:leaves")
         }
         else
         {
@@ -80,7 +81,6 @@ impl BigTree<'_>
         let slopeSecond: f64 = f64::from(delta[second]) / f64::from(delta[lead]);
         let end: i32 = delta[lead] + step;
         let mut offset: i32 = 0;
-        let leaves: i32 = self.m_builder.m_world.id("minecraft:leaves");
 
         while offset != end
         {
@@ -89,7 +89,7 @@ impl BigTree<'_>
             at[first] = math::floor(f64::from(from[first]) + f64::from(offset) * slopeFirst);
             at[second] = math::floor(f64::from(from[second]) + f64::from(offset) * slopeSecond);
             let there: i32 = self.m_builder.block(at[0], at[1], at[2]);
-            if there != 0 && there != leaves
+            if there != 0 && !blockIs(there, "minecraft:leaves")
             {
                 break;
             }
@@ -193,7 +193,7 @@ impl BigTree<'_>
 
                 let (x, z): (i32, i32) = (center[0] + a, center[2] + b);
                 let there: i32 = self.m_builder.block(x, center[1], z);
-                if there == 0 || crate::ids::leaves(there) || !self.m_builder.m_world.info(there).opaque
+                if there == 0 || blockTagged(there, crate::tags::LEAVES) || !self.m_builder.m_world.info(there).opaque
                 {
                     self.m_builder.set(x, center[1], z, leaf);
                 }

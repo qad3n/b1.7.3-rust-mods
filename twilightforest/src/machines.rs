@@ -1,6 +1,6 @@
 use crate::blocks::{texture, vanillaTexture};
-use crate::ids::{self, block};
-use crate::recipes;
+use crate::names::{self, block};
+use crate::{recipes, tags};
 use b173_api::prelude::*;
 use b173_api::screen::Draw;
 
@@ -88,7 +88,7 @@ fn problematic(stack: &StackData) -> bool
 {
     ["minecraft:water_bucket", "minecraft:lava_bucket", "minecraft:milk_bucket"]
         .iter()
-        .any(|name| ids::itemId(name) == stack.id)
+        .any(|name| b173_api::named(RegistryKind::Item, stack.id, name))
 }
 
 // ContainerTFUncrafting.getRecipeFor, the first shaped recipe that makes the input
@@ -136,7 +136,10 @@ fn uncraftGrid(input: &ItemStack) -> (Vec<Option<StackData>>, i32)
         }
     }
 
-    let damageable = |part: &Option<StackData>| part.as_ref().is_some_and(|part| part.id != ids::itemId(STICK));
+    let damageable = |part: &Option<StackData>|
+    {
+        part.as_ref().is_some_and(|part| !b173_api::named(RegistryKind::Item, part.id, STICK))
+    };
     let most: i32 = maxDamage(&input.item);
     if most > 0 && input.damage > 0
     {
@@ -314,11 +317,8 @@ fn pick(message: Pick, player: Player)
     let world: World = World { dimension: info.world };
     let pos: BlockPos = message.m_pos;
     let reach: f64 = 8.0;
-    let near: bool = (0..3).all(|axis| (info.pos[axis] - ids::center(pos)[axis]).abs() <= reach);
-    if !near
-        || world.block(pos) != ids::blockId(TABLE_NAME)
-        || !(0..table::CELLS).contains(&message.m_cell)
-        || player.cursor().is_some()
+    let near: bool = (0..3).all(|axis| (info.pos[axis] - crate::math::center(pos)[axis]).abs() <= reach);
+    if !near || !world.is(pos, TABLE_NAME) || !(0..table::CELLS).contains(&message.m_cell) || player.cursor().is_some()
     {
         return;
     }
@@ -372,7 +372,7 @@ fn leave(message: Leave, player: Player)
     };
     let world: World = World { dimension: info.world };
     let pos: BlockPos = message.m_pos;
-    if world.block(pos) != ids::blockId(TABLE_NAME)
+    if !world.is(pos, TABLE_NAME)
     {
         return;
     }
@@ -578,31 +578,17 @@ fn burnTime(stack: &ItemStack) -> i32
 }
 
 // the source's logWood ore dictionary entry, any mod's logs included
-fn inLogs(name: &Identifier) -> bool { tagValues(RegistryKind::Block, "minecraft:logs").contains(name) }
-
-fn logLike(block: i32) -> bool
-{
-    if block == 0 || block == ids::blockId(block::CINDER_LOG)
-    {
-        return false;
-    }
-
-    nameOf(RegistryKind::Block, block).is_some_and(|name| inLogs(&name))
-}
+fn logLike(block: i32) -> bool { blockTagged(block, tags::LOGS) && !blockIs(block, block::CINDER_LOG) }
 
 // TileEntityTFCinderFurnace.canMultiply, ores and logs come out multiplied
-fn multiplies(input: &ItemStack) -> bool
-{
-    input.item.name().is_some_and(|name| name.path().contains("ore") || inLogs(&name))
-}
+fn multiplies(input: &ItemStack) -> bool { input.item.tagged("c:ores") || input.item.tagged(tags::LOGS) }
 
 fn cinders(world: World, pos: BlockPos) -> i32
 {
-    let cinder: i32 = ids::blockId(block::CINDER_LOG);
     let around = || -1..=1;
     around()
         .flat_map(|dx| around().flat_map(move |dy| around().map(move |dz| [dx, dy, dz])))
-        .filter(|[dx, dy, dz]| world.block(pos.offset(*dx, *dy, *dz)) == cinder)
+        .filter(|[dx, dy, dz]| world.is(pos.offset(*dx, *dy, *dz), block::CINDER_LOG))
         .count() as i32
 }
 
@@ -687,32 +673,31 @@ fn cinderize(world: World, pos: BlockPos)
         return;
     }
 
-    // TileEntityTFCinderFurnace.getCinderMetaFor in log orientation bits, a quarter of which is the axis state
-    let bits: i32 = if dz == 0 && dx != 0
+    // TileEntityTFCinderFurnace.getCinderMetaFor, the log turns to face the furnace
+    let axis: &str = if dz == 0 && dx != 0
     {
-        if dy == 0 { 4 } else { 8 }
+        if dy == 0 { "x" } else { "z" }
     }
     else if dx == 0 && dz != 0
     {
-        if dy == 0 { 8 } else { 4 }
+        if dy == 0 { "z" } else { "x" }
     }
     else if dx == 0 || dy == 0
     {
-        0
+        "y"
     }
     else
     {
-        12
+        "none"
     };
-    let axis: i32 = bits / 4;
-    let _ = world.setBlock(at, ids::blockId(block::CINDER_LOG), axis);
+    let _ = world.setBlockState(at, names::state(block::CINDER_LOG).with("axis", axis));
 
-    world.playSound(ids::center(at), "fire.fire", 1.0, 1.0);
+    world.playSound(crate::math::center(at), "fire.fire", 1.0, 1.0);
 
     for _ in 0..2
     {
-        world.particle("flame", ids::center(at), [0.0; 3]);
-        world.particle("smoke", ids::center(at), [0.0; 3]);
+        world.particle("flame", crate::math::center(at), [0.0; 3]);
+        world.particle("smoke", crate::math::center(at), [0.0; 3]);
     }
 }
 
@@ -777,7 +762,8 @@ fn furnaceTick(ctx: &mut BlockCtx)
     if wasLit != lit
     {
         let target: &str = if lit { FURNACE_LIT } else { FURNACE_NAME };
-        if let Err(error) = world.swapBlock(pos, ids::blockId(target), 0)
+        let swapped: Result<bool> = Blocks.id(target).and_then(|block| world.swapBlock(pos, block, 0));
+        if let Err(error) = swapped
         {
             warn(&format!("cinder furnace at {pos:?}: {}", error.0));
         }
@@ -831,8 +817,8 @@ impl BlockBehavior for FurnaceBlock
 
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
-        let (out, across): (f64, f64) = (0.52, f64::from(ids::fraction(world)) * 0.6 - 0.3);
-        let height: f64 = f64::from(pos.y) + f64::from(ids::fraction(world)) * 6.0 / 16.0;
+        let (out, across): (f64, f64) = (0.52, f64::from(crate::math::fraction(world)) * 0.6 - 0.3);
+        let height: f64 = f64::from(pos.y) + f64::from(crate::math::fraction(world)) * 6.0 / 16.0;
         let [cx, cz] = [f64::from(pos.x) + 0.5, f64::from(pos.z) + 0.5];
 
         let at: [f64; 3] = match world.random(4) + 2
