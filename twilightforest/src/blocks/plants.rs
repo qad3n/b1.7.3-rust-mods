@@ -436,21 +436,25 @@ pub(crate) fn axisOf(direction: [i32; 3]) -> usize
     }
 }
 
-fn thornModel() -> BlockModelSpec
+// one column along each axis, shown for the state naming that axis
+fn thornModel() -> StateModelSpec
 {
     let inner: f32 = thorns::INSET;
     let outer: f32 = 16.0 - thorns::INSET;
     let full: f32 = 16.0;
-    let column = |from: [f32; 3], to: [f32; 3], meta: i32| Cuboid { from, to, metas: vec![meta], ..Cuboid::default() };
+    let column = |from: [f32; 3], to: [f32; 3], axis: &str| StateCuboid
+    {
+        cuboid: Cuboid { from, to, ..Cuboid::default() },
+        when: super::when("axis", axis),
+    };
 
-    BlockModelSpec
+    StateModelSpec
     {
         cuboids: vec![
-            column([inner, 0.0, inner], [outer, full, outer], 0),
-            column([0.0, inner, inner], [full, outer, outer], 1),
-            column([inner, inner, 0.0], [outer, outer, full], 2),
+            column([inner, 0.0, inner], [outer, full, outer], AXES[0]),
+            column([0.0, inner, inner], [full, outer, outer], AXES[1]),
+            column([inner, inner, 0.0], [outer, outer, full], AXES[2]),
         ],
-        ..BlockModelSpec::default()
     }
 }
 
@@ -545,7 +549,6 @@ fn thornSpec(label: &str, look: &str, burnt: bool) -> BlockSpecBuilder
             side: Some(texture(&format!("{look}_thorns_side"))),
             front: None,
         })
-        .model(thornModel())
         .drops(Vec::new())
         .behavior(Thorns { m_burnt: burnt });
 
@@ -591,6 +594,7 @@ fn registerThorns(ctx: &mut RegisterCtx) -> Result<()>
             name,
             BlockStatesSpec { properties: vec![PropertySpec::new("axis", &AXES)], ..BlockStatesSpec::default() },
         )?;
+        ctx.blocks().stateModel(name, thornModel())?;
     }
 
     let roseHardness: f32 = 10.0;

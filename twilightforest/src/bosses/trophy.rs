@@ -3,6 +3,7 @@ use crate::names::{self, block, item};
 use crate::progress::{self, Gate};
 use b173_api::math::{distance, floor};
 use b173_api::prelude::*;
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
 // ItemTFTrophy and BlockTFTrophy: boss trophies placed as small heads, and BlockTFTrophyPedestal, which opens the
@@ -34,9 +35,7 @@ mod pedestal
     pub const HARDNESS: f32 = 2.0;
     pub const RESISTANCE: f32 = 2000.0;
     // the turn of the boss faces, the latent state waits for a trophy and lights the faces, a spare property keeps
-    // the stored metadata the source's so the model's cuboids still pick by it
-    pub const TURNS: i32 = 4;
-    pub const LATENT: i32 = 8;
+    // the stored metadata the source's
     pub const TURN_VALUES: [&str; 4] = ["0", "1", "2", "3"];
     // RenderBlockTFPedestal's base, column and cap in pixels
     pub const BOXES: [[[f32; 3]; 2]; 3] = [
@@ -51,8 +50,6 @@ mod pedestal
 }
 
 fn texture(name: &str) -> String { format!("twilightforest:item/{name}") }
-
-fn lit(meta: i32) -> bool { meta >= pedestal::LATENT }
 
 // any state but the plain unturned one, which the pedestal treats as placed by a player
 fn guarded(state: Option<Rc<StateData>>) -> bool
@@ -186,10 +183,10 @@ fn skin(from: [f32; 3], to: [f32; 3], axis: usize, step: i32) -> ([f32; 3], [f32
 }
 
 // RenderBlockTFPedestal's three boxes, each face with the sprite BlockTFTrophyPedestal.getIcon gives it
-fn pedestalModel() -> Vec<Cuboid>
+fn pedestalModel() -> Vec<StateCuboid>
 {
     let sides: [(usize, i32); 4] = [(2, -1), (2, 1), (0, -1), (0, 1)];
-    let mut cuboids: Vec<Cuboid> = Vec::new();
+    let mut cuboids: Vec<StateCuboid> = Vec::new();
 
     for [from, to] in pedestal::BOXES
     {
@@ -200,41 +197,39 @@ fn pedestalModel() -> Vec<Cuboid>
             texture: Some(blockTexture("top", false)),
             ..Cuboid::default()
         };
-        cuboids.push(core);
+        cuboids.push(StateCuboid { cuboid: core, when: BTreeMap::new() });
 
-        for meta in 0..pedestal::LATENT * 2
+        // the top glows once latent, the sides turn with the turn property, spare changes nothing drawn
+        for (latent, lit) in [("false", false), ("true", true)]
         {
-            let lit: bool = lit(meta);
-
-            if meta % pedestal::LATENT == 0
+            let (low, high): ([f32; 3], [f32; 3]) = skin(from, to, 1, 1);
+            cuboids.push(StateCuboid
             {
-                let (low, high): ([f32; 3], [f32; 3]) = skin(from, to, 1, 1);
-                let plates: Vec<i32> = (meta..meta + pedestal::LATENT).collect();
+                cuboid: Cuboid { from: low, to: high, texture: Some(blockTexture("top", lit)), ..Cuboid::default() },
+                when: crate::blocks::when("latent", latent),
+            });
 
-                cuboids.push(Cuboid
-                {
-                    from: low,
-                    to: high,
-                    texture: Some(blockTexture("top", lit)),
-                    metas: plates,
-                    ..Cuboid::default()
-                });
-            }
-
-            for (side, (axis, step)) in sides.into_iter().enumerate()
+            for (turn, value) in pedestal::TURN_VALUES.iter().enumerate()
             {
-                let face: &str =
-                    pedestal::FACES[(side + (meta & pedestal::TURNS - 1) as usize) % pedestal::FACES.len()];
-                let (low, high): ([f32; 3], [f32; 3]) = skin(from, to, axis, step);
-
-                cuboids.push(Cuboid
+                for (side, (axis, step)) in sides.into_iter().enumerate()
                 {
-                    from: low,
-                    to: high,
-                    texture: Some(blockTexture(face, lit)),
-                    metas: vec![meta],
-                    ..Cuboid::default()
-                });
+                    let face: &str = pedestal::FACES[(side + turn) % pedestal::FACES.len()];
+                    let (low, high): ([f32; 3], [f32; 3]) = skin(from, to, axis, step);
+                    let mut when: BTreeMap<String, String> = crate::blocks::when("latent", latent);
+                    when.insert("turn".to_owned(), (*value).to_owned());
+
+                    cuboids.push(StateCuboid
+                    {
+                        cuboid: Cuboid
+                        {
+                            from: low,
+                            to: high,
+                            texture: Some(blockTexture(face, lit)),
+                            ..Cuboid::default()
+                        },
+                        when,
+                    });
+                }
             }
         }
     }
@@ -254,7 +249,6 @@ fn registerPedestal(ctx: &mut RegisterCtx) -> Result<()>
             .hardness(pedestal::HARDNESS)
             .resistance(pedestal::RESISTANCE)
             .texture(&blockTexture("top", false))
-            .model(BlockModelSpec { cuboids: pedestalModel(), ..BlockModelSpec::default() })
             .behavior(Pedestal),
     )?;
     ctx.blocks().states(
@@ -268,7 +262,8 @@ fn registerPedestal(ctx: &mut RegisterCtx) -> Result<()>
             ],
             ..BlockStatesSpec::default()
         },
-    )
+    )?;
+    ctx.blocks().stateModel(block::TROPHY_PEDESTAL, StateModelSpec { cuboids: pedestalModel() })
 }
 
 // BlockTFTrophy and TileEntityTFTrophy: the block's meta says where it sits, 1 on the floor and 2 to 5 on a wall
@@ -511,16 +506,19 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerPedestal(ctx)?;
     // the bounds of each placement, drawn with an empty sprite since the tile draws the head
-    let cuboids: Vec<Cuboid> = head::BOUNDS
+    let cuboids: Vec<StateCuboid> = head::BOUNDS
         .iter()
         .enumerate()
-        .map(|(index, [from, to])| Cuboid
+        .map(|(index, [from, to])| StateCuboid
         {
-            from: *from,
-            to: *to,
-            texture: Some("twilightforest:block/blank".to_owned()),
-            metas: vec![head::FLOOR + index as i32],
-            ..Cuboid::default()
+            cuboid: Cuboid
+            {
+                from: *from,
+                to: *to,
+                texture: Some("twilightforest:block/blank".to_owned()),
+                ..Cuboid::default()
+            },
+            when: crate::blocks::when("facing", head::FACINGS[head::FLOOR as usize + index]),
         })
         .collect();
     let spec: TileEntitySpec = TileEntitySpec { inventory: 0, ticks: false, sync: true, behavior: None };
@@ -533,7 +531,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .material("circuits")
             .texture("twilightforest:block/blank")
             .hardness(1.0)
-            .model(BlockModelSpec { cuboids, translucent: true, ..BlockModelSpec::default() })
+            .model(BlockModelSpec { translucent: true, ..BlockModelSpec::default() })
             .tileEntity(head::TILE)
             .drops(Vec::new())
             .behavior(TrophyBlock),
@@ -542,6 +540,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         BLOCK,
         BlockStatesSpec { properties: vec![PropertySpec::new("facing", &head::FACINGS)], ..BlockStatesSpec::default() },
     )?;
+    ctx.blocks().stateModel(BLOCK, StateModelSpec { cuboids })?;
 
     for (kind, trophy) in TROPHIES.iter().enumerate()
     {

@@ -13,7 +13,6 @@ mod slider
     pub const PERIOD: i64 = 80;
     // the low two meta bits stagger sliders of one trap by a second each
     pub const OFFSET: i64 = 20;
-    pub const DELAYS: i32 = 4;
     pub const RANGE: f64 = 32.0;
     pub const DAMAGE: i32 = 5;
     pub const INSET: f32 = 5.0;
@@ -38,8 +37,6 @@ mod slide
 // the axis values in BlockRotatedPillar meta order, the stagger fills the low two bits
 const AXES: [&str; 3] = ["y", "x", "z"];
 const DELAYS: [&str; 4] = ["0", "1", "2", "3"];
-// stored metadata of each axis, the model cuboids still pick by it
-const AXIS_STEP: i32 = 4;
 
 // where the slide may run along each axis, in BlockTFSlider meta order, tried before any open way
 const WAYS: [[[i32; 3]; 4]; 3] = [
@@ -375,8 +372,8 @@ fn strike(world: World, me: i32, at: [f64; 3])
     }
 }
 
-// the pillar for one axis, every stagger of that axis shows it
-fn pillar(axis: usize) -> Cuboid
+// the pillar for one axis, every delay of that axis shows it
+fn pillar(axis: usize) -> StateCuboid
 {
     let (low, high): (f32, f32) = (slider::INSET, 16.0 - slider::INSET);
 
@@ -387,8 +384,7 @@ fn pillar(axis: usize) -> Cuboid
         _ => ([low, 0.0, low], [high, 16.0, high]),
     };
 
-    let first: i32 = axis as i32 * AXIS_STEP;
-    Cuboid { from, to, metas: (first..first + slider::DELAYS).collect(), ..Cuboid::default() }
+    StateCuboid { cuboid: Cuboid { from, to, ..Cuboid::default() }, when: when("axis", AXES[axis]) }
 }
 
 fn lying() -> FaceTextures
@@ -411,7 +407,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .resistance(slider::RESISTANCE)
             .sound("stone")
             .faces(faces(&Look::Column { top: "slider_top", side: "slider_v" }))
-            .model(BlockModelSpec { cuboids: (0..AXES.len()).map(pillar).collect(), ..BlockModelSpec::default() })
             .behavior(Slider),
     )?;
 
@@ -428,6 +423,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             ..BlockStatesSpec::default()
         },
     )?;
+    ctx.blocks().stateModel(block::SLIDER, StateModelSpec { cuboids: (0..AXES.len()).map(pillar).collect() })?;
     ctx.entities().register(
         slide::NAME,
         EntitySpec
