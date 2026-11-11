@@ -302,6 +302,33 @@ Not converted, and why:
 - Air is still id 0 in `isAir` style checks.
 - Checked by build only, not in a game.
 
+## Registries, what the loader knows (2026-11-11)
+
+- Blocks, items, tile entities and block states: `ctx.blocks()`, `ctx.items()`, `ctx.tileEntities()` and
+  `ctx.blocks().states` in `blocks/`, `items/`, `bosses/`, `machines.rs`.
+- Tags (`tags.rs`): block tags (soil, logs, leaves, stony, giant blocks, mazestone, plains and cave plants, thorn
+  ground), item tags (logs, leaves, planks, saplings, `c:ingots/*`, `c:storage_blocks/knightmetal`, tool and armor
+  tags), entity tags (`armored`, `lich_poppable`, `naga_prey`). Code asks tags, so other mods' content joins.
+- Recipes: `ctx.recipes()` (`recipes.rs`), the ore map takes `c:storage_blocks/*` through `shapelessTagged`; the
+  uncrafting table reverses whatever `recipeList()` holds, any mod's recipes included.
+- Machines: uncrafting table and cinder furnace in `ctx.machines()` (`machines.rs`); the table refuses any stack with
+  a container item (`containerItem`), not a bucket list.
+- Entities, drops and spawns: `ctx.entities()` with `EntitySpec.drops` and a creature `SpawnSpec` per twilight biome
+  (`mobs.rs`, `spawns.rs` `creatureSpawn`); vanilla chickens, wolves and lake squid join through `modifySpawns`. The
+  dimension's spawn handler answers only monsters (depth lists, the dark forest, snow and swamp rolls) and feature
+  lists, creatures and water creatures fall back to the registry built biome lists. Worldgen herds still roll the
+  port's own creature table, the SDK cannot read a biome's spawn list.
+- Dimension, biomes, terrain, biome source: `ctx.dimensions()` (`world/mod.rs`); structures with their finders:
+  `ctx.structures().withFinder` (`world/structures/mod.rs`).
+- Effects, particles, achievements (progression gates), config: `effects.rs`, `particles.rs`, `progress.rs`,
+  `config.rs`.
+- Generators place resolved named states (`world/palette.rs`, `GenWorld::set` takes a `Placed`); vanilla blocks
+  keep their metadata through the `meta` property.
+- Not yet: treasure chests and boss drops wait for weighted loot pools (api 1.40, not pushed). Hollow hills, ruins,
+  trees and the rest are placed by the dimension's own generator, which the loader routes; `ctx.worldgen()` features
+  are vanilla dimension populate steps and do not apply. No biome tags yet, the port's biome lists name its own
+  biomes. The source has no game rules; display names come through each spec's `name`.
+
 ## Bugs to check at the end
 
 - TFClientProxy.spawnParticle classes are loader mod particles (api 1.24, `particles.rs`): a beta particle recolored, resized, retimed or weighted toward each EntityFX; their own textures and animated fading are not reproduced.
