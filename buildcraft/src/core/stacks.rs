@@ -1,7 +1,5 @@
 use crate::core::{AIR, dir, random};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 // a stack kept in tile data by name, numeric ids move when a world remaps them
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
@@ -12,30 +10,8 @@ pub(crate) struct Stored
     pub(crate) m_damage: i32,
 }
 
-thread_local!
-{
-    // what each item is, pipes draw blocks and items at different heights every frame
-    static INFO: RefCell<(i32, HashMap<i32, Option<ItemInfo>>)> = RefCell::new((-1, HashMap::new()));
-}
-
-pub(crate) fn info(stack: &ItemStack) -> Option<ItemInfo>
-{
-    let id: i32 = stack.item.id().ok()?;
-    let generation: i32 = contentGeneration();
-
-    INFO.with(|cache|
-    {
-        let mut cache = cache.borrow_mut();
-        if cache.0 != generation
-        {
-            *cache = (generation, HashMap::new());
-        }
-
-        *cache.1.entry(id).or_insert_with(|| stack.info())
-    })
-}
-
-pub(crate) fn isBlock(stack: &ItemStack) -> bool { info(stack).is_some_and(|info| info.block) }
+// the SDK caches item info per content epoch, pipes ask every frame
+pub(crate) fn isBlock(stack: &ItemStack) -> bool { stack.info().is_some_and(|info| info.block) }
 
 impl Stored
 {
@@ -236,7 +212,7 @@ pub(crate) fn insert(world: World, pos: BlockPos, face: i32, stack: &ItemStack, 
         return world.insertItem(pos, face, stack.clone(), simulate).unwrap_or(stack.count);
     }
 
-    let limit: i32 = info(stack).map_or(stack.count, |info| info.max_stack);
+    let limit: i32 = stack.info().map_or(stack.count, |info| info.max_stack);
     let mut left: i32 = stack.count;
 
     for joining in [true, false]

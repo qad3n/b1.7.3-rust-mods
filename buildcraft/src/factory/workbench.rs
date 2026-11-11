@@ -141,7 +141,7 @@ fn craft(world: World, pos: BlockPos, simulate: bool) -> Option<ItemStack>
 fn fill(world: World, pos: BlockPos, stack: &ItemStack, simulate: bool) -> i32
 {
     let mut counts: [Option<ItemStack>; 9] = grid(world, pos);
-    let limit: i32 = stacks::info(stack).map_or(stack.count, |info| info.max_stack);
+    let limit: i32 = stack.info().map_or(stack.count, |info| info.max_stack);
     let mut left: i32 = stack.count;
 
     while left > 0

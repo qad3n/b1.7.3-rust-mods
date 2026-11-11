@@ -1,5 +1,4 @@
 use super::travel::Traveler;
-use crate::core::stacks;
 use b173_api::prelude::*;
 
 // TileDiamondPipe: nine filter slots per face, an item goes out of faces whose filters name it, or the unfiltered ones
@@ -32,7 +31,7 @@ fn matches(filter: &ItemStack, item: &ItemStack) -> bool
     }
 
     // CoreProxy.isDamageable: tools match whatever their wear
-    let damageable: bool = stacks::info(item).is_some_and(|info| info.max_damage > 0);
+    let damageable: bool = item.info().is_some_and(|info| info.max_damage > 0);
     damageable || filter.damage == item.damage
 }
 

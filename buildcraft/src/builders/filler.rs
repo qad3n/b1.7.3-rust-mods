@@ -472,7 +472,7 @@ impl TileBehavior for FillerTile
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
         let mut left: i32 = stack.count;
-        let limit: i32 = stacks::info(&stack).map_or(stack.count, |info| info.max_stack);
+        let limit: i32 = stack.info().map_or(stack.count, |info| info.max_stack);
 
         for joining in [true, false]
         {
