@@ -526,9 +526,9 @@ impl MagicBeans
                 stalk::THICKNESS
             };
             let reach: f32 = radius + thickness;
-            for dx in (x as f32 - reach).floor() as i32..(x as f32 + reach).ceil() as i32
+            for dx in floor(f64::from(x as f32 - reach))..(x as f32 + reach).ceil() as i32
             {
-                for dz in (z as f32 - reach).floor() as i32..(z as f32 + reach).ceil() as i32
+                for dz in floor(f64::from(z as f32 - reach))..(z as f32 + reach).ceil() as i32
                 {
                     let (ox, oz): (f32, f32) = (dx as f32 - cx, dz as f32 - cz);
                     if ox * ox + oz * oz < thickness * thickness

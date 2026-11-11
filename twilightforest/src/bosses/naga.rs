@@ -76,7 +76,7 @@ fn inHome(home: Option<[i32; 3]>, at: [f64; 3]) -> bool
         return true;
     };
 
-    (0..3).all(|axis| (center[axis] - at[axis].floor() as i32).abs() <= naga::LEASH[axis])
+    (0..3).all(|axis| (center[axis] - floor(at[axis])).abs() <= naga::LEASH[axis])
 }
 
 // EntityTFNaga.findCirclePoint

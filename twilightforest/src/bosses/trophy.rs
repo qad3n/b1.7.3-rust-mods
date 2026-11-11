@@ -297,7 +297,7 @@ impl ItemBehavior for TrophyItem
 
             let turn: i32 = if face == head::FLOOR
             {
-                (yaw * head::TURNS as f32 / head::FULL_TURN + 0.5).floor() as i32 & (head::TURNS - 1)
+                floor(f64::from(yaw * head::TURNS as f32 / head::FULL_TURN + 0.5)) & (head::TURNS - 1)
             }
             else
             {

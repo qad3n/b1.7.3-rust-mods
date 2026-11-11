@@ -658,7 +658,7 @@ fn marker(chart: &Chart, row: &Row, info: &EntityInfo) -> Option<[i32; 3]>
     }
 
     let turn: i32 = (info.yaw * marker::TURN_STEPS / marker::FULL_TURN + marker::ROUNDING) as i32;
-    Some([x.floor() as i32 + HALF, z.floor() as i32 + HALF, turn.rem_euclid(marker::TURN_STEPS as i32)])
+    Some([floor(f64::from(x)) + HALF, floor(f64::from(z)) + HALF, turn.rem_euclid(marker::TURN_STEPS as i32)])
 }
 
 // the white pointer of beta's map icons drawn into the picture, it points where the player faces

@@ -1,7 +1,7 @@
 use crate::blocks::tower::{Device, deviceId, jetId, nextJet};
 use crate::ids::{self, NEIGHBORS};
 use crate::particles;
-use b173_api::math::distanceSquared;
+use b173_api::math::{distanceSquared, floor};
 use b173_api::prelude::*;
 use std::rc::Rc;
 
@@ -283,7 +283,7 @@ fn nearestPlayer(world: World, at: [f64; 3], range: f64) -> Option<EntityInfo>
 fn facing(info: &EntityInfo) -> usize
 {
     let quarter: f32 = 4.0 / 360.0;
-    let pitch: i32 = ((info.pitch * quarter + 1.5).floor() as i32) & 3;
+    let pitch: i32 = floor(f64::from(info.pitch * quarter + 1.5)) & 3;
     match pitch
     {
         0 => return 1,
@@ -292,7 +292,7 @@ fn facing(info: &EntityInfo) -> usize
         {}
     }
 
-    match ((info.yaw * quarter + 0.5).floor() as i32) & 3
+    match floor(f64::from(info.yaw * quarter + 0.5)) & 3
     {
         0 => 3,
         1 => 4,
