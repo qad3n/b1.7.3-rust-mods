@@ -777,10 +777,76 @@ fn registerScreen(ctx: &mut RegisterCtx, special: &'static Special) -> Result<()
     ctx.screens().register(special.m_name, builder, SpecialScreen { m_special: special, m_pos: None })
 }
 
+// what each special machine does as recipe viewers show it
+fn registerPages(ctx: &mut RegisterCtx, special: &Special) -> Result<()>
+{
+    const AMPLIFY: i32 = matter::BONUS + 1;
+
+    let name: &str = special.m_name;
+    if special.m_kind == Kind::Induction
+    {
+        return ctx.machines().workstation("minecraft:smelting", name);
+    }
+
+    ctx.machines().register(name, None, &[name])?;
+
+    match special.m_kind
+    {
+        Kind::Electrolyzer =>
+        {
+            ctx.machines()
+                .recipe(name)
+                .input(ItemStack::of("ic2:water_cell", 1))
+                .output(ItemStack::of("ic2:electrolyzed_water_cell", 1))
+                .note(&format!("Stores {} EU from an MFE or MFSU above 70%", electrolyzer::SPLIT))
+                .build()?;
+            ctx.machines()
+                .recipe(name)
+                .input(ItemStack::of("ic2:electrolyzed_water_cell", 1))
+                .output(ItemStack::of("ic2:water_cell", 1))
+                .note(&format!("Gives {} EU back below 30%", electrolyzer::JOIN))
+                .build()
+        }
+
+        Kind::Matter =>
+        {
+            ctx.machines()
+                .recipe(name)
+                .output(ItemStack::of("ic2:uu_matter", 1))
+                .note(&format!("{} EU, up to {} EU/t", matter::COST, matter::INPUT))
+                .build()?;
+            ctx.machines()
+                .recipe(name)
+                .input(ItemStack::of("ic2:scrap", 1))
+                .note(&format!("Amplifier: the next {} EU count {AMPLIFY} times", matter::SCRAP))
+                .build()
+        }
+
+        Kind::Magnetizer => ctx
+            .machines()
+            .recipe(name)
+            .input(ItemStack::of(IRON_FENCE, 1))
+            .note(&format!("Charges iron fences up to {} blocks above and below", magnet::REACH))
+            .note("Players in metal boots ride charged fences up")
+            .build(),
+
+        Kind::Tesla => ctx
+            .machines()
+            .recipe(name)
+            .note("Shocks every living thing within 4 blocks")
+            .note(&format!("While redstone powered, {} EU a shock every {} ticks", tesla::COST, tesla::EVERY))
+            .build(),
+
+        Kind::Induction => Ok(()),
+    }
+}
+
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for special in &SPECIALS
     {
+        registerPages(ctx, special)?;
+
         let Some(machine) = MACHINES.iter().find(|row| row.m_name == special.m_name)
         else
         {

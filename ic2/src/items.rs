@@ -346,6 +346,34 @@ const SCRAP_DROPS: [&str; 33] = [
     "minecraft:grass",
 ];
 
+// the scrap box as a recipe viewer category, one page a drop with its share of the 33 picks
+fn registerScrapPages(ctx: &mut RegisterCtx) -> Result<()>
+{
+    const NAME: &str = "scrap_box";
+
+    ctx.machines().register(NAME, None, &[NAME])?;
+
+    let mut seen: Vec<&str> = Vec::new();
+    for drop in SCRAP_DROPS
+    {
+        if seen.contains(&drop)
+        {
+            continue;
+        }
+
+        seen.push(drop);
+        let picks: usize = SCRAP_DROPS.iter().filter(|other| **other == drop).count();
+        let chance: f32 = picks as f32 / SCRAP_DROPS.len() as f32;
+        ctx.machines()
+            .recipe(NAME)
+            .input(ItemStack::of(own(NAME).as_str(), 1))
+            .chance(ItemStack::of(drop, 1), chance)
+            .build()?;
+    }
+
+    Ok(())
+}
+
 struct ScrapBox;
 
 #[item_behavior]
@@ -447,6 +475,7 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
         "scrap_box",
         ItemSpecBuilder::new().texture(&itemTexture("scrap_box")).maxStack(SCRAP_STACK).behavior(ScrapBox),
     )?;
+    registerScrapPages(ctx)?;
 
     for (color, name) in COLORS.iter().enumerate()
     {
@@ -541,20 +570,21 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 }
 
 // ItemFood.getHealAmount for beta's foods, the canner fills a tin per two points
+// the food the canner fills cans from with its healing
+pub(crate) const FOODS: [(&str, i32); 10] = [
+    ("minecraft:apple", 4),
+    ("minecraft:mushroom_stew", 10),
+    ("minecraft:bread", 5),
+    ("minecraft:porkchop", 3),
+    ("minecraft:cooked_porkchop", 8),
+    ("minecraft:golden_apple", 42),
+    ("minecraft:fish", 2),
+    ("minecraft:cooked_fish", 5),
+    ("minecraft:cookie", 1),
+    ("ic2:filled_tin_can", 2),
+];
+
 pub(crate) fn foodHeal(stack: &ItemStack) -> Option<i32>
 {
-    const FOODS: [(&str, i32); 10] = [
-        ("minecraft:apple", 4),
-        ("minecraft:mushroom_stew", 10),
-        ("minecraft:bread", 5),
-        ("minecraft:porkchop", 3),
-        ("minecraft:cooked_porkchop", 8),
-        ("minecraft:golden_apple", 42),
-        ("minecraft:fish", 2),
-        ("minecraft:cooked_fish", 5),
-        ("minecraft:cookie", 1),
-        ("ic2:filled_tin_can", 2),
-    ];
-
     FOODS.iter().find(|(name, _)| stack.item.is(name)).map(|(_, heal)| *heal)
 }

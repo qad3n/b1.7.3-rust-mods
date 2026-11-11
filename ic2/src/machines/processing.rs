@@ -25,6 +25,7 @@ const fn look(idle: [&'static str; 4], active: [&'static str; 4]) -> Look
 // BlockMachine.setHardness
 const HARDNESS: f32 = 2.0;
 const SLOTS: i32 = 3;
+const ANY_DAMAGE: i32 = -1;
 const CANNER_SLOTS: i32 = 4;
 
 const fn machine(name: &'static str, look: Look, wrench: f32, drop: &'static str, slots: i32) -> Machine
@@ -470,31 +471,41 @@ fn ironFuel(stack: &ItemStack) -> i32
 }
 
 // Block.blockMaterial == Material.wood for the blocks beta makes of wood
-fn woodBlock(name: &str) -> bool
-{
-    const WOODEN: [&str; 16] = [
-        "minecraft:planks",
-        "minecraft:log",
-        "minecraft:bookshelf",
-        "minecraft:chest",
-        "minecraft:locked_chest",
-        "minecraft:crafting_table",
-        "minecraft:oak_stairs",
-        "minecraft:fence",
-        "minecraft:wooden_door",
-        "minecraft:standing_sign",
-        "minecraft:wall_sign",
-        "minecraft:noteblock",
-        "minecraft:jukebox",
-        "minecraft:wooden_pressure_plate",
-        "minecraft:trapdoor",
-        "ic2:rubber_wood",
-    ];
+const WOODEN: [&str; 16] = [
+    "minecraft:planks",
+    "minecraft:log",
+    "minecraft:bookshelf",
+    "minecraft:chest",
+    "minecraft:locked_chest",
+    "minecraft:crafting_table",
+    "minecraft:oak_stairs",
+    "minecraft:fence",
+    "minecraft:wooden_door",
+    "minecraft:standing_sign",
+    "minecraft:wall_sign",
+    "minecraft:noteblock",
+    "minecraft:jukebox",
+    "minecraft:wooden_pressure_plate",
+    "minecraft:trapdoor",
+    "ic2:rubber_wood",
+];
 
-    WOODEN.contains(&name)
-}
+fn woodBlock(name: &str) -> bool { WOODEN.contains(&name) }
 
 pub(crate) fn burnValue(stack: &ItemStack) -> i32 { ironFuel(stack) }
+
+// the furnace fuels by name with their burn ticks, as recipe viewers list them
+pub(crate) fn fuels() -> Vec<(&'static str, i32)>
+{
+    const WOOD: i32 = 300;
+    const NAMED: [(&str, i32); 4] =
+        [("minecraft:stick", 100), ("minecraft:coal", 1600), ("minecraft:sapling", 100), ("ic2:fuel_can", 720000)];
+
+    // wooden blocks only a placed item makes
+    const PLACED: [&str; 3] = ["minecraft:standing_sign", "minecraft:wall_sign", "minecraft:locked_chest"];
+
+    WOODEN.iter().filter(|name| !PLACED.contains(name)).map(|name| (*name, WOOD)).chain(NAMED).collect()
+}
 
 // TileEntityIronFurnace.updateEntity
 fn ironTick(process: &Process, world: World, pos: BlockPos, work: &mut Work)
@@ -749,6 +760,42 @@ mod canning
         }
     }
 
+    // a page a food with the cans it fills, and the fuel can with what each fuel adds
+    pub(super) fn pages(ctx: &mut RegisterCtx, name: &str, consume: i32) -> Result<()>
+    {
+        const FUELS: [(&str, i32); 2] =
+            [("ic2:coalfuel_cell", rules::COAL_FUEL), ("ic2:biofuel_cell", rules::BIO_FUEL)];
+
+        ctx.machines().register(name, None, &[name])?;
+
+        for (food, heal) in crate::items::FOODS
+        {
+            let cans: i32 = (f64::from(heal) / 2.0).ceil() as i32;
+            ctx.machines()
+                .recipe(name)
+                .input(ItemStack::of(food, 1))
+                .input(ItemStack::of("ic2:tin_can", cans))
+                .output(ItemStack::of("ic2:filled_tin_can", cans))
+                .note(&format!("{consume} EU/t, {} ticks", cans * rules::FOOD_TICKS))
+                .build()?;
+        }
+
+        for (cell, value) in FUELS
+        {
+            ctx.machines()
+                .recipe(name)
+                .input(ItemStack::of("ic2:fuel_can_empty", 1))
+                .input(ItemStack::of(cell, 1))
+                .output(ItemStack::of("ic2:fuel_can", 1))
+                .note(&format!("Each cell adds {value} fuel"))
+                .note("Redstone adds 20%, glowstone 30% of the fuel")
+                .note(&format!("{consume} EU/t, {} ticks", rules::FUEL_DONE))
+                .build()?;
+        }
+
+        Ok(())
+    }
+
     // TileEntityCanner.operate
     pub(super) fn operate(world: World, pos: BlockPos, work: &mut Work)
     {
@@ -946,10 +993,58 @@ fn registerScreen(ctx: &mut RegisterCtx, process: &'static Process) -> Result<()
     ctx.screens().register(process.m_name, builder, ProcessScreen { m_process: process, m_pos: None })
 }
 
+// a recipe viewer category for a table machine, one page a recipe with the machine's rates
+fn tablePages(ctx: &mut RegisterCtx, process: &Process, table: &[(&str, &str, i32)], rates: &str) -> Result<()>
+{
+    ctx.machines().register(process.m_name, None, &[process.m_name])?;
+
+    for (from, to, count) in table
+    {
+        ctx.machines()
+            .recipe(process.m_name)
+            .input(ItemStack::of(*from, 1).withDamage(ANY_DAMAGE))
+            .output(ItemStack::of(*to, *count))
+            .note(rates)
+            .build()?;
+    }
+
+    Ok(())
+}
+
+// what each processing machine does as recipe viewers show it, the furnaces join smelting
+fn registerPages(ctx: &mut RegisterCtx, process: &Process) -> Result<()>
+{
+    const SCRAP_CHANCE: f32 = 1.0 / 8.0;
+
+    let Rates { m_consume: consume, m_length: length, .. } = process.m_rates;
+    let rates: String = format!("{consume} EU/t, {length} ticks, {} EU", consume * length);
+
+    match process.m_kind
+    {
+        Kind::IronFurnace | Kind::Furnace => ctx.machines().workstation("minecraft:smelting", process.m_name),
+        Kind::Macerator => tablePages(ctx, process, &MACERATOR, &rates),
+        Kind::Extractor => tablePages(ctx, process, &EXTRACTOR, &rates),
+        Kind::Compressor => tablePages(ctx, process, &COMPRESSOR, &rates),
+        Kind::Recycler =>
+        {
+            ctx.machines().register(process.m_name, None, &[process.m_name])?;
+            ctx.machines()
+                .recipe(process.m_name)
+                .chance(ItemStack::of("ic2:scrap", 1), SCRAP_CHANCE)
+                .note("Takes any item but sticks and scrap")
+                .note(&rates)
+                .build()
+        }
+        Kind::Canner => canning::pages(ctx, process.m_name, consume),
+    }
+}
+
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for process in &PROCESSES
     {
+        registerPages(ctx, process)?;
+
         let Some(machine) = MACHINES.iter().find(|row| row.m_name == process.m_name)
         else
         {

@@ -658,10 +658,59 @@ fn registerScreen(ctx: &mut RegisterCtx, source: &'static Source) -> Result<()>
     ctx.screens().register(source.m_name, builder, SourceScreen { m_source: source, m_pos: None })
 }
 
+// what each generator burns or needs as recipe viewers show it, fuel ticks at its EU a tick
+fn registerPages(ctx: &mut RegisterCtx, source: &Source) -> Result<()>
+{
+    const WIND_NOTES: [&str; 2] = ["About wind x (height - blocks around) / 825 EU/t", "Wind drifts between 10 and 20"];
+
+    let name: &str = source.m_name;
+    let rate: i32 = source.m_production;
+    ctx.machines().register(name, None, &[name])?;
+
+    let fuelPage = |ctx: &mut RegisterCtx, item: &str, ticks: i32| -> Result<()>
+    {
+        ctx.machines()
+            .recipe(name)
+            .input(ItemStack::of(item, 1).withDamage(-1))
+            .note(&format!("{} EU at {rate} EU/t", ticks * rate))
+            .build()
+    };
+
+    match source.m_kind
+    {
+        Kind::Fuel =>
+        {
+            for (item, burn) in super::processing::fuels()
+            {
+                fuelPage(ctx, item, burn / 2)?;
+            }
+
+            Ok(())
+        }
+
+        Kind::Geothermal =>
+        {
+            fuelPage(ctx, "minecraft:lava_bucket", fuel::LAVA)?;
+            fuelPage(ctx, "ic2:lava_cell", fuel::LAVA)
+        }
+
+        Kind::Water =>
+        {
+            fuelPage(ctx, "minecraft:water_bucket", fuel::WATER)?;
+            ctx.machines().recipe(name).note("Water blocks around it add power when it has no bucket").build()
+        }
+
+        Kind::Solar => ctx.machines().recipe(name).note(&format!("{rate} EU/t in daylight under open sky")).build(),
+        Kind::Wind => WIND_NOTES.iter().fold(ctx.machines().recipe(name), |page, note| page.note(note)).build(),
+    }
+}
+
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for source in &SOURCES
     {
+        registerPages(ctx, source)?;
+
         let Some(machine) = MACHINES.iter().find(|row| row.m_name == source.m_name)
         else
         {
