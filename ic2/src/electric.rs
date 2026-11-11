@@ -291,7 +291,42 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         DISCHARGED,
         ItemSpecBuilder::new().texture(&itemTexture("re_battery_0")).maxStack(DISCHARGED_STACK),
     )?;
-    Ok(())
+    ctx.screens().tooltip(tooltip)
+}
+
+// the charge and tier lines later IC2 versions show under every electric item's name
+fn tooltip(stack: &ItemStack, lines: &mut Vec<String>)
+{
+    let (tier, ratio, max): (i32, i32, i32) = if stack.item.is(&own(DISCHARGED))
+    {
+        (CHARGEABLE[0].m_tier, CHARGEABLE[0].m_ratio, BATTERY_EMPTY + FULL)
+    }
+    else if stack.item.is(&own(ELECTRIC_WRENCH))
+    {
+        (1, wrench::PER_POINT, maxDamage(&stack.item))
+    }
+    else if let Some(row) = row(stack)
+    {
+        (row.m_tier, row.m_ratio, maxDamage(&stack.item))
+    }
+    else
+    {
+        return;
+    };
+
+    // damage 1 is full and the last point empty so a discharged battery sits on that last point
+    let damage: i32 = if stack.item.is(&own(DISCHARGED))
+    {
+        BATTERY_EMPTY
+    }
+    else
+    {
+        stack.damage
+    };
+    let points: i32 = max - FULL - FULL;
+    let left: i32 = (points + FULL - damage).clamp(0, points);
+    lines.push(format!("{}/{} EU", left * ratio, points * ratio));
+    lines.push(format!("Power Tier: {tier}"));
 }
 
 #[cfg(test)]
