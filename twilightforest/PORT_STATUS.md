@@ -97,6 +97,11 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   release after a short hold (ItemTFCrumbleHorn, ItemTFLampOfCinders, ItemTFOreMagnet); trophies are tile entities
   drawing the bosses' heads (TileEntityTFTrophyRenderer) on a floor turned in sixteenths or against a wall, and drop
   their trophy when broken.
+- Fireflies, cicadas and moonworms are tile entity models (loader api 1.20) as TileEntityTFFireflyRenderer and kin:
+  turned to the face they cling to, twitching every ten to twenty seconds, the firefly pulsing its glow and
+  letting tiny fireflies drift when a player is near, the cicada singing with notes after each rest, and the
+  moonworm crawling round with its pieces dipping. The glow blends by alpha where the source added it; the block
+  itself draws a blank cuboid. Not seen in a client yet.
 - Held use (loader api 1.20) as the source: the twilight wand fires a bolt every sixth tick of the hold, the life
   drain scepter works every fifth tick and heals every tenth, the zombie wand and peacock fan stay raised for 30
   and 20 ticks after use, the block and chain and cube of annihilation are held up while out (the cube returns
