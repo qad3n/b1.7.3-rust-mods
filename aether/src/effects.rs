@@ -1,4 +1,5 @@
 use b173_api::prelude::*;
+use std::rc::Rc;
 
 // the potions the source hands out, on the loader's status effects
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -39,6 +40,7 @@ struct EffectRow
     m_modifier: Option<(&'static str, f64, ModifierOperation)>,
     m_interval: i32,
     m_amount: i32,
+    m_behavior: Option<fn() -> Rc<dyn EffectBehavior>>,
 }
 
 // PotionInebriation and Potion.regeneration and weakness with their 1.7 colours
@@ -53,6 +55,7 @@ const EFFECTS: [EffectRow; 3] = [
         m_modifier: None,
         m_interval: pulse::INEBRIATION_TICKS,
         m_amount: pulse::INEBRIATION_HURT,
+        m_behavior: Some(crate::player::inebriation),
     },
     EffectRow
     {
@@ -64,6 +67,7 @@ const EFFECTS: [EffectRow; 3] = [
         m_modifier: None,
         m_interval: pulse::REGENERATION_TICKS,
         m_amount: pulse::REGENERATION_HEAL,
+        m_behavior: None,
     },
     EffectRow
     {
@@ -75,6 +79,7 @@ const EFFECTS: [EffectRow; 3] = [
         m_modifier: Some(("minecraft:attack_damage", pulse::WEAKER, ModifierOperation::Add)),
         m_interval: pulse::NONE,
         m_amount: pulse::NONE,
+        m_behavior: None,
     },
 ];
 
@@ -127,7 +132,12 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             interval: row.m_interval,
             amount: row.m_amount,
         };
-        ctx.effects().register(row.m_id.trim_start_matches("aether:"), spec)?;
+        let name: &str = row.m_id.trim_start_matches("aether:");
+        match row.m_behavior
+        {
+            Some(behavior) => ctx.effects().registerWith(name, spec, behavior())?,
+            None => ctx.effects().register(name, spec)?,
+        }
     }
 
     Ok(())

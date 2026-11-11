@@ -1,8 +1,8 @@
 use crate::effects::Effect;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
-use std::cell::{Cell, RefCell};
-use std::collections::HashSet;
+use std::cell::Cell;
+use std::rc::Rc;
 
 // EntityPlayer.health starts at twenty half hearts, life shards add two each
 pub(crate) const BASE_HEALTH: i32 = 20;
@@ -25,14 +25,10 @@ mod inebriation
 
 thread_local!
 {
-    // entities the Aether poisoned by dimension and id, followed until the loader's effect runs out
-    static POISONED: RefCell<HashSet<(i32, i32)>> = RefCell::new(HashSet::new());
     // PotionInebriation keeps one push and one turn for every poisoned entity
     static DRIFT: Cell<(f64, f64)> = const { Cell::new((0.0, 0.0)) };
     static GAUSSIAN: Random = Random::withSeed(0);
 }
-
-fn poisoned(entity: Entity) -> bool { crate::effects::has(entity, Effect::Inebriation) }
 
 pub(crate) fn poison(entity: Entity)
 {
@@ -42,7 +38,6 @@ pub(crate) fn poison(entity: Entity)
     }
 
     crate::effects::give(entity, Effect::Inebriation, inebriation::TICKS);
-    POISONED.with(|poisoned| poisoned.borrow_mut().insert((entity.world.dimension, entity.id)));
 }
 
 // the remedy bucket and the white apple cure it
@@ -54,7 +49,6 @@ pub(crate) fn cure(entity: Entity)
     }
 
     crate::effects::remove(entity, Effect::Inebriation);
-    POISONED.with(|poisoned| poisoned.borrow_mut().remove(&(entity.world.dimension, entity.id)));
 }
 
 // PotionInebriation.distractEntity: the push sways the walk, the turn shakes the view
@@ -84,50 +78,36 @@ fn spit(entity: Entity, info: &EntityInfo)
     }
 }
 
-// the poisoned player's own client moves and turns it, a server cannot steer a player
-fn localPoison()
-{
-    let Some(player) = localPlayer()
-    else
-    {
-        return;
-    };
-    let Some(info) = player.info()
-    else
-    {
-        return;
-    };
+// PotionInebriation.performEffect, the effect's own interval deals the damage
+struct Inebriation;
 
-    let entity: Entity = Entity { world: World { dimension: info.world }, id: player.id };
-    if poisoned(entity)
-    {
-        distract(entity, &info);
-    }
-}
-
-// PotionInebriation.performEffect for every entity the Aether poisoned, the loader's effect deals the damage
-fn tick()
+#[effect_behavior]
+impl EffectBehavior for Inebriation
 {
-    let current: Vec<(i32, i32)> = POISONED.with(|poisoned| poisoned.borrow().iter().copied().collect());
-    for (dimension, id) in current
+    // the server sways mobs and spits for everyone, a player's own client sways that player since a server cannot
+    // steer it
+    fn onTick(&self, entity: Entity, _level: i32, _ticks: i32)
     {
-        let entity: Entity = Entity { world: World { dimension }, id };
-        let living: Option<EntityInfo> = entity.info().filter(|info| info.alive && info.health.unwrap_or(0) > 0);
-        let Some(info) = living.filter(|_| poisoned(entity))
+        let Some(info) = entity.info().filter(|info| info.alive && info.health.unwrap_or(0) > 0)
         else
         {
-            POISONED.with(|poisoned| poisoned.borrow_mut().remove(&(dimension, id)));
-            continue;
+            return;
         };
 
-        if info.player.is_none()
+        let authority: bool = entity.world.isAuthority();
+        if !authority || info.player.is_none()
         {
             distract(entity, &info);
         }
 
-        spit(entity, &info);
+        if authority
+        {
+            spit(entity, &info);
+        }
     }
 }
+
+pub(crate) fn inebriation() -> Rc<dyn EffectBehavior> { Rc::new(Inebriation) }
 
 mod armor
 {
@@ -287,16 +267,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             {
                 serverArmor(player);
             }
-        }
-    })?;
-
-    ctx.events().on::<TickPost>(Priority::Normal, |_|
-    {
-        tick();
-
-        if isClient()
-        {
-            localPoison();
         }
     })?;
 

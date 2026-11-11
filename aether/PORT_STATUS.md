@@ -171,8 +171,9 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
   ticks) and looses its flaming arrow on release at three times the draw power, as ItemPhoenixBow. Power, Punch,
   Flame and Infinity and the full draw critical have no beta counterpart.
 - Inebriation is the loader status effect `aether:inebriation` (PotionInebriation's colour and inventory icon, one
-  magic damage every fifty ticks), saved with the entity and shown on the HUD. The mod still sways and spits for
-  the entities it poisoned and sways the local player while the effect lasts; the custom poison channel is gone.
+  magic damage every fifty ticks), saved with the entity and shown on the HUD. Its effect behavior's `onTick`
+  sways mobs and spits on the server and sways the poisoned player on that player's own client, so poisoned entities
+  are no longer tracked in the mod; the custom poison channel is gone.
   The source's "was inebriated" death message has no beta counterpart. HUD icon not seen in a client yet.
 - Life shard hearts are an `aether:life_shards` add modifier on `minecraft:max_health`, as the source's health
   attribute modifier, set again only when the shard count changes. Older saves that raised the base health get it
