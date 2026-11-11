@@ -61,7 +61,11 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             music: Some(MusicSpec { sound: MUSIC.to_owned(), delay: MUSIC_DELAY }),
         },
     )?;
+    // the biome joins shared groups so other mods' features and spawns can find it
+    ctx.tags().add(RegistryKind::Biome, "aether:is_aether", &[BIOME])?;
+    ctx.tags().add(RegistryKind::Biome, "c:is_magical", &[BIOME])?;
     dungeons::register(ctx)?;
+    decorate::register(ctx)?;
     aether.terrain(terrain::generate)?.generator(decorate::populate)?;
     Ok(())
 }
