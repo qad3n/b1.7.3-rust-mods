@@ -976,8 +976,21 @@ fn registerFurnace(ctx: &mut RegisterCtx) -> Result<()>
     )
 }
 
+// the uncrafting table as a recipe viewer page and the cinder furnace beside the vanilla furnace
+fn registerPages(ctx: &mut RegisterCtx) -> Result<()>
+{
+    ctx.machines().register(TABLE_NAME, Some(TABLE_TITLE), &[TABLE_NAME])?;
+    ctx.machines()
+        .recipe(TABLE_NAME)
+        .note("Takes a crafted item apart into its recipe")
+        .note("Off when the server config disables uncrafting")
+        .build()?;
+    ctx.machines().workstation("minecraft:smelting", FURNACE_NAME)
+}
+
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerTable(ctx)?;
-    registerFurnace(ctx)
+    registerFurnace(ctx)?;
+    registerPages(ctx)
 }
