@@ -219,9 +219,9 @@ mod block
     pub const CHEST_PITCH: f32 = 0.9;
     pub const CHEST_WOBBLE: f32 = 0.1;
     // BlockChest sprites on terrain.png
-    pub const CHEST_TOP: &str = "minecraft:terrain/25";
-    pub const CHEST_SIDE: &str = "minecraft:terrain/26";
-    pub const CHEST_FRONT: &str = "minecraft:terrain/27";
+    pub const CHEST_TOP: &str = "minecraft:block/chest_top";
+    pub const CHEST_SIDE: &str = "minecraft:block/chest_side";
+    pub const CHEST_FRONT: &str = "minecraft:block/chest_front";
 }
 
 // the plain stone a locked dungeon block turns into once its boss is beaten
@@ -247,7 +247,7 @@ impl BlockBehavior for Trap
 
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
-        let _ = world.setBlock(pos, crate::ids::blockId(self.m_stone), 0);
+        let _ = world.place(pos, self.m_stone);
         let at: [f64; 3] =
             [pos.x as f64 + self.m_offset[0], pos.y as f64 + self.m_offset[1], pos.z as f64 + self.m_offset[2]];
         let _ = world.spawnEntity(&format!("aether:{}", self.m_guard), at);
@@ -271,7 +271,7 @@ fn releaseMimic(ctx: &mut BlockCtx, player: Player)
         mimic.setField(EntityField::TargetId, player.id as f64);
     }
 
-    let _ = world.setBlock(pos, 0, 0);
+    let _ = world.clear(pos);
 }
 
 #[block_behavior]
@@ -342,7 +342,7 @@ impl BlockBehavior for TreasureChest
 
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
-        let _ = world.setBlock(pos, crate::ids::blockId(OPEN_TREASURE), 0);
+        let _ = world.place(pos, OPEN_TREASURE);
         let _ = world.setTileData(pos, &(kind as i32));
         let random: Random = Random::withSeed(world.random(i32::MAX) as i64);
         for _ in 0..block::TREASURE_ROLLS + random.nextIntBounded(1)

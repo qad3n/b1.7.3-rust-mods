@@ -1,4 +1,4 @@
-use crate::ids::{block, blockId, item};
+use crate::names::{block, item};
 use b173_api::prelude::*;
 
 // EnumToolMaterial rows the Aether tools are built on
@@ -33,12 +33,14 @@ const PROTECTION: [i32; 4] = [3, 8, 6, 3];
 const DURABILITY: [i32; 4] = [11, 16, 15, 13];
 const IRON_ARMOR: i32 = 2;
 const DIAMOND_ARMOR: i32 = 3;
-const SLOTS: [(ArmorSlot, &str); 4] = [
-    (ArmorSlot::Head, "helmet"),
-    (ArmorSlot::Chest, "chestplate"),
-    (ArmorSlot::Legs, "leggings"),
-    (ArmorSlot::Feet, "boots"),
+const SLOTS: [(ArmorSlot, &str, &str); 4] = [
+    (ArmorSlot::Head, "helmet", "minecraft:head_armor"),
+    (ArmorSlot::Chest, "chestplate", "minecraft:chest_armor"),
+    (ArmorSlot::Legs, "leggings", "minecraft:leg_armor"),
+    (ArmorSlot::Feet, "boots", FOOT_ARMOR),
 ];
+const FOOT_ARMOR: &str = "minecraft:foot_armor";
+const SWORD_TAG: &str = "minecraft:swords";
 
 // one Aether armor set, tinted sets reuse the vanilla iron sheet
 struct ArmorSet
@@ -60,8 +62,11 @@ const ARMOR: [ArmorSet; 6] = [
 
 const TOOL_SETS: [(&str, Tier); 5] =
     [("skyroot", WOOD), ("holystone", STONE), ("zanite", IRON), ("gravitite", EMERALD), ("valkyrie", EMERALD)];
-const TOOL_KINDS: [(ToolClass, &str); 3] =
-    [(ToolClass::Pickaxe, "pickaxe"), (ToolClass::Axe, "axe"), (ToolClass::Shovel, "shovel")];
+const TOOL_KINDS: [(ToolClass, &str, &str); 3] = [
+    (ToolClass::Pickaxe, "pickaxe", "minecraft:pickaxes"),
+    (ToolClass::Axe, "axe", "minecraft:axes"),
+    (ToolClass::Shovel, "shovel", "minecraft:shovels"),
+];
 const SWORDS: [(&str, Tier); 4] = [("skyroot", WOOD), ("holystone", STONE), ("zanite", IRON), ("gravitite", EMERALD)];
 
 // name, texture under item/ and heal amount; heals are b1.7.3 half hearts from the Aether food constructors
@@ -182,14 +187,14 @@ impl ItemBehavior for AmbrosiumShard
 {
     fn onUseOnBlock(&self, world: World, _player: Player, stack: ItemStack, pos: BlockPos, _face: i32) -> Use
     {
-        if world.block(pos) != blockId(block::AETHER_GRASS)
+        if !world.is(pos, block::AETHER_GRASS)
         {
             return Use::Pass;
         }
 
         if world.isAuthority()
         {
-            let _ = world.setBlock(pos, blockId(block::ENCHANTED_AETHER_GRASS), 0);
+            let _ = world.place(pos, block::ENCHANTED_AETHER_GRASS);
         }
 
         let remaining: i32 = stack.count - 1;
@@ -201,7 +206,7 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
 {
     for set in &ARMOR
     {
-        for (index, (slot, piece)) in SLOTS.iter().enumerate()
+        for (index, (slot, piece, tag)) in SLOTS.iter().enumerate()
         {
             let name: String = format!("{}_{piece}", set.m_name);
 
@@ -213,8 +218,10 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
                 texture: set.m_sheet.to_owned(),
                 color: set.m_color,
             };
-            ctx.items()
-                .register(&name, ItemSpecBuilder::new().texture(&texture(&format!("armor/{name}"))).armor(armor))?;
+            ctx.items().register(
+                &name,
+                ItemSpecBuilder::new().texture(&texture(&format!("armor/{name}"))).armor(armor).tag(tag),
+            )?;
         }
     }
 
@@ -226,8 +233,10 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
         texture: "aether:armor/sentry_layer".to_owned(),
         color: None,
     };
-    ctx.items()
-        .register("sentry_boots", ItemSpecBuilder::new().texture(&texture("armor/sentry_boots")).armor(sentry))?;
+    ctx.items().register(
+        "sentry_boots",
+        ItemSpecBuilder::new().texture(&texture("armor/sentry_boots")).armor(sentry).tag(FOOT_ARMOR),
+    )?;
     Ok(())
 }
 
@@ -250,16 +259,13 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
 {
     for (material, tier) in TOOL_SETS
     {
-        for (class, kind) in TOOL_KINDS
+        for (class, kind, tag) in TOOL_KINDS
         {
             let name: String = format!("{material}_{kind}");
-            let mut spec: ItemSpecBuilder = ItemSpecBuilder::new().texture(&texture(&format!("tools/{name}"))).tool(
-                class,
-                tier.m_level,
-                tier.m_speed,
-                baseDamage(class, tier),
-                tier.m_uses,
-            );
+            let mut spec: ItemSpecBuilder = ItemSpecBuilder::new()
+                .texture(&texture(&format!("tools/{name}")))
+                .tool(class, tier.m_level, tier.m_speed, baseDamage(class, tier), tier.m_uses)
+                .tag(tag);
 
             match material
             {
@@ -278,13 +284,10 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
         let name: String = format!("{material}_sword");
         ctx.items().register(
             &name,
-            ItemSpecBuilder::new().texture(&texture(&format!("weapons/{name}"))).tool(
-                ToolClass::Sword,
-                tier.m_level,
-                tier.m_speed,
-                baseDamage(ToolClass::Sword, tier),
-                tier.m_uses,
-            ),
+            ItemSpecBuilder::new()
+                .texture(&texture(&format!("weapons/{name}")))
+                .tool(ToolClass::Sword, tier.m_level, tier.m_speed, baseDamage(ToolClass::Sword, tier), tier.m_uses)
+                .tag(SWORD_TAG),
         )?;
     }
 
@@ -390,13 +393,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     for (name, icon, tier, uses) in WEAPONS
     {
         let durability: i32 = uses.unwrap_or(tier.m_uses);
-        let mut spec: ItemSpecBuilder = ItemSpecBuilder::new().texture(&texture(&format!("weapons/{icon}"))).tool(
-            ToolClass::Sword,
-            tier.m_level,
-            tier.m_speed,
-            baseDamage(ToolClass::Sword, tier),
-            durability,
-        );
+        let mut spec: ItemSpecBuilder = ItemSpecBuilder::new()
+            .texture(&texture(&format!("weapons/{icon}")))
+            .tool(ToolClass::Sword, tier.m_level, tier.m_speed, baseDamage(ToolClass::Sword, tier), durability)
+            .tag(SWORD_TAG);
 
         if let Some(blade) = crate::weapons::blade(name)
         {

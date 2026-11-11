@@ -61,29 +61,6 @@ mod wind
     pub const TEAR_UP: i32 = 5;
 }
 
-thread_local!
-{
-    static LEAVES: RefCell<Option<Vec<i32>>> = const { RefCell::new(None) };
-}
-
-fn leaves(block: i32) -> bool
-{
-    LEAVES.with(|leaves|
-    {
-        leaves
-            .borrow_mut()
-            .get_or_insert_with(||
-            {
-                tagValues(RegistryKind::Block, "minecraft:leaves")
-                    .iter()
-                    .map(|name| crate::ids::blockId(&name.to_string()))
-                    .filter(|id| *id != 0)
-                    .collect()
-            })
-            .contains(&block)
-    })
-}
-
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Wind
 {
@@ -178,9 +155,9 @@ fn tear(world: World, info: &EntityInfo)
     let feet: BlockPos = blockOf(info.pos);
     let spot: BlockPos =
         feet.offset(world.random(wind::TEAR_SIDE) - 1, world.random(wind::TEAR_UP), world.random(wind::TEAR_SIDE) - 1);
-    if leaves(world.block(spot))
+    if world.tagged(spot, "minecraft:leaves")
     {
-        let _ = world.setBlock(spot, 0, 0);
+        let _ = world.clear(spot);
     }
 }
 

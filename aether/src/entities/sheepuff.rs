@@ -1,6 +1,6 @@
 use super::{creature, onAetherGrass};
-use crate::ids::Palette;
 use crate::models::{Program, combine, quadruped, quadrupedPose, sheepuff, sheepuff_wool, sheepuffed};
+use crate::names::block;
 use b173_api::math;
 use b173_api::prelude::*;
 
@@ -182,13 +182,12 @@ impl EntityBehavior for Sheepuff
         }
         let feet: BlockPos =
             BlockPos::new(math::floor(info.pos[0]), math::floor(info.pos[1]) - 1, math::floor(info.pos[2]));
-        let palette: Palette = Palette::load();
-        if entity.world.block(feet) != palette.m_grass
+        if !entity.world.is(feet, block::AETHER_GRASS)
         {
             return;
         }
 
-        let _ = entity.world.setBlock(feet, palette.m_dirt, 0);
+        let _ = entity.world.place(feet, block::AETHER_DIRT);
 
         state.m_eatStart = ticks(entity);
         state.m_eaten += 1;

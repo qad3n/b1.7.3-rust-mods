@@ -249,7 +249,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             health: Some(20),
             spawn: monster(50),
             // EntityZephyr.dropFewItems
-            drops: Some(vec![super::drop(crate::ids::block::COLD_AERCLOUD, [1, 1])]),
+            drops: Some(vec![super::drop(crate::names::block::COLD_AERCLOUD, [1, 1])]),
             sounds: sounds(CALL, "aether.aemob.zephyr.call", "aether.aemob.zephyr.call"),
             model: Some(EntityModelSpec { shadow: 0.5, ..model::model() }),
             ..EntitySpec::default()

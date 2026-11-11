@@ -22,7 +22,7 @@ pub(crate) mod valkyrie;
 mod whirlwind;
 mod zephyr;
 
-use crate::ids::Palette;
+use crate::names::block;
 use b173_api::math::{blockOf, distanceSquared};
 use b173_api::prelude::*;
 
@@ -35,7 +35,7 @@ pub(crate) fn onAetherGrass(info: &EntityInfo) -> bool
 {
     let world: World = World { dimension: info.world };
     let feet: BlockPos = blockOf(info.pos);
-    world.block(feet.offset(0, -1, 0)) == Palette::load().m_grass && world.light(feet) >= SPAWN_LIGHT
+    world.is(feet.offset(0, -1, 0), block::AETHER_GRASS) && world.light(feet) >= SPAWN_LIGHT
 }
 
 pub(crate) fn creature(weight: i32) -> Option<SpawnSpec>

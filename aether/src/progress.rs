@@ -130,7 +130,6 @@ const ROWS: [Row; 10] = [
     },
 ];
 
-const GRAVITITE_TOOLS: [&str; 3] = ["aether:gravitite_shovel", "aether:gravitite_axe", "aether:gravitite_pickaxe"];
 const ENCHANTER: &str = "aether:enchanter";
 const LORE_BOOK: &str = "aether:lore_book";
 const PLAYER_HALF_WIDTH: f64 = 0.3;
@@ -254,7 +253,7 @@ fn crafted(event: &mut Event)
         return;
     }
 
-    if GRAVITITE_TOOLS.iter().any(|tool| stack.item.is(tool))
+    if stack.item.tagged(crate::tags::GRAVITITE_TOOLS)
     {
         grant(player, Award::GravTools);
     }

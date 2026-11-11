@@ -4,7 +4,7 @@ pub(crate) mod sun_spirit;
 pub(crate) mod valkyrie_queen;
 
 use crate::entities::fraction;
-use crate::ids::blockId;
+use crate::names::{Pick, handle};
 use b173_api::prelude::*;
 use b173_api::screen::Draw;
 
@@ -89,21 +89,55 @@ pub(crate) fn say(player: Player, key: &str) { player.chat(&translate(&format!("
 // BlockDungeonBase.getUnlockedBlock spread through every touching locked block of the dungeon's own kind
 pub(crate) fn unlock(world: World, from: [i32; 3], locked: &[&str])
 {
-    let swaps: Vec<(i32, i32)> =
-        locked.iter().map(|name| (blockId(name), blockId(crate::world::dungeons::unlocked(name)))).collect();
     let mut pending: Vec<[i32; 3]> = vec![from];
     while let Some([x, y, z]) = pending.pop()
     {
         let pos: BlockPos = BlockPos::new(x, y, z);
-        let Some((_, plain)) = swaps.iter().find(|(lockedId, _)| *lockedId == world.block(pos))
+        let Some(name) = locked.iter().find(|name| world.is(pos, name))
         else
         {
             continue;
         };
 
-        let _ = world.setBlock(pos, *plain, 0);
+        let _ = world.place(pos, crate::world::dungeons::unlocked(name));
 
         pending.extend([[x + 1, y, z], [x - 1, y, z], [x, y + 1, z], [x, y - 1, z], [x, y, z + 1], [x, y, z - 1]]);
+    }
+}
+
+// a locked dungeon stone and the plain stone a beaten boss leaves in its place
+pub(crate) type Swap = (&'static str, &'static str);
+
+// every locked stone in the box from low up to high turns plain
+pub(crate) fn freeBox(world: World, low: [i32; 3], high: [i32; 3], swaps: &[Swap])
+{
+    for x in low[0]..high[0]
+    {
+        for y in low[1]..high[1]
+        {
+            for z in low[2]..high[2]
+            {
+                let pos: BlockPos = BlockPos::new(x, y, z);
+                if let Some((_, plain)) = swaps.iter().find(|(locked, _)| world.is(pos, locked))
+                {
+                    let _ = world.place(pos, plain);
+                }
+            }
+        }
+    }
+}
+
+// beta trapdoors have no named states so their hinge side is the metadata the loader reports as meta
+pub(crate) const TRAPDOOR_LOW_X: Pick = Pick::with("minecraft:trapdoor", &[("meta", "3")]);
+pub(crate) const TRAPDOOR_HIGH_X: Pick = Pick::with("minecraft:trapdoor", &[("meta", "2")]);
+
+// the trapdoors a beaten boss lays over its treasure, one above the floor at each offset
+pub(crate) fn trapdoors(world: World, floor: [i32; 3], rows: &[([i32; 2], Pick)])
+{
+    let [x, y, z] = floor;
+    for ([dx, dz], pick) in rows
+    {
+        let _ = handle(*pick).place(world, BlockPos::new(x + dx, y + 1, z + dz), true);
     }
 }
 

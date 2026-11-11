@@ -1,4 +1,5 @@
 use super::gen_world::GenWorld;
+use crate::names::{AIR, Pick};
 use b173_api::terrain::Random;
 use b173_api::{BlockInfo, World};
 
@@ -75,8 +76,6 @@ pub(crate) fn waterLake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i3
     y -= lake::WATER_LAYERS;
 
     let shape: Vec<bool> = blobs(random);
-    let water: i32 = crate::ids::blockId(WATER);
-
     for dx in 0..lake::WIDTH
     {
         for dz in 0..lake::WIDTH
@@ -93,7 +92,7 @@ pub(crate) fn waterLake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i3
                 {
                     return false;
                 }
-                if dy < lake::WATER_LAYERS && !info.solid && block != water
+                if dy < lake::WATER_LAYERS && !info.solid && !world.is(x + dx, y + dy, z + dz, WATER)
                 {
                     return false;
                 }
@@ -109,7 +108,19 @@ pub(crate) fn waterLake(world: &GenWorld, random: &Random, x: i32, y: i32, z: i3
             {
                 if shape[index(dx, dz, dy)]
                 {
-                    world.set(x + dx, y + dy, z + dz, if dy >= lake::WATER_LAYERS { 0 } else { water });
+                    world.put(
+                        x + dx,
+                        y + dy,
+                        z + dz,
+                        if dy >= lake::WATER_LAYERS
+                        {
+                            AIR
+                        }
+                        else
+                        {
+                            Pick::of(WATER)
+                        },
+                    );
                 }
             }
         }

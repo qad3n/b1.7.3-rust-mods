@@ -28,7 +28,6 @@ mod silver
     pub const CHANDELIER_HEIGHT: i32 = 8;
     pub const CHANDELIERS: [[i32; 2]; 4] = [[28, 10], [43, 10], [43, 19], [28, 19]];
     pub const ELLIPSE: i32 = 21;
-    pub const BLUE_WOOL: i32 = 11;
     pub const CHEST_TYPES: i32 = 3;
     pub const CORE_CHANCE: i32 = 5;
     pub const SAPLING_CHANCE: i32 = 2;
@@ -62,6 +61,9 @@ pub(crate) fn start(seed: i64, chunkX: i32, chunkZ: i32) -> Start
     Start { m_stairs: stairs, m_tendency: tendency, m_box: component }
 }
 
+// beta wool has no named states so its color is the metadata the loader reports as meta
+const BLUE_WOOL: Pick = Pick::with("minecraft:wool", &[("meta", "11")]);
+
 struct Blocks
 {
     m_locked: Pick,
@@ -76,24 +78,19 @@ struct Blocks
     m_fence: Pick,
 }
 
-fn blocks(world: &GenWorld) -> Blocks
+const BLOCKS: Blocks = Blocks
 {
-    let pick = |name: &'static str| (world.id(name), 0);
-
-    Blocks
-    {
-        m_locked: pick("locked_angelic_stone"),
-        m_lockedLight: pick("locked_light_angelic_stone"),
-        m_trap: pick("angelic_trap"),
-        m_pillar: pick("pillar"),
-        m_pillarTop: pick("pillar_top"),
-        m_torch: pick("ambrosium_torch"),
-        m_slab: pick("minecraft:stone_slab"),
-        m_doubleSlab: pick("minecraft:double_stone_slab"),
-        m_glowstone: pick("minecraft:glowstone"),
-        m_fence: pick("minecraft:fence"),
-    }
-}
+    m_locked: Pick::of("locked_angelic_stone"),
+    m_lockedLight: Pick::of("locked_light_angelic_stone"),
+    m_trap: Pick::of("angelic_trap"),
+    m_pillar: Pick::of("pillar"),
+    m_pillarTop: Pick::of("pillar_top"),
+    m_torch: Pick::of("ambrosium_torch"),
+    m_slab: Pick::of("minecraft:stone_slab"),
+    m_doubleSlab: Pick::of("minecraft:double_stone_slab"),
+    m_glowstone: Pick::of("minecraft:glowstone"),
+    m_fence: Pick::of("minecraft:fence"),
+};
 
 // ComponentSilverDungeon.generate
 pub(crate) fn generate(world: &GenWorld, random: &Random, start: &Start, clip: StructureBox)
@@ -101,8 +98,7 @@ pub(crate) fn generate(world: &GenWorld, random: &Random, start: &Start, clip: S
     let mut writer: Writer = Writer::structure(world, random, &start.m_box, clip);
     writer.m_replaceAir = true;
 
-    let mut dungeon: Silver =
-        Silver { m_writer: writer, m_blocks: blocks(world), m_rooms: [[[0; 3]; 3]; 3], m_stairs: start.m_stairs };
+    let mut dungeon: Silver = Silver { m_writer: writer, m_rooms: [[[0; 3]; 3]; 3], m_stairs: start.m_stairs };
     dungeon.clouds(start.m_tendency);
     dungeon.build();
 }
@@ -110,7 +106,6 @@ pub(crate) fn generate(world: &GenWorld, random: &Random, start: &Start, clip: S
 struct Silver<'a>
 {
     m_writer: Writer<'a>,
-    m_blocks: Blocks,
     m_rooms: [[[i32; 3]; 3]; 3],
     m_stairs: [i32; 3],
 }
@@ -119,17 +114,14 @@ impl Silver<'_>
 {
     fn random(&self) -> &Random { self.m_writer.m_random }
 
-    fn locked(&mut self, chance: i32)
-    {
-        self.m_writer.setChance(self.m_blocks.m_locked, self.m_blocks.m_lockedLight, chance);
-    }
+    fn locked(&mut self, chance: i32) { self.m_writer.setChance(BLOCKS.m_locked, BLOCKS.m_lockedLight, chance); }
 
     // AetherGenUtils.generateClouds, its loop bounds draw again on every pass and it tests air without the offset
     fn clouds(&mut self, tendency: [i32; 2])
     {
         self.m_writer.setOffset(silver::CLOUD_OFFSET);
 
-        let cloud: Pick = (self.m_writer.m_world.id("cold_aercloud"), 0);
+        let cloud: Pick = Pick::of("cold_aercloud");
 
         for _ in 0..silver::CLOUD_TRIES
         {
@@ -180,9 +172,9 @@ impl Silver<'_>
         self.locked(silver::LOCKED_CHANCE);
         self.m_writer.planeY(x, y, z, 3, 3);
         self.m_writer.planeY(x, y + height, z, 3, 3);
-        self.m_writer.setChance(self.m_blocks.m_pillar, self.m_blocks.m_pillar, 1);
+        self.m_writer.setChance(BLOCKS.m_pillar, BLOCKS.m_pillar, 1);
         self.m_writer.lineY(x + 1, y, z + 1, height - 1);
-        self.m_writer.putOffset(x + 1, y + height - 1, z + 1, self.m_blocks.m_pillarTop);
+        self.m_writer.putOffset(x + 1, y + height - 1, z + 1, BLOCKS.m_pillarTop);
     }
 
     fn staircase(&mut self, x: i32, y: i32, z: i32, height: i32)
@@ -222,11 +214,11 @@ impl Silver<'_>
         {
             let pick: Pick = if index % 2 == 0
             {
-                self.m_blocks.m_slab
+                BLOCKS.m_slab
             }
             else
             {
-                self.m_blocks.m_doubleSlab
+                BLOCKS.m_doubleSlab
             };
             self.m_writer.putOffset(x + dx, y + dy, z + dz, pick);
         }
@@ -253,8 +245,8 @@ impl Silver<'_>
         self.m_writer.setOffset(silver::OFFSET);
         self.m_writer.m_replaceSolid = true;
 
-        let holystone: Pick = (self.m_writer.m_world.id("holystone"), 0);
-        let mossy: Pick = (self.m_writer.m_world.id("mossy_holystone"), 0);
+        let holystone: Pick = Pick::of("holystone");
+        let mossy: Pick = Pick::of("mossy_holystone");
         self.m_writer.setChance(holystone, mossy, silver::MOSS_CHANCE);
         self.m_writer.solidBox([0, -5, 0], [55, 5, 30]);
 
@@ -280,7 +272,7 @@ impl Silver<'_>
 
         self.m_writer.planeZ(5, 0, 11, 20, 15);
         self.m_writer.planeZ(5, 0, 18, 20, 15);
-        self.m_writer.setChance(self.m_blocks.m_locked, self.m_blocks.m_trap, silver::TRAP_CHANCE);
+        self.m_writer.setChance(BLOCKS.m_locked, BLOCKS.m_trap, silver::TRAP_CHANCE);
         self.m_writer.planeY(5, 4, 5, 20, 20);
         self.m_writer.planeY(5, 9, 5, 20, 20);
 
@@ -436,7 +428,7 @@ impl Silver<'_>
         }
 
         let (x, y, z) = (7 + 7 * pi, 5 * qi, 7 + 7 * ri);
-        self.m_writer.putOffset(x, y - 1, z, self.m_blocks.m_trap);
+        self.m_writer.putOffset(x, y - 1, z, BLOCKS.m_trap);
 
         match contents
         {
@@ -451,7 +443,7 @@ impl Silver<'_>
                     return;
                 }
 
-                self.m_writer.putOffset(u, y + 1, v, (self.m_writer.m_world.id("minecraft:chest"), 0));
+                self.m_writer.putOffset(u, y + 1, v, Pick::of("minecraft:chest"));
 
                 let at: [i32; 3] = self.m_writer.actualOffset(u, y + 1, v);
                 if self.m_writer.inside(at)
@@ -469,7 +461,7 @@ impl Silver<'_>
             {
                 self.m_writer.planeY(x, y, z, 2, 2);
 
-                let mimic: Pick = (self.m_writer.m_world.id("chest_mimic"), 0);
+                let mimic: Pick = Pick::of("chest_mimic");
                 let [u, v] = [x + self.random().nextIntBounded(2), z + self.random().nextIntBounded(2)];
                 self.m_writer.putOffset(u, y + 1, v, mimic);
 
@@ -497,8 +489,8 @@ impl Silver<'_>
 
                 match distance.cmp(&silver::ELLIPSE)
                 {
-                    std::cmp::Ordering::Equal => self.m_writer.putOffset(26 + x, 0, 5 + z, self.m_blocks.m_lockedLight),
-                    std::cmp::Ordering::Greater => self.m_writer.putOffset(26 + x, 0, 5 + z, self.m_blocks.m_locked),
+                    std::cmp::Ordering::Equal => self.m_writer.putOffset(26 + x, 0, 5 + z, BLOCKS.m_lockedLight),
+                    std::cmp::Ordering::Greater => self.m_writer.putOffset(26 + x, 0, 5 + z, BLOCKS.m_locked),
                     std::cmp::Ordering::Less =>
                     {}
                 }
@@ -512,7 +504,7 @@ impl Silver<'_>
         self.m_writer.lineX(46, 4, 16, 4);
         self.m_writer.planeX(49, 4, 13, 4, 4);
 
-        let wool: Pick = (self.m_writer.m_world.id("minecraft:wool"), silver::BLUE_WOOL);
+        let wool: Pick = BLUE_WOOL;
         self.m_writer.setChance(wool, wool, silver::LOCKED_CHANCE);
         self.m_writer.planeY(47, 3, 14, 2, 2);
 
@@ -520,7 +512,7 @@ impl Silver<'_>
         {
             for z in 0..2
             {
-                self.m_writer.putOffset(44 + x * 5, 2, 11 + z * 7, self.m_blocks.m_torch);
+                self.m_writer.putOffset(44 + x * 5, 2, 11 + z * 7, BLOCKS.m_torch);
             }
         }
 
@@ -534,21 +526,21 @@ impl Silver<'_>
         self.m_writer.lineZ(41, 1, 23, 2);
         self.m_writer.lineX(36, 1, 21, 4);
 
-        let water: Pick = (self.m_writer.m_world.id("minecraft:water"), 0);
+        let water: Pick = Pick::of("minecraft:water");
         self.m_writer.setChance(water, water, 1);
         self.m_writer.planeY(35, 1, 5, 6, 3);
         self.m_writer.planeY(35, 1, 22, 6, 3);
 
         for [x, z] in [[35, 7], [40, 7], [35, 22], [40, 22]]
         {
-            self.m_writer.putOffset(x, 1, z, self.m_blocks.m_locked);
+            self.m_writer.putOffset(x, 1, z, BLOCKS.m_locked);
         }
 
         for x in [36, 39]
         {
             for z in [8, 21]
             {
-                self.m_writer.putOffset(x, 2, z, self.m_blocks.m_torch);
+                self.m_writer.putOffset(x, 2, z, BLOCKS.m_torch);
             }
         }
 
@@ -565,22 +557,22 @@ impl Silver<'_>
     {
         for lineY in y + height + 3..y + height + 6
         {
-            self.m_writer.putOffset(x, lineY, z, self.m_blocks.m_fence);
+            self.m_writer.putOffset(x, lineY, z, BLOCKS.m_fence);
         }
 
         for lineX in x - 1..x + 2
         {
-            self.m_writer.putOffset(lineX, y + height + 1, z, self.m_blocks.m_glowstone);
+            self.m_writer.putOffset(lineX, y + height + 1, z, BLOCKS.m_glowstone);
         }
 
         for lineY in y + height..y + height + 3
         {
-            self.m_writer.putOffset(x, lineY, z, self.m_blocks.m_glowstone);
+            self.m_writer.putOffset(x, lineY, z, BLOCKS.m_glowstone);
         }
 
         for lineZ in z - 1..z + 2
         {
-            self.m_writer.putOffset(x, y + height + 1, lineZ, self.m_blocks.m_glowstone);
+            self.m_writer.putOffset(x, y + height + 1, lineZ, BLOCKS.m_glowstone);
         }
     }
 
@@ -588,14 +580,14 @@ impl Silver<'_>
     {
         self.locked(silver::SAPLING_CHANCE);
         self.m_writer.planeY(x, y, z, 3, 3);
-        self.m_writer.putOffset(x + 1, y, z + 1, (self.m_writer.m_world.id("aether_dirt"), 0));
-        self.m_writer.putOffset(x + 1, y + 1, z + 1, (self.m_writer.m_world.id("golden_oak_sapling"), 0));
+        self.m_writer.putOffset(x + 1, y, z + 1, Pick::of("aether_dirt"));
+        self.m_writer.putOffset(x + 1, y + 1, z + 1, Pick::of("golden_oak_sapling"));
 
         for lineX in [x, x + 2]
         {
             for lineZ in [z, z + 2]
             {
-                self.m_writer.putOffset(lineX, y + 1, lineZ, self.m_blocks.m_torch);
+                self.m_writer.putOffset(lineX, y + 1, lineZ, BLOCKS.m_torch);
             }
         }
     }
@@ -620,6 +612,6 @@ impl Silver<'_>
 
         let x: i32 = 42 + self.random().nextIntBounded(2);
         let z: i32 = 14 + self.random().nextIntBounded(2);
-        self.m_writer.putOffset(x, -1, z, (self.m_writer.m_world.id("treasure_chest"), 0));
+        self.m_writer.putOffset(x, -1, z, Pick::of("treasure_chest"));
     }
 }

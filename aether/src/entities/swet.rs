@@ -1,6 +1,6 @@
 use super::{closestPlayer, fraction, monster, sounds};
-use crate::ids::{block, item};
 use crate::models::{Program, combine, slime_inner, slime_outer};
+use crate::names::{block, item};
 use b173_api::math::{distance, yawTowards};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};

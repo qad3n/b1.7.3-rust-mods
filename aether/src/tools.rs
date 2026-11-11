@@ -132,7 +132,6 @@ mod reach
     pub const BLOCK: (&str, f64) = ("minecraft:block_interaction_range", 4.0);
     pub const ENTITY: (&str, f64) = ("minecraft:entity_interaction_range", 3.0);
     pub const MODIFIER: &str = "aether:valkyrie_reach";
-    pub const TOOLS: [&str; 3] = ["valkyrie_pickaxe", "valkyrie_axe", "valkyrie_shovel"];
     pub const LANCE: &str = "valkyrie_lance";
 }
 
@@ -169,7 +168,7 @@ pub(crate) fn valkyrieReach(player: Player)
     };
 
     let held: Option<ItemStack> = player.held();
-    let tool: bool = held.as_ref().is_some_and(|stack| reach::TOOLS.iter().any(|name| stack.item.is(name)));
+    let tool: bool = held.as_ref().is_some_and(|stack| stack.item.tagged(crate::tags::VALKYRIE_TOOLS));
     let lance: bool = held.as_ref().is_some_and(|stack| stack.item.is(reach::LANCE));
     let wanted: (bool, bool) = (tool, tool || lance);
     if REACHING.with(|reaching| reaching.borrow().get(&player.id).copied()) == Some(wanted)

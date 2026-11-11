@@ -4,6 +4,9 @@ use crate::entities::projectile::
 };
 use crate::entities::{fraction, lookOf};
 use b173_api::prelude::*;
+use b173_api::tagMembers;
+use std::collections::HashSet;
+use std::rc::Rc;
 
 mod weapon
 {
@@ -171,15 +174,11 @@ impl ItemBehavior for LightningKnife
     }
 }
 
-fn kindOf(target: Entity) -> String
+fn kindIn(target: Entity, tag: &str) -> bool
 {
-    target.info().and_then(|info| info.kind).map_or_else(String::new, |kind| kind.path().to_owned())
+    let members: Rc<HashSet<Identifier>> = tagMembers(RegistryKind::Entity, tag);
+    target.info().and_then(|info| info.kind).is_some_and(|kind| members.contains(&kind))
 }
-
-// EntityLiving.isEntityUndead in b1.7.3: zombies, skeletons and zombie pigmen
-const UNDEAD: [&str; 3] = ["zombie", "skeleton", "zombie_pigman"];
-// ItemPigSlayer: anything pig-like by name
-const PIGS: [&str; 3] = ["pig", "phyg", "taegore"];
 
 #[derive(Clone, Copy)]
 enum Blade
@@ -222,7 +221,7 @@ impl ItemBehavior for Sword
 
             Blade::Holy =>
             {
-                if UNDEAD.contains(&kindOf(target).as_str())
+                if kindIn(target, crate::tags::UNDEAD)
                 {
                     crate::damage::hit(target, weapon::HOLY_DAMAGE, None, crate::damage::kind::DROWN);
                 }
@@ -240,8 +239,7 @@ impl ItemBehavior for Sword
 
             Blade::PigSlayer =>
             {
-                let kind: String = kindOf(target);
-                if PIGS.iter().any(|pig| kind.contains(pig))
+                if kindIn(target, crate::tags::PIGS)
                 {
                     crate::damage::hit(target, weapon::PIG_SLAIN, Some(attacker), crate::damage::kind::MOB);
                 }

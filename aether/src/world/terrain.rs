@@ -1,6 +1,6 @@
-use crate::ids::Palette;
-use b173_api::ChunkInfo;
+use crate::names::{block, numeric};
 use b173_api::terrain::{ChunkBlocks, NoiseGeneratorOctaves, Random, chunk, structure};
+use b173_api::{ChunkInfo, blockIs};
 use std::cell::{RefCell, RefMut};
 
 mod noise
@@ -223,19 +223,27 @@ fn shape(blocks: &mut ChunkBlocks, buffer: &[f64], holystone: u16)
     }
 }
 
-// ChunkProviderAether.buildSurfaces, z outside and x inside as the Java draws its randoms
-fn surface(blocks: &mut ChunkBlocks, random: &Random, palette: &Palette)
+// the ids a chunk buffer stores for the island layers, resolved once per chunk
+struct Layers
 {
-    let holystone: u16 = palette.m_holystone as u16;
+    m_stone: u16,
+    m_top: u16,
+    m_filler: u16,
+}
 
+fn stored(name: &'static str) -> u16 { numeric(name) as u16 }
+
+// ChunkProviderAether.buildSurfaces, z outside and x inside as the Java draws its randoms
+fn surface(blocks: &mut ChunkBlocks, random: &Random, layers: &Layers)
+{
     for z in 0..chunk::WIDTH
     {
         for x in 0..chunk::WIDTH
         {
             let mut depth: i32 = -1;
             let thickness: i32 = (surface::DEPTH + random.nextDouble() * surface::DEPTH_JITTER) as i32;
-            let mut top: u16 = palette.m_grass as u16;
-            let mut filler: u16 = palette.m_dirt as u16;
+            let mut top: u16 = layers.m_top;
+            let mut filler: u16 = layers.m_filler;
 
             for y in (0..chunk::HEIGHT).rev()
             {
@@ -245,14 +253,15 @@ fn surface(blocks: &mut ChunkBlocks, random: &Random, palette: &Palette)
                 {
                     depth = -1;
                 }
-                else if block == holystone
+                // shape fills only stone and air so every solid block here is stone
+                else
                 {
                     if depth == -1
                     {
                         if thickness <= 0
                         {
                             top = 0;
-                            filler = holystone;
+                            filler = layers.m_stone;
                         }
 
                         depth = thickness;
@@ -271,14 +280,12 @@ fn surface(blocks: &mut ChunkBlocks, random: &Random, palette: &Palette)
 
 // MapGenQuicksoil, a quicksoil disc under grass overhangs; its loops name the array x axis z as the Java does,
 // and the Java draws from an unseeded random where the port uses the chunk random so every side agrees
-fn quicksoil(blocks: &mut ChunkBlocks, random: &Random, palette: &Palette)
+fn quicksoil(blocks: &mut ChunkBlocks, random: &Random)
 {
     if random.nextIntBounded(quicksoil::CHANCE) != 0
     {
         return;
     }
-
-    let grass: i32 = palette.m_grass;
 
     for x in quicksoil::FIRST..quicksoil::LAST
     {
@@ -286,11 +293,13 @@ fn quicksoil(blocks: &mut ChunkBlocks, random: &Random, palette: &Palette)
         {
             let found: Option<i32> = (quicksoil::LOWEST..quicksoil::HIGHEST).find(|y|
             {
-                blocks.get(z, *y, x) == 0 && blocks.get(z, y + 1, x) == grass && blocks.get(z, y + 2, x) == 0
+                blocks.get(z, *y, x) == 0
+                    && blockIs(blocks.get(z, y + 1, x), block::AETHER_GRASS)
+                    && blocks.get(z, y + 2, x) == 0
             });
             if let Some(y) = found
             {
-                quicksoilDisc(blocks, x, y, z, palette.m_quicksoil);
+                quicksoilDisc(blocks, x, y, z, i32::from(stored(block::QUICKSOIL)));
             }
         }
     }
@@ -403,7 +412,12 @@ fn largeClouds(blocks: &mut ChunkBlocks, chunkInfo: &ChunkInfo, cloudBlock: i32)
 // ChunkProviderAether.provideChunk
 pub(crate) fn generate(chunkInfo: &ChunkInfo, blocks: &mut ChunkBlocks)
 {
-    let palette: Palette = Palette::load();
+    let layers: Layers = Layers
+    {
+        m_stone: stored(block::HOLYSTONE),
+        m_top: stored(block::AETHER_GRASS),
+        m_filler: stored(block::AETHER_DIRT),
+    };
     let random: Random = Random::withSeed(
         (chunkInfo.x as i64).wrapping_mul(seed::X).wrapping_add((chunkInfo.z as i64).wrapping_mul(seed::Z)),
     );
@@ -412,8 +426,8 @@ pub(crate) fn generate(chunkInfo: &ChunkInfo, blocks: &mut ChunkBlocks)
     {
         density(noise, chunkInfo.x * cell::PER_AXIS as i32, chunkInfo.z * cell::PER_AXIS as i32)
     });
-    shape(blocks, &buffer, palette.m_holystone as u16);
-    surface(blocks, &random, &palette);
-    quicksoil(blocks, &random, &palette);
-    largeClouds(blocks, chunkInfo, palette.m_coldCloud);
+    shape(blocks, &buffer, layers.m_stone);
+    surface(blocks, &random, &layers);
+    quicksoil(blocks, &random);
+    largeClouds(blocks, chunkInfo, i32::from(stored(block::COLD_AERCLOUD)));
 }

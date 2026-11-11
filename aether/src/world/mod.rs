@@ -5,7 +5,7 @@ mod lakes;
 mod terrain;
 pub(crate) mod trees;
 
-use crate::ids::block;
+use crate::names::block;
 use b173_api::prelude::*;
 pub(crate) use gen_world::GenWorld;
 

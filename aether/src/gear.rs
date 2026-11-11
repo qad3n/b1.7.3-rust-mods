@@ -1,6 +1,6 @@
 use crate::effects::Effect;
 use crate::entities::lookOf;
-use crate::ids::blockId;
+use crate::names::numeric;
 use b173_api::math::{Face, offset};
 use b173_api::prelude::*;
 
@@ -63,9 +63,9 @@ impl ItemBehavior for SkyrootBucket
         {
             Bucket::Empty =>
             {
-                let water: [i32; 2] = [blockId("minecraft:water"), blockId("minecraft:flowing_water")];
-                let Some(hit) = trace(world, &info, true)
-                    .filter(|hit| water.contains(&world.block(hit.pos)) && world.meta(hit.pos) == 0)
+                let source = |hit: &RayHit| world.fluidAt(hit.pos).is_some_and(|fluid| fluid.source);
+                let Some(hit) =
+                    trace(world, &info, true).filter(|hit| world.tagged(hit.pos, "minecraft:water") && source(hit))
                 else
                 {
                     return Use::Pass;
@@ -77,7 +77,7 @@ impl ItemBehavior for SkyrootBucket
 
                 if world.isAuthority()
                 {
-                    let _ = world.setBlock(hit.pos, 0, 0);
+                    let _ = world.clear(hit.pos);
                 }
 
                 Use::Done(Some(ItemStack::of("skyroot_water_bucket", 1)))
@@ -104,7 +104,7 @@ impl ItemBehavior for SkyrootBucket
 
                 if world.isAuthority()
                 {
-                    let _ = world.setBlock(at, blockId("minecraft:flowing_water"), 0);
+                    let _ = world.place(at, "minecraft:flowing_water");
                 }
 
                 Use::Done(empty())
@@ -226,7 +226,7 @@ impl ItemBehavior for ParachuteItem
             {
                 "cold_aercloud"
             };
-            chute.setField(EntityField::Block, blockId(cloud) as f64);
+            chute.setField(EntityField::Block, f64::from(numeric(cloud)));
 
             let _ = chute.setSynced(&Chute { m_rider: player.id, m_golden: self.m_golden });
         }
@@ -259,8 +259,7 @@ impl EntityBehavior for Parachute
         {
             "cold_aercloud"
         };
-        let cloud: i32 = blockId(name);
-        entity.setField(EntityField::Block, cloud as f64);
+        entity.setField(EntityField::Block, f64::from(numeric(name)));
 
         let rider: Entity = Entity { world, id: chute.m_rider };
         let Some(seat) = rider.info().filter(|seat| seat.alive)

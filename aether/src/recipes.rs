@@ -1,4 +1,4 @@
-use crate::ids::{block, item};
+use crate::names::{block, item};
 use b173_api::prelude::*;
 
 // one recipe key: symbol, item and metadata, ANY matches every metadata

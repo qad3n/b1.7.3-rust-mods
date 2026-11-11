@@ -39,33 +39,25 @@ struct Palette
     m_mainLight: Pick,
     m_filler: Pick,
     m_fillerMossy: Pick,
-    m_trap: i32,
-    m_lockedMain: i32,
+    m_trap: Pick,
 }
 
-fn palette(world: &GenWorld) -> Palette
+const PALETTE: Palette = Palette
 {
-    let pick = |name: &'static str| (world.id(name), 0);
-
-    Palette
-    {
-        m_locked: pick("locked_carved_stone"),
-        m_lockedLight: pick("locked_sentry_stone"),
-        m_main: pick("carved_stone"),
-        m_mainLight: pick("sentry_stone"),
-        m_filler: pick("holystone"),
-        m_fillerMossy: pick("mossy_holystone"),
-        m_trap: world.id("carved_trap"),
-        m_lockedMain: world.id("locked_carved_stone"),
-    }
-}
+    m_locked: Pick::of("locked_carved_stone"),
+    m_lockedLight: Pick::of("locked_sentry_stone"),
+    m_main: Pick::of("carved_stone"),
+    m_mainLight: Pick::of("sentry_stone"),
+    m_filler: Pick::of("holystone"),
+    m_fillerMossy: Pick::of("mossy_holystone"),
+    m_trap: Pick::of("carved_trap"),
+};
 
 // BronzeDungeon: a locked boss room with the slider and its treasure, an entry room, a chain of trapped rooms and a
 // tunnel back out to the open air
 struct Bronze<'a>
 {
     m_writer: Writer<'a>,
-    m_palette: Palette,
     m_needsCorridor: bool,
     m_roomMaximum: i32,
     m_roomCount: i32,
@@ -80,14 +72,8 @@ pub(crate) fn generate(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32
 
     let roomMaximum: i32 = random.nextIntBounded(size::EXTRA_ROOMS) + size::MIN_ROOMS;
 
-    let mut dungeon: Bronze = Bronze
-    {
-        m_writer: writer,
-        m_palette: palette(world),
-        m_needsCorridor: false,
-        m_roomMaximum: roomMaximum,
-        m_roomCount: 0,
-    };
+    let mut dungeon: Bronze =
+        Bronze { m_writer: writer, m_needsCorridor: false, m_roomMaximum: roomMaximum, m_roomCount: 0 };
     dungeon.bossRoom(x, y, z);
     dungeon.m_writer.m_rooms
 }
@@ -109,7 +95,7 @@ impl Bronze<'_>
             return false;
         }
 
-        self.m_writer.setChance(self.m_palette.m_locked, self.m_palette.m_lockedLight, size::LOCKED_CHANCE);
+        self.m_writer.setChance(PALETTE.m_locked, PALETTE.m_lockedLight, size::LOCKED_CHANCE);
         self.m_writer.hollowBox([i, j, k], size::BOSS_ROOM);
         self.m_writer.hollowBox([i + 6, j - 2, k + 6], size::VAULT);
         bosses::spawn(
@@ -119,7 +105,7 @@ impl Bronze<'_>
             [i, j, k],
             0,
         );
-        self.m_writer.put(i + 7, j - 1, k + 7, (self.m_writer.m_world.id("treasure_chest"), 0));
+        self.m_writer.put(i + 7, j - 1, k + 7, Pick::of("treasure_chest"));
         self.entryRoom(i, j, k)
     }
 
@@ -131,7 +117,7 @@ impl Bronze<'_>
         {
             for q in (z + 2..z + 10).step_by(SPACING)
             {
-                self.m_writer.put(p, y, q, (self.m_palette.m_trap, 0));
+                self.m_writer.put(p, y, q, PALETTE.m_trap);
             }
         }
     }
@@ -150,9 +136,9 @@ impl Bronze<'_>
             return true;
         }
 
-        self.m_writer.setChance(self.m_palette.m_main, self.m_palette.m_mainLight, size::LOCKED_CHANCE);
+        self.m_writer.setChance(PALETTE.m_main, PALETTE.m_mainLight, size::LOCKED_CHANCE);
         self.m_writer.hollowBox([x, j, z], size::ENTRY_ROOM);
-        self.m_writer.setChance(self.m_palette.m_filler, self.m_palette.m_fillerMossy, size::FILLER_CHANCE);
+        self.m_writer.setChance(PALETTE.m_filler, PALETTE.m_fillerMossy, size::FILLER_CHANCE);
         self.m_writer.squareTube(tube, size::TUBE, angle);
         self.traps(x, j, z);
 
@@ -214,7 +200,7 @@ impl Bronze<'_>
 
         if kind == 0
         {
-            self.m_writer.put(p, y + 2, q, (world.id("chest_mimic"), 0));
+            self.m_writer.put(p, y + 2, q, Pick::of("chest_mimic"));
             return;
         }
 
@@ -223,7 +209,7 @@ impl Bronze<'_>
             return;
         }
 
-        self.m_writer.put(p, y + 2, q, (world.id("minecraft:chest"), 0));
+        self.m_writer.put(p, y + 2, q, Pick::of("minecraft:chest"));
         fillChest(world, random, BlockPos::new(p, y + 2, q), loot::bronzeRoom);
     }
 
@@ -234,10 +220,8 @@ impl Bronze<'_>
             return false;
         }
 
-        self.m_writer.setChance(self.m_palette.m_main, self.m_palette.m_mainLight, size::LOCKED_CHANCE);
+        self.m_writer.setChance(PALETTE.m_main, PALETTE.m_mainLight, size::LOCKED_CHANCE);
         self.m_writer.hollowBox([x, y, z], size::ROOM);
-
-        let main: i32 = self.m_palette.m_main.0;
 
         for p in x..x + size::ROOM[0]
         {
@@ -245,10 +229,10 @@ impl Bronze<'_>
             {
                 for r in z..z + size::ROOM[2]
                 {
-                    if self.m_writer.m_world.block(p, q, r) == main
+                    if self.m_writer.m_world.is(p, q, r, PALETTE.m_main.m_block)
                         && self.random().nextIntBounded(size::TRAP_ODDS) == 0
                     {
-                        self.m_writer.put(p, q, r, (self.m_palette.m_trap, 0));
+                        self.m_writer.put(p, q, r, PALETTE.m_trap);
                     }
                 }
             }
@@ -260,13 +244,13 @@ impl Bronze<'_>
         {
             for q in (z + 2..z + 10).step_by(CORNERS)
             {
-                self.m_writer.put(p, y, q, (self.m_palette.m_trap, 0));
+                self.m_writer.put(p, y, q, PALETTE.m_trap);
             }
         }
 
         self.m_writer.planeY(x + 4, y + 1, z + 4, 4, 4);
         self.roomChest(x, y, z);
-        self.m_writer.setChance(self.m_palette.m_filler, self.m_palette.m_fillerMossy, size::FILLER_CHANCE);
+        self.m_writer.setChance(PALETTE.m_filler, PALETTE.m_fillerMossy, size::FILLER_CHANCE);
 
         let (tube, angle): ([i32; 3], i32) = match direction
         {
@@ -314,7 +298,6 @@ impl Bronze<'_>
 
         let along: usize = if step[0] != 0 { 0 } else { 2 };
         let room: [i32; 3] = [x, y, z];
-        let lockedMain: i32 = self.m_palette.m_lockedMain;
         let mut at: [i32; 3] = start;
         let mut tunnelling: bool = true;
         let mut tooLong: bool = false;
@@ -327,8 +310,8 @@ impl Bronze<'_>
             }
 
             let next: [i32; 3] = shifted(at);
-            if self.m_writer.hasBlock(next, aheadSize, self.m_palette.m_main.0)
-                || self.m_writer.hasBlock(next, aheadSize, lockedMain)
+            if self.m_writer.hasBlock(next, aheadSize, PALETTE.m_main.m_block)
+                || self.m_writer.hasBlock(next, aheadSize, PALETTE.m_locked.m_block)
             {
                 tunnelling = false;
             }
@@ -339,7 +322,7 @@ impl Bronze<'_>
                 tunnelling = false;
             }
 
-            self.m_writer.setChance(self.m_palette.m_filler, self.m_palette.m_fillerMossy, size::FILLER_CHANCE);
+            self.m_writer.setChance(PALETTE.m_filler, PALETTE.m_fillerMossy, size::FILLER_CHANCE);
 
             let (wall, hole): ([i32; 3], [i32; 3]) = if along == 0
             {

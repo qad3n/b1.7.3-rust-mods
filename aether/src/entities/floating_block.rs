@@ -1,4 +1,4 @@
-use crate::ids::blockId;
+use crate::names::handleOf;
 use b173_api::math::blockOf;
 use b173_api::prelude::*;
 
@@ -21,17 +21,16 @@ mod float
     pub const UPDATES: i32 = 1;
 }
 
-#[derive(Serialize, Deserialize, Default, Clone, Copy)]
+// saved by name so a carried block survives a remap of numeric ids
+#[derive(Serialize, Deserialize, Default, Clone)]
 struct Carried
 {
-    m_block: i32,
-    m_meta: i32,
+    m_state: Option<StateData>,
 }
 
 fn canContinue(world: World, pos: BlockPos) -> bool
 {
-    let block: i32 = world.block(pos);
-    block == 0 || block == blockId(FIRE) || World::blockInfo(block).liquid
+    world.isAir(pos) || world.is(pos, FIRE) || World::blockInfo(world.block(pos)).liquid
 }
 
 // BlockFloating: gravitite ore rises whenever nothing holds it down, enchanted gravitite only while powered
@@ -77,21 +76,33 @@ impl BlockBehavior for Floating
 // the block at a spot becomes a floating block entity rising from there
 pub(crate) fn lift(world: World, pos: BlockPos)
 {
-    let carried: Carried = Carried { m_block: world.block(pos), m_meta: world.meta(pos) };
-    let _ = world.setBlock(pos, 0, 0);
+    let carried: Carried = Carried { m_state: world.blockState(pos) };
+    let _ = world.clear(pos);
     let center: [f64; 3] = [pos.x as f64 + float::CENTER, pos.y as f64 + float::CENTER, pos.z as f64 + float::CENTER];
     if let Ok(entity) = world.spawnEntity(&format!("aether:{NAME}"), center)
     {
-        entity.setField(EntityField::Block, carried.m_block as f64);
+        show(entity, &carried);
 
         let _ = entity.setSynced(&carried);
         let _ = entity.setMotion([0.0, float::LIFT, 0.0]);
     }
 }
 
+// the entity draws the block it carries, which the engine knows only by numeric id
+fn show(entity: Entity, carried: &Carried)
+{
+    if let Some(state) = &carried.m_state
+    {
+        entity.setField(EntityField::Block, f64::from(handleOf(state).block()));
+    }
+}
+
 fn dropAndVanish(entity: Entity, info: &EntityInfo, carried: Carried)
 {
-    let _ = entity.world.spawnItem(info.pos, ItemStack::of(ItemRef::Numeric(carried.m_block), 1));
+    if let Some(state) = carried.m_state
+    {
+        let _ = entity.world.spawnItem(info.pos, ItemStack::of(ItemRef::Named(state.block), 1));
+    }
 
     entity.kill();
 }
@@ -109,11 +120,11 @@ impl EntityBehavior for FloatingBlock
 
         if !world.isAuthority()
         {
-            entity.setField(EntityField::Block, carried.m_block as f64);
+            show(entity, &carried);
             return;
         }
 
-        if carried.m_block == 0
+        if carried.m_state.is_none()
         {
             entity.kill();
             return;
@@ -155,7 +166,10 @@ impl EntityBehavior for FloatingBlock
         let here: BlockPos = blockOf(info.pos);
         if !canContinue(world, here.offset(0, 1, 0))
         {
-            let _ = world.setBlock(here, carried.m_block, carried.m_meta);
+            if let Some(state) = &carried.m_state
+            {
+                let _ = handleOf(state).place(world, here, true);
+            }
 
             entity.kill();
         }

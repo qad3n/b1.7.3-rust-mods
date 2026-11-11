@@ -1,5 +1,5 @@
 use crate::entities::{fraction, moa};
-use crate::ids::{block, blockId, item};
+use crate::names::{block, item};
 use crate::progress::{self, Award};
 use b173_api::prelude::*;
 use b173_api::screen::Draw;
@@ -144,10 +144,8 @@ mod slot
 
 mod lit
 {
-    // BlockAetherContainer.setState
-    pub const IDLE: u8 = 0;
-    pub const ACTIVE: u8 = 1;
-    pub const VALUES: [&str; 2] = ["false", "true"];
+    // BlockAetherContainer.setState as a named state
+    pub const PROPERTY: &str = "lit";
     // randomDisplayTick puffs rise up to six pixels above the top face
     pub const PUFF_SPREAD: f64 = 6.0 / 16.0;
     pub const CENTER: f64 = 0.5;
@@ -285,7 +283,7 @@ fn setLit(ctx: &mut BlockCtx, was: bool, now: bool)
 {
     if was != now
     {
-        ctx.setMeta(if now { lit::ACTIVE } else { lit::IDLE });
+        crate::names::setProperty(ctx, lit::PROPERTY, now);
     }
 }
 
@@ -345,7 +343,7 @@ fn work(machine: &Machine, ctx: &mut BlockCtx)
         if state.m_recipe.is_some()
         {
             let below: BlockPos = BlockPos::new(pos.x, pos.y - 1, pos.z);
-            let boosted: bool = machine.m_booster.is_some_and(|name| world.block(below) == blockId(name));
+            let boosted: bool = machine.m_booster.is_some_and(|name| world.is(below, name));
             state.m_progress += if boosted
             {
                 machine::ENCHANTER_BOOST
@@ -542,7 +540,7 @@ impl BlockBehavior for ContainerBlock
 
     fn onRandomDisplayTick(&self, ctx: &mut BlockCtx)
     {
-        if ctx.meta() != lit::ACTIVE
+        if !ctx.stateAt().is_some_and(|state| state.flag(lit::PROPERTY))
         {
             return;
         }
@@ -670,10 +668,7 @@ fn registerBlock(
             .tileEntity(name)
             .behavior(ContainerBlock { m_screen: name, m_particle: particle }),
     )?;
-    // lit::IDLE and lit::ACTIVE as a named state, in metadata order
-    let property: PropertySpec =
-        PropertySpec { name: "lit".to_owned(), values: lit::VALUES.map(str::to_owned).to_vec() };
-    ctx.blocks().states(name, BlockStatesSpec { properties: vec![property], ..BlockStatesSpec::default() })
+    ctx.blocks().states(name, crate::names::states(vec![crate::names::flag(lit::PROPERTY)]))
 }
 
 fn containerScreen(title: &str) -> ScreenBuilder

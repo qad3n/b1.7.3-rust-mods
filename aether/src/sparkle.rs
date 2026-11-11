@@ -74,7 +74,7 @@ fn portalColor(world: World) -> String
 }
 
 // BlockAetherPortal.randomDisplayTick: the portal hums now and then and throws blue motes from its faces
-pub(crate) fn portalTick(ctx: &BlockCtx, portalBlock: i32)
+pub(crate) fn portalTick(ctx: &BlockCtx, portalBlock: &str)
 {
     let world: World = ctx.world();
     let pos: BlockPos = ctx.pos();
@@ -86,8 +86,7 @@ pub(crate) fn portalTick(ctx: &BlockCtx, portalBlock: i32)
         world.playSound(center, "portal.portal", portal::VOLUME, pitch);
     }
 
-    let alongX: bool =
-        world.block(pos.offset(-1, 0, 0)) == portalBlock || world.block(pos.offset(1, 0, 0)) == portalBlock;
+    let alongX: bool = world.is(pos.offset(-1, 0, 0), portalBlock) || world.is(pos.offset(1, 0, 0), portalBlock);
 
     for _ in 0..portal::MOTES
     {

@@ -1,7 +1,7 @@
-use super::{BossBar, Home, bossName, pitch, say, unlock};
+use super::{BossBar, Home, TRAPDOOR_HIGH_X, TRAPDOOR_LOW_X, bossName, pitch, say, trapdoors, unlock};
 use crate::entities::fraction;
-use crate::ids::blockId;
 use crate::models::{Program, slider as model};
+use crate::names::{Pick, numeric};
 use crate::progress::{self, Award};
 use b173_api::math::{blockOf, distance};
 use b173_api::prelude::*;
@@ -10,9 +10,6 @@ use std::collections::HashMap;
 
 const NAME: &str = super::SLIDER;
 const LOCKED: [&str; 2] = ["locked_carved_stone", "locked_sentry_stone"];
-// BlockDungeonBase, the stone the slider never breaks; the locked copies are unbreakable anyway
-const DUNGEON_STONE: [&str; 6] =
-    ["carved_stone", "sentry_stone", "angelic_stone", "light_angelic_stone", "hellfire_stone", "light_hellfire_stone"];
 
 mod texture
 {
@@ -157,7 +154,7 @@ fn crushBlock(world: World, at: [f64; 3]) -> bool
 {
     let pos: BlockPos = BlockPos::new(at[0] as i32, at[1] as i32, at[2] as i32);
     let block: i32 = world.block(pos);
-    if block == 0 || World::blockInfo(block).hardness < 0.0 || DUNGEON_STONE.iter().any(|name| blockId(name) == block)
+    if block == 0 || World::blockInfo(block).hardness < 0.0 || world.tagged(pos, crate::tags::DUNGEON_STONE)
     {
         return false;
     }
@@ -170,7 +167,7 @@ fn crushBlock(world: World, at: [f64; 3]) -> bool
         warn(&format!("slider crush drops at {pos:?}: {}", error.0));
     }
 
-    let _ = world.setBlock(pos, 0, 0);
+    let _ = world.clear(pos);
     let wobble = || (fraction(world) - fraction(world)) * 0.375;
     world.particle("smoke", [at[0] + 0.5 + wobble(), at[1] + 0.5 + wobble(), at[2] + 0.5 + wobble()], [0.0; 3]);
     true
@@ -239,7 +236,7 @@ fn openDoor(entity: Entity)
         {
             for z in start[2]..=end[2]
             {
-                let _ = entity.world.setBlock(BlockPos::new(x, y, z), 0, 0);
+                let _ = entity.world.clear(BlockPos::new(x, y, z));
             }
         }
     }
@@ -273,8 +270,6 @@ fn closeDoor(entity: Entity)
         return;
     };
 
-    let wall: i32 = blockId(LOCKED[0]);
-
     for height in y + 1..y + 8
     {
         for across in 5..11
@@ -287,7 +282,7 @@ fn closeDoor(entity: Entity)
             {
                 BlockPos::new(x + across, height, start[2])
             };
-            let _ = world.setBlock(pos, wall, 0);
+            let _ = world.place(pos, LOCKED[0]);
         }
     }
 
@@ -558,7 +553,7 @@ impl EntityBehavior for Slider
                 world.particle("explode", spot, [0.0; 3]);
             }
 
-            let _ = world.breakEffect(blockOf(spot), blockId("minecraft:stone"), 0);
+            let _ = world.breakEffect(blockOf(spot), numeric("minecraft:stone"), 0);
         }
 
         if !state.m_awake
@@ -637,14 +632,9 @@ impl EntityBehavior for Slider
         }
 
         let [x, y, z] = home.m_dungeon;
-        let trapdoor: i32 = blockId("minecraft:trapdoor");
-
-        const TRAPDOORS: [([i32; 2], i32); 4] = [([7, 7], 3), ([8, 7], 2), ([7, 8], 3), ([8, 8], 2)];
-
-        for ([dx, dz], meta) in TRAPDOORS
-        {
-            let _ = world.setBlock(BlockPos::new(x + dx, y + 1, z + dz), trapdoor, meta);
-        }
+        let rows: [([i32; 2], Pick); 4] =
+            [([7, 7], TRAPDOOR_LOW_X), ([8, 7], TRAPDOOR_HIGH_X), ([7, 8], TRAPDOOR_LOW_X), ([8, 8], TRAPDOOR_HIGH_X)];
+        trapdoors(world, [x, y, z], &rows);
 
         world.playSound(info.pos, sound::DEATH, sound::VOLUME, pitch(world));
         SLIDES.with(|slides| slides.borrow_mut().remove(&entity.id));

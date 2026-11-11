@@ -2,6 +2,8 @@ use super::writer::{AIR, Pick, RandomTracker, Writer};
 use super::{START_BOX, START_LIFT, START_OFFSET};
 use crate::entities::bosses;
 use crate::world::GenWorld;
+use crate::world::trees::DUNGEON_GRASS;
+use b173_api::blockIs;
 use b173_api::terrain::structure::StructureBox;
 use b173_api::terrain::{Random, math};
 
@@ -95,47 +97,41 @@ struct Ids
     m_dirt: Pick,
     m_holystone: Pick,
     m_mossy: Pick,
-    m_cloud: i32,
-    m_lockedAngelic: i32,
+    m_cloud: &'static str,
+    m_lockedAngelic: &'static str,
     m_locked: Pick,
     m_lockedLight: Pick,
 }
 
-fn ids(world: &GenWorld) -> Ids
+const IDS: Ids = Ids
 {
-    let pick = |name: &'static str| (world.id(name), 0);
-
-    Ids
-    {
-        m_grass: (world.id("aether_grass"), 3),
-        m_dirt: pick("aether_dirt"),
-        m_holystone: pick("holystone"),
-        m_mossy: pick("mossy_holystone"),
-        m_cloud: world.id("cold_aercloud"),
-        m_lockedAngelic: world.id("locked_angelic_stone"),
-        m_locked: pick("locked_hellfire_stone"),
-        m_lockedLight: pick("locked_light_hellfire_stone"),
-    }
-}
+    m_grass: DUNGEON_GRASS,
+    m_dirt: Pick::of("aether_dirt"),
+    m_holystone: Pick::of("holystone"),
+    m_mossy: Pick::of("mossy_holystone"),
+    m_cloud: "cold_aercloud",
+    m_lockedAngelic: "locked_angelic_stone",
+    m_locked: Pick::of("locked_hellfire_stone"),
+    m_lockedLight: Pick::of("locked_light_hellfire_stone"),
+};
 
 // BlocksAether.isGood: open air or cloud an island may grow into
-fn good(ids: &Ids, block: i32) -> bool { block == 0 || block == ids.m_cloud }
+fn good(ids: &Ids, block: i32) -> bool { block == 0 || blockIs(block, ids.m_cloud) }
 
 pub(crate) fn generate(world: &GenWorld, random: &Random, start: &Start, clip: StructureBox)
 {
-    let ids: Ids = ids(world);
     let mut writer: Writer = Writer::structure(world, random, &start.m_box, clip);
     writer.m_replaceAir = true;
     writer.m_replaceSolid = true;
     writer.setOffset(gold::OFFSET);
-    island(&writer, &ids);
+    island(&writer, &IDS);
 
     for stub in &start.m_stubs
     {
-        stubIsland(&writer, &ids, *stub);
+        stubIsland(&writer, &IDS, *stub);
     }
 
-    hall(&mut writer, &ids, start.m_direction);
+    hall(&mut writer, &IDS, start.m_direction);
 }
 
 // the squashed sphere shared by the island and its stubs: grass over dirt where open above, holystone below
@@ -228,7 +224,7 @@ fn islandFlowers(writer: &Writer, ids: &Ids, x: i32, y: i32, z: i32)
                 y + 1,
                 z + random.nextIntBounded(3) - random.nextIntBounded(3),
             ];
-            flower(writer, ids, (writer.m_world.id(name), 0), at);
+            flower(writer, ids, Pick::of(name), at);
         }
 
         _ =>
@@ -247,7 +243,7 @@ fn flower(writer: &Writer, ids: &Ids, pick: Pick, at: [i32; 3])
         x += random.nextIntBounded(8) - random.nextIntBounded(8);
         y += random.nextIntBounded(4) - random.nextIntBounded(4);
         z += random.nextIntBounded(8) - random.nextIntBounded(8);
-        if writer.getOffset(x, y, z) == 0 && writer.getOffset(x, y - 1, z) == ids.m_grass.0
+        if writer.getOffset(x, y, z) == 0 && blockIs(writer.getOffset(x, y - 1, z), ids.m_grass.m_block)
         {
             writer.putOffset(x, y, z, pick);
         }
@@ -265,7 +261,7 @@ fn island(writer: &Writer, ids: &Ids)
         {
             for j in -gold::ISLAND_CHECK..=gold::ISLAND_CHECK
             {
-                if writer.getOffset(i, k, j) == ids.m_lockedAngelic
+                if blockIs(writer.getOffset(i, k, j), ids.m_lockedAngelic)
                 {
                     found += 1;
                     if found > gold::ISLAND_STONE_LIMIT
@@ -310,7 +306,7 @@ fn cave(writer: &Writer, ids: &Ids, at: [i32; 3], size: i32)
     let z1: f64 = (z + 8) as f64 - reach(math::cos(angle));
     let y0: f64 = (y + random.nextIntBounded(3) + 2) as f64;
     let y1: f64 = (y + random.nextIntBounded(3) + 2) as f64;
-    let carvable: [i32; 4] = [ids.m_mossy.0, ids.m_holystone.0, ids.m_grass.0, ids.m_dirt.0];
+    let carvable: [&str; 4] = [ids.m_mossy.m_block, ids.m_holystone.m_block, ids.m_grass.m_block, ids.m_dirt.m_block];
 
     for step in 0..=size
     {
@@ -342,7 +338,7 @@ fn cave(writer: &Writer, ids: &Ids, at: [i32; 3], size: i32)
                 {
                     let dz: f64 = (bz as f64 + 0.5 - cz) / (swell / 2.0);
                     let block: i32 = writer.getOffset(bx, by, bz);
-                    if dx * dx + dy * dy + dz * dz < 1.0 && carvable.contains(&block)
+                    if dx * dx + dy * dy + dz * dz < 1.0 && carvable.iter().any(|name| blockIs(block, name))
                     {
                         writer.putOffset(bx, by, bz, AIR);
                     }
@@ -365,8 +361,8 @@ fn hall(writer: &mut Writer, ids: &Ids, direction: i32)
 {
     let radius: i32 = (gold::ISLAND as f64 * gold::HALL_SHRINK).floor() as i32;
     let wid: i32 = ((radius * radius / 2) as f64).sqrt() as i32;
-    let netherrack: Pick = (writer.m_world.id("minecraft:netherrack"), 0);
-    let fire: Pick = (writer.m_world.id("minecraft:fire"), 0);
+    let netherrack: Pick = Pick::of("minecraft:netherrack");
+    let fire: Pick = Pick::of("minecraft:fire");
 
     writer.setChance(ids.m_locked, ids.m_lockedLight, gold::HALL_CHANCE);
 
@@ -423,7 +419,7 @@ fn hall(writer: &mut Writer, ids: &Ids, direction: i32)
 
 fn tunnel(writer: &mut Writer, ids: &Ids, wid: i32, direction: i32)
 {
-    let chest: Pick = (writer.m_world.id("treasure_chest"), 0);
+    let chest: Pick = Pick::of("treasure_chest");
 
     for i in wid..wid + gold::TUNNEL
     {

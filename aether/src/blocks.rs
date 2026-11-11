@@ -1,6 +1,6 @@
 use crate::entities::floating_block::Floating;
 use crate::harvest;
-use crate::ids::{Palette, block, item};
+use crate::names::{AIR, Pick, block, item};
 use crate::progress::{self, Award};
 use crate::world::GenWorld;
 use crate::world::trees::Tree;
@@ -434,12 +434,11 @@ impl BlockBehavior for AetherGrass
 
         let world: World = ctx.world();
         let pos: BlockPos = ctx.pos();
-        let dirt: i32 = crate::ids::blockId(block::AETHER_DIRT);
 
         if world.light(pos.offset(0, 1, 0)) < grass::DIES_BELOW_LIGHT
             && opacityAbove(world, pos) > grass::DIES_ABOVE_OPACITY
         {
-            let _ = world.setBlock(pos, dirt, 0);
+            let _ = world.place(pos, block::AETHER_DIRT);
 
             return;
         }
@@ -457,12 +456,11 @@ impl BlockBehavior for AetherGrass
                 world.random(grass::SPREAD_HORIZONTAL) - 1,
             );
 
-            if world.block(target) == dirt
-                && world.meta(target) == 0
+            if crate::names::holds(world, target, Pick::of(block::AETHER_DIRT))
                 && world.light(target.offset(0, 1, 0)) >= grass::DIES_BELOW_LIGHT
                 && opacityAbove(world, target) <= grass::DIES_ABOVE_OPACITY
             {
-                let _ = world.setBlock(target, ctx.block(), 0);
+                let _ = world.place(target, block::AETHER_GRASS);
             }
         }
     }
@@ -539,7 +537,7 @@ impl BlockBehavior for Aercloud
 // BlockAetherFlower.canBlockStay, plants root only in aether soil
 struct Plant;
 
-fn rooted(ctx: &BlockCtx) -> bool { Palette::load().isSoil(ctx.world().block(ctx.pos().offset(0, -1, 0))) }
+fn rooted(ctx: &BlockCtx) -> bool { ctx.world().tagged(ctx.pos().offset(0, -1, 0), crate::tags::SOIL) }
 
 #[block_behavior]
 impl BlockBehavior for Plant
@@ -568,7 +566,7 @@ impl BlockBehavior for BerryBush
         }
 
         let world: World = ctx.world();
-        let _ = world.setBlock(ctx.pos(), crate::ids::blockId("berry_bush_stem"), 0);
+        let _ = world.place(ctx.pos(), "berry_bush_stem");
         let _ = world.dropBlockItems(ctx.pos(), ctx.block(), i32::from(ctx.meta()));
     }
 }
@@ -601,12 +599,12 @@ impl BlockBehavior for Sapling
             return;
         }
 
-        let sapling: i32 = ctx.block();
-        let _ = world.setBlockQuiet(pos, 0, 0);
+        let generator: GenWorld = GenWorld::new(world);
+        generator.put(pos.x, pos.y, pos.z, AIR);
         let random: Random = Random::withSeed(world.random(i32::MAX) as i64);
-        if !self.m_tree.generate(&GenWorld::new(world), &random, pos.x, pos.y, pos.z)
+        if !self.m_tree.generate(&generator, &random, pos.x, pos.y, pos.z)
         {
-            let _ = world.setBlockQuiet(pos, sapling, 0);
+            generator.set(pos.x, pos.y, pos.z, self.m_tree.sapling());
         }
     }
 }

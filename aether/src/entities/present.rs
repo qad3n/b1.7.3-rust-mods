@@ -1,4 +1,4 @@
-use crate::ids::blockId;
+use crate::names::numeric;
 use b173_api::prelude::*;
 
 const NAME: &str = "tnt_present";
@@ -31,7 +31,7 @@ pub(crate) fn prime(world: World, pos: BlockPos)
     {
         Ok(entity) =>
         {
-            entity.setField(EntityField::Block, f64::from(blockId(PRESENT)));
+            entity.setField(EntityField::Block, f64::from(numeric(PRESENT)));
 
             let _ = entity.setMotion([0.0, fuse::POP, 0.0]);
         }
@@ -49,7 +49,7 @@ impl EntityBehavior for TntPresent
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
         let world: World = entity.world;
-        entity.setField(EntityField::Block, f64::from(blockId(PRESENT)));
+        entity.setField(EntityField::Block, f64::from(numeric(PRESENT)));
 
         if !world.isAuthority()
         {

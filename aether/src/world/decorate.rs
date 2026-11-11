@@ -1,6 +1,6 @@
 use super::gen_world::GenWorld;
 use super::trees::{self, Tree};
-use crate::ids::Palette;
+use crate::names::block;
 use b173_api::terrain::{Random, math};
 use b173_api::{ChunkInfo, World};
 
@@ -70,7 +70,7 @@ impl Decorator<'_>
     fn shouldSpawn(&self, chance: i32) -> bool { self.nextInt(chance) == 0 }
 
     // AetherBiomeDecorator.generateClouds, the height argument draws before the chance as the Java call evaluates it
-    fn clouds(&self, block: i32, amount: i32, chance: i32, base: i32)
+    fn clouds(&self, block: &'static str, amount: i32, chance: i32, base: i32)
     {
         let height: i32 = self.nextInt(cloud::BASE_SPREAD) + base;
 
@@ -84,7 +84,7 @@ impl Decorator<'_>
     }
 
     // AetherBiomeDecorator.spawnOre
-    fn ore(&self, block: i32, (size, veins, top): (i32, i32, i32))
+    fn ore(&self, block: &'static str, (size, veins, top): (i32, i32, i32))
     {
         for _ in 0..veins
         {
@@ -96,7 +96,7 @@ impl Decorator<'_>
     }
 
     // AetherBiomeDecorator.generateFoilage
-    fn plants(&self, block: i32)
+    fn plants(&self, block: &'static str)
     {
         for _ in 0..feature::PLANT_PATCHES
         {
@@ -110,10 +110,9 @@ impl Decorator<'_>
     // AetherBiomeDecorator.decorate, holiday trees and tall grass are off by default in the Java config
     fn decorate(&self)
     {
-        let palette: &Palette = &self.m_world.m_palette;
-        self.clouds(palette.m_goldenCloud, cloud::GOLDEN_AMOUNT, cloud::GOLDEN_CHANCE, cloud::GOLDEN_BASE);
-        self.clouds(palette.m_blueCloud, cloud::BLUE_AMOUNT, cloud::BLUE_CHANCE, cloud::BLUE_BASE);
-        self.clouds(palette.m_coldCloud, cloud::COLD_AMOUNT, cloud::COLD_CHANCE, cloud::COLD_BASE);
+        self.clouds(block::GOLDEN_AERCLOUD, cloud::GOLDEN_AMOUNT, cloud::GOLDEN_CHANCE, cloud::GOLDEN_BASE);
+        self.clouds(block::BLUE_AERCLOUD, cloud::BLUE_AMOUNT, cloud::BLUE_CHANCE, cloud::BLUE_BASE);
+        self.clouds(block::COLD_AERCLOUD, cloud::COLD_AMOUNT, cloud::COLD_CHANCE, cloud::COLD_BASE);
 
         if self.shouldSpawn(feature::CRYSTAL_ISLAND_CHANCE)
         {
@@ -123,16 +122,16 @@ impl Decorator<'_>
 
         if self.shouldSpawn(ore::DIRT_CHANCE)
         {
-            self.ore(palette.m_dirt, ore::DIRT);
+            self.ore(block::AETHER_DIRT, ore::DIRT);
         }
 
-        self.plants(palette.m_whiteFlower);
-        self.plants(palette.m_purpleFlower);
-        self.ore(palette.m_icestone, ore::ICESTONE);
-        self.ore(palette.m_ambrosiumOre, ore::AMBROSIUM);
-        self.ore(palette.m_zaniteOre, ore::ZANITE);
-        self.ore(palette.m_gravititeOre, ore::GRAVITITE);
-        self.plants(palette.m_berryBush);
+        self.plants(block::WHITE_FLOWER);
+        self.plants(block::PURPLE_FLOWER);
+        self.ore(block::ICESTONE, ore::ICESTONE);
+        self.ore(block::AMBROSIUM_ORE, ore::AMBROSIUM);
+        self.ore(block::ZANITE_ORE, ore::ZANITE);
+        self.ore(block::GRAVITITE_ORE, ore::GRAVITITE);
+        self.plants(block::BERRY_BUSH);
 
         for _ in 0..feature::TREES
         {
@@ -170,7 +169,7 @@ impl Decorator<'_>
 }
 
 // AetherGenClouds.generate, every loop bound draws a fresh random on each check as the Java condition does
-fn cloudPuffs(world: &GenWorld, random: &Random, block: i32, amount: i32, x: i32, y: i32, z: i32)
+fn cloudPuffs(world: &GenWorld, random: &Random, block: &'static str, amount: i32, x: i32, y: i32, z: i32)
 {
     let (mut xIn, mut yIn, mut zIn): (i32, i32, i32) = (x, y + random.nextIntBounded(cloud::RISE), z);
 
@@ -218,7 +217,7 @@ fn cloudPuffs(world: &GenWorld, random: &Random, block: i32, amount: i32, x: i32
 }
 
 // AetherGenMinable.generate, WorldGenMinable restricted to holystone
-fn minable(world: &GenWorld, random: &Random, block: i32, size: i32, x: i32, y: i32, z: i32)
+fn minable(world: &GenWorld, random: &Random, block: &'static str, size: i32, x: i32, y: i32, z: i32)
 {
     let angle: f32 = random.nextFloat() * std::f32::consts::PI;
     let reach = |wave: f32| (wave * size as f32 / 8.0) as f64;
@@ -228,7 +227,6 @@ fn minable(world: &GenWorld, random: &Random, block: i32, size: i32, x: i32, y: 
     let z1: f64 = (z + feature::OFFSET) as f64 - reach(math::cos(angle));
     let y0: f64 = (y + random.nextIntBounded(3) + ore::RISE) as f64;
     let y1: f64 = (y + random.nextIntBounded(3) + ore::RISE) as f64;
-    let holystone: i32 = world.m_palette.m_holystone;
 
     for l in 0..=size
     {
@@ -265,7 +263,7 @@ fn minable(world: &GenWorld, random: &Random, block: i32, size: i32, x: i32, y: 
                 for bz in fromZ..=toZ
                 {
                     let dz: f64 = (bz as f64 + 0.5 - centerZ) / (width / 2.0);
-                    if dx * dx + dy * dy + dz * dz < 1.0 && world.block(bx, by, bz) == holystone
+                    if dx * dx + dy * dy + dz * dz < 1.0 && world.is(bx, by, bz, block::HOLYSTONE)
                     {
                         world.set(bx, by, bz, block);
                     }
@@ -276,7 +274,7 @@ fn minable(world: &GenWorld, random: &Random, block: i32, size: i32, x: i32, y: 
 }
 
 // AetherGenFoilage.generate
-fn plantPatch(world: &GenWorld, random: &Random, block: i32, x: i32, y: i32, z: i32)
+fn plantPatch(world: &GenWorld, random: &Random, block: &'static str, x: i32, y: i32, z: i32)
 {
     for _ in 0..feature::PLANT_TRIES
     {
@@ -286,7 +284,7 @@ fn plantPatch(world: &GenWorld, random: &Random, block: i32, x: i32, y: i32, z: 
         let plantZ: i32 =
             z + random.nextIntBounded(feature::PLANT_SPREAD) - random.nextIntBounded(feature::PLANT_SPREAD);
 
-        if world.isAir(plantX, plantY, plantZ) && world.m_palette.isSoil(world.block(plantX, plantY - 1, plantZ))
+        if world.isAir(plantX, plantY, plantZ) && world.tagged(plantX, plantY - 1, plantZ, crate::tags::SOIL)
         {
             world.set(plantX, plantY, plantZ, block);
         }
@@ -302,21 +300,19 @@ fn crystalIsland(world: &GenWorld, random: &Random, j: i32, k: i32, l: i32) -> b
         return false;
     }
 
-    let palette: &Palette = &world.m_palette;
-
     let crystal = ||
     {
         if random.nextIntBounded(3) == 0
         {
-            palette.m_crystalFruitLeaves
+            block::CRYSTAL_FRUIT_LEAVES
         }
         else
         {
-            palette.m_crystalLeaves
+            block::CRYSTAL_LEAVES
         }
     };
 
-    let cross = |y: i32, radius: i32, block: &dyn Fn() -> i32|
+    let cross = |y: i32, radius: i32, block: &dyn Fn() -> &'static str|
     {
         for z in -radius..=radius
         {
@@ -329,7 +325,7 @@ fn crystalIsland(world: &GenWorld, random: &Random, j: i32, k: i32, l: i32) -> b
         }
     };
 
-    let ring = |y: i32, block: &dyn Fn() -> i32|
+    let ring = |y: i32, block: &dyn Fn() -> &'static str|
     {
         for x in -1..2
         {
@@ -346,15 +342,15 @@ fn crystalIsland(world: &GenWorld, random: &Random, j: i32, k: i32, l: i32) -> b
         world.set(j - 1, y, l - 1, block());
     };
 
-    let holystone = || palette.m_holystone;
-    let grass = || palette.m_grass;
-    let log = || palette.m_skyrootLog;
+    let holystone = || block::HOLYSTONE;
+    let grass = || block::AETHER_GRASS;
+    let log = || block::SKYROOT_LOG;
 
-    world.set(j, k, l + 1, palette.m_holystone);
+    world.set(j, k, l + 1, block::HOLYSTONE);
 
     for x in -1..2
     {
-        world.set(x + j, k, l, palette.m_holystone);
+        world.set(x + j, k, l, block::HOLYSTONE);
     }
 
     cross(k + 1, 2, &holystone);
@@ -397,13 +393,13 @@ fn crystalIsland(world: &GenWorld, random: &Random, j: i32, k: i32, l: i32) -> b
 
     for y in k + 3..=k + 9
     {
-        world.set(j, y, l, palette.m_skyrootLog);
+        world.set(j, y, l, block::SKYROOT_LOG);
     }
 
     true
 }
 
-fn crossSkippingCenter(world: &GenWorld, j: i32, y: i32, l: i32, radius: i32, block: &dyn Fn() -> i32)
+fn crossSkippingCenter(world: &GenWorld, j: i32, y: i32, l: i32, radius: i32, block: &dyn Fn() -> &'static str)
 {
     for z in (-radius..=radius).filter(|z| *z != 0)
     {

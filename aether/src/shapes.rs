@@ -1,4 +1,4 @@
-use crate::ids::{block, blockId};
+use crate::names::{self, block};
 use b173_api::math::floor;
 use b173_api::prelude::*;
 
@@ -70,8 +70,6 @@ mod shape
         [0.0, 8.0, 8.0, 16.0, 16.0, 16.0],
         [0.0, 8.0, 0.0, 16.0, 16.0, 8.0],
     ];
-    // BlockStairs.onBlockPlacedBy turns the player's quarter into a facing
-    pub const STAIR_FACING: [i32; 4] = [2, 1, 3, 0];
     // BlockWall: a post with arms to each joined side
     pub const POST: [f32; 6] = [4.0, 0.0, 4.0, 12.0, 16.0, 12.0];
     pub const ARMS: [(i32, [f32; 6]); 4] = [
@@ -80,7 +78,8 @@ mod shape
         (4, [0.0, 0.0, 5.0, 8.0, 13.0, 11.0]),
         (5, [8.0, 0.0, 5.0, 16.0, 13.0, 11.0]),
     ];
-    // BlockFenceGate: two posts and two bars across the facing, the bars gone while open
+    // BlockFenceGate: two posts and two bars across the facing, the bars gone while open, model cuboids pick
+    // states by index with open the high property
     pub const OPEN: i32 = 4;
     pub const GATE_ALONG_X: [[f32; 6]; 4] = [
         [0.0, 5.0, 7.0, 2.0, 16.0, 9.0],
@@ -90,6 +89,19 @@ mod shape
     ];
     pub const QUARTERS: f32 = 4.0;
     pub const FULL_TURN: f32 = 360.0;
+}
+
+// named states in metadata order, the last property changing fastest
+mod state
+{
+    pub const FACING: &str = "facing";
+    pub const OPEN: &str = "open";
+    pub const HEAD: &str = "head";
+    pub const OCCUPIED: &str = "occupied";
+    // BlockStairs, the side the raised half sits on
+    pub const STAIRS: [&str; 4] = ["east", "west", "south", "north"];
+    // the quarter a player faces, which BlockStairs.onBlockPlacedBy, BlockFenceGate and BlockBed store
+    pub const QUARTERS: [&str; 4] = ["south", "west", "north", "east"];
 }
 
 fn texture(name: &str) -> String { format!("aether:block/{name}") }
@@ -120,13 +132,14 @@ impl BlockBehavior for Stairs
 {
     fn onPlacedBy(&self, ctx: &mut BlockCtx, entity: Entity)
     {
-        ctx.setMeta(shape::STAIR_FACING[quarter(entity)] as u8);
+        names::setProperty(ctx, state::FACING, state::QUARTERS[quarter(entity)]);
     }
 }
 
 // BlockStep.onBlockAdded: a slab set on the same slab joins it into a double slab
 struct Slab
 {
+    m_slab: String,
     m_double: String,
 }
 
@@ -137,10 +150,10 @@ impl BlockBehavior for Slab
     {
         let world: World = ctx.world();
         let below: BlockPos = ctx.pos().offset(0, -1, 0);
-        if ctx.isAuthority() && world.block(below) == ctx.block()
+        if ctx.isAuthority() && world.is(below, &self.m_slab)
         {
-            let _ = world.setBlock(ctx.pos(), 0, 0);
-            let _ = world.setBlock(below, blockId(&self.m_double), 0);
+            let _ = world.clear(ctx.pos());
+            let _ = world.place(below, &self.m_double);
         }
     }
 }
@@ -151,14 +164,17 @@ struct Gate;
 #[block_behavior]
 impl BlockBehavior for Gate
 {
-    fn onPlacedBy(&self, ctx: &mut BlockCtx, entity: Entity) { ctx.setMeta(quarter(entity) as u8); }
+    fn onPlacedBy(&self, ctx: &mut BlockCtx, entity: Entity)
+    {
+        names::setProperty(ctx, state::FACING, state::QUARTERS[quarter(entity)]);
+    }
 
     fn onActivated(&self, ctx: &mut BlockCtx, _player: Player) -> bool
     {
         if ctx.isAuthority()
         {
-            let meta: u8 = ctx.meta() ^ shape::OPEN as u8;
-            ctx.setMeta(meta);
+            let open: bool = ctx.stateAt().is_some_and(|current| current.flag(state::OPEN));
+            names::setProperty(ctx, state::OPEN, !open);
 
             let pos: BlockPos = ctx.pos();
             ctx.world().playSound(
@@ -262,7 +278,8 @@ impl BlockBehavior for Bed
     {
         let pos: BlockPos = ctx.pos();
 
-        if ctx.isAuthority() && ctx.meta() & BED_HEAD == 0
+        let head: bool = ctx.stateAt().is_some_and(|current| current.flag(state::HEAD));
+        if ctx.isAuthority() && !head
         {
             let _ = ctx.world().spawnItem(
                 [pos.x as f64 + 0.5, pos.y as f64 + 0.5, pos.z as f64 + 0.5],
@@ -273,9 +290,13 @@ impl BlockBehavior for Bed
 }
 
 const BED: &str = "skyroot_bed";
-const BED_HEAD: u8 = 8;
 // BlockBed.headBlockToFootBlockMap, where the head lies from the foot for each facing
 const BED_AHEAD: [[i32; 2]; 4] = [[0, 1], [-1, 0], [0, -1], [1, 0]];
+
+fn bedState(facing: &str) -> Result<StateData>
+{
+    Ok(StateData::of(Identifier::parseIn(BED, "aether")?).with(state::FACING, facing))
+}
 
 struct BedItem;
 
@@ -302,9 +323,15 @@ impl ItemBehavior for BedItem
 
         if world.isAuthority()
         {
-            let id: i32 = blockId(BED);
-            let _ = world.setBlock(foot, id, facing as i32);
-            let _ = world.setBlock(head, id, facing as i32 | BED_HEAD as i32);
+            let half = |head: bool| bedState(state::QUARTERS[facing]).map(|bed| bed.with(state::HEAD, head));
+            if let Ok(bed) = half(false)
+            {
+                let _ = world.setBlockState(foot, bed);
+            }
+            if let Ok(bed) = half(true)
+            {
+                let _ = world.setBlockState(head, bed);
+            }
         }
 
         Use::Done((stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }))
@@ -382,14 +409,11 @@ impl BlockBehavior for Stem
         let pos: BlockPos = ctx.pos();
         if ctx.isAuthority() && world.light(pos.offset(0, 1, 0)) >= stem::LIGHT && world.random(stem::ODDS) == 0
         {
-            let _ = world.setBlock(pos, blockId(block::BERRY_BUSH), 0);
+            let _ = world.place(pos, block::BERRY_BUSH);
         }
     }
 
-    fn canStay(&self, ctx: &mut BlockCtx) -> bool
-    {
-        crate::ids::Palette::load().isSoil(ctx.world().block(ctx.pos().offset(0, -1, 0)))
-    }
+    fn canStay(&self, ctx: &mut BlockCtx) -> bool { ctx.world().tagged(ctx.pos().offset(0, -1, 0), crate::tags::SOIL) }
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
@@ -398,7 +422,9 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 
     for row in &STONES
     {
-        blocks.register(&format!("{}_stairs", row.m_name), stairs(row))?;
+        let stairsName: String = format!("{}_stairs", row.m_name);
+        blocks.register(&stairsName, stairs(row))?;
+        blocks.states(&stairsName, names::states(vec![PropertySpec::new(state::FACING, &state::STAIRS)]))?;
 
         let double: String = format!("{}_double_slab", row.m_name);
         let slabDrop: DropSpec = crate::entities::drop(&format!("{}_slab", row.m_name), [2, 2]);
@@ -409,9 +435,12 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             cuboids: vec![cuboid([0.0, 0.0, 0.0, shape::FULL, shape::HALF, shape::FULL], Vec::new(), None)],
             ..BlockModelSpec::default()
         };
+        let slab: String = format!("{}_slab", row.m_name);
         blocks.register(
-            &format!("{}_slab", row.m_name),
-            shaped(row, row.m_slabHardness, row.m_slabResistance).model(half).behavior(Slab { m_double: double }),
+            &slab,
+            shaped(row, row.m_slabHardness, row.m_slabResistance)
+                .model(half)
+                .behavior(Slab { m_slab: slab.clone(), m_double: double }),
         )?;
 
         if row.m_walls
@@ -421,6 +450,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     }
 
     blocks.register("skyroot_fence_gate", gate())?;
+    blocks.states(
+        "skyroot_fence_gate",
+        names::states(vec![names::flag(state::OPEN), PropertySpec::new(state::FACING, &state::QUARTERS)]),
+    )?;
 
     let sheet = |name: &str| texture(&format!("skyroot_bed_{name}"));
 
@@ -442,6 +475,14 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .sound("wood")
             .drops(Vec::new())
             .behavior(Bed),
+    )?;
+    blocks.states(
+        BED,
+        names::states(vec![
+            names::flag(state::HEAD),
+            names::flag(state::OCCUPIED),
+            PropertySpec::new(state::FACING, &state::QUARTERS),
+        ]),
     )?;
     blocks.register(
         "present",

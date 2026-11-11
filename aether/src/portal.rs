@@ -1,4 +1,4 @@
-use crate::ids::{Palette, block, blockId};
+use crate::names::{AIR, Pick, block, handle};
 use crate::world::DIMENSION_ID;
 use b173_api::math::{Face, blockOf, floor, offset};
 use b173_api::prelude::*;
@@ -43,11 +43,10 @@ const AXES: [[[i32; 2]; 2]; 2] = [[[1, 0], [-1, 0]], [[0, -1], [0, 1]]];
 
 fn isEmpty(world: World, pos: BlockPos) -> bool
 {
-    let id: i32 = world.block(pos);
-    id == 0 || id == blockId(FIRE) || id == blockId(block::AETHER_PORTAL)
+    world.isAir(pos) || world.is(pos, FIRE) || world.is(pos, block::AETHER_PORTAL)
 }
 
-fn isFrame(world: World, pos: BlockPos) -> bool { world.block(pos) == blockId(GLOWSTONE) }
+fn isFrame(world: World, pos: BlockPos) -> bool { world.is(pos, GLOWSTONE) }
 
 fn step(pos: BlockPos, direction: [i32; 2], amount: i32) -> BlockPos
 {
@@ -130,7 +129,7 @@ impl PortalSize
                     break 'rows;
                 }
 
-                if world.block(at) == blockId(block::AETHER_PORTAL)
+                if world.is(at, block::AETHER_PORTAL)
                 {
                     self.m_portals += 1;
                 }
@@ -170,7 +169,7 @@ impl PortalSize
 
     fn place(&self, world: World)
     {
-        let portal: i32 = blockId(block::AETHER_PORTAL);
+        let portal: Pick = Pick::of(block::AETHER_PORTAL);
 
         for i in 0..self.m_width
         {
@@ -197,11 +196,11 @@ impl PortalSize
 
 // placed without neighbor updates so a half built portal never breaks itself, yet marked so clients and the
 // renderer see it, as the original's setBlock flag 2
-fn placeQuiet(world: World, pos: BlockPos, block: i32)
+fn placeQuiet(world: World, pos: BlockPos, pick: Pick)
 {
-    if let Err(error) = world.setBlockQuiet(pos, block, 0)
+    if let Err(error) = handle(pick).place(world, pos, false)
     {
-        warn(&format!("portal block {block} not placed at {pos:?}: {error}"));
+        warn(&format!("portal block {} not placed at {pos:?}: {error}", pick.m_block));
         return;
     }
 
@@ -325,9 +324,8 @@ impl Visitor
 pub(crate) fn inPortal(info: &EntityInfo) -> bool
 {
     let world: World = World { dimension: info.world };
-    let portal: i32 = blockId(block::AETHER_PORTAL);
     let feet: BlockPos = blockOf(info.pos);
-    world.block(feet) == portal || world.block(feet.offset(0, 1, 0)) == portal
+    world.is(feet, block::AETHER_PORTAL) || world.is(feet.offset(0, 1, 0), block::AETHER_PORTAL)
 }
 
 // a sent player arms again only once seen standing outside every portal, as vanilla waits for the player to leave
@@ -397,7 +395,7 @@ fn enter(world: World, player: Player)
     let _ = player.teleport(target, hold);
 }
 
-fn setFrame(world: World, pos: BlockPos, frameBlock: i32, portal: i32, inside: bool)
+fn setFrame(world: World, pos: BlockPos, frameBlock: Pick, portal: Pick, inside: bool)
 {
     placeQuiet(world, pos, if inside { portal } else { frameBlock });
 }
@@ -414,17 +412,15 @@ fn buildPortal(world: World, x: i32, z: i32) -> [f64; 3]
     {
         travel::FALLBACK_Y
     };
-    let glowstone: i32 = blockId(GLOWSTONE);
-    let portal: i32 = blockId(block::AETHER_PORTAL);
-    let palette: Palette = Palette::load();
-
-    let floor: i32 = if aetherDimension() == Some(world.dimension)
+    let glowstone: Pick = Pick::of(GLOWSTONE);
+    let portal: Pick = Pick::of(block::AETHER_PORTAL);
+    let floor: Pick = if aetherDimension() == Some(world.dimension)
     {
-        palette.m_holystone
+        Pick::of(block::HOLYSTONE)
     }
     else
     {
-        blockId(COBBLESTONE)
+        Pick::of(COBBLESTONE)
     };
 
     for dx in -1..=build::WIDTH
@@ -443,7 +439,7 @@ fn buildPortal(world: World, x: i32, z: i32) -> [f64; 3]
 
                 if dz != 0
                 {
-                    placeQuiet(world, at, 0);
+                    placeQuiet(world, at, AIR);
                     continue;
                 }
 
@@ -468,8 +464,7 @@ fn arrive(player: Player, to: i32)
     };
 
     let world: World = World { dimension: to };
-    let standing: Option<[f64; 3]> =
-        known.filter(|point| world.block(blockOf(*point)) == blockId(block::AETHER_PORTAL));
+    let standing: Option<[f64; 3]> = known.filter(|point| world.is(blockOf(*point), block::AETHER_PORTAL));
 
     let spot: [f64; 3] = match standing
     {
@@ -509,7 +504,7 @@ impl BlockBehavior for Portal
         }
     }
 
-    fn onRandomDisplayTick(&self, ctx: &mut BlockCtx) { crate::sparkle::portalTick(ctx, blockId(block::AETHER_PORTAL)) }
+    fn onRandomDisplayTick(&self, ctx: &mut BlockCtx) { crate::sparkle::portalTick(ctx, block::AETHER_PORTAL) }
 
     // BlockAetherPortal.onNeighborBlockChange, a broken frame drops the portal
     fn onNeighborChanged(&self, ctx: &mut BlockCtx, _neighbor: i32)
@@ -520,7 +515,7 @@ impl BlockBehavior for Portal
 
         if !intact && ctx.isAuthority()
         {
-            let _ = world.setBlock(ctx.pos(), 0, 0);
+            let _ = world.clear(ctx.pos());
         }
     }
 }

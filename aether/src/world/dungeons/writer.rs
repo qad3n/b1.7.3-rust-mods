@@ -1,10 +1,8 @@
+pub(crate) use crate::names::{AIR, Pick};
 use crate::world::GenWorld;
+use b173_api::blockIs;
 use b173_api::terrain::Random;
 use b173_api::terrain::structure::StructureBox;
-
-// a block and its metadata
-pub(crate) type Pick = (i32, i32);
-pub(crate) const AIR: Pick = (0, 0);
 
 // AetherStructure and AetherDungeon: builders that fill lines, planes and boxes with a block, sometimes swapped for
 // an extra one. A structure works in its component box clipped to the chunk being populated, a dungeon in plain
@@ -98,7 +96,7 @@ impl<'a> Writer<'a>
         let at: [i32; 3] = self.actual(x, y, z);
         if self.inside(at)
         {
-            self.m_world.setWithMeta(at[0], at[1], at[2], pick.0, pick.1);
+            self.m_world.put(at[0], at[1], at[2], pick);
         }
     }
 
@@ -250,9 +248,9 @@ impl<'a> Writer<'a>
 
     pub(crate) fn boxEmpty(&self, from: [i32; 3], size: [i32; 3]) -> bool { self.every(from, size, |block| block == 0) }
 
-    pub(crate) fn hasBlock(&self, from: [i32; 3], size: [i32; 3], wanted: i32) -> bool
+    pub(crate) fn hasBlock(&self, from: [i32; 3], size: [i32; 3], wanted: &str) -> bool
     {
-        !self.every(from, size, |block| block != wanted)
+        !self.every(from, size, |block| !blockIs(block, wanted))
     }
 
     // the world position of an offset structure position, AetherStructure.getActualX and friends

@@ -1,9 +1,9 @@
-use super::{BossBar, Home, bossName};
+use super::{BossBar, Home, bossName, freeBox};
 use crate::entities::crystal::{self, Kind};
 use crate::entities::fire_minion::{SPIRIT_TEXTURE, spiritPose};
 use crate::entities::fraction;
-use crate::ids::blockId;
 use crate::models::Program;
+use crate::names::{AIR, Pick, holds};
 use crate::progress::{self, Award};
 use b173_api::math::{floor, yawTowards};
 use b173_api::prelude::*;
@@ -135,7 +135,7 @@ fn line(player: Player, color: &str, key: &str)
 }
 
 // EntitySunSpirit.setDoor on the entrance side, unlockTreasure opens the side across the hall
-fn door(world: World, home: &Home, far: bool, block: i32)
+fn door(world: World, home: &Home, far: bool, block: Pick)
 {
     let [x, y, z] = home.m_dungeon;
 
@@ -160,9 +160,9 @@ fn door(world: World, home: &Home, far: bool, block: i32)
                 BlockPos::new(x + across, y + dy, z + side)
             };
 
-            if world.block(pos) != block
+            if !holds(world, pos, block)
             {
-                let _ = world.setBlock(pos, block, 0);
+                let _ = crate::names::handle(block).place(world, pos, true);
             }
         }
     }
@@ -170,27 +170,16 @@ fn door(world: World, home: &Home, far: bool, block: i32)
 
 fn unlockTreasure(world: World, home: &Home)
 {
-    door(world, home, true, 0);
+    door(world, home, true, AIR);
 
     let [x, y, z] = home.m_dungeon;
-    let swaps: [(i32, i32); 2] =
-        [(blockId(LOCKED), blockId("hellfire_stone")), (blockId(LOCKED_LIGHT), blockId("light_hellfire_stone"))];
-
-    for bx in x - spirit::UNLOCK_REACH..x + spirit::UNLOCK_REACH
-    {
-        for by in y + spirit::UNLOCK_LOW..y + spirit::UNLOCK_HIGH
-        {
-            for bz in z - spirit::UNLOCK_REACH..z + spirit::UNLOCK_REACH
-            {
-                let pos: BlockPos = BlockPos::new(bx, by, bz);
-                let block: i32 = world.block(pos);
-                if let Some((_, plain)) = swaps.iter().find(|(locked, _)| *locked == block)
-                {
-                    let _ = world.setBlock(pos, *plain, 0);
-                }
-            }
-        }
-    }
+    let reach: i32 = spirit::UNLOCK_REACH;
+    freeBox(
+        world,
+        [x - reach, y + spirit::UNLOCK_LOW, z - reach],
+        [x + reach, y + spirit::UNLOCK_HIGH, z + reach],
+        &[(LOCKED, "hellfire_stone"), (LOCKED_LIGHT, "light_hellfire_stone")],
+    );
 }
 
 fn pitch(world: World) -> f32 { fraction(world) as f32 - fraction(world) as f32 * spirit::PITCH_WOBBLE + spirit::PITCH }
@@ -235,15 +224,12 @@ fn evaporate(entity: Entity, info: &EntityInfo, originY: i32)
                 let y: i32 = originY - 2 + layer;
                 let pos: BlockPos = BlockPos::new(x, y, z);
                 let block: i32 = world.block(pos);
-                if block == 0
-                    || !World::blockInfo(block).liquid
-                    || block == blockId("minecraft:lava")
-                    || block == blockId("minecraft:flowing_lava")
+                if block == 0 || !World::blockInfo(block).liquid || world.tagged(pos, "minecraft:lava")
                 {
                     continue;
                 }
 
-                let _ = world.setBlock(pos, 0, 0);
+                let _ = world.clear(pos);
 
                 world.playSound(info.pos, "random.fizz", spirit::FIZZ_VOLUME, pitch(world));
 
@@ -325,7 +311,7 @@ fn circle(entity: Entity, info: &EntityInfo, target: &EntityInfo, home: &Home, s
 
         if world.isAir(below)
         {
-            let _ = world.setBlock(below, blockId("minecraft:fire"), 0);
+            let _ = world.place(below, "minecraft:fire");
         }
     }
     else if state.m_flameCount as f32 >= spirit::BALL_AT + health as f32 / 2.0
@@ -345,7 +331,7 @@ fn reset(entity: Entity, home: &Home, sync: &mut Sync, state: &mut Mind, loser: 
     state.m_chatLine = spirit::RETORT_LINE;
     line(loser, RED, "playerdied");
     state.m_chatCount = spirit::CHAT_PAUSE;
-    door(entity.world, home, false, 0);
+    door(entity.world, home, false, AIR);
     sync.m_freezing = false;
     sync.m_bar.m_focus = None;
     entity.setField(EntityField::Health, spirit::HEALTH as f64);
@@ -482,7 +468,7 @@ impl EntityBehavior for SunSpirit
 
                 let _ = entity.setSynced(&synced);
 
-                door(world, &entity.data(), false, blockId(LOCKED));
+                door(world, &entity.data(), false, Pick::of(LOCKED));
                 true
             }
 
@@ -550,7 +536,7 @@ impl EntityBehavior for SunSpirit
 
         let _ = entity.setSynced(&state);
 
-        door(world, &home, false, 0);
+        door(world, &home, false, AIR);
         unlockTreasure(world, &home);
 
         crate::sun_altar::unlock();

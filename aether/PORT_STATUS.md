@@ -202,9 +202,10 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 
 - `mod.toml` needs API 1.1. The loader still accepts ABI 2 builds of this port.
 - Named block states, so worlds save names instead of bare metadata:
-  - `lit` on the enchanter, freezer and incubator, in `machines.rs` `registerBlock`. The values follow `lit::IDLE` and `lit::ACTIVE`.
-  - `placed` on aether grass, aether dirt, holystone, quicksoil and both logs, in `harvest.rs` `registerStates`. The values follow `NATURAL` and `PLACED`.
-  - Each property lists its values in metadata order, so `ctx.meta()` code is unchanged and old saves keep their meaning.
+  - `lit` on the enchanter, freezer and incubator, in `machines.rs` `registerBlock`.
+  - `placed` on aether grass, aether dirt, holystone, quicksoil and both logs, in `harvest.rs` `registerStates`.
+  - Each property lists its values in metadata order, so old saves keep their meaning. Since API 1.39 the code reads
+    and writes the names too (see Names, tags and states).
 - Synced player data now gets its own `aether` slot on every entity. Another mod syncing data on the player can no longer overwrite it. Old saves hand their single blob to the first mod that reads it, which is Aether.
 - Not changed:
   - Stack damage is only durability here, so no data components were needed.
@@ -254,6 +255,48 @@ Second pass (every entity, ability and machine class against the port by its num
 - Checked and matching: every other mob's health, size, speed and attack, the valkyrie (whose teleport never
   succeeds in the source), queen, slider, sun spirit (its body parts only take player hits, which it ignores), fire
   minion, crystals, armor abilities, repulsion, accessories and the freezer table.
+
+## Done (loader API 1.39, names, tags and states)
+
+The port no longer keeps numeric ids or reads metadata bits. `ids.rs` is gone, `names.rs` holds registry names and
+the state helpers, `tags.rs` holds every tag the port adds.
+- Identity by name: `world.is`, `ctx.is`, `blockIs`, `ItemRef::is`; placing with `world.place`, a `StateHandle`, or
+  `GenWorld::put`/`set` with a `Pick` (a name plus named properties). World generation and dungeons keep one handle
+  per pick, resolved once per content epoch, so a chunk writes numbers without a host lookup per block.
+- Groups by tag (`tags.rs`):
+  - `aether:soil` (aether grass, enchanted aether grass, aether dirt) decides where plants, saplings and trees root,
+    replacing `Palette::isSoil`. The same blocks join `minecraft:dirt`.
+  - `aether:amber_axes` (zanite, gravitite and valkyrie axes, diamond axe) chip golden amber from golden oak.
+  - `aether:gravitite_tools` grants the gravitite tools achievement, `aether:valkyrie_tools` gets the long reach.
+  - `aether:dungeon_stone` is BlockDungeonBase, the stone the slider never crushes.
+  - Entity tags `minecraft:undead` (zombie, skeleton, pig zombie) for the holy sword and `aether:pigs` (pig, pig
+    zombie, phyg) for the pig slayer. The source matched "pig", "phyg" and "taegore" in the entity name; another
+    mod's pig now counts when it joins the tag. Fixed: the holy sword missed zombie pigmen, the old list named
+    `zombie_pigman` where beta's id is `pig_zombie`.
+  - Aether content in the shared tags: tools in `minecraft:pickaxes`, `axes`, `shovels`, swords and blades in
+    `minecraft:swords`, armor in `minecraft:head_armor` and the other slots, logs, leaves, planks, saplings and
+    flowers as items and blocks, ores in `c:ores` and `c:ores/ambrosium`, `zanite`, `gravitite`, `c:gems/zanite`,
+    `c:storage_blocks/zanite`, skyroot sticks in `c:rods/wooden`.
+- Variants by state:
+  - Aether grass gains `dungeon` before `placed`: the golden dungeon's tree spots (the source's metadata 3) are
+    `dungeon=true,placed=true`, and only grass with both false doubles under a skyroot shovel.
+  - Stairs `facing` (east, west, south, north), the skyroot fence gate `open` and `facing`, the skyroot bed `head`,
+    `occupied` and `facing`, all in metadata order so placed blocks keep their shape.
+  - Reads go through `ctx.stateAt()`, so harvest code sees the state of a block already removed.
+- Vanilla textures by sprite name: the dungeon chest faces are `minecraft:block/chest_*`.
+- A floating block carries the named state it lifted instead of an id and metadata. One in flight while the world
+  saves in an older build of the port lands as nothing.
+
+Left numeric, by the loader's design:
+- Air is id 0 (`isAir`, `block == 0`).
+- Block model cuboids pick states by index (`Cuboid.metas`), which equals the metadata order above.
+- `dropBlockItems`, `breakEffect`, `blockInfo` and `scheduleTick` take the id and metadata a callback or a world read
+  just handed over, and the engine's `EntityField::Block` takes a block id for drawing (`names::numeric`).
+- Beta wool and trapdoors have no named states, so blue wool and the boss trapdoors set the loader's `meta` property.
+- Terrain fills the chunk buffer with ids resolved from names once per chunk.
+
+Name, tag and state checks hit the SDK's per epoch caches without allocating, so ticks and generation call them
+freely. Not verified in game: every change above is checked by build and code review only.
 
 ## Todo, in order
 

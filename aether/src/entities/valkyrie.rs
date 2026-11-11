@@ -1,6 +1,6 @@
 use super::fraction;
-use crate::ids::item::VICTORY_MEDAL;
 use crate::models::{DEGREES_PER_RADIAN, Phases, Program, WALK_RATE, valkyrie as model};
+use crate::names::item::VICTORY_MEDAL;
 use b173_api::math;
 use b173_api::prelude::*;
 pub(crate) use look::{AIR_SINAGE, GROUND_SINAGE};

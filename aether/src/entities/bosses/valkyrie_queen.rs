@@ -1,10 +1,10 @@
-use super::{BossBar, Home, say};
+use super::{BossBar, Home, TRAPDOOR_HIGH_X, TRAPDOOR_LOW_X, freeBox, say, trapdoors};
 use crate::entities::crystal::{self, Kind};
 use crate::entities::fraction;
 use crate::entities::valkyrie::{self, AIR_SINAGE, GROUND_SINAGE, valkyriePose};
-use crate::ids::blockId;
-use crate::ids::item::VICTORY_MEDAL;
 use crate::models::Phases;
+use crate::names::item::VICTORY_MEDAL;
+use crate::names::{AIR, Pick, handle, holds};
 use crate::progress::{self, Award};
 use b173_api::math::{floor, yawTowards};
 use b173_api::prelude::*;
@@ -44,7 +44,6 @@ mod queen
     pub const DUNGEON_SHIFT: i32 = 19;
     pub const UNLOCK_LOW: [i32; 3] = [-27, -1, -6];
     pub const UNLOCK_HIGH: [i32; 3] = [30, 22, 26];
-    pub const TRAPDOORS: [([i32; 2], i32); 4] = [([16, 9], 3), ([17, 9], 2), ([16, 10], 3), ([17, 10], 2)];
     pub const POOF: i32 = 20;
     pub const WATCH: f64 = 8.0;
 }
@@ -119,16 +118,16 @@ fn chat(entity: Entity, player: Player, key: &str)
     }
 }
 
-fn setEntrance(world: World, hall: [i32; 3], k: i32, block: i32)
+fn setEntrance(world: World, hall: [i32; 3], k: i32, block: Pick)
 {
     let [x, y, z] = hall;
 
     for (dy, dz) in [(0, 0), (0, 1), (1, 1), (1, 0)]
     {
         let pos: BlockPos = BlockPos::new(x - 1, y + dy, z + k + dz);
-        if world.block(pos) != block
+        if !holds(world, pos, block)
         {
-            let _ = world.setBlock(pos, block, 0);
+            let _ = handle(block).place(world, pos, true);
         }
     }
 }
@@ -136,45 +135,32 @@ fn setEntrance(world: World, hall: [i32; 3], k: i32, block: i32)
 // the duel seals all three entrances of the hall, and the last one opens again when it ends
 fn sealEntrances(world: World, hall: [i32; 3])
 {
-    let locked: i32 = blockId(LOCKED);
-
     for k in queen::ENTRANCES
     {
-        setEntrance(world, hall, k, locked);
+        setEntrance(world, hall, k, Pick::of(LOCKED));
     }
 }
 
-fn unlockDoor(world: World, hall: [i32; 3]) { setEntrance(world, hall, queen::ENTRANCES[2], 0); }
+fn unlockDoor(world: World, hall: [i32; 3]) { setEntrance(world, hall, queen::ENTRANCES[2], AIR); }
 
 // EntityValkyrieQueen.unlockTreasure: trapdoors over the treasure and every locked angelic stone freed
 fn unlockTreasure(world: World, hall: [i32; 3])
 {
     let [x, y, z] = hall;
-    let trapdoor: i32 = blockId("minecraft:trapdoor");
+    let rows: [([i32; 2], Pick); 4] = [
+        ([16, 9], TRAPDOOR_LOW_X),
+        ([17, 9], TRAPDOOR_HIGH_X),
+        ([16, 10], TRAPDOOR_LOW_X),
+        ([17, 10], TRAPDOOR_HIGH_X),
+    ];
+    trapdoors(world, hall, &rows);
 
-    for ([dx, dz], meta) in queen::TRAPDOORS
-    {
-        let _ = world.setBlock(BlockPos::new(x + dx, y + 1, z + dz), trapdoor, meta);
-    }
-
-    let swaps: [(i32, i32); 2] =
-        [(blockId(LOCKED), blockId("angelic_stone")), (blockId(LOCKED_LIGHT), blockId("light_angelic_stone"))];
-
-    for bx in x + queen::UNLOCK_LOW[0]..x + queen::UNLOCK_HIGH[0]
-    {
-        for by in y + queen::UNLOCK_LOW[1]..y + queen::UNLOCK_HIGH[1]
-        {
-            for bz in z + queen::UNLOCK_LOW[2]..z + queen::UNLOCK_HIGH[2]
-            {
-                let pos: BlockPos = BlockPos::new(bx, by, bz);
-                let block: i32 = world.block(pos);
-                if let Some((_, plain)) = swaps.iter().find(|(locked, _)| *locked == block)
-                {
-                    let _ = world.setBlock(pos, *plain, 0);
-                }
-            }
-        }
-    }
+    freeBox(
+        world,
+        [x + queen::UNLOCK_LOW[0], y + queen::UNLOCK_LOW[1], z + queen::UNLOCK_LOW[2]],
+        [x + queen::UNLOCK_HIGH[0], y + queen::UNLOCK_HIGH[1], z + queen::UNLOCK_HIGH[2]],
+        &[(LOCKED, "angelic_stone"), (LOCKED_LIGHT, "light_angelic_stone")],
+    );
 }
 
 fn poof(world: World, at: [f64; 3])

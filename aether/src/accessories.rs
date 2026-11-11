@@ -360,8 +360,6 @@ fn freeze(world: World, entity: Entity, worn: &mut Worn) -> bool
         return false;
     };
 
-    let water: [i32; 2] = [crate::ids::blockId("minecraft:water"), crate::ids::blockId("minecraft:flowing_water")];
-    let lava: [i32; 2] = [crate::ids::blockId("minecraft:lava"), crate::ids::blockId("minecraft:flowing_lava")];
     let feet: [i32; 3] = [floor(info.pos[0]), floor(entity.field(EntityField::Bottom)), floor(info.pos[2])];
     let mut changed: bool = false;
     let reach: i32 = ability::FREEZE_REACH;
@@ -372,12 +370,11 @@ fn freeze(world: World, entity: Entity, worn: &mut Worn) -> bool
             for z in feet[2] - reach..=feet[2] + reach
             {
                 let pos: BlockPos = BlockPos::new(x, y, z);
-                let block: i32 = world.block(pos);
-                let into: Option<&str> = if water.contains(&block)
+                let into: Option<&str> = if world.tagged(pos, "minecraft:water")
                 {
                     Some("minecraft:ice")
                 }
-                else if lava.contains(&block)
+                else if world.tagged(pos, "minecraft:lava")
                 {
                     Some("minecraft:obsidian")
                 }
@@ -388,7 +385,7 @@ fn freeze(world: World, entity: Entity, worn: &mut Worn) -> bool
 
                 if let Some(name) = into
                 {
-                    let _ = world.setBlock(pos, crate::ids::blockId(name), 0);
+                    let _ = world.place(pos, name);
 
                     worn.wear("ice_ring", 1);
                     worn.wear("ice_pendant", 1);
