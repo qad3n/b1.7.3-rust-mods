@@ -109,6 +109,12 @@ pub(crate) fn hatch(world: World, egg: &ItemStack, pos: [f64; 3]) -> bool
 
 pub(crate) fn isEgg(stack: &ItemStack) -> bool { TYPES.iter().any(|kind| stack.item.is(&eggName(kind))) }
 
+// every moa egg item with its kind's name, as recipe viewers list what hatches
+pub(crate) fn eggs() -> impl Iterator<Item = (&'static str, String)>
+{
+    TYPES.iter().map(|kind| (kind.m_name, eggName(kind)))
+}
+
 struct Moa;
 
 #[entity_behavior]
@@ -118,6 +124,7 @@ impl EntityBehavior for Moa
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
         entity.setField(EntityField::FallDistance, 0.0);
+        super::mount::seat(entity, super::mount::ride::MOA_SEAT);
 
         // a moa jumping by itself rises a little more every tick of the jump
         if entity.world.isAuthority() && entity.rider().is_none() && entity.flag(EntityField::Jumping)

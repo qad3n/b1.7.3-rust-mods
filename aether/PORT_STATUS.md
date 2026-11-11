@@ -249,8 +249,8 @@ Second pass (every entity, ability and machine class against the port by its num
   half their life and fizz, tear leaves with mob griefing on, lose 50 life for each entity they hold while inside a
   block, and spit creepers with a little drift; aerbunny jumps puff five clouds spread over the bunny; a moa jumping
   by itself rises 0.05 more each tick.
-- Needs a loader feature (not yet, the SDK's API 1.35 is still uncommitted): phygs, flying cows and moas seat their
-  rider at 0.65, 1.15 and 1.25 (getMountedYOffset); the port seats them where the pig template does.
+- Phygs, flying cows and moas seat their rider at 0.65, 1.15 and 1.25 (getMountedYOffset) through the loader's
+  api 1.36 `EntityField::Seat`, set each tick on both sides.
 - Checked and matching: every other mob's health, size, speed and attack, the valkyrie (whose teleport never
   succeeds in the source), queen, slider, sun spirit (its body parts only take player hits, which it ignores), fire
   minion, crystals, armor abilities, repulsion, accessories and the freezer table.

@@ -13,7 +13,14 @@ pub(crate) mod ride
     pub(crate) const SPEED: f32 = 0.3;
     // EntityPhyg.fall and EntityFlyingCow.fall slow every falling tick
     pub(crate) const GLIDE: f32 = 0.6;
+    // getMountedYOffset of the phyg, the flying cow and the moa
+    pub(crate) const PHYG_SEAT: f64 = 0.65;
+    pub(crate) const COW_SEAT: f64 = 1.15;
+    pub(crate) const MOA_SEAT: f64 = 1.25;
 }
+
+// the loader keeps a seat height per side, so each side sets it as the mount ticks
+pub(crate) fn seat(entity: Entity, height: f64) { entity.setField(EntityField::Seat, height); }
 
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
 pub(crate) struct Saddle

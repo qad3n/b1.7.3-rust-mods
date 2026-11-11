@@ -31,7 +31,11 @@ struct FlyingCow;
 #[entity_behavior]
 impl EntityBehavior for FlyingCow
 {
-    fn onTick(&self, entity: Entity, _info: &EntityInfo) { entity.setField(EntityField::FallDistance, 0.0); }
+    fn onTick(&self, entity: Entity, _info: &EntityInfo)
+    {
+        entity.setField(EntityField::FallDistance, 0.0);
+        super::mount::seat(entity, super::mount::ride::COW_SEAT);
+    }
 
     // EntityFlyingCow.interact: a bucket milks it, a saddle or an empty hand rides it
     fn onInteract(&self, entity: Entity, player: Player) -> bool

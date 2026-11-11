@@ -19,6 +19,7 @@ impl EntityBehavior for Phyg
     fn onTick(&self, entity: Entity, _info: &EntityInfo)
     {
         entity.setField(EntityField::FallDistance, 0.0);
+        super::mount::seat(entity, super::mount::ride::PHYG_SEAT);
 
         if !entity.world.isAuthority()
         {
