@@ -757,7 +757,7 @@ fn furnaceTick(ctx: &mut BlockCtx)
     if wasLit != lit
     {
         let target: &str = if lit { FURNACE_LIT } else { FURNACE_NAME };
-        let swapped: Result<bool> = Blocks.id(target).and_then(|block| world.swapBlock(pos, block, 0));
+        let swapped: Result<bool> = crate::world::palette::withPlain(target, |state| world.swapState(pos, state));
         if let Err(error) = swapped
         {
             warn(&format!("cinder furnace at {pos:?}: {}", error.0));

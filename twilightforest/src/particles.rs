@@ -82,11 +82,10 @@ pub(crate) fn spawn(world: World, name: &str, at: [f64; 3], motion: [f64; 3])
     }
 }
 
-// blockcrack_<id>_<meta>, bits of a block as 1.7 names its digging particle
-pub(crate) fn crack(world: World, block: &str, meta: i32, at: [f64; 3], motion: [f64; 3])
+// bits of a block as 1.7 names its digging particle
+pub(crate) fn crack(world: World, block: &'static str, at: [f64; 3], motion: [f64; 3])
 {
-    let id: i32 = Blocks.id(block).unwrap_or(0);
-    world.particle(&format!("blockcrack_{id}_{meta}"), at, motion);
+    crate::world::palette::withPlain(block, |state| world.crack(state, at, motion));
 }
 
 // BlockTFTowerDevice.sparkle, a speck just outside every face that is not covered

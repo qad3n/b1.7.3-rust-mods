@@ -166,7 +166,7 @@ fn dropAbove(world: World, x: i32, y: i32, z: i32)
     let at: [f64; 3] = [f64::from(x) + 0.5, f64::from(y + up - ice::DROP_FROM), f64::from(z) + 0.5];
     match world.spawnEntity(&format!("twilightforest:{FALLING_ICE}"), at)
     {
-        Ok(spawned) => spawned.setField(EntityField::Block, f64::from(Blocks.id("minecraft:ice").unwrap_or(0))),
+        Ok(spawned) => crate::world::palette::withPlain("minecraft:ice", |state| spawned.setCarried(state)),
         Err(error) => warn(&format!("cannot drop ice: {}", error.0)),
     }
 }
@@ -205,7 +205,7 @@ fn throwBomb(world: World, from: [f64; 3], to: [f64; 3], owner: Option<i32>)
     let delta: [f64; 3] = sub(aim, from);
     let length: f64 = length(delta).max(1.0e-4);
     // RenderTFThrownIce draws the bomb as a block of ice
-    bomb.setField(EntityField::Block, f64::from(Blocks.id("minecraft:ice").unwrap_or(0)));
+    crate::world::palette::withPlain("minecraft:ice", |state| bomb.setCarried(state));
 
     let _ = bomb.setMotion(delta.map(|axis| axis / length * bomb::SPEED));
     let _ = bomb.setData(&Bomb { m_owner: owner, ..Bomb::default() });
@@ -798,7 +798,7 @@ impl EntityBehavior for FallingIce
                     || f64::from(crate::math::fraction(world) - crate::math::fraction(world)) * ice::SHARD_SPREAD;
                 let at: [f64; 3] =
                     [info.pos[0] + spread(), info.pos[1] + ice::SHARD_RISE + spread(), info.pos[2] + spread()];
-                crate::particles::crack(world, "minecraft:ice", 0, at, [0.0; 3]);
+                crate::particles::crack(world, "minecraft:ice", at, [0.0; 3]);
             }
 
             // the anvil's step sound breaks as stone does in beta

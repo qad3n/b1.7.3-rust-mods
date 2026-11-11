@@ -402,7 +402,7 @@ impl ItemBehavior for Shatter
         {
             for _ in 0..shards
             {
-                crate::particles::crack(world, "minecraft:glass", 0, info.pos, [0.0; 3]);
+                crate::particles::crack(world, "minecraft:glass", info.pos, [0.0; 3]);
             }
 
             world.playSound(info.pos, "random.glass", 1.0, 0.5);

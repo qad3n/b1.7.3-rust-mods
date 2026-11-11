@@ -413,7 +413,7 @@ fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, 
         match shot.m_puff
         {
             Puff::Named(name) => crate::particles::spawn(world, name, at, [0.0; 3]),
-            Puff::Crack(block) => crate::particles::crack(world, block, 0, at, [0.0; 3]),
+            Puff::Crack(block) => crate::particles::crack(world, block, at, [0.0; 3]),
         }
     }
 

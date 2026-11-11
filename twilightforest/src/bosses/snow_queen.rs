@@ -394,7 +394,7 @@ fn shields(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         let Some(live) = live.or_else(||
         {
             let spawned: Entity = world.spawnEntity(&format!("twilightforest:{SHIELD}"), at).ok()?;
-            spawned.setField(EntityField::Block, f64::from(Blocks.id("minecraft:ice").unwrap_or(0)));
+            crate::world::palette::withPlain("minecraft:ice", |state| spawned.setCarried(state));
             Some(spawned)
         })
         else

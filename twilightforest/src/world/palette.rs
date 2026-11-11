@@ -1,6 +1,6 @@
 use crate::names;
 use b173_api::prelude::*;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 
 // a state as generators name it, a block and at most one property, or a vanilla block's metadata
@@ -19,14 +19,22 @@ thread_local!
     static HANDLES: RefCell<HashMap<Key, StateHandle>> = RefCell::new(HashMap::new());
 }
 
-fn resolve(key: Key) -> (i32, i32)
+fn handled<R>(key: Key, run: impl FnOnce(&StateHandle) -> R) -> R
 {
     HANDLES.with(|handles|
     {
-        let mut handles = handles.borrow_mut();
+        let mut handles: RefMut<HashMap<Key, StateHandle>> = handles.borrow_mut();
         let handle: &StateHandle = handles.entry(key).or_insert_with(|| StateHandle::new(build(key)));
-        handle.numeric()
+        run(handle)
     })
+}
+
+fn resolve(key: Key) -> (i32, i32) { handled(key, StateHandle::numeric) }
+
+// the cached handle of a block's default state, for engine calls that take a state, a bare name means the forest's
+pub(crate) fn withPlain<R>(name: &'static str, run: impl FnOnce(&StateHandle) -> R) -> R
+{
+    handled(Key::Plain(name), run)
 }
 
 fn build(key: Key) -> StateData

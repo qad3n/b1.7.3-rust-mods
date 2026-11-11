@@ -416,7 +416,7 @@ impl BlockBehavior for Shield
             return Some(0.0);
         }
 
-        let stone: i32 = Blocks.id("minecraft:stone").ok()?;
+        let stone: i32 = crate::world::palette::id("minecraft:stone");
         Some(player.digSpeed(stone) / shield::SLOWER / shield::SCALE)
     }
 }

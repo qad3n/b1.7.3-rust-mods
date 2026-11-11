@@ -506,19 +506,30 @@ fn revert(world: World, pos: BlockPos, there: i32, wanted: (i32, i32)) -> bool
         return true;
     }
 
-    let antibuilt: i32 = Blocks.id(deviceName(Device::Antibuilt)).unwrap_or(0);
-    let replace: i32 = if wanted.0 == 0 { 0 } else { antibuilt };
+    let replace: &'static str = if wanted.0 == 0
+    {
+        "minecraft:air"
+    }
+    else
+    {
+        deviceName(Device::Antibuilt)
+    };
 
-    if there == 0
+    crate::world::palette::withPlain(replace, |state|
     {
-        let _ = world.breakEffect(pos, replace, 0);
-    }
-    else if replace == 0
-    {
-        let _ = world.breakEffect(pos, there, world.meta(pos));
-        let _ = world.dropBlockItems(pos, there, world.meta(pos));
-    }
-    let _ = world.setBlock(pos, replace, 0);
+        let (block, meta): (i32, i32) = state.numeric();
+        if there == 0
+        {
+            let _ = world.breakEffect(pos, block, meta);
+        }
+        else if block == 0
+        {
+            let _ = world.breakEffect(pos, there, world.meta(pos));
+            let _ = world.dropBlockItems(pos, there, world.meta(pos));
+        }
+
+        let _ = state.place(world, pos, true);
+    });
 
     true
 }
@@ -919,7 +930,7 @@ fn cage(world: World, pos: BlockPos)
 }
 
 // TileEntityTFCReactorActive.drawBlob, one shell of a rough sphere per call
-fn blob(world: World, center: BlockPos, radius: i32, block: i32, fuzz: i32, nether: bool)
+fn blob(world: World, center: BlockPos, radius: i32, block: &'static str, fuzz: i32, nether: bool)
 {
     for dx in 0..=radius
     {
@@ -959,7 +970,7 @@ fn blob(world: World, center: BlockPos, radius: i32, block: i32, fuzz: i32, neth
     }
 }
 
-fn transform(world: World, pos: BlockPos, block: i32, fuzz: i32, nether: bool)
+fn transform(world: World, pos: BlockPos, block: &'static str, fuzz: i32, nether: bool)
 {
     let there: i32 = world.block(pos);
     if there != 0 && World::blockInfo(there).hardness < 0.0
@@ -984,7 +995,7 @@ fn transform(world: World, pos: BlockPos, block: i32, fuzz: i32, nether: bool)
         return;
     }
 
-    let _ = world.setBlock(pos, block, 0);
+    let _ = crate::world::palette::withPlain(block, |state| state.place(world, pos, true));
 }
 
 fn spawnGhast(world: World, around: BlockPos)
@@ -1006,12 +1017,19 @@ impl ReactorTile
         let phase: i32 = ticks - start;
         if phase >= reactor::OFFSET && phase <= reactor::BUBBLE_END
         {
-            blob(world, at, (phase - reactor::OFFSET) / reactor::GROWTH, 0, phase - reactor::OFFSET, false);
+            blob(
+                world,
+                at,
+                (phase - reactor::OFFSET) / reactor::GROWTH,
+                "minecraft:air",
+                phase - reactor::OFFSET,
+                false,
+            );
         }
 
         if (0..=reactor::NETHER_END).contains(&phase)
         {
-            blob(world, at, phase / reactor::GROWTH, 0, phase, true);
+            blob(world, at, phase / reactor::GROWTH, "minecraft:air", phase, true);
         }
     }
 
@@ -1031,13 +1049,19 @@ impl ReactorTile
             let primary: i32 = ticks - reactor::PRIMARY_START;
             if primary >= reactor::OFFSET && primary <= reactor::PRIMARY_END
             {
-                blob(world, pos, (primary - reactor::OFFSET) / reactor::GROWTH, 0, primary - reactor::OFFSET, false);
+                blob(
+                    world,
+                    pos,
+                    (primary - reactor::OFFSET) / reactor::GROWTH,
+                    "minecraft:air",
+                    primary - reactor::OFFSET,
+                    false,
+                );
             }
 
             if primary <= reactor::SHELL_END
             {
-                let debris: i32 = Blocks.id(deviceName(Device::Debris)).unwrap_or(0);
-                blob(world, pos, primary / reactor::GROWTH, debris, ticks, false);
+                blob(world, pos, primary / reactor::GROWTH, deviceName(Device::Debris), ticks, false);
             }
 
             Self::bubble(world, pos.offset(sx, sy, sz), reactor::SECONDARY_START, ticks);

@@ -446,7 +446,7 @@ fn underStone(world: World, x: i32, level: i32, z: i32) -> (i32, u8)
         }
     }
 
-    (Blocks.id("minecraft:stone").unwrap_or(0), shade::FLAT)
+    (crate::world::palette::id("minecraft:stone"), shade::FLAT)
 }
 
 fn mazePixel(world: World, chart: &mut Chart, step: [i32; 2], offset: [i32; 2], ores: bool) -> bool
