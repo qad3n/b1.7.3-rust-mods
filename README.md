@@ -42,6 +42,12 @@ python3 -I tools/extract_assets.py <path to aether-1.7.10-v1.1.2.5.jar>
 
 A new port adds its `<mod>/assets/` to `.gitignore`.
 
+Every mod uses the modern resource pack layout only: `assets/<modid>/textures/<path>.png` with one file per sprite
+(an animated sprite is a strip of square frames with a `.png.mcmeta` beside it), `assets/<modid>/sounds/<path>.ogg`
+(discs under `sounds/record/`) and `assets/<modid>/lang/en_US.lang`. Old grid sheets are split into sprites with
+`../tools/modport/split_sheet.py`. The loader serves each mod's `assets/` as a texture pack layer above the beta jar,
+so a player's texture pack retextures a mod or replaces its sounds and lang keys at the same paths.
+
 ## Licenses
 
 Each mod keeps the license of the mod it was ported from; see its `mod.toml`.
