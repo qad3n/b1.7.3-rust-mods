@@ -41,7 +41,14 @@ mod lich
     pub const LOS_SPREAD: [f64; 3] = [16.0, 8.0, 16.0];
     pub const HAND_AHEAD: f64 = 0.65;
     pub const HAND_HEIGHT: f64 = 0.82;
+    pub const SPARKLE_HEIGHT: f64 = 0.94;
     pub const CLONE_SHADE: f32 = 0.33;
+    // onLivingUpdate's sparkles, up to eight a tick on a client whose attack timer stays at zero
+    pub const SPARKLES: i32 = 8;
+    pub const SPARKLE_GLOW: f32 = 0.967;
+    pub const SPARKLE_JITTER: f64 = 0.025;
+    pub const BOLT_TINT: [f32; 3] = [0.37, 0.99, 0.89];
+    pub const BOMB_TINT: [f32; 3] = [0.99, 0.47, 0.0];
     pub const CLONE_ALPHA: f32 = 0.8;
 }
 
@@ -55,6 +62,8 @@ struct Lich
     m_minions: i32,
     // a fresh lich starts with its whole shield and all its minions to call
     m_started: bool,
+    // EntityTFLich.getNextAttackType, a bomb next tints the sparkles in its hand orange
+    m_bomb: bool,
 }
 
 #[derive(Default)]
@@ -170,6 +179,37 @@ fn teleport(entity: Entity, info: &EntityInfo, goal: &EntityInfo)
     trail(world, info.pos, dest, "portal");
     world.playSound(info.pos, "mob.endermen.portal", 1.0, 1.0);
     face(entity, dest, goal.pos);
+}
+
+// EntityTFLich.onLivingUpdate, spell sparkles in the casting hand tinted by the next attack
+fn sparkle(entity: Entity, info: &EntityInfo)
+{
+    let world: World = entity.world;
+    let lich: Lich = entity.synced();
+    // the source turns with the body, the SDK gives the head's yaw
+    let yaw: f64 = f64::from(info.yaw).to_radians();
+    let height: f64 = entity.field(EntityField::Height);
+    let hand: [f64; 3] = [
+        info.pos[0] + yaw.cos() * lich::HAND_AHEAD,
+        info.pos[1] + height * lich::SPARKLE_HEIGHT,
+        info.pos[2] + yaw.sin() * lich::HAND_AHEAD,
+    ];
+    let tint: [f32; 3] = if lich.m_bomb
+    {
+        lich::BOMB_TINT
+    }
+    else
+    {
+        lich::BOLT_TINT
+    };
+    let color: [f64; 3] = tint.map(|channel| f64::from(channel * lich::SPARKLE_GLOW));
+
+    for _ in 0..world.random(lich::SPARKLES)
+    {
+        let jitter = || f64::from(ids::fraction(world) - ids::fraction(world)) * lich::SPARKLE_JITTER;
+        let at: [f64; 3] = [hand[0] + jitter(), hand[1] + jitter(), hand[2] + jitter()];
+        crate::particles::spawn(world, "mobSpell", at, color);
+    }
 }
 
 fn launch(entity: Entity, info: &EntityInfo, goal: &EntityInfo, bomb: bool)
@@ -332,6 +372,7 @@ impl EntityBehavior for TwilightLich
         let world: World = entity.world;
         if !world.isAuthority()
         {
+            sparkle(entity, info);
             return;
         }
 
@@ -352,6 +393,8 @@ impl EntityBehavior for TwilightLich
             {
                 caster(entity, info, &mut lich, brain, &goal);
             }
+
+            lich.m_bomb = brain.m_bomb;
         });
 
         save(entity, lich);
