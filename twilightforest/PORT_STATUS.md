@@ -97,6 +97,8 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   release after a short hold (ItemTFCrumbleHorn, ItemTFLampOfCinders, ItemTFOreMagnet); trophies are tile entities
   drawing the bosses' heads (TileEntityTFTrophyRenderer) on a floor turned in sixteenths or against a wall, and drop
   their trophy when broken.
+- The cinder furnace reads the `minecraft:logs` tag for the source's logWood ore dictionary entry, so it chars and
+  multiplies any mod's logs, not just names ending in log.
 - Uberous soil joins the `minecraft:crop_soil` and `minecraft:flower_soil` tags, so crops, flowers and saplings stay on
   it as BlockTFUberousSoil.canSustainPlant allows.
 - Fireflies, cicadas and moonworms are tile entity models (loader api 1.20) as TileEntityTFFireflyRenderer and kin:

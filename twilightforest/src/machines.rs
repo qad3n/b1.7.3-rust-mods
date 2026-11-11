@@ -553,25 +553,22 @@ fn burnTime(stack: &ItemStack) -> i32
     }
 }
 
+// the source's logWood ore dictionary entry, any mod's logs included
+fn inLogs(name: &Identifier) -> bool { tagValues(RegistryKind::Block, "minecraft:logs").contains(name) }
+
 fn logLike(block: i32) -> bool
 {
     if block == 0 || block == ids::blockId(block::CINDER_LOG)
     {
         return false;
     }
-    nameOf(RegistryKind::Block, block).is_some_and(|name|
-    {
-        name.path() == "log" || name.path().ends_with("_log") || name.path() == "timewood" || name.path() == "transwood"
-    })
+    nameOf(RegistryKind::Block, block).is_some_and(|name| inLogs(&name))
 }
 
 // TileEntityTFCinderFurnace.canMultiply, ores and logs come out multiplied
 fn multiplies(input: &ItemStack) -> bool
 {
-    input
-        .item
-        .name()
-        .is_some_and(|name| name.path().contains("ore") || name.path() == "log" || name.path().ends_with("_log"))
+    input.item.name().is_some_and(|name| name.path().contains("ore") || inLogs(&name))
 }
 
 fn cinders(world: World, pos: BlockPos) -> i32
