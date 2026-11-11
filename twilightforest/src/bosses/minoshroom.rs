@@ -1,4 +1,4 @@
-use super::{dropAt, killer};
+use super::killer;
 use crate::entities::ai::{self, Ai};
 use crate::ids::item;
 use crate::models::{Program, bipedPose, tf_minoshroom};
@@ -40,8 +40,6 @@ impl EntityBehavior for Minoshroom
             return;
         };
 
-        dropAt(world, info.pos, item::MEEF_STROGANOFF, world.random(stats::STROGANOFF_SPREAD) + stats::STROGANOFF_MIN);
-        dropAt(world, info.pos, item::MINOTAUR_AXE, 1);
         super::conquer(world, info.pos);
 
         if let Some(player) = killer(world, source)
@@ -97,6 +95,13 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 hurt: Some("mob.cowhurt".to_owned()),
                 death: Some("mob.cowhurt".to_owned()),
             }),
+            drops: Some(vec![
+                crate::entities::drop(
+                    item::MEEF_STROGANOFF,
+                    [stats::STROGANOFF_MIN, stats::STROGANOFF_MIN + stats::STROGANOFF_SPREAD - 1],
+                ),
+                crate::entities::drop(item::MINOTAUR_AXE, [1, 1]),
+            ]),
             model: Some(EntityModelSpec { shadow: 1.0, ..tf_minoshroom::model() }),
             persistent: true,
             ..EntitySpec::default()

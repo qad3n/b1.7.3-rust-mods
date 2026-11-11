@@ -222,6 +222,7 @@ const SWAY: [(f32, f32); HEADS] =
 mod hydra
 {
     pub const HEALTH: i32 = 360;
+    pub const BLOOD_DROPS: [i32; 2] = [7, 10];
     pub const HEALING_AFTER: i32 = 1000;
     pub const HEAD_RESPAWN: i32 = 100;
     pub const HEAD_MAX_DAMAGE: i32 = 120;
@@ -1364,8 +1365,6 @@ impl EntityBehavior for Hydra
                 dropAt(world, info.pos, item::HYDRA_CHOP, 5);
             }
 
-            dropAt(world, info.pos, item::FIERY_BLOOD, world.random(4) + 7);
-            dropAt(world, info.pos, item::HYDRA_TROPHY, 1);
             super::conquer(world, info.pos);
         }
 
@@ -1675,6 +1674,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 hurt: Some("twilightforest.mob.hydra.hurt".to_owned()),
                 death: Some("twilightforest.mob.hydra.death".to_owned()),
             }),
+            drops: Some(vec![
+                crate::entities::drop(item::FIERY_BLOOD, hydra::BLOOD_DROPS),
+                crate::entities::drop(item::HYDRA_TROPHY, [1, 1]),
+            ]),
             model: Some(EntityModelSpec { shadow: 4.0, ..tf_hydra::model() }),
             fire_immune: true,
             persistent: true,

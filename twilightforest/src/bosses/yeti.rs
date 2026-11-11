@@ -1,4 +1,4 @@
-use super::{dropAt, home, killer};
+use super::{home, killer};
 use crate::entities::ai::{eyes, face};
 use crate::ids::{self, item};
 use crate::items::{put, texture};
@@ -513,8 +513,6 @@ impl EntityBehavior for YetiAlpha
 
         if world.isAuthority()
         {
-            dropAt(world, info.pos, item::ALPHA_FUR, yeti::DROPS_MIN + world.random(yeti::DROPS_SPREAD));
-            dropAt(world, info.pos, ICE_BOMB, yeti::DROPS_MIN + world.random(yeti::DROPS_SPREAD));
             super::conquer(world, info.pos);
         }
 
@@ -856,6 +854,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 hurt: Some("twilightforest.mob.yeti.hurt".to_owned()),
                 death: Some("twilightforest.mob.yeti.death".to_owned()),
             }),
+            drops: Some(vec![
+                crate::entities::drop(item::ALPHA_FUR, [yeti::DROPS_MIN, yeti::DROPS_MIN + yeti::DROPS_SPREAD - 1]),
+                crate::entities::drop(ICE_BOMB, [yeti::DROPS_MIN, yeti::DROPS_MIN + yeti::DROPS_SPREAD - 1]),
+            ]),
             model: Some(EntityModelSpec { shadow: 1.75, ..tf_yeti_alpha::model() }),
             persistent: true,
             ..EntitySpec::default()

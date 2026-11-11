@@ -164,8 +164,15 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
   motes keep the loader `tintportal_RRGGBB` particle for their random brightness.
 - Fixed mob drops are entity spec drops as dropFewItems: aechor petals and the Slider's seven to nine carved stone
   moved off `onDeath`, the zephyr now drops its cold aercloud (the port dropped nothing) and the moa three
-  feathers (the port dropped none to two). Drops that depend on state (swet type, sheepuff fleece, saddles, boss
-  keys that float up) stay in code.
+  feathers (the port dropped none to two). The bosses' dropFewItems drops are spec drops too, so recipe viewers list
+  them through `lootList()`: the Slider's bronze key, the Valkyrie Queen's silver key and golden sword, the Sun
+  Spirit's golden key and sun altar. They now honour the mob drops game rule like the source and spawn at the boss's
+  feet instead of the source's half block lift (a spec drop has no height offset).
+- Drops that stay in code, invisible to recipe viewers: sheepuff wool (fleece colour, only unsheared), the swet's
+  glowstone or blue aercloud and swet balls (its type picks the items, one roll sets every count), and the saddles of
+  phygs, flying cows and moas (only when saddled). Dungeon chest loot (`src/world/dungeons/loot.rs`) also stays in
+  code: each pick is one weighted outcome with nested rolls, and `rollLoot` rolls every entry on its own, so a chest
+  table would change the odds.
 - Aether grass joins the `minecraft:flower_soil` tag, so flowers and saplings stay on it as BlockAetherGrass allows.
 - The phoenix bow draws while the use key is held (bow pose, the three `bow_pulling` icons after 0, 13 and 17
   ticks) and looses its flaming arrow on release at three times the draw power, as ItemPhoenixBow. Power, Punch,

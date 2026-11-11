@@ -46,7 +46,6 @@ mod queen
     pub const UNLOCK_HIGH: [i32; 3] = [30, 22, 26];
     pub const TRAPDOORS: [([i32; 2], i32); 4] = [([16, 9], 3), ([17, 9], 2), ([16, 10], 3), ([17, 10], 2)];
     pub const POOF: i32 = 20;
-    pub const KEY_LIFT: f64 = 0.5;
     pub const WATCH: f64 = 8.0;
 }
 
@@ -469,10 +468,6 @@ impl EntityBehavior for ValkyrieQueen
             progress::grant(Player { id }, Award::Silver);
         }
 
-        let _ =
-            world.spawnItem([info.pos[0], info.pos[1] + queen::KEY_LIFT, info.pos[2]], ItemStack::of("silver_key", 1));
-        let _ = world.spawnItem(info.pos, ItemStack::of("minecraft:golden_sword", 1));
-
         poof(world, info.pos);
         MINDS.with(|minds| minds.borrow_mut().remove(&entity.id));
         entity.kill();
@@ -764,7 +759,11 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             health: Some(queen::HEALTH),
             speed: Some(0.0),
             persistent: true,
-            drops: Some(Vec::new()),
+            // EntityValkyrieQueen.dropFewItems
+            drops: Some(vec![
+                crate::entities::drop("silver_key", [1, 1]),
+                crate::entities::drop("minecraft:golden_sword", [1, 1]),
+            ]),
             sounds: crate::entities::sounds("", HURT, HURT),
             model: Some(EntityModelSpec { shadow: 0.3, ..crate::models::valkyrie::model() }),
             ..EntitySpec::default()

@@ -62,7 +62,6 @@ mod slide
     pub const HURT_SPREAD: f32 = 875.0;
     pub const HURT_FADE: f32 = 0.8;
     pub const HURT_DEGREES: f32 = -30.0;
-    pub const KEY_LIFT: f64 = 0.5;
     pub const STONE_DROPS: i32 = 7;
     pub const STONE_SPREAD: i32 = 3;
     pub const SCALE: f32 = 2.0;
@@ -642,9 +641,6 @@ impl EntityBehavior for Slider
         }
 
         world.playSound(info.pos, sound::DEATH, sound::VOLUME, pitch(world));
-
-        let _ =
-            world.spawnItem([info.pos[0], info.pos[1] + slide::KEY_LIFT, info.pos[2]], ItemStack::of("bronze_key", 1));
         SLIDES.with(|slides| slides.borrow_mut().remove(&entity.id));
         entity.kill();
     }
@@ -706,11 +702,14 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             texture: Some(texture::ASLEEP.to_owned()),
             size: Some([2.0, 2.0]),
             health: Some(slide::HEALTH),
-            // EntitySlider.dropFewItems, seven to nine carved stone; the key floats up on its own in onDeath
-            drops: Some(vec![crate::entities::drop(
-                "carved_stone",
-                [slide::STONE_DROPS, slide::STONE_DROPS + slide::STONE_SPREAD - 1],
-            )]),
+            // EntitySlider.dropFewItems seven to nine carved stone and the bronze key
+            drops: Some(vec![
+                crate::entities::drop(
+                    "carved_stone",
+                    [slide::STONE_DROPS, slide::STONE_DROPS + slide::STONE_SPREAD - 1],
+                ),
+                crate::entities::drop("bronze_key", [1, 1]),
+            ]),
             persistent: true,
             immovable: true,
             sounds: crate::entities::sounds("ambient.cave.cave", "step.stone", ""),

@@ -1,4 +1,4 @@
-use super::{dropAt, home, killer, showBar};
+use super::{home, killer, showBar};
 use crate::entities::ai::face;
 use crate::ids::{self, item};
 use crate::models::{Program, tf_naga};
@@ -482,13 +482,6 @@ impl EntityBehavior for Naga
 
         if let Some(info) = entity.info()
         {
-            let scales: i32 = naga::SCALES[0] + world.random(naga::SCALES[1]);
-            for _ in 0..scales
-            {
-                dropAt(world, info.pos, item::NAGA_SCALE, 1);
-            }
-
-            dropAt(world, info.pos, item::NAGA_TROPHY, 1);
             super::conquer(world, info.pos);
         }
 
@@ -690,6 +683,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 hurt: Some("twilightforest.mob.naga.hurt".to_owned()),
                 death: Some("twilightforest.mob.naga.hurt".to_owned()),
             }),
+            drops: Some(vec![
+                crate::entities::drop(item::NAGA_SCALE, [naga::SCALES[0], naga::SCALES[0] + naga::SCALES[1] - 1]),
+                crate::entities::drop(item::NAGA_TROPHY, [1, 1]),
+            ]),
             model: Some(model.clone()),
             persistent: true,
             ..EntitySpec::default()

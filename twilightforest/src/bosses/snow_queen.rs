@@ -595,7 +595,6 @@ impl EntityBehavior for SnowQueen
             dropAt(world, info.pos, "minecraft:snowball", 16);
         }
 
-        dropAt(world, info.pos, item::SNOW_QUEEN_TROPHY, 1);
         super::conquer(world, info.pos);
     }
 
@@ -657,6 +656,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 hurt: Some("twilightforest.mob.ice.hurt".to_owned()),
                 death: Some("twilightforest.mob.ice.death".to_owned()),
             }),
+            drops: Some(vec![crate::entities::drop(item::SNOW_QUEEN_TROPHY, [1, 1])]),
             model: Some(EntityModelSpec { shadow: 0.6, ..tf_snow_queen::model() }),
             fire_immune: true,
             persistent: true,

@@ -52,7 +52,6 @@ mod spirit
     pub const DUEL_LINE: u8 = 9;
     pub const RETORT_LINE: u8 = 10;
     pub const CHAT_PAUSE: i32 = 100;
-    pub const KEY_LIFT: f64 = 0.5;
     pub const FALL: f64 = -0.075;
     pub const LIFT: f32 = 0.5;
     pub const SCALE: f32 = 2.25;
@@ -529,11 +528,10 @@ impl EntityBehavior for SunSpirit
     fn onDeath(&self, entity: Entity, _source: Option<i32>)
     {
         let world: World = entity.world;
-        let Some(info) = entity.info().filter(|_| world.isAuthority())
-        else
+        if entity.info().is_none() || !world.isAuthority()
         {
             return;
-        };
+        }
 
         let home: Home = entity.data();
         let mut state: Sync = sync(entity);
@@ -555,10 +553,6 @@ impl EntityBehavior for SunSpirit
         door(world, &home, false, 0);
         unlockTreasure(world, &home);
 
-        let _ =
-            world.spawnItem([info.pos[0], info.pos[1] + spirit::KEY_LIFT, info.pos[2]], ItemStack::of("golden_key", 1));
-        let _ =
-            world.spawnItem([info.pos[0], info.pos[1] + spirit::KEY_LIFT, info.pos[2]], ItemStack::of("sun_altar", 1));
         crate::sun_altar::unlock();
         MINDS.with(|minds| minds.borrow_mut().remove(&entity.id));
     }
@@ -600,7 +594,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             fire_immune: true,
             persistent: true,
             immovable: true,
-            drops: Some(Vec::new()),
+            // EntitySunSpirit.dropFewItems
+            drops: Some(vec![crate::entities::drop("golden_key", [1, 1]), crate::entities::drop("sun_altar", [1, 1])]),
             sounds: crate::entities::sounds("", "", ""),
             model: Some(EntityModelSpec { shadow: 1.0, ..crate::models::sun_spirit::model() }),
             ..EntitySpec::default()

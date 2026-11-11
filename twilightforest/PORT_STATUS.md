@@ -67,6 +67,18 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
     trapped chests chests, vines, flower pots, skulls, tripwire and item frames are left out, stone bricks as above;
   - structure spawners keep beta's spawn range and counts (the dark tower mini ghast spawner's NBT is dropped);
   - the lich tower draws its paintings' spots and art from the random but places none (no hanging entity call).
+- Drops: every mob and the boss drops a table can hold are entity spec drops, so recipe viewers list them through
+  `lootList()` (minoshroom stroganoff and axe, alpha yeti fur and ice bombs, hydra fiery blood and trophy, naga
+  scales and trophy, snow queen trophy). The naga's six to eleven scales drop as one stack instead of one per scale.
+  Left in code, invisible to recipe viewers:
+  - the lich: clones drop nothing, and the scepter is one of three and each gold armour piece one of five;
+  - hydra chops: five to seven stacks of five;
+  - the snow queen's bow (triple or seeker), and her one to four stacks of seven ice and five to nine of sixteen
+    snowballs;
+  - kobold hint books (only kobolds that carry one);
+  - structure and boss chests (`src/treasure.rs`): each draw is one weighted pick from a tier with a side table one
+    time in four, rolled on the same random that picks the slots, while `rollLoot` rolls every entry on its own, so a
+    chest table would change the odds.
 
 ## Inventory
 
