@@ -1345,6 +1345,15 @@ fn hurtFromPart(entity: Entity, source: Option<i32>, amount: i32)
         return;
     };
 
+    // EntityTFHydra.attackEntityFromPart, a part stuck in a wall breaks the blocks it is caught in
+    if crate::combat::hurtBy(crate::combat::kind::IN_WALL)
+        && let Some(info) = entity.info()
+    {
+        let half: f64 = entity.field(EntityField::Width) / 2.0;
+        let bottom: f64 = entity.field(EntityField::Bottom);
+        destroyAround(world, [info.pos[0], bottom, info.pos[2]], half, entity.field(EntityField::Height));
+    }
+
     let hydraEntity: Entity = Entity { world, id: hydraId };
     if far(hydraEntity, source)
     {
