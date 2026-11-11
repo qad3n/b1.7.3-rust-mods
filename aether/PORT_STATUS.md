@@ -168,9 +168,14 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
   them through `lootList()`: the Slider's bronze key, the Valkyrie Queen's silver key and golden sword, the Sun
   Spirit's golden key and sun altar. They now honour the mob drops game rule like the source and spawn at the boss's
   feet instead of the source's half block lift (a spec drop has no height offset).
-- Drops that stay in code, invisible to recipe viewers: sheepuff wool (fleece colour, only unsheared), the swet's
-  glowstone or blue aercloud and swet balls (its type picks the items, one roll sets every count), and the saddles of
-  phygs, flying cows and moas (only when saddled). Dungeon chest loot (`src/world/dungeons/loot.rs`) also stays in
+- State dependent drops are loot pools with loot conditions (API 1.42), so recipe viewers list them: sheepuff wool
+  (`aether:unsheared` and one `aether:fleece/<colour>` condition per wool damage), the swet's glowstone or blue
+  aercloud and swet balls (`aether:golden_swet`, one `aether:swet_half` count rule per death so every count agrees),
+  and the saddles of phygs, flying cows (`aether:saddled`) and moas (`aether:moa_saddled`). They roll from the
+  entity's random instead of the world's. ChunkProviderAether.populate's seventeen steps are named placed features
+  (`aether:dungeons`, the three aerclouds, crystal islands, ores, flowers, trees, dungeon oaks, lakes, bronze
+  dungeons) the dimension's generator places in order on its chunk random, so the sequence is unchanged and each can be
+  turned off. The highlands biome is in `aether:is_aether` and `c:is_magical`. Dungeon chest loot (`src/world/dungeons/loot.rs`) also stays in
   code: each pick is one weighted outcome with nested rolls, and `rollLoot` rolls every entry on its own, so a chest
   table would change the odds.
 - Aether grass joins the `minecraft:flower_soil` tag, so flowers and saplings stay on it as BlockAetherGrass allows.
