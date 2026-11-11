@@ -83,7 +83,7 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
   Monolith, GroveRuins, HollowStump, FallenHollowLog, FallenSmallLog) and the small generators.
 - Portal (BlockTFPortal, TFTeleporter, TFTickHandler.PortalEntityItem): a diamond tossed into a flower ringed pool,
   lightning, travel both ways, portals remembered in world data instead of the source's 200 block scan.
-- Progression (TFAchievementPage as per player data, achievements told in chat), biome enforcement
+- Progression (TFAchievementPage on the loader's mod achievements with beta toasts, old player data bits adopted once), biome enforcement
   (TFBiome*.enforceProgession), item pickups that advance it, config (TwilightForestMod.loadConfiguration).
 - Items with behaviors: ore meter, ore magnet, crumble horn, peacock fan, lamp of cinders, magic beans, tower key,
   charms of life and keeping (TFEventListener), magic tree cores (BlockTFMagicLogSpecial), uberous soil.
