@@ -12,6 +12,8 @@ pub(crate) const VALKYRIE_TOOLS: &str = "aether:valkyrie_tools";
 pub(crate) const UNDEAD: &str = "minecraft:undead";
 // BlockDungeonBase, the stone the slider never breaks
 pub(crate) const DUNGEON_STONE: &str = "aether:dungeon_stone";
+// items whose getRarity is ItemsAether.aether_loot, the lore book shows their names green
+pub(crate) const DUNGEON_LOOT: &str = "aether:dungeon_loot";
 // ItemPigSlayer: anything pig like, the Java matched pig, phyg and taegore in the entity name
 pub(crate) const PIGS: &str = "aether:pigs";
 
@@ -25,12 +27,67 @@ struct TagRow
 const SOILS: &[&str] = &["aether_grass", "enchanted_aether_grass", "aether_dirt"];
 const LOGS: &[&str] = &["skyroot_log", "golden_oak_log"];
 const LEAVES: &[&str] = &["skyroot_leaves", "golden_oak_leaves", "crystal_leaves", "crystal_fruit_leaves"];
+const LOOT: &[&str] = &[
+    "lore_book",
+    "cloud_staff",
+    "notch_hammer",
+    "victory_medal",
+    "lightning_knife",
+    "pig_slayer",
+    "vampire_blade",
+    "life_shard",
+    "valkyrie_lance",
+    "phoenix_bow",
+    "aerogel_slab",
+    "flaming_sword",
+    "lightning_sword",
+    "holy_sword",
+    "bronze_key",
+    "silver_key",
+    "golden_key",
+    "valkyrie_pickaxe",
+    "valkyrie_axe",
+    "valkyrie_shovel",
+    "neptune_helmet",
+    "neptune_chestplate",
+    "neptune_leggings",
+    "neptune_boots",
+    "phoenix_helmet",
+    "phoenix_chestplate",
+    "phoenix_leggings",
+    "phoenix_boots",
+    "obsidian_helmet",
+    "obsidian_chestplate",
+    "obsidian_leggings",
+    "obsidian_boots",
+    "valkyrie_helmet",
+    "valkyrie_chestplate",
+    "valkyrie_leggings",
+    "valkyrie_boots",
+    "sentry_boots",
+    "neptune_gloves",
+    "obsidian_gloves",
+    "valkyrie_gloves",
+    "phoenix_gloves",
+    "swet_cape",
+    "invisibility_cape",
+    "agility_cape",
+    "valkyrie_cape",
+    "golden_feather",
+    "regeneration_stone",
+    "iron_bubble",
+    "repulsion_shield",
+    "ice_ring",
+    "ice_pendant",
+    "chain_gloves",
+];
 const SAPLINGS: &[&str] = &["skyroot_sapling", "golden_oak_sapling"];
 const FLOWERS: &[&str] = &["white_flower", "purple_flower"];
 const ORES: &[&str] = &["ambrosium_ore", "zanite_ore", "gravitite_ore"];
 
 // logs and leaves blocks join minecraft:logs and minecraft:leaves through their block specs
-const TAGS: [TagRow; 26] = [
+const TAGS: [TagRow; 27] = [
+    TagRow { m_registry: RegistryKind::Item, m_tag: DUNGEON_LOOT, m_members: LOOT },
     TagRow { m_registry: RegistryKind::Block, m_tag: SOIL, m_members: SOILS },
     TagRow { m_registry: RegistryKind::Block, m_tag: "minecraft:dirt", m_members: SOILS },
     TagRow { m_registry: RegistryKind::Block, m_tag: "minecraft:planks", m_members: &["skyroot_planks"] },

@@ -77,61 +77,6 @@ const LORE_KEYS: [(&str, &str); 16] = [
     ("golden_key", "dungeon_key_golden"),
 ];
 
-// items whose getRarity is ItemsAether.aether_loot, their names show green
-const LOOT: [&str; 52] = [
-    "lore_book",
-    "cloud_staff",
-    "notch_hammer",
-    "victory_medal",
-    "lightning_knife",
-    "pig_slayer",
-    "vampire_blade",
-    "life_shard",
-    "valkyrie_lance",
-    "phoenix_bow",
-    "aerogel_slab",
-    "flaming_sword",
-    "lightning_sword",
-    "holy_sword",
-    "bronze_key",
-    "silver_key",
-    "golden_key",
-    "valkyrie_pickaxe",
-    "valkyrie_axe",
-    "valkyrie_shovel",
-    "neptune_helmet",
-    "neptune_chestplate",
-    "neptune_leggings",
-    "neptune_boots",
-    "phoenix_helmet",
-    "phoenix_chestplate",
-    "phoenix_leggings",
-    "phoenix_boots",
-    "obsidian_helmet",
-    "obsidian_chestplate",
-    "obsidian_leggings",
-    "obsidian_boots",
-    "valkyrie_helmet",
-    "valkyrie_chestplate",
-    "valkyrie_leggings",
-    "valkyrie_boots",
-    "sentry_boots",
-    "neptune_gloves",
-    "obsidian_gloves",
-    "valkyrie_gloves",
-    "phoenix_gloves",
-    "swet_cape",
-    "invisibility_cape",
-    "agility_cape",
-    "valkyrie_cape",
-    "golden_feather",
-    "regeneration_stone",
-    "iron_bubble",
-    "repulsion_shield",
-    "ice_ring",
-    "ice_pendant",
-    "chain_gloves",
-];
 const LOOT_COLOR: &str = "\u{a7}a";
 const COMMON_COLOR: &str = "\u{a7}f";
 
@@ -297,7 +242,7 @@ impl LoreScreen
 
     fn drawLore(&mut self, draw: &mut Draw, stack: &ItemStack)
     {
-        let loot: bool = stack.item.name().is_some_and(|id| !id.isVanilla() && LOOT.contains(&id.path()));
+        let loot: bool = stack.item.tagged(crate::tags::DUNGEON_LOOT);
         let color: &str = if loot { LOOT_COLOR } else { COMMON_COLOR };
         let names: Vec<String> = wrap(&displayName(stack), layout::WRAP);
         for (row, name) in names.iter().enumerate()
