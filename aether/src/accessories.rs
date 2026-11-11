@@ -417,6 +417,7 @@ fn serverTick(player: Player)
     let age: f64 = entity.field(EntityField::TicksExisted);
 
     shardHealth(entity, &worn);
+    crate::tools::valkyrieReach(player);
     worn.m_valkyrieSet = crate::player::wearingSet(player, "valkyrie");
     crate::abilities::repel(player, &mut worn);
 
