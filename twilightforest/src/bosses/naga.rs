@@ -3,7 +3,7 @@ use crate::entities::ai::face;
 use crate::ids::{self, item};
 use crate::models::{Program, tf_naga};
 use crate::progress::{self, Gate};
-use b173_api::math::{distance, floor, length, sub};
+use b173_api::math::{distance, floor, normalize, sqrt, sub};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -302,15 +302,15 @@ fn moveSegments(entity: Entity, info: &EntityInfo, brain: &Brain)
         let angle: f64 = f64::from(leader.yaw + 180.0).to_radians();
         let straighten: f64 = 0.05 + 1.0 / (index as f64 + 1.0) * 0.5;
         let mut diff: [f64; 3] = sub(mine.pos, leader.pos);
-        normalize(&mut diff);
+        diff = normalize(diff);
         diff[0] += -angle.sin() * straighten;
         diff[2] += angle.cos() * straighten;
-        normalize(&mut diff);
+        diff = normalize(diff);
 
         let dest: [f64; 3] = [0, 1, 2].map(|axis| leader.pos[axis] + naga::SPACING * diff[axis]);
         let _ = segment.setPosition(dest);
         let _ = segment.setMotion(diff.map(|axis| axis * naga::SPACING));
-        let flat: f64 = (diff[0] * diff[0] + diff[2] * diff[2]).sqrt();
+        let flat: f64 = f64::from(sqrt(diff[0] * diff[0] + diff[2] * diff[2]));
 
         if index == 0
         {
@@ -320,18 +320,6 @@ fn moveSegments(entity: Entity, info: &EntityInfo, brain: &Brain)
         segment.setField(EntityField::Yaw, diff[2].atan2(diff[0]).to_degrees() + 90.0);
         segment.setField(EntityField::Pitch, -diff[1].atan2(flat).to_degrees());
         leader = segment.info().unwrap_or(mine);
-    }
-}
-
-fn normalize(vector: &mut [f64; 3])
-{
-    let length: f64 = length(*vector);
-    if length > 1.0e-4
-    {
-        for axis in vector.iter_mut()
-        {
-            *axis /= length;
-        }
     }
 }
 

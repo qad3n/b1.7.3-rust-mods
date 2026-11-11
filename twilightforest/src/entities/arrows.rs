@@ -1,6 +1,6 @@
 use crate::ids::item;
-use crate::math::{heading, normalize, turn};
-use b173_api::math::{add, distance, dot, length, sub};
+use crate::math::{heading, turn};
+use b173_api::math::{add, distance, dot, length, normalize, sub};
 use b173_api::prelude::*;
 use std::rc::Rc;
 

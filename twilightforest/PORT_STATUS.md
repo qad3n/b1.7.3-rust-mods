@@ -19,10 +19,11 @@ Assets: never committed, `../../tools/modport/py.sh extract_assets.py <jar> twil
 - Twilight logs keep their 1.7 axis as an `axis` state (y, x, z, bark). Vanilla logs the source lays sideways stand
   upright, beta logs have no axis.
 - Source class is cited here, never in code comments.
-- Shared math comes from `b173_api::math` (`blockOf`, `floor`, `distance`, `length`, `Face`, `yawTowards` for
-  faceEntity turns). `math.rs` keeps its own `normalize`: Vec3.normalize divides each axis where the SDK multiplies
-  by the inverse. Angles the source computed with double pi (hydra head aim, redcap and goblin knight facing tests,
-  naga segments) and all world generation keep their own math.
+- Shared math comes from `b173_api::math` (`blockOf`, `floor`, `distance`, `length`, `normalize`, `Face`,
+  `yawTowards` for faceEntity turns). Its lengths round through the float `MathHelper.sqrt_double` as Vec3 does.
+  Naga segments now zero a too short offset as Vec3.normalize does instead of leaving it. Angles the source computed
+  with double pi (hydra head aim, redcap and goblin knight facing tests, naga segments) and all world generation keep
+  their own math.
 - Terrain is TF's own 256 high shape squished to 128 (sea level 31), as ChunkProviderTwilightForest does. Random
   heights the source draws over 256 (lakes, dungeons) keep that range so every later draw lines up.
 - The dimension is 256 high (TFWorld.CHUNKHEIGHT, loader api 1.9 `Dimensions::height`) with beta's build limit of

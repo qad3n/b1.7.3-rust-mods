@@ -1,4 +1,4 @@
-use b173_api::math::{cos, length, sin};
+use b173_api::math::{cos, sin};
 
 // java.awt.Color.RGBtoHSB
 pub(crate) fn toHsb(red: u32, green: u32, blue: u32) -> (f32, f32, f32)
@@ -108,21 +108,6 @@ pub(crate) fn knockback(motion: [f64; 3], toward: [f64; 2]) -> [f64; 3]
         [0.0; 2]
     };
     [motion[0] / 2.0 - x * push, (motion[1] / 2.0 + push).min(push), motion[2] / 2.0 - z * push]
-}
-
-// Vec3.normalize divides each axis where the sdk multiplies by the inverse so this keeps vanilla rounding
-pub(crate) fn normalize(vector: [f64; 3]) -> [f64; 3]
-{
-    let tiny: f64 = 1.0e-4;
-    let size: f64 = length(vector);
-    if size < tiny
-    {
-        [0.0; 3]
-    }
-    else
-    {
-        vector.map(|axis| axis / size)
-    }
 }
 
 // Vec3.rotateAroundY
