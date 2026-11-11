@@ -107,10 +107,8 @@ The port names content instead of carrying numeric ids or metadata:
 
 Not converted, and why:
 
-- Model cuboids still pick states through `Cuboid.metas`, the loader's model API. `core/state.rs` derives them from
-  the state value order. Choosing cuboids by state would need a new loader spec struct.
-- `World::dropBlockItems` takes the numeric id and metadata read back from the world. There is no name based call.
-- `stacks::info` caches item info by numeric id per content generation. The SDK has no item info cache.
+- `World::dropBlockItems` gets the numeric handle and metadata read back from the world, as the source drops what
+  the block there was. It takes a name too since API 1.47, the port has none to give.
 - Pipes and engines still load and save their whole tile data every tick, and wooden pipe exclusions read the config
   string on each check. Both predate this pass. Reading an iron or wooden pipe's state costs a block and a metadata
   host call where the port used to read only metadata. The state lookup itself is cached and allocation free.
