@@ -50,13 +50,17 @@ What each subsystem hands the loader, so other mods see and extend it without IC
 | Lang | `assets/ic2/lang/en_US.lang` | `assets/` |
 
 Not in a registry yet, and why:
-- Ore and rubber tree generation stay IC2's own chunk populate: `ctx.worldgen()` ores draw a flat height range and
-  replace one block, while IC2's copper height is a sum of two draws, and there is no tree feature.
-- The recycler's any item rule, redstone and glowstone adding a share of the canner's fuel quality, the reactor's
-  component rules and UU-Matter's million EU are rules, not jobs; they describe themselves as pages.
-- The machines' progress and EU draw still run on IC2's per machine rates, which the jobs carry for viewers.
-- The pump fills buckets and cells named per fluid and takes buckets from a chest by slot, and the Trade-O-Mat pays
-  into chest slots: the SDK can neither read a fluid's container items nor extract one chosen item.
+- Redstone and glowstone adding a share of the canner's fuel quality, the reactor's component rules and UU-Matter's
+  million EU are rules, not jobs; they describe themselves as pages.
+- The pump fills buckets in a chest beside it only, as the source does; the container it holds fills through the
+  loader's fluid containers. The Trade-O-Mat swaps whole, exactly equal stacks into an empty chest slot, which
+  `extractMatching` (it takes from partial stacks) cannot express.
+
+Moved onto loader systems (API 1.41 to 1.47): copper, tin and uranium as `Ore` features with summed heights, rubber
+trees as the custom features `ic2:rubber_trees` (per chunk, biomes by tag) and `ic2:rubber_tree` (placed by saplings
+and the terraformer through `placeFeature`), the recycler as a job taking anything off `ic2:recycler_blacklist`, the
+processing machines' pace and draw from the matched job, water and lava cells as fluid containers. Ore and tree
+placement now draws from the loader's per feature random, so a seed gives different spots than before.
 - The IC2 energy net walks IC2's own conductors and meets other mods only through the energy capability.
 - The scrap box drops and the terraformer's plant palette are IC2 data lists, registered (scrap) or placed as is.
 
