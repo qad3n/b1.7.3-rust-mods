@@ -15,8 +15,11 @@ Build: `./build.sh`. Test: `../../tools/modport/test.sh deploy ports/wirelessred
 - The ether (`RedstoneEther`, `RedstoneEtherFrequency`, `RedstoneEtherNode`) is server state per dimension in
   `ether.rs`: frequency to transmitter and receiver sets. It is rebuilt from tile ticks after a load, as the source
   rebuilt it from `updateEntity`. The source reset it on every world hash change; per dimension maps do that here.
-- Receiver, transmitter and clocker keep the on state in metadata bit 0 as a named `powered` state, so the textures
-  are state variants and the client needs no tile data for the look.
+- Receiver, transmitter and clocker keep the on state as the named `powered` state, read with `StateData::flag` and
+  written with `setBlockState`, so the textures are state variants and the client needs no tile data for the look.
+  Blocks are found by name (`World::is`), recipes key vanilla items by name, and a neighbour change counts as a real
+  block unless it is `minecraft:air`. The only numeric ids left are the engine handles passed through to
+  `notifyNeighbors`, which takes no name.
 - Tile data (`Tile` in `tile.rs`) holds the frequency, the six direct and six indirect power routes, and for the
   clocker its period and running flag. It is synced so screens and the frequency labels read it on the client.
 - Every gui button is a serverbound message, validated by distance and block on the server, as the source changed
@@ -34,6 +37,12 @@ Build: `./build.sh`. Test: `../../tools/modport/test.sh deploy ports/wirelessred
 - `isOpaqueCube` false on the three blocks: the loader has no flag for it alone, so they set light opacity 0 instead.
   Faces of neighbours against them are culled as against any full cube, which looks the same.
 - Item and block ids from `wirelessRedstone.properties` are gone: the loader assigns ids by name.
+
+## Loader additions (API 1.38, generic)
+
+- `setBlockState` with another state of the block already there rewrites only its metadata
+  (`setBlockMetadataWithNotify`), so the tile entity and its frequency stay, as the source's metadata write did.
+  Before, the write replaced the block and reset the tile.
 
 ## Loader additions (API 1.35, generic)
 

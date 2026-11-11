@@ -18,9 +18,9 @@ mod clock
     pub const TICK_MS: i64 = 50;
 }
 
-// the on state is metadata bit 0, as the source kept it
 const POWERED: &str = "powered";
 const STATES: [&str; 2] = ["false", "true"];
+const AIR: &str = "minecraft:air";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Kind
@@ -95,24 +95,24 @@ impl Default for Tile
     fn default() -> Self { Self::new() }
 }
 
-fn powered(meta: i32) -> bool { meta & 1 == 1 }
+fn powered(world: World, pos: BlockPos) -> bool { world.blockState(pos).is_some_and(|state| state.flag(POWERED)) }
 
 pub(crate) fn kindAt(world: World, pos: BlockPos) -> Option<Kind>
 {
-    let state: StateData = world.blockState(pos)?;
-
-    if state.block.namespace() != modId()
-    {
-        return None;
-    }
-
-    ROWS.iter().find(|row| row.m_name == state.block.path()).map(|row| row.m_kind)
+    ROWS.iter().find(|row| world.is(pos, row.m_name)).map(|row| row.m_kind)
 }
 
 // setBlockMetadataWithNotify redraws and syncs only blocks that notify themselves, so the source marked it after
-fn setMeta(world: World, pos: BlockPos, on: bool)
+fn setPowered(world: World, pos: BlockPos, on: bool)
 {
-    if let Err(error) = world.setMeta(pos, i32::from(on))
+    let Some(state) = world.blockState(pos)
+    else
+    {
+        warn(&format!("no wireless block at {pos:?}"));
+        return;
+    };
+
+    if let Err(error) = world.setBlockState(pos, state.with(POWERED, on))
     {
         warn(&format!("wireless block state at {pos:?}: {error:?}"));
     }
@@ -147,12 +147,12 @@ pub(crate) fn updateReceiver(world: World, pos: BlockPos)
     let freq: i32 = world.tileData::<Tile>(pos).m_freq;
     let now: bool = ether::state(world, freq);
 
-    if now == powered(world.meta(pos))
+    if now == powered(world, pos)
     {
         return;
     }
 
-    setMeta(world, pos, now);
+    setPowered(world, pos, now);
     notifyAround(world, pos);
 }
 
@@ -160,9 +160,9 @@ fn setTransmitter(world: World, pos: BlockPos, freq: i32, on: bool)
 {
     ether::setTransmitterState(world, pos, freq, on);
 
-    if on != powered(world.meta(pos))
+    if on != powered(world, pos)
     {
-        setMeta(world, pos, on);
+        setPowered(world, pos, on);
     }
 }
 
@@ -198,7 +198,7 @@ pub(crate) fn join(world: World, pos: BlockPos, kind: Kind)
             }
 
             ether::addTransmitter(world, pos, freq);
-            ether::setTransmitterState(world, pos, freq, powered(world.meta(pos)));
+            ether::setTransmitterState(world, pos, freq, powered(world, pos));
         }
     }
 }
@@ -273,7 +273,7 @@ fn neighborChanged(ctx: &BlockCtx, kind: Kind, real: bool)
 fn clockTick(ctx: &BlockCtx)
 {
     let tile: Tile = ctx.tileData();
-    let on: bool = powered(i32::from(ctx.meta()));
+    let on: bool = powered(ctx.world(), ctx.pos());
 
     if !tile.m_running
     {
@@ -359,13 +359,13 @@ impl BlockBehavior for WirelessBlock
     {
         if ctx.isAuthority()
         {
-            neighborChanged(ctx, self.m_kind, neighbor > 0);
+            neighborChanged(ctx, self.m_kind, !blockIs(neighbor, AIR));
         }
     }
 
     fn poweringTo(&self, ctx: &mut BlockCtx, direction: i32) -> bool
     {
-        self.m_kind == Kind::Receiver && powered(i32::from(ctx.meta())) && ctx.tileData::<Tile>().direct(direction)
+        self.m_kind == Kind::Receiver && powered(ctx.world(), ctx.pos()) && ctx.tileData::<Tile>().direct(direction)
     }
 
     fn indirectlyPoweringTo(&self, ctx: &mut BlockCtx, direction: i32) -> bool
