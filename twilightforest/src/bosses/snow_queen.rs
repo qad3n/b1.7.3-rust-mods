@@ -1,9 +1,10 @@
 use super::{dropAt, killer, showBar};
-use crate::entities::ai::{distance, eyes, face};
+use crate::entities::ai::{eyes, face};
 use crate::ids::{self, item};
 use crate::math::look;
 use crate::models::{Program, bipedPose, tf_snow_queen};
 use crate::progress::{self, Gate};
+use b173_api::math::{blockOf, distance, floor, length, sub};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -138,8 +139,7 @@ fn hoverSpot(world: World, own: [f64; 3], target: &EntityInfo, height: f64, radi
     {
         let spread = || f64::from((ids::fraction(world) - ids::fraction(world)) * radius);
         spot = [target.pos[0] + spread(), target.pos[1] + height, target.pos[2] + spread()];
-        let blocked: bool =
-            world.block(BlockPos::new(spot[0].floor() as i32, spot[1].floor() as i32, spot[2].floor() as i32)) != 0;
+        let blocked: bool = world.block(blockOf(spot)) != 0;
 
         if blocked && sees(world, own, spot) && sees(world, [target.pos[0], target.pos[1] + 1.62, target.pos[2]], spot)
         {
@@ -152,8 +152,8 @@ fn hoverSpot(world: World, own: [f64; 3], target: &EntityInfo, height: f64, radi
 
 fn pull(entity: Entity, info: &EntityInfo, to: [f64; 3], lift: f64)
 {
-    let delta: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - info.pos[axis]);
-    let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
+    let delta: [f64; 3] = sub(to, info.pos);
+    let length: f64 = length(delta).max(1.0e-4);
     let motion: [f64; 3] = [
         info.motion[0] + delta[0] / length * queen::PULL,
         info.motion[1] + delta[1] / length * queen::PULL_UP + lift,
@@ -174,8 +174,7 @@ fn summon(world: World, target: &EntityInfo, brain: &mut Brain)
         let mut at: [f64; 3] =
             [target.pos[0] + gaussian(16.0), target.pos[1] + gaussian(8.0), target.pos[2] + gaussian(16.0)];
 
-        while at[1] > 0.0
-            && world.block(BlockPos::new(at[0].floor() as i32, at[1].floor() as i32 - 1, at[2].floor() as i32)) == 0
+        while at[1] > 0.0 && world.block(BlockPos::new(floor(at[0]), floor(at[1]) - 1, floor(at[2]))) == 0
         {
             at[1] -= 1.0;
         }
@@ -218,7 +217,7 @@ fn ageMinions(world: World, brain: &mut Brain)
 fn smashIce(world: World, info: &EntityInfo)
 {
     let ice: i32 = ids::blockId("minecraft:ice");
-    let below: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
+    let below: [i32; 3] = info.pos.map(floor);
 
     for x in -1..=1
     {

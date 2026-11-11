@@ -1,9 +1,10 @@
 use super::magic::{held, holdInUse, letGo, wearHeld};
 use super::{put, texture};
-use crate::entities::ai::{distance, face};
+use crate::entities::ai::face;
 use crate::entities::shots::{self, WAND_BOLT};
 use crate::ids::{self, item};
 use crate::math::look;
+use b173_api::math::{add, distance};
 use b173_api::prelude::*;
 use std::rc::Rc;
 
@@ -123,7 +124,7 @@ impl ItemBehavior for TwilightWand
         {
             let from: [f64; 3] = eyes(&info);
             let aim: [f64; 3] = look(info.yaw, info.pitch);
-            let toward: [f64; 3] = [0, 1, 2].map(|axis| from[axis] + aim[axis]);
+            let toward: [f64; 3] = add(from, aim);
             shots::fire(world, WAND_BOLT, from, toward, scepter::BOLT_SPEED, 1.0, Some(player.id));
             wearHeld(player, 1);
         }

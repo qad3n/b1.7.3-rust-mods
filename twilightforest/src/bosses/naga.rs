@@ -1,8 +1,9 @@
 use super::{dropAt, home, killer, showBar};
-use crate::entities::ai::{distance, face};
+use crate::entities::ai::face;
 use crate::ids::{self, item};
 use crate::models::{Program, tf_naga};
 use crate::progress::{self, Gate};
+use b173_api::math::{distance, floor, length, sub};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -300,7 +301,7 @@ fn moveSegments(entity: Entity, info: &EntityInfo, brain: &Brain)
 
         let angle: f64 = f64::from(leader.yaw + 180.0).to_radians();
         let straighten: f64 = 0.05 + 1.0 / (index as f64 + 1.0) * 0.5;
-        let mut diff: [f64; 3] = [0, 1, 2].map(|axis| mine.pos[axis] - leader.pos[axis]);
+        let mut diff: [f64; 3] = sub(mine.pos, leader.pos);
         normalize(&mut diff);
         diff[0] += -angle.sin() * straighten;
         diff[2] += angle.cos() * straighten;
@@ -324,7 +325,7 @@ fn moveSegments(entity: Entity, info: &EntityInfo, brain: &Brain)
 
 fn normalize(vector: &mut [f64; 3])
 {
-    let length: f64 = vector.iter().map(|axis| axis * axis).sum::<f64>().sqrt();
+    let length: f64 = length(*vector);
     if length > 1.0e-4
     {
         for axis in vector.iter_mut()
@@ -407,12 +408,12 @@ fn smash(entity: Entity, info: &EntityInfo)
     let world: World = entity.world;
     let (width, height): (f64, f64) = (entity.field(EntityField::Width), entity.field(EntityField::Height));
     let half: f64 = width / 2.0 + 0.5;
-    let floor: i32 = (info.pos[1] + 1.01).floor() as i32;
-    for x in (info.pos[0] - half).floor() as i32..=(info.pos[0] + half).floor() as i32
+    let bottom: i32 = floor(info.pos[1] + 1.01);
+    for x in floor(info.pos[0] - half)..=floor(info.pos[0] + half)
     {
-        for y in floor..=(info.pos[1] + height).floor() as i32
+        for y in bottom..=floor(info.pos[1] + height)
         {
-            for z in (info.pos[2] - half).floor() as i32..=(info.pos[2] + half).floor() as i32
+            for z in floor(info.pos[2] - half)..=floor(info.pos[2] + half)
             {
                 breakBlock(world, BlockPos::new(x, y, z));
             }

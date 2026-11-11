@@ -2,8 +2,8 @@ use crate::bosses::Home;
 use crate::ids::{self, item};
 use crate::models::{DEGREES_PER_RADIAN, Program, WALK_RATE, quadruped, tf_quest_ram};
 use crate::progress::{self, Gate};
+use b173_api::math;
 use b173_api::prelude::*;
-use b173_api::terrain::math;
 use std::rc::Rc;
 
 // EntityTFQuestRam, fed one wool of every color it pays out blocks and a crumble horn, it eats loose wool it finds
@@ -155,19 +155,13 @@ fn reward(entity: Entity, info: &EntityInfo)
 
     for player in world.players()
     {
-        let near: bool =
-            player.info().is_some_and(|other| super::ai::distance(other.pos, info.pos) <= tuning::REWARD_REACH);
+        let near: bool = player.info().is_some_and(|other| math::distance(other.pos, info.pos) <= tuning::REWARD_REACH);
 
         if near
         {
             progress::grant(player, Gate::QuestRam);
         }
     }
-}
-
-fn block(pos: [f64; 3]) -> BlockPos
-{
-    BlockPos::new(pos[0].floor() as i32, pos[1].floor() as i32, pos[2].floor() as i32)
 }
 
 fn woolColor(stack: &ItemStack) -> Option<usize>
@@ -187,7 +181,7 @@ fn eatLoose(entity: Entity, info: &EntityInfo, fleece: Fleece) -> bool
             let color: usize = Entity { world, id: other.id }.itemStack().as_ref().and_then(woolColor)?;
             (!fleece.has(color)).then_some((other, color))
         })
-        .min_by(|a, b| super::ai::distance(a.0.pos, info.pos).total_cmp(&super::ai::distance(b.0.pos, info.pos)));
+        .min_by(|a, b| math::distance(a.0.pos, info.pos).total_cmp(&math::distance(b.0.pos, info.pos)));
 
     let Some((wool, color)) = loose
     else
@@ -195,9 +189,9 @@ fn eatLoose(entity: Entity, info: &EntityInfo, fleece: Fleece) -> bool
         return false;
     };
 
-    if super::ai::distance(wool.pos, info.pos) > tuning::EAT_REACH
+    if math::distance(wool.pos, info.pos) > tuning::EAT_REACH
     {
-        entity.walkTo(block(wool.pos), tuning::SPEED);
+        entity.walkTo(math::blockOf(wool.pos), tuning::SPEED);
         return true;
     }
 
@@ -216,7 +210,7 @@ fn tempted(entity: Entity, info: &EntityInfo) -> bool
     {
         let holding: bool = player.held().is_some_and(|stack| stack.item.is(WOOL));
         let other: EntityInfo = player.info()?;
-        (holding && super::ai::distance(other.pos, info.pos) <= tuning::TEMPT_REACH).then_some(other)
+        (holding && math::distance(other.pos, info.pos) <= tuning::TEMPT_REACH).then_some(other)
     });
     let Some(tempter) = tempter
     else
@@ -224,7 +218,7 @@ fn tempted(entity: Entity, info: &EntityInfo) -> bool
         return false;
     };
 
-    entity.walkTo(block(tempter.pos), tuning::SPEED);
+    entity.walkTo(math::blockOf(tempter.pos), tuning::SPEED);
     true
 }
 
@@ -238,7 +232,7 @@ fn goHome(entity: Entity, info: &EntityInfo)
     };
 
     let home: [f64; 3] = [f64::from(x), f64::from(y), f64::from(z)];
-    if super::ai::distance(home, info.pos) > tuning::HOME_RANGE
+    if math::distance(home, info.pos) > tuning::HOME_RANGE
     {
         entity.walkTo(BlockPos::new(x, y, z), tuning::SPEED);
     }

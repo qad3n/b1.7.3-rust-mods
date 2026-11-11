@@ -1,9 +1,9 @@
 use super::{dropAt, killer, showBar};
-use crate::entities::ai::distance;
 use crate::ids::{self, item};
 use crate::math::look;
 use crate::models::{Program, tf_hydra, tf_hydra_head, tf_hydra_mortar, tf_hydra_neck};
 use crate::progress::{self, Gate};
+use b173_api::math::{distance, floor, length, sub, yawTowards};
 use b173_api::prelude::*;
 use std::cell::{Cell, RefCell, RefMut};
 use std::collections::HashMap;
@@ -584,8 +584,8 @@ fn faceHead(world: World, info: &EntityInfo, at: [f64; 3], number: usize, head: 
         {
             if let Some(goal) = head.m_target.and_then(|id| Entity { world, id }.info())
             {
-                let delta: [f64; 3] = [0, 1, 2].map(|axis| goal.pos[axis] - head.m_aim[axis]);
-                let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
+                let delta: [f64; 3] = sub(goal.pos, head.m_aim);
+                let length: f64 = length(delta).max(1.0e-4);
                 head.m_aim = [0, 1, 2].map(|axis| head.m_aim[axis] + delta[axis] / length * hydra::FLAME_TRACKING);
             }
 
@@ -887,10 +887,8 @@ fn updateHead(entity: Entity, info: &EntityInfo, ticks: i32, number: usize, head
 fn destroyAround(world: World, center: [f64; 3], half: f64, height: f64)
 {
     let unbreakable: [i32; 2] = [ids::blockId("minecraft:obsidian"), ids::blockId("minecraft:bedrock")];
-    let low: [i32; 3] =
-        [(center[0] - half).floor() as i32, center[1].floor() as i32, (center[2] - half).floor() as i32];
-    let high: [i32; 3] =
-        [(center[0] + half).floor() as i32, (center[1] + height).floor() as i32, (center[2] + half).floor() as i32];
+    let low: [i32; 3] = [floor(center[0] - half), floor(center[1]), floor(center[2] - half)];
+    let high: [i32; 3] = [floor(center[0] + half), floor(center[1] + height), floor(center[2] + half)];
 
     for x in low[0]..=high[0]
     {
@@ -1074,8 +1072,7 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
     {
         Some(target) =>
         {
-            let yaw: f32 =
-                ((target.pos[2] - info.pos[2]).atan2(target.pos[0] - info.pos[0]).to_degrees() - 90.0) as f32;
+            let yaw: f32 = yawTowards(info.pos, target.pos);
             entity.setField(EntityField::Yaw, f64::from(approach(info.yaw, yaw, hydra::TURN)));
 
             for head in brain.m_heads.iter_mut()
@@ -1616,7 +1613,7 @@ impl EntityBehavior for Mortar
         }
 
         let to: [f64; 3] = info.pos;
-        let from: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - info.motion[axis]);
+        let from: [f64; 3] = sub(to, info.motion);
         let struck: bool = world
             .entitiesAlong(from, to, mortar::HIT_RADIUS, state.m_owner)
             .iter()

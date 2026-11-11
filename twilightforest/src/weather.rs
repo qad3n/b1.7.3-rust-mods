@@ -1,5 +1,6 @@
 use crate::progress::{self, Gate};
 use crate::world::biomes::{self, Biome};
+use b173_api::math::floor;
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 use b173_api::terrain::structure::StructureBox;
@@ -240,14 +241,14 @@ fn fade(at: [i32; 2], pos: [f64; 3]) -> f32
 // renderLockedBiome
 fn lockedBiomes(world: World, info: &EntityInfo, camera: [f64; 3], frame: [f32; 2], ops: &mut Vec<ModelOp>)
 {
-    let player: [i32; 2] = [info.pos[0].floor() as i32, info.pos[2].floor() as i32];
+    let player: [i32; 2] = [floor(info.pos[0]), floor(info.pos[2])];
     let seed: i64 = world.seed();
     if !nearLocked(seed, player)
     {
         return;
     }
 
-    let span: [i32; 2] = spanAround(info.pos[1].floor() as i32);
+    let span: [i32; 2] = spanAround(floor(info.pos[1]));
     let mut columns: Vec<([i32; 2], [f32; 2], Column)> = Vec::new();
 
     for z in player[1] - tuning::RANGE..=player[1] + tuning::RANGE
@@ -291,8 +292,8 @@ fn lockedBiomes(world: World, info: &EntityInfo, camera: [f64; 3], frame: [f32; 
 // renderLockedStructure, sparkles in the guarded box's columns near the player
 fn lockedStructure(guarded: Guarded, info: &EntityInfo, camera: [f64; 3], frame: [f32; 2], ops: &mut Vec<ModelOp>)
 {
-    let player: [i32; 2] = [info.pos[0].floor() as i32, info.pos[2].floor() as i32];
-    let [around, high] = spanAround(info.pos[1].floor() as i32);
+    let player: [i32; 2] = [floor(info.pos[0]), floor(info.pos[2])];
+    let [around, high] = spanAround(floor(info.pos[1]));
     let floor: i32 = guarded.m_min[1] - tuning::STRUCTURE_MARGIN;
     let ceiling: i32 = guarded.m_max[1] + tuning::STRUCTURE_MARGIN;
     let span: [i32; 2] = [around.clamp(floor, ceiling), high.clamp(floor, ceiling)];

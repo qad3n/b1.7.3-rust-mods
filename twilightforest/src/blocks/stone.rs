@@ -1,6 +1,7 @@
 use super::{Cube, Kind, Look, base, cube, faces, property, texture, tough, when};
 use crate::colors;
-use crate::ids::{self, NEIGHBORS, block, item};
+use crate::ids::{self, block, item};
+use b173_api::math::{Face, add, floor, offset, scale};
 use b173_api::prelude::*;
 
 mod maze
@@ -388,7 +389,7 @@ impl BlockBehavior for Shield
         }
         else
         {
-            let quarter: usize = ((f64::from(info.yaw) * 4.0 / 360.0 + 0.5).floor() as i32 & 3) as usize;
+            let quarter: usize = (floor(f64::from(info.yaw) * 4.0 / 360.0 + 0.5) & 3) as usize;
             [2, 5, 3, 4][quarter]
         };
         ctx.setMeta(facing);
@@ -398,7 +399,7 @@ impl BlockBehavior for Shield
     {
         let info: EntityInfo = player.info()?;
         let aim: [f64; 3] = crate::math::look(info.yaw, info.pitch);
-        let to: [f64; 3] = std::array::from_fn(|axis| info.pos[axis] + aim[axis] * shield::REACH);
+        let to: [f64; 3] = add(info.pos, scale(aim, shield::REACH));
         let face: Option<i32> = ctx.world().rayTrace(info.pos, to, false).map(|hit| hit.face);
         if face != Some(i32::from(ctx.meta()))
         {
@@ -545,8 +546,8 @@ impl BlockBehavior for Trollsteinn
     // BlockTFTrollSteinn.getIcon, a face looking into light shows the lit stone
     fn faceTexture(&self, ctx: &mut BlockCtx, face: i32) -> Option<i32>
     {
-        let [dx, dy, dz] = *NEIGHBORS.get(usize::try_from(face).ok()?)?;
-        steinnLit(ctx.world(), ctx.pos().offset(dx, dy, dz)).then(|| b173_api::world::terrainSlot(STEINN_LIT)).flatten()
+        let face: Face = Face::fromIndex(face)?;
+        steinnLit(ctx.world(), offset(ctx.pos(), face)).then(|| b173_api::world::terrainSlot(STEINN_LIT)).flatten()
     }
 }
 

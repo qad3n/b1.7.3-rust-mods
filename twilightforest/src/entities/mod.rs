@@ -11,6 +11,7 @@ mod roving_cube;
 pub(crate) mod shots;
 pub(crate) mod spawns;
 
+use b173_api::math::distanceSquared;
 use b173_api::prelude::*;
 
 pub(crate) const MINI_GHAST: &str = "twilightforest:mini_ghast";
@@ -65,11 +66,6 @@ pub(crate) fn sounds(living: Option<&str>, hurt: &str, death: &str) -> Option<En
     Some(EntitySounds { living: living.map(str::to_owned), hurt: Some(hurt.to_owned()), death: Some(death.to_owned()) })
 }
 
-fn distanceSquared(a: &EntityInfo, b: &EntityInfo) -> f64
-{
-    (0..3).map(|axis| (a.pos[axis] - b.pos[axis]).powi(2)).sum()
-}
-
 // World.getClosestPlayerToEntity
 pub(crate) fn closestPlayer(world: World, info: &EntityInfo, range: f64) -> Option<EntityInfo>
 {
@@ -77,8 +73,8 @@ pub(crate) fn closestPlayer(world: World, info: &EntityInfo, range: f64) -> Opti
         .players()
         .into_iter()
         .filter_map(Player::info)
-        .filter(|player| distanceSquared(player, info) < range * range)
-        .min_by(|a, b| distanceSquared(a, info).total_cmp(&distanceSquared(b, info)))
+        .filter(|player| distanceSquared(player.pos, info.pos) < range * range)
+        .min_by(|a, b| distanceSquared(a.pos, info.pos).total_cmp(&distanceSquared(b.pos, info.pos)))
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>

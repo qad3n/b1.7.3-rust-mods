@@ -1,9 +1,10 @@
 use super::{dropAt, killer, showBar};
-use crate::entities::ai::{distance, eyes, face, target};
+use crate::entities::ai::{eyes, face, target};
 use crate::entities::shots::{self, LICH_BOLT, LICH_BOMB};
 use crate::ids::{self, item};
 use crate::models::{Program, bipedPose, tf_lich};
 use crate::progress::{self, Gate};
+use b173_api::math::{distance, floor};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -128,14 +129,12 @@ fn spotSeenBy(world: World, target: &EntityInfo) -> Option<[f64; 3]>
     {
         let spread = |axis: usize| (ids::fraction(world) - ids::fraction(world)) as f64 * lich::LOS_SPREAD[axis];
         let [x, mut y, z] = [target.pos[0] + spread(0), target.pos[1] + spread(1), target.pos[2] + spread(2)];
-        while y > 0.0
-            && !World::blockInfo(world.block(BlockPos::new(x.floor() as i32, y.floor() as i32 - 1, z.floor() as i32)))
-                .solid
+        while y > 0.0 && !World::blockInfo(world.block(BlockPos::new(floor(x), floor(y) - 1, floor(z)))).solid
         {
             y -= 1.0;
         }
 
-        let feet: BlockPos = BlockPos::new(x.floor() as i32, y.floor() as i32, z.floor() as i32);
+        let feet: BlockPos = BlockPos::new(floor(x), floor(y), floor(z));
         let open: bool = world.isAir(feet) && world.isAir(feet.offset(0, 1, 0)) && world.isAir(feet.offset(0, 2, 0));
         if y > 0.0 && open && world.rayTrace(sight, [x, y, z], false).is_none()
         {

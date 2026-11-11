@@ -1,6 +1,7 @@
 use crate::ids::{self, block, item};
 use crate::models::{Program, combine, tf_hydra_head, tf_lich, tf_naga, tf_snow_queen};
 use crate::progress::{self, Gate};
+use b173_api::math::{distance, floor};
 use b173_api::prelude::*;
 
 // ItemTFTrophy and BlockTFTrophy: boss trophies placed as small heads, and BlockTFTrophyPedestal, which opens the
@@ -60,10 +61,7 @@ fn crown(world: World, pos: BlockPos)
     let near: Vec<Player> = world
         .players()
         .into_iter()
-        .filter(|player|
-        {
-            player.info().is_some_and(|info| crate::entities::ai::distance(info.pos, center) <= pedestal::REACH)
-        })
+        .filter(|player| player.info().is_some_and(|info| distance(info.pos, center) <= pedestal::REACH))
         .collect();
 
     for player in &near
@@ -128,7 +126,7 @@ impl BlockBehavior for Pedestal
             return;
         };
 
-        let quarter: i32 = (f64::from(info.yaw) * 4.0 / 360.0 + 0.5).floor() as i32 & 3;
+        let quarter: i32 = floor(f64::from(info.yaw) * 4.0 / 360.0 + 0.5) & 3;
         let turn: i32 = [0, 1, 3, 2][quarter as usize];
         ctx.setMeta((turn | i32::from(ctx.meta()) & pedestal::LATENT) as u8);
     }

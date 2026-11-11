@@ -1,6 +1,7 @@
-use super::ai::{distance, eyes, face, target};
+use super::ai::{eyes, face, target};
 use crate::ids;
 use crate::math::{gaussian, look};
+use b173_api::math::distance;
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;

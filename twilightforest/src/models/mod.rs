@@ -5,8 +5,7 @@ pub(crate) mod armor;
 mod generated;
 mod vanilla;
 
-use b173_api::terrain::math;
-use b173_api::{EntityModelSpec, ModelBox, ModelOp, ModelPart, PoseInput};
+use b173_api::{EntityModelSpec, ModelBox, ModelOp, ModelPart, PoseInput, math};
 pub(crate) use generated::*;
 use std::vec::IntoIter;
 pub(crate) use vanilla::{ghastModel, ghastPose, spiderPose, wolfPose};

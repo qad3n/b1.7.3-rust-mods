@@ -1,6 +1,7 @@
 use super::{PIXELS, texture};
 use crate::ids::{self, block};
 use crate::models::{Program, tf_cicada, tf_firefly, tf_moonworm};
+use b173_api::math::distance;
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -240,9 +241,7 @@ impl Anim
 fn playerNear(pos: BlockPos) -> bool
 {
     let center: [f64; 3] = ids::center(pos);
-    localPlayer()
-        .and_then(Player::info)
-        .is_some_and(|info| crate::entities::ai::distance(info.pos, center) <= critter::FIREFLY_RANGE)
+    localPlayer().and_then(Player::info).is_some_and(|info| distance(info.pos, center) <= critter::FIREFLY_RANGE)
 }
 
 // TileEntityTFCritterRenderer's turn for the face the critter clings to, metadata as BlockTFCritter places it

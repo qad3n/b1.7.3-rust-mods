@@ -1,5 +1,6 @@
-use super::ai::{distance, target};
+use super::ai::target;
 use crate::ids;
+use b173_api::math::{blockOf, distance};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -73,11 +74,6 @@ pub(crate) fn hurt(entity: Entity)
     setState(entity, Redcap { m_hit: entity.world.time(), ..redcap });
 }
 
-fn floor(pos: [f64; 3]) -> BlockPos
-{
-    BlockPos::new(pos[0].floor() as i32, pos[1].floor() as i32, pos[2].floor() as i32)
-}
-
 // EntityAITFRedcapBase.isTargetLookingAtMe
 fn watched(info: &EntityInfo, watcher: &EntityInfo) -> bool
 {
@@ -109,7 +105,7 @@ fn circle(info: &EntityInfo, around: &EntityInfo, lefty: bool) -> BlockPos
 {
     let turn: f64 = if lefty { 1.0 } else { -1.0 };
     let angle: f64 = (info.pos[2] - around.pos[2]).atan2(info.pos[0] - around.pos[0]) + turn;
-    floor([around.pos[0] + angle.cos() * tuning::CIRCLE, info.pos[1], around.pos[2] + angle.sin() * tuning::CIRCLE])
+    blockOf([around.pos[0] + angle.cos() * tuning::CIRCLE, info.pos[1], around.pos[2] + angle.sin() * tuning::CIRCLE])
 }
 
 fn shy(entity: Entity, info: &EntityInfo, redcap: Redcap) -> bool
@@ -140,7 +136,7 @@ fn light(entity: Entity, info: &EntityInfo, redcap: &mut Redcap) -> bool
     }
 
     let world: World = entity.world;
-    let Some(tnt) = tntNear(world, floor(info.pos), tuning::LIGHT_SEARCH)
+    let Some(tnt) = tntNear(world, blockOf(info.pos), tuning::LIGHT_SEARCH)
     else
     {
         return false;
@@ -179,7 +175,7 @@ fn plant(entity: Entity, info: &EntityInfo, redcap: &mut Redcap)
         return;
     };
 
-    let feet: BlockPos = floor(info.pos);
+    let feet: BlockPos = blockOf(info.pos);
     let ready: bool = redcap.m_planted < SAPPER_TNT
         && distance(goal.pos, info.pos) < tuning::PLANT_REACH
         && !watched(info, &goal)

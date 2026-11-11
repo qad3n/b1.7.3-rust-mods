@@ -1,5 +1,6 @@
 use super::{Kind, Look, base, faces, property, texture, when};
-use crate::ids::{self, block, cell};
+use crate::ids::{self, block};
+use b173_api::math::{Face, blockOf, distance};
 use b173_api::prelude::*;
 use std::rc::Rc;
 
@@ -63,10 +64,10 @@ fn playerNear(world: World, pos: BlockPos) -> bool
 {
     let center: [f64; 3] = ids::center(pos);
 
-    world.players().into_iter().any(|player|
-    {
-        player.info().is_some_and(|info| crate::entities::ai::distance(info.pos, center) <= slider::RANGE)
-    })
+    world
+        .players()
+        .into_iter()
+        .any(|player| player.info().is_some_and(|info| distance(info.pos, center) <= slider::RANGE))
 }
 
 // BlockTFSlider.isConnectedInRange, a player near this slider or any matching one in a straight run along its axis
@@ -138,10 +139,10 @@ impl BlockBehavior for Slider
     // BlockRotatedPillar.onBlockPlaced lays the pillar along the clicked face's axis
     fn onPlaced(&self, ctx: &mut BlockCtx, face: i32)
     {
-        let axis: i32 = match face
+        let axis: i32 = match Face::fromIndex(face)
         {
-            2 | 3 => 2,
-            4 | 5 => 1,
+            Some(Face::North | Face::South) => 2,
+            Some(Face::West | Face::East) => 1,
             _ => 0,
         };
         let meta: i32 = axis * AXIS_STEP + i32::from(ctx.meta()) % slider::DELAYS;
@@ -261,7 +262,7 @@ fn blocked(world: World, at: [f64; 3], motion: [f64; 3]) -> bool
     let half: f64 = f64::from(slide::SIZE) / 2.0;
     let lead: [f64; 3] = std::array::from_fn(|axis| at[axis] + motion[axis] + motion[axis].signum() * half);
     let moving: bool = motion.iter().any(|value| *value != 0.0);
-    moving && World::blockInfo(world.block(cell(lead))).solid
+    moving && World::blockInfo(world.block(blockOf(lead))).solid
 }
 
 struct SlideBlock;
@@ -281,7 +282,7 @@ impl EntityBehavior for SlideBlock
         let mut state: Slide = entity.data();
         state.m_ticks += 1;
 
-        let here: BlockPos = cell(info.pos);
+        let here: BlockPos = blockOf(info.pos);
 
         if state.m_ticks == 1
         {

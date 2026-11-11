@@ -9,6 +9,7 @@ pub(crate) mod ur_ghast;
 pub(crate) mod yeti;
 
 use crate::ids;
+use b173_api::math::{distanceSquared, floor};
 use b173_api::prelude::*;
 use b173_api::screen::Draw;
 
@@ -47,8 +48,7 @@ fn ready(world: World, pos: BlockPos, boss: &Boss) -> bool
 
     world.players().into_iter().filter_map(Player::info).any(|player|
     {
-        let near: bool =
-            (0..3).map(|axis| (player.pos[axis] - center[axis]).powi(2)).sum::<f64>() < boss.m_range * boss.m_range;
+        let near: bool = distanceSquared(player.pos, center) < boss.m_range * boss.m_range;
         near && boss.m_below.is_none_or(|below| player.pos[1] > f64::from(pos.y) - below)
     })
 }
@@ -191,7 +191,7 @@ const CONQUERED: &str = "conquered";
 
 fn featureCenter(world: World, at: [f64; 3]) -> [i32; 2]
 {
-    let (x, z): (i32, i32) = (at[0].floor() as i32, at[2].floor() as i32);
+    let (x, z): (i32, i32) = (floor(at[0]), floor(at[2]));
     let (_, [dx, dz]) = crate::world::features::nearest(world.seed(), x >> 4, z >> 4);
     [(x >> 4 << 4) + dx, (z >> 4 << 4) + dz]
 }

@@ -1,11 +1,12 @@
 use super::{Home, home, killer};
-use crate::entities::ai::{distance, face};
+use crate::entities::ai::face;
 use crate::entities::shots::{self, THROWN_AXE, THROWN_PICK};
 use crate::ids;
 use crate::models::{Program, bipedPose, combine, tf_knight_phantom, tf_phantom_armor};
 use crate::progress::{self, Gate};
 use crate::treasure::{self, Table};
 use crate::world::generate::GenWorld;
+use b173_api::math::{distance, floor, length, sub};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -367,7 +368,7 @@ fn think(entity: Entity, info: &EntityInfo, state: &mut Knight)
     if let Some(target) = &target
         && state.m_formation == Formation::AttackStart
     {
-        let at: [i32; 3] = target.pos.map(|axis| axis.floor() as i32);
+        let at: [i32; 3] = target.pos.map(floor);
 
         state.m_charge = if distance(target.pos, home) < knight::HOME_RANGE
         {
@@ -380,8 +381,8 @@ fn think(entity: Entity, info: &EntityInfo, state: &mut Knight)
     }
 
     let dest: [f64; 3] = destination(state, info, home);
-    let delta: [f64; 3] = [0, 1, 2].map(|axis| dest[axis] - info.pos[axis]);
-    let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
+    let delta: [f64; 3] = sub(dest, info.pos);
+    let length: f64 = length(delta).max(1.0e-4);
     let motion: [f64; 3] =
         [0, 1, 2].map(|axis| (info.motion[axis] + delta[axis] / length * knight::SPEED) * knight::DRAG);
     let _ = entity.setMotion(motion);
@@ -509,7 +510,7 @@ impl EntityBehavior for KnightPhantom
             return;
         }
 
-        let at: [i32; 3] = home(entity).map_or(info.pos.map(|axis| axis.floor() as i32), |[x, y, z]| [x, y - 1, z]);
+        let at: [i32; 3] = home(entity).map_or(info.pos.map(floor), |[x, y, z]| [x, y - 1, z]);
         let generation: GenWorld = GenWorld::new(world);
         treasure::place(
             &generation,

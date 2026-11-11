@@ -1,8 +1,8 @@
 use super::{put, texture};
 use crate::ids::{self, block, item};
 use crate::math::look;
+use b173_api::math::{cos, floor, sin};
 use b173_api::prelude::*;
-use b173_api::terrain::math::{cos, sin};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -43,7 +43,7 @@ fn eyeBox(info: &EntityInfo) -> ([i32; 3], [i32; 3])
     let aim: [f64; 3] = look(info.yaw, info.pitch);
     // a beta player's position is already at its eyes
     let center: [f64; 3] = [0, 1, 2].map(|axis| info.pos[axis] + aim[axis] * reach::AHEAD);
-    (center.map(|axis| (axis - reach::RADIUS).floor() as i32), center.map(|axis| (axis + reach::RADIUS).floor() as i32))
+    (center.map(|axis| floor(axis - reach::RADIUS)), center.map(|axis| floor(axis + reach::RADIUS)))
 }
 
 fn cells(low: [i32; 3], high: [i32; 3]) -> impl Iterator<Item = BlockPos>
@@ -381,7 +381,7 @@ impl ItemBehavior for LampOfCinders
             return Use::Pass;
         };
 
-        let center: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
+        let center: [i32; 3] = info.pos.map(floor);
 
         if world.isAuthority()
         {
@@ -628,7 +628,7 @@ fn vein(world: World, pos: BlockPos, kind: (i32, i32), found: &mut Vec<BlockPos>
 fn magnet(world: World, from: [f64; 3], aim: [f64; 3]) -> i32
 {
     let to: [f64; 3] = [0, 1, 2].map(|axis| from[axis] + aim[axis] * reach::MAGNET);
-    pull(world, from.map(|axis| axis.floor() as i32), to.map(|axis| axis.floor() as i32))
+    pull(world, from.map(floor), to.map(floor))
 }
 
 // ItemTFOreMagnet.doMagnet, the first ore on the line comes to the first ground the line passed
@@ -788,7 +788,7 @@ impl ItemBehavior for OreMeter
 
         let ids: Vec<i32> = METERED.iter().map(|(name, _)| ids::blockId(name)).collect();
         let mut counts: Vec<i32> = vec![0; ids.len()];
-        let (chunkX, chunkZ): (i32, i32) = (info.pos[0].floor() as i32 >> 4, info.pos[2].floor() as i32 >> 4);
+        let (chunkX, chunkZ): (i32, i32) = (floor(info.pos[0]) >> 4, floor(info.pos[2]) >> 4);
         let top: i32 = crate::world::terrain::height();
 
         for cx in chunkX - reach::METER..=chunkX + reach::METER

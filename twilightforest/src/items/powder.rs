@@ -1,6 +1,7 @@
 use super::{put, texture};
 use crate::ids::{self, item};
 use crate::math::look;
+use b173_api::math::distance;
 use b173_api::prelude::*;
 
 // ItemTFTransformPowder.itemInteractionForEntity: a pinch turns a creature into its twin; beta lacks bats, cave
@@ -25,8 +26,7 @@ fn holder(world: World, at: [f64; 3]) -> Option<Player>
         .filter(|player| player.held().is_some_and(|stack| stack.item.is(item::TRANSFORM_POWDER)))
         .min_by(|a, b|
         {
-            let reach =
-                |player: &Player| player.info().map_or(f64::MAX, |info| crate::entities::ai::distance(info.pos, at));
+            let reach = |player: &Player| player.info().map_or(f64::MAX, |info| distance(info.pos, at));
             reach(a).total_cmp(&reach(b))
         })
 }

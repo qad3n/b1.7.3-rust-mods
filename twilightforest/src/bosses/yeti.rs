@@ -1,10 +1,11 @@
 use super::{dropAt, home, killer};
-use crate::entities::ai::{distance, eyes, face};
-use crate::ids::{self, cell, item};
+use crate::entities::ai::{eyes, face};
+use crate::ids::{self, item};
 use crate::items::{put, texture};
 use crate::math::look;
 use crate::models::{Program, bipedPose, tf_yeti_alpha};
 use crate::progress::{self, Gate};
+use b173_api::math::{blockOf, distance, floor, length, sub};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -110,7 +111,7 @@ fn key(entity: Entity) -> (i32, i32) { (entity.world.dimension, entity.id) }
 fn destroyBox(world: World, low: [f64; 3], high: [f64; 3])
 {
     let unbreakable: [i32; 2] = [ids::blockId("minecraft:obsidian"), ids::blockId("minecraft:bedrock")];
-    let (low, high): (BlockPos, BlockPos) = (cell(low), cell(high));
+    let (low, high): (BlockPos, BlockPos) = (blockOf(low), blockOf(high));
     for x in low.x..=high.x
     {
         for y in low.y..=high.y
@@ -170,9 +171,9 @@ fn dropAbove(world: World, x: i32, y: i32, z: i32)
 // EntityTFYetiAlpha.makeRandomBlockFall
 fn dropRandom(world: World, info: &EntityInfo, eyes: f64, range: i32)
 {
-    let x: i32 = info.pos[0].floor() as i32 + world.random(range) - world.random(range);
-    let z: i32 = info.pos[2].floor() as i32 + world.random(range) - world.random(range);
-    dropAbove(world, x, (info.pos[1] + eyes).floor() as i32, z);
+    let x: i32 = floor(info.pos[0]) + world.random(range) - world.random(range);
+    let z: i32 = floor(info.pos[2]) + world.random(range) - world.random(range);
+    dropAbove(world, x, floor(info.pos[1] + eyes), z);
 }
 
 fn target(entity: Entity, info: &EntityInfo) -> Option<EntityInfo>
@@ -198,8 +199,8 @@ fn throwBomb(world: World, from: [f64; 3], to: [f64; 3], owner: Option<i32>)
         return;
     };
 
-    let delta: [f64; 3] = [0, 1, 2].map(|axis| aim[axis] - from[axis]);
-    let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
+    let delta: [f64; 3] = sub(aim, from);
+    let length: f64 = length(delta).max(1.0e-4);
     // RenderTFThrownIce draws the bomb as a block of ice
     bomb.setField(EntityField::Block, f64::from(ids::blockId("minecraft:ice")));
 
@@ -283,7 +284,7 @@ fn rampage(entity: Entity, info: &EntityInfo, goal: Option<&EntityInfo>, brain: 
     if brain.m_rampage % 40 == 0
         && let Some(goal) = goal
     {
-        dropAbove(world, goal.pos[0].floor() as i32, (goal.pos[1] + 1.62).floor() as i32, goal.pos[2].floor() as i32);
+        dropAbove(world, floor(goal.pos[0]), floor(goal.pos[1] + 1.62), floor(goal.pos[2]));
     }
 
     if brain.m_rampage < 40 && brain.m_rampage % 10 == 0
@@ -543,7 +544,7 @@ struct Bomb
 // EntityTFIceBomb.doTerrainEffect, water freezes, lava sets and snow settles around where it lands
 fn chill(world: World, at: [f64; 3])
 {
-    let center: BlockPos = cell(at);
+    let center: BlockPos = blockOf(at);
     let (water, flowingWater): (i32, i32) = (ids::blockId("minecraft:water"), ids::blockId("minecraft:flowing_water"));
     let (lava, flowingLava): (i32, i32) = (ids::blockId("minecraft:lava"), ids::blockId("minecraft:flowing_lava"));
     let snow: i32 = ids::blockId("minecraft:snow_layer");
@@ -589,7 +590,7 @@ fn zone(entity: Entity, at: [f64; 3], owner: Option<i32>)
         {
             victim.kill();
 
-            let pos: BlockPos = cell(near.pos);
+            let pos: BlockPos = blockOf(near.pos);
             let _ = world.setBlock(pos, ids::blockId("minecraft:ice"), 0);
             let _ = world.setBlock(pos.offset(0, 1, 0), ids::blockId("minecraft:ice"), 0);
         }
@@ -663,7 +664,7 @@ impl EntityBehavior for IceBomb
         }
 
         let to: [f64; 3] = info.pos;
-        let from: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - info.motion[axis]);
+        let from: [f64; 3] = sub(to, info.motion);
         let struck: bool = world
             .entitiesAlong(from, to, bomb::HIT_RADIUS, state.m_owner)
             .iter()
@@ -753,7 +754,7 @@ impl EntityBehavior for FallingIce
         let motion: [f64; 3] =
             [info.motion[0] * ice::DRAG, (info.motion[1] - fall) * ice::DRAG, info.motion[2] * ice::DRAG];
         let _ = entity.setMotion(motion);
-        let below: BlockPos = cell([info.pos[0], info.pos[1] - 0.1, info.pos[2]]);
+        let below: BlockPos = blockOf([info.pos[0], info.pos[1] - 0.1, info.pos[2]]);
         let breakable: [i32; 3] =
             [ids::blockId("minecraft:ice"), ids::blockId("minecraft:stone"), ids::blockId("minecraft:glass")];
         let half: i32 = 2;

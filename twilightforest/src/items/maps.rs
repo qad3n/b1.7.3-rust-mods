@@ -3,6 +3,7 @@ use crate::ids::{self, item};
 use crate::progress::{self, Gate};
 use crate::world::biomes::{self, Biome};
 use crate::world::features::{self, Feature};
+use b173_api::math::floor;
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -286,7 +287,7 @@ fn chart(world: World, player: Player, kind: Kind) -> Option<i32>
     let info: EntityInfo = player.info()?;
     let row: &Row = row(kind);
     let step: i32 = SIZE << row.m_scale;
-    let [x, y, z]: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
+    let [x, y, z]: [i32; 3] = info.pos.map(floor);
 
     let center: [i32; 2] = match kind
     {
@@ -494,15 +495,15 @@ fn update(world: World, info: &EntityInfo, row: &Row, chart: &mut Chart, now: i6
     {
         maze::REACH
     };
-    let height: i32 = info.pos[1].floor() as i32 - chart.m_level;
+    let height: i32 = floor(info.pos[1]) - chart.m_level;
     if row.m_kind != Kind::Magic && !(-maze::LEVELS + 1..maze::LEVELS).contains(&height)
     {
         return false;
     }
 
     let draw: [i32; 2] = [
-        ((info.pos[0].floor() as i32 - chart.m_center[0]) >> row.m_scale) + HALF,
-        ((info.pos[2].floor() as i32 - chart.m_center[1]) >> row.m_scale) + HALF,
+        ((floor(info.pos[0]) - chart.m_center[0]) >> row.m_scale) + HALF,
+        ((floor(info.pos[2]) - chart.m_center[1]) >> row.m_scale) + HALF,
     ];
 
     let stripe: i64 = now % STRIPES;
@@ -649,7 +650,7 @@ fn marker(chart: &Chart, row: &Row, info: &EntityInfo) -> Option<[i32; 3]>
     let scale: f32 = (1 << row.m_scale) as f32;
     let x: f32 = (info.pos[0] as f32 - chart.m_center[0] as f32) / scale;
     let z: f32 = (info.pos[2] as f32 - chart.m_center[1] as f32) / scale;
-    let height: i32 = info.pos[1].floor() as i32 - chart.m_level;
+    let height: i32 = floor(info.pos[1]) - chart.m_level;
     let away: bool = row.m_kind != Kind::Magic && !(-maze::LEVELS..=maze::LEVELS).contains(&height);
     if x.abs() > marker::RANGE || z.abs() > marker::RANGE || away
     {

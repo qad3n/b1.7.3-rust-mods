@@ -1,6 +1,7 @@
 use super::{Kind, base, drop, property, texture, vanillaTexture, when};
 use crate::ids::{self, block, item};
 use crate::world::biomes;
+use b173_api::math::{add, scale};
 use b173_api::prelude::*;
 
 // how a small plant decides it may stay where it is, BlockTFPlant.canBlockStay
@@ -654,7 +655,7 @@ fn waterAimed(world: World, player: Player) -> Option<BlockPos>
     let reach: f64 = 5.0;
     let info: EntityInfo = player.info()?;
     let aim: [f64; 3] = crate::math::look(info.yaw, info.pitch);
-    let to: [f64; 3] = std::array::from_fn(|axis| info.pos[axis] + aim[axis] * reach);
+    let to: [f64; 3] = add(info.pos, scale(aim, reach));
     let hit: RayHit = world.rayTrace(info.pos, to, true)?;
     stillWater(world, hit.pos).then_some(hit.pos)
 }

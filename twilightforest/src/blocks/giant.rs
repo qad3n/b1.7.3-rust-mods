@@ -1,5 +1,6 @@
 use super::{Kind, base, put, vanillaTexture};
 use crate::ids::{self, block};
+use b173_api::math::Face;
 use b173_api::prelude::*;
 
 // BlockTFGiantBlock: one item fills a 4x4x4 cell aligned to the grid, breaking any part clears the whole cell
@@ -130,12 +131,12 @@ fn tile(pos: BlockPos, face: i32) -> (i32, i32)
     let last: i32 = cell::SIZE - 1;
     let [x, y, z] = [pos.x & last, pos.y & last, pos.z & last];
 
-    match face
+    match Face::fromIndex(face)
     {
-        2 => (last - x, last - y),
-        3 => (x, last - y),
-        4 => (z, last - y),
-        5 => (last - z, last - y),
+        Some(Face::North) => (last - x, last - y),
+        Some(Face::South) => (x, last - y),
+        Some(Face::West) => (z, last - y),
+        Some(Face::East) => (last - z, last - y),
         _ => (x, z),
     }
 }

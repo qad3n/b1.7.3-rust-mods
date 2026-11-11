@@ -1,9 +1,9 @@
 use super::magic::{held, holdInUse};
 use super::{put, texture};
-use crate::entities::ai::distance;
 use crate::ids::{self, block, item};
 use crate::math::look;
 use crate::models::{Program, tf_cube_of_annihilation, tf_spike_block};
+use b173_api::math::{blockOf, distance, length, sub};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -174,7 +174,7 @@ impl EntityBehavior for ChainBall
         }
 
         let to: [f64; 3] = info.pos;
-        let from: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - info.motion[axis]);
+        let from: [f64; 3] = sub(to, info.motion);
         if hitLiving(world, from, to, state.m_owner, chain::DAMAGE)
         {
             state.m_age += 60;
@@ -214,7 +214,7 @@ impl EntityBehavior for ChainBall
         let motion: [f64; 3] = if state.m_returning
         {
             let back: [f64; 3] = [owner.pos[0] - to[0], owner.pos[1] - 1.2 - to[1], owner.pos[2] - to[2]];
-            let length: f64 = back.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
+            let length: f64 = length(back).max(1.0e-4);
             let age: f64 = f64::from((state.m_age as f32 * chain::RETURN_RATE).min(1.0));
             [0, 1, 2].map(|axis| state.m_velocity[axis] * (1.0 - age) + back[axis] / length * 2.0 * age)
         }
@@ -300,7 +300,7 @@ impl EntityBehavior for Cube
         };
         let mut motion: [f64; 3] =
             [0, 1, 2].map(|axis| info.motion[axis] - (info.pos[axis] + if axis == 1 { 0.5 } else { 0.0 } - dest[axis]));
-        let speed: f64 = motion.iter().map(|axis| axis * axis).sum::<f64>().sqrt();
+        let speed: f64 = length(motion);
         motion = if speed > cube::MAX_SPEED
         {
             motion.map(|axis| axis / (speed / cube::MAX_SPEED))
@@ -312,10 +312,10 @@ impl EntityBehavior for Cube
         let _ = entity.setMotion(motion);
 
         let to: [f64; 3] = info.pos;
-        let from: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - info.motion[axis]);
+        let from: [f64; 3] = sub(to, info.motion);
         hitLiving(world, from, to, state.m_owner, cube::DAMAGE);
 
-        let center: BlockPos = BlockPos::new(to[0].floor() as i32, to[1].floor() as i32, to[2].floor() as i32);
+        let center: BlockPos = blockOf(to);
 
         for (dx, dy, dz) in (-1..=1).flat_map(|dx| (0..=1).flat_map(move |dy| (-1..=1).map(move |dz| (dx, dy, dz))))
         {

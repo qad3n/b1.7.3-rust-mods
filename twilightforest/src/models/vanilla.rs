@@ -1,6 +1,5 @@
 use super::{DEGREES_PER_RADIAN, HALF_PI, Program, WALK_RATE, cuboid, part, spider, tf_ghast, wolf};
-use b173_api::terrain::math;
-use b173_api::{EntityModelSpec, ModelBox, Pose, PoseInput};
+use b173_api::{EntityModelSpec, ModelBox, Pose, PoseInput, math};
 use std::f32::consts::{FRAC_PI_4, FRAC_PI_8, PI};
 
 // setRotationAngles of the vanilla spider and wolf models and of ModelTFGhast, for the mobs drawn with them

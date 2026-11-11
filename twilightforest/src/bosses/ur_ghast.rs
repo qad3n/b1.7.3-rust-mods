@@ -1,5 +1,4 @@
 use super::{killer, showBar};
-use crate::entities::ai::distance;
 use crate::entities::shots::{self, UR_FIREBALL};
 use crate::ids;
 use crate::math::look;
@@ -7,6 +6,7 @@ use crate::models::{Program, cuboid, part};
 use crate::progress::{self, Gate};
 use crate::treasure::{self, Table};
 use crate::world::generate::GenWorld;
+use b173_api::math::{blockOf, distance, floor, length, sub};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -228,7 +228,7 @@ fn average(points: &[[i32; 3]]) -> [i32; 3]
 // EntityTFUrGhast.scanForTrapsTwice, around itself and then around the traps it found
 fn scanTwice(world: World, info: &EntityInfo, brain: &mut Brain)
 {
-    let at: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
+    let at: [i32; 3] = info.pos.map(floor);
     scan(world, at, &mut brain.m_traps);
 
     if !brain.m_traps.is_empty()
@@ -241,7 +241,7 @@ fn scanTwice(world: World, info: &EntityInfo, brain: &mut Brain)
 // EntityTFUrGhast.makeTravelPath, the traps in a random order
 fn makePath(world: World, info: &EntityInfo, brain: &mut Brain)
 {
-    let at: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
+    let at: [i32; 3] = info.pos.map(floor);
     let reach: i32 = boss::PATH_REACH;
 
     let mut points: Vec<[i32; 3]> = if brain.m_noTraps
@@ -294,7 +294,7 @@ fn minionsAt(world: World, trap: [i32; 3])
     {
         let spread = || f64::from(ids::fraction(world) - ids::fraction(world)) * boss::MINION_XZ;
         let at: [f64; 3] = [x + spread(), y + f64::from(ids::fraction(world)) * boss::MINION_Y, z + spread()];
-        if world.block(BlockPos::new(at[0].floor() as i32, at[1].floor() as i32, at[2].floor() as i32)) != 0
+        if world.block(blockOf(at)) != 0
         {
             continue;
         }
@@ -378,7 +378,7 @@ fn makeWaypoint(world: World, info: &EntityInfo, brain: &mut Brain)
 // EntityTowerGhast.shouldAttackPlayer, a player out under the sky that can see it
 fn exposed(world: World, entity: Entity, player: &EntityInfo) -> bool
 {
-    let [x, y, z] = player.pos.map(|axis| axis.floor() as i32);
+    let [x, y, z] = player.pos.map(floor);
     let underSky: bool = world.height(x, z) <= y;
     let eyes: [f64; 3] = [player.pos[0], player.pos[1] + 1.62, player.pos[2]];
     let height: f64 = entity.field(EntityField::Height);
@@ -439,7 +439,7 @@ fn tantrumRain(world: World, info: &EntityInfo, entity: Entity)
 
         let flat: f64 = ((found.pos[0] - info.pos[0]).powi(2) + (found.pos[2] - info.pos[2]).powi(2)).sqrt();
         let below: bool = found.pos[1] <= info.pos[1] && found.pos[1] >= info.pos[1] - boss::RAIN_DEPTH * 2.0;
-        let [x, y, z] = found.pos.map(|axis| axis.floor() as i32);
+        let [x, y, z] = found.pos.map(floor);
         if flat <= width / 2.0 && below && world.height(x, z) <= y
         {
             Entity { world, id: found.id }.damage(boss::RAIN_DAMAGE, None);
@@ -565,8 +565,8 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
     {
         brain.m_steer += world.random(5);
 
-        let delta: [f64; 3] = [0, 1, 2].map(|axis| brain.m_waypoint[axis] - info.pos[axis]);
-        let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
+        let delta: [f64; 3] = sub(brain.m_waypoint, info.pos);
+        let length: f64 = length(delta).max(1.0e-4);
         motion = [0, 1, 2].map(|axis| motion[axis] + delta[axis] / length * boss::SPEED);
     }
 
@@ -777,7 +777,7 @@ impl EntityBehavior for UrGhast
         let traps: Vec<[i32; 3]> = brain.map(|brain| brain.m_traps).unwrap_or_default();
         let chest: [i32; 3] = if traps.is_empty()
         {
-            info.pos.map(|axis| axis.floor() as i32)
+            info.pos.map(floor)
         }
         else
         {

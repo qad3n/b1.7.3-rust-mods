@@ -1,5 +1,6 @@
 use crate::combat::kind;
 use crate::models::Program;
+use b173_api::math::{blockOf, distance, length, sub};
 use b173_api::prelude::*;
 
 // the twilight forest's EntityThrowable shots: how they fall, what they do on a hit and the icon they show
@@ -236,8 +237,8 @@ pub(crate) fn fire(
         }
     };
 
-    let delta: [f64; 3] = [0, 1, 2].map(|axis| toward[axis] - from[axis]);
-    let length: f64 = delta.iter().map(|axis| axis * axis).sum::<f64>().sqrt().max(1.0e-4);
+    let delta: [f64; 3] = sub(toward, from);
+    let length: f64 = length(delta).max(1.0e-4);
     let motion: [f64; 3] = delta.map(|axis| (axis / length + wobble(world, spread)) * speed);
     let _ = entity.setMotion(motion);
     let _ = entity.setData(&Flight { m_owner: owner, m_age: 0 });
@@ -292,7 +293,7 @@ fn land(shot: &Shot, entity: Entity, at: [f64; 3], target: Option<&EntityInfo>, 
 
     if shot.m_impact == Impact::Nature && target.is_none()
     {
-        let pos: BlockPos = BlockPos::new(at[0].floor() as i32, at[1].floor() as i32, at[2].floor() as i32);
+        let pos: BlockPos = blockOf(at);
         let here: i32 = world.block(pos);
         let info: BlockInfo = World::blockInfo(here);
         // birch leaves grow where the bolt hits stone or wood, grass gets bone meal
@@ -347,7 +348,7 @@ impl EntityBehavior for Thrown
         }
 
         let to: [f64; 3] = info.pos;
-        let from: [f64; 3] = [0, 1, 2].map(|axis| to[axis] - info.motion[axis]);
+        let from: [f64; 3] = sub(to, info.motion);
         let hit: Option<EntityInfo> =
             entity.world.entitiesAlong(from, to, flight::HIT_RADIUS, state.m_owner).into_iter().find(|hit|
             {
@@ -448,7 +449,7 @@ pub(crate) fn blast(world: World, at: [f64; 3], power: f32, source: Option<i32>)
 
     for other in world.entitiesNear(at, reach)
     {
-        let gap: f64 = crate::entities::ai::distance(at, other.pos) / reach;
+        let gap: f64 = distance(at, other.pos) / reach;
         if gap > 1.0 || other.health.is_none()
         {
             continue;

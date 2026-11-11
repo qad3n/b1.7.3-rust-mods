@@ -1,4 +1,4 @@
-use b173_api::terrain::math::{cos, sin};
+use b173_api::math::{cos, length, sin};
 
 // java.awt.Color.RGBtoHSB
 pub(crate) fn toHsb(red: u32, green: u32, blue: u32) -> (f32, f32, f32)
@@ -110,11 +110,7 @@ pub(crate) fn knockback(motion: [f64; 3], toward: [f64; 2]) -> [f64; 3]
     [motion[0] / 2.0 - x * push, (motion[1] / 2.0 + push).min(push), motion[2] / 2.0 - z * push]
 }
 
-pub(crate) fn length(vector: [f64; 3]) -> f64 { vector.iter().map(|axis| axis * axis).sum::<f64>().sqrt() }
-
-pub(crate) fn dot(a: [f64; 3], b: [f64; 3]) -> f64 { (0..3).map(|axis| a[axis] * b[axis]).sum() }
-
-// Vec3.normalize, a vector too short to point anywhere becomes zero
+// Vec3.normalize divides each axis where the sdk multiplies by the inverse so this keeps vanilla rounding
 pub(crate) fn normalize(vector: [f64; 3]) -> [f64; 3]
 {
     let tiny: f64 = 1.0e-4;

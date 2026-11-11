@@ -1,5 +1,6 @@
 use super::ai::target;
 use crate::models::{Program, combine, tf_block_goblin, tf_goblin_chain, tf_spike_block};
+use b173_api::math::add;
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -94,7 +95,7 @@ pub(crate) fn tick(entity: Entity, info: &EntityInfo)
     if swinging
     {
         let offset: [f64; 3] = blockOffset(angle(world, 0.0), length(true));
-        let block: [f64; 3] = [0, 1, 2].map(|axis| info.pos[axis] + offset[axis]);
+        let block: [f64; 3] = add(info.pos, offset);
         let struck: Vec<EntityInfo> = world
             .entitiesNear(block, tuning::HIT_REACH)
             .into_iter()

@@ -2,6 +2,7 @@ use crate::progress::{self, Gate};
 use crate::world::features::{self, Feature};
 use crate::world::structures;
 use crate::{bosses, ids};
+use b173_api::math::blockOf;
 use b173_api::prelude::*;
 use b173_api::terrain::structure::StructureBox;
 
@@ -91,8 +92,7 @@ fn attacking(event: &mut Event)
     };
 
     let monster: bool = Entity { world, id: entity.id }.field(EntityField::AttackStrength) > 0.0;
-    let pos: BlockPos =
-        BlockPos::new(entity.pos[0].floor() as i32, entity.pos[1].floor() as i32, entity.pos[2].floor() as i32);
+    let pos: BlockPos = blockOf(entity.pos);
 
     if monster && guarded(world, player, pos).is_some()
     {

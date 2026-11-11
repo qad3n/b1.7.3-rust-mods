@@ -3,6 +3,7 @@ use super::{put, texture};
 use crate::entities::shots::{self, MOONWORM_SHOT};
 use crate::ids::{self, block, item};
 use crate::math::look;
+use b173_api::math::add;
 use b173_api::prelude::*;
 
 // ItemTFMoonwormQueen: sets moonworms on the face clicked, or drawn and let go fires one that sticks where it lands
@@ -91,7 +92,7 @@ impl ItemBehavior for MoonwormQueen
         if world.isAuthority()
         {
             let aim: [f64; 3] = look(info.yaw, info.pitch);
-            let toward: [f64; 3] = [0, 1, 2].map(|axis| info.pos[axis] + aim[axis]);
+            let toward: [f64; 3] = add(info.pos, aim);
             if shots::fire(world, MOONWORM_SHOT, info.pos, toward, queen::SHOT_SPEED, 1.0, Some(player.id)).is_some()
             {
                 super::magic::wearHeld(player, queen::SHOT_COST);

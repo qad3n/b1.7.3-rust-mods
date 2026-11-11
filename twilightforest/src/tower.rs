@@ -1,6 +1,7 @@
 use crate::blocks::tower::{Device, deviceId, jetId, nextJet};
 use crate::ids::{self, NEIGHBORS};
 use crate::particles;
+use b173_api::math::distanceSquared;
 use b173_api::prelude::*;
 use std::rc::Rc;
 
@@ -270,7 +271,7 @@ fn nearestPlayer(world: World, at: [f64; 3], range: f64) -> Option<EntityInfo>
         .filter(|info| info.world == world.dimension)
         .map(|info|
         {
-            let distance: f64 = (0..3).map(|axis| (info.pos[axis] - at[axis]).powi(2)).sum::<f64>();
+            let distance: f64 = distanceSquared(info.pos, at);
             (distance, info)
         })
         .filter(|(distance, _)| *distance <= range * range)

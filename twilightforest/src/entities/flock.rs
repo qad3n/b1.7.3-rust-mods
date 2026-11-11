@@ -1,5 +1,6 @@
-use super::ai::{distance, target};
+use super::ai::target;
 use crate::ids;
+use b173_api::math::{blockOf, distance, floor};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
@@ -108,9 +109,9 @@ fn panic(entity: Entity, info: &EntityInfo) -> bool
         FLEEING.with(|fleeing| fleeing.borrow_mut().insert(key, now + tuning::PANIC_TICKS));
 
         let spot: BlockPos = BlockPos::new(
-            info.pos[0].floor() as i32 + world.random(tuning::FLEE * 2 + 1) - tuning::FLEE,
-            info.pos[1].floor() as i32,
-            info.pos[2].floor() as i32 + world.random(tuning::FLEE * 2 + 1) - tuning::FLEE,
+            floor(info.pos[0]) + world.random(tuning::FLEE * 2 + 1) - tuning::FLEE,
+            floor(info.pos[1]),
+            floor(info.pos[2]) + world.random(tuning::FLEE * 2 + 1) - tuning::FLEE,
         );
         entity.walkTo(spot, tuning::PANIC_SPEED);
     }
@@ -166,10 +167,7 @@ fn gather(entity: Entity, info: &EntityInfo)
         return;
     }
 
-    entity.walkTo(
-        BlockPos::new(middle[0].floor() as i32, middle[1].floor() as i32, middle[2].floor() as i32),
-        tuning::SPEED,
-    );
+    entity.walkTo(blockOf(middle), tuning::SPEED);
 }
 
 // EntityTFKobold.onLivingUpdate splashes sweat while it panics

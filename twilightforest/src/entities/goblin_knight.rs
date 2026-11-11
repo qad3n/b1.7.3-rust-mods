@@ -1,11 +1,12 @@
-use super::ai::{distance, target};
+use super::ai::target;
 use crate::ids;
 use crate::models::
 {
     DEGREES_PER_RADIAN, Program, WALK_RATE, biped, bipedPose, tf_goblin_knight_lower, tf_goblin_knight_upper,
 };
+use b173_api::math;
+use b173_api::math::distance;
 use b173_api::prelude::*;
-use b173_api::terrain::math;
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::f32::consts::{PI, TAU};

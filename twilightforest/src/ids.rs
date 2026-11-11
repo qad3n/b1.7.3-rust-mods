@@ -207,11 +207,6 @@ pub(crate) fn blockId(name: &str) -> i32 { b173_api::Blocks.id(name).unwrap_or(0
 
 pub(crate) fn itemId(name: &str) -> i32 { b173_api::Items.get(name).and_then(|item| item.id()).unwrap_or(0) }
 
-pub(crate) fn cell(at: [f64; 3]) -> BlockPos
-{
-    BlockPos::new(at[0].floor() as i32, at[1].floor() as i32, at[2].floor() as i32)
-}
-
 pub(crate) fn center(pos: BlockPos) -> [f64; 3]
 {
     [f64::from(pos.x) + 0.5, f64::from(pos.y) + 0.5, f64::from(pos.z) + 0.5]

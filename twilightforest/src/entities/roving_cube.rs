@@ -1,5 +1,6 @@
 use crate::ids;
 use crate::models::{Program, tf_cube_of_annihilation};
+use b173_api::math::floor;
 use b173_api::prelude::*;
 
 // EntityTFRovingCube with EntityAICubeMoveToRedstoneSymbols and EntityAICubeCenterOnSymbol, it drifts to the middle
@@ -40,7 +41,7 @@ fn symbol(world: World, x: i32, y: i32, z: i32) -> bool
 
 fn search(world: World, pos: [f64; 3]) -> Option<[i32; 3]>
 {
-    let [x, y, z]: [i32; 3] = pos.map(|axis| axis.floor() as i32);
+    let [x, y, z]: [i32; 3] = pos.map(floor);
     for sx in x - tuning::REACH..x + tuning::REACH
     {
         for sz in z - tuning::REACH..z + tuning::REACH

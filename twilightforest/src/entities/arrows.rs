@@ -1,5 +1,6 @@
 use crate::ids::item;
-use crate::math::{dot, heading, length, normalize, turn};
+use crate::math::{heading, normalize, turn};
+use b173_api::math::{add, distance, dot, length, sub};
 use b173_api::prelude::*;
 use std::rc::Rc;
 
@@ -140,14 +141,14 @@ impl Seeker
     {
         let world: World = entity.world;
         let reach: [f64; 3] = info.motion.map(|axis| axis * seek::AHEAD);
-        let corners: [[f64; 3]; 3] = [[0.0; 3], turn(reach, seek::CONE), turn(reach, -seek::CONE)]
-            .map(|corner| [0, 1, 2].map(|axis| info.pos[axis] + corner[axis]));
+        let corners: [[f64; 3]; 3] =
+            [[0.0; 3], turn(reach, seek::CONE), turn(reach, -seek::CONE)].map(|corner| add(info.pos, corner));
         let low: [f64; 3] = [0, 1, 2].map(|axis| corners.iter().map(|corner| corner[axis]).fold(f64::MAX, f64::min));
         let high: [f64; 3] = [0, 1, 2].map(|axis| corners.iter().map(|corner| corner[axis]).fold(f64::MIN, f64::max));
         let low: [f64; 3] = [low[0], low[1] - seek::HEIGHT, low[2]];
         let high: [f64; 3] = [high[0], high[1] + seek::HEIGHT, high[2]];
         let center: [f64; 3] = [0, 1, 2].map(|axis| (low[axis] + high[axis]) / 2.0);
-        let radius: f64 = length([0, 1, 2].map(|axis| high[axis] - center[axis]));
+        let radius: f64 = distance(high, center);
         let course: [f64; 3] = normalize(info.motion);
         world
             .entitiesNear(center, radius)
@@ -194,7 +195,7 @@ impl EntityBehavior for Seeker
             None => state.m_target = Self::find(entity, info),
             Some(target) => match Self::pull(entity.world, info, target)
             {
-                Some(pull) => motion = [0, 1, 2].map(|axis| motion[axis] - pull[axis]),
+                Some(pull) => motion = sub(motion, pull),
                 None => state.m_target = None,
             },
         }

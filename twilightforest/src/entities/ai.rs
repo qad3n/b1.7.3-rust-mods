@@ -1,4 +1,5 @@
 use super::shots;
+use b173_api::math::{distance, floor, yawTowards};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -123,15 +124,9 @@ pub(crate) fn eyes(entity: Entity, info: &EntityInfo) -> [f64; 3]
     [info.pos[0], info.pos[1] + height * tuning::EYES, info.pos[2]]
 }
 
-pub(crate) fn distance(a: [f64; 3], b: [f64; 3]) -> f64
-{
-    (0..3).map(|axis| (a[axis] - b[axis]).powi(2)).sum::<f64>().sqrt()
-}
-
 pub(crate) fn face(entity: Entity, from: [f64; 3], to: [f64; 3])
 {
-    let (dx, dz): (f64, f64) = (to[0] - from[0], to[2] - from[2]);
-    entity.setField(EntityField::Yaw, dz.atan2(dx).to_degrees() - 90.0);
+    entity.setField(EntityField::Yaw, f64::from(yawTowards(from, to)));
 }
 
 // EntityAITFMagicAttack.doRangedAttack
@@ -325,11 +320,8 @@ fn pinch(entity: Entity, info: &EntityInfo)
         if world.random(tuning::THROW_ODDS) == 0
         {
             let away = || world.random(tuning::KIDNAP_RANGE * 2 + 1) - tuning::KIDNAP_RANGE;
-            let spot: BlockPos = BlockPos::new(
-                info.pos[0].floor() as i32 + away(),
-                info.pos[1].floor() as i32,
-                info.pos[2].floor() as i32 + away(),
-            );
+            let spot: BlockPos =
+                BlockPos::new(floor(info.pos[0]) + away(), floor(info.pos[1]), floor(info.pos[2]) + away());
             entity.walkTo(spot, tuning::KIDNAP_SPEED);
         }
 
@@ -351,7 +343,7 @@ pub(crate) fn ripen(entity: Entity, info: &EntityInfo)
 
     let (unripe, ripe): (i32, i32) =
         (crate::ids::blockId(crate::ids::block::UNRIPE_TROLLBER), crate::ids::blockId(crate::ids::block::TROLLBER));
-    let [x, y, z]: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
+    let [x, y, z]: [i32; 3] = info.pos.map(floor);
     let range: i32 = tuning::RIPEN_RANGE;
     for dx in -range..range
     {
@@ -410,7 +402,7 @@ fn summon(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
     let infested: i32 = crate::ids::blockId(crate::ids::block::INFESTED_TOWERWOOD);
-    let [x, y, z]: [i32; 3] = info.pos.map(|axis| axis.floor() as i32);
+    let [x, y, z]: [i32; 3] = info.pos.map(floor);
 
     for dy in outward(tuning::SUMMON_RISE)
     {
@@ -466,11 +458,7 @@ fn burrow(entity: Entity, info: &EntityInfo)
 
     let world: World = entity.world;
     let [dx, dy, dz]: [i32; 3] = crate::ids::NEIGHBORS[world.random(6) as usize];
-    let pos: BlockPos = BlockPos::new(
-        info.pos[0].floor() as i32 + dx,
-        (info.pos[1] + 0.5).floor() as i32 + dy,
-        info.pos[2].floor() as i32 + dz,
-    );
+    let pos: BlockPos = BlockPos::new(floor(info.pos[0]) + dx, floor(info.pos[1] + 0.5) + dy, floor(info.pos[2]) + dz);
 
     if world.block(pos) != crate::ids::blockId(crate::ids::block::TOWERWOOD)
     {

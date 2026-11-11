@@ -1,6 +1,7 @@
 use crate::ids::item;
 use crate::world::biomes::{self, Biome};
 use crate::world::features::Feature;
+use b173_api::math::{blockOf, floor};
 use b173_api::prelude::*;
 
 // TFAchievementPage, the forest's achievements on the loader's mod achievements
@@ -508,8 +509,7 @@ fn punish(world: World, player: Player, info: &EntityInfo, biome: Biome, now: i6
     };
     if let Some(feature) = hint.filter(|_| world.random(enforce::HINT_ODDS) == 0)
     {
-        let pos: BlockPos =
-            BlockPos::new(info.pos[0].floor() as i32, info.pos[1].floor() as i32, info.pos[2].floor() as i32);
+        let pos: BlockPos = blockOf(info.pos);
         crate::hints::trySpawn(world, player, feature, pos);
     }
 }
@@ -545,7 +545,7 @@ fn checkPlayers()
         {
             continue;
         };
-        let biome: Biome = biomes::at(world.seed(), info.pos[0].floor() as i32, info.pos[2].floor() as i32);
+        let biome: Biome = biomes::at(world.seed(), floor(info.pos[0]), floor(info.pos[2]));
         let Some(gate) = required(biome)
         else
         {

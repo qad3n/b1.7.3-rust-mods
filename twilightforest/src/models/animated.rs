@@ -4,8 +4,7 @@ use super::
     tf_ice_crystal, tf_ice_exploder, tf_ice_shooter, tf_mosquito_swarm, tf_penguin, tf_pinch_beetle, tf_raven,
     tf_slime_beetle, tf_squirrel, tf_tiny_bird, tf_tower_golem,
 };
-use b173_api::terrain::math;
-use b173_api::{EntityModelSpec, ModelPart, Pose, PoseInput};
+use b173_api::{EntityModelSpec, ModelPart, Pose, PoseInput, math};
 use std::f32::consts::{FRAC_PI_4, FRAC_PI_8, PI};
 
 // setRotationAngles and setLivingAnimations of the twilight models the converter leaves standing, plus the child

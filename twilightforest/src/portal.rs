@@ -1,5 +1,6 @@
 use crate::ids::{self, block};
 use crate::world::{dimension, isTwilight};
+use b173_api::math::{centerOf, distanceSquared, floor};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -154,13 +155,9 @@ fn existing(world: World, at: [f64; 3]) -> Option<[f64; 3]>
 {
     let log: PortalLog = worldData(PORTALS_KEY);
 
-    let distance = |corner: &[i32; 3]|
-    {
-        let [dx, dy, dz] = [0, 1, 2].map(|axis| f64::from(corner[axis]) + 0.5 - at[axis]);
-        dx * dx + dy * dy + dz * dz
-    };
+    let distance = |&[x, y, z]: &[i32; 3]| distanceSquared(centerOf(BlockPos::new(x, y, z)), at);
 
-    let [x, z] = [at[0].floor() as i32, at[2].floor() as i32];
+    let [x, z] = [floor(at[0]), floor(at[2])];
     let corner: [i32; 3] = log
         .m_entries
         .iter()
@@ -254,7 +251,7 @@ fn fits(world: World, x: i32, y: i32, z: i32, ideal: bool) -> bool
 // TFTeleporter.findPortalCoords, the nearest fitting floor around the traveller
 fn findSpot(world: World, at: [f64; 3], ideal: bool, factor: f64) -> Option<[i32; 3]>
 {
-    let (x, z): (i32, i32) = (at[0].floor() as i32, at[2].floor() as i32);
+    let (x, z): (i32, i32) = (floor(at[0]), floor(at[2]));
     let mut best: Option<([i32; 3], f64)> = None;
 
     for rx in x - travel::BUILD_SEARCH..=x + travel::BUILD_SEARCH
@@ -358,9 +355,9 @@ fn makePortal(world: World, at: [f64; 3]) -> [f64; 3]
         travel::TWILIGHT_FACTOR
     };
     let spot: [i32; 3] = findSpot(world, at, true, factor).or_else(|| findSpot(world, at, false, factor)).unwrap_or([
-        at[0].floor() as i32,
-        (at[1] * factor).floor() as i32,
-        at[2].floor() as i32,
+        floor(at[0]),
+        floor(at[1] * factor),
+        floor(at[2]),
     ]);
     build(world, spot);
 
@@ -384,7 +381,7 @@ fn inPortal(info: &EntityInfo) -> bool
     let world: World = World { dimension: info.world };
     // a beta player's position is at its eyes, its feet are the bottom of its box
     let feet: f64 = Entity { world, id: info.id }.field(EntityField::Bottom);
-    let [x, y, z] = [info.pos[0], feet, info.pos[2]].map(|axis| axis.floor() as i32);
+    let [x, y, z] = [info.pos[0], feet, info.pos[2]].map(floor);
     isPortal(world, x, y, z) || isPortal(world, x, y + 1, z)
 }
 
@@ -492,7 +489,7 @@ fn watchTosses()
             {
                 return true;
             }
-            let [x, y, z] = info.pos.map(|axis| axis.floor() as i32);
+            let [x, y, z] = info.pos.map(floor);
             if !water(world, x, y, z) || !tryCreate(world, x, y, z)
             {
                 return true;

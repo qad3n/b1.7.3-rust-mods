@@ -1,5 +1,6 @@
 use super::{Kind, base, texture};
 use crate::ids::{self, block};
+use b173_api::math::Face;
 use b173_api::prelude::*;
 
 // BlockTFNagastone: one block in the source whose sixteen metas are a head turned four ways, eight bends down or up,
@@ -164,11 +165,11 @@ impl BlockBehavior for Head
     // BlockTFNagastone.onBlockPlaced, a head looks out of the face it was set against
     fn onPlaced(&self, ctx: &mut BlockCtx, face: i32)
     {
-        let source: i32 = match face
+        let source: i32 = match Face::fromIndex(face)
         {
-            2 => 0,
-            4 => 2,
-            5 => 3,
+            Some(Face::North) => 0,
+            Some(Face::West) => 2,
+            Some(Face::East) => 3,
             _ => 1,
         };
         ctx.setMeta(headMeta(source) as u8);
@@ -204,10 +205,10 @@ impl BlockBehavior for Body
     // BlockTFNagastone.onBlockPlaced, a straight run lies along the axis of the face it was set against
     fn onPlaced(&self, ctx: &mut BlockCtx, face: i32)
     {
-        let axis: i32 = match face
+        let axis: i32 = match Face::fromIndex(face)
         {
-            0 | 1 => 2,
-            2 | 3 => 1,
+            Some(Face::Down | Face::Up) => 2,
+            Some(Face::North | Face::South) => 1,
             _ => 0,
         };
         ctx.setMeta(bodyMeta(naga::STRAIGHT + axis) as u8);
