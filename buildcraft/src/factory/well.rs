@@ -174,13 +174,12 @@ impl TileBehavior for WellTile
 pub(crate) struct MachineBlock
 {
     pub(crate) m_faces: &'static Faces,
-    pub(crate) m_block: StateHandle,
 }
 
 #[block_behavior]
 impl BlockBehavior for MachineBlock
 {
-    fn texture(&self, face: i32, meta: i32) -> i32 { self.m_faces.slot(face, &self.m_block, meta) }
+    fn textureFor(&self, face: i32, state: &StateData) -> Option<String> { self.m_faces.sprite(face, state) }
 
     fn onPlacedBy(&self, ctx: &mut BlockCtx, entity: Entity) { facePlacer(ctx, entity); }
 
@@ -224,7 +223,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .tileEntity(NAME)
             .tag(crate::machines::MACHINES)
             .tag(crate::machines::CONNECTORS)
-            .behavior(MachineBlock { m_faces: &FACES, m_block: StateHandle::named(NAME)? }),
+            .behavior(MachineBlock { m_faces: &FACES }),
     )?;
     registerFacing(ctx, NAME)?;
 

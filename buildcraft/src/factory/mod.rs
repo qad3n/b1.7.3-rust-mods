@@ -34,9 +34,9 @@ impl Faces
     }
 
     // the item faces down and shows its front to the south, a placed machine shows it toward its facing
-    pub(crate) fn slot(&self, face: i32, block: &StateHandle, meta: i32) -> i32
+    pub(crate) fn sprite(&self, face: i32, block: &StateData) -> Option<String>
     {
-        let facing: i32 = state::face(stateOf(block.block(), meta), state::FACING).unwrap_or(dir::UNKNOWN);
+        let facing: i32 = block.get(state::FACING).and_then(dir::named).unwrap_or(dir::UNKNOWN);
         let sprite: &'static str = match face
         {
             face if face == dir::SOUTH && facing == dir::DOWN => self.m_front,
@@ -49,7 +49,7 @@ impl Faces
             }
             _ => self.m_side,
         };
-        render::slot(sprite)
+        Some(sprite.to_owned())
     }
 }
 

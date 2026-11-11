@@ -741,7 +741,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .tileEntity(NAME)
             .tag(crate::machines::MACHINES)
             .tag(crate::machines::CONNECTORS)
-            .behavior(MachineBlock { m_faces: &FACES, m_block: StateHandle::named(NAME)? }),
+            .behavior(MachineBlock { m_faces: &FACES }),
     )?;
     super::registerFacing(ctx, NAME)?;
     ctx.channels().register(VIEW_CHANNEL, Direction::ToClient, |packet: ViewPacket, _player| onView(packet))?;

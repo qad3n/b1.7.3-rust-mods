@@ -461,7 +461,6 @@ impl TileBehavior for BuilderTile
 struct TurnableBlock
 {
     m_faces: &'static Faces,
-    m_block: StateHandle,
     m_screen: &'static str,
     m_poweredTop: bool,
 }
@@ -469,7 +468,7 @@ struct TurnableBlock
 #[block_behavior]
 impl BlockBehavior for TurnableBlock
 {
-    fn texture(&self, face: i32, meta: i32) -> i32 { self.m_faces.slot(face, &self.m_block, meta) }
+    fn textureFor(&self, face: i32, state: &StateData) -> Option<String> { self.m_faces.sprite(face, state) }
 
     fn faceTexture(&self, ctx: &mut BlockCtx, face: i32) -> Option<i32>
     {
@@ -611,13 +610,7 @@ fn registerMachine(
             .hardness(hardness)
             .texture(faces.m_front)
             .tileEntity(name)
-            .behavior(TurnableBlock
-            {
-                m_faces: faces,
-                m_block: StateHandle::named(name)?,
-                m_screen: name,
-                m_poweredTop: poweredTop,
-            }),
+            .behavior(TurnableBlock { m_faces: faces, m_screen: name, m_poweredTop: poweredTop }),
     )?;
     registerFacing(ctx, name)
 }
