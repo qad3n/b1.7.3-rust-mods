@@ -69,6 +69,19 @@ Behaviour follows the 2.1.1 code line by line (audited 2026-11-11 against `refer
 - An empty tank on top of a column stopped drains from the tanks below it.
 - Engines drop their fuel when broken, as every other BuildCraft machine drops its contents.
 
+## Audit against 2.1.1 (2026-11-11, second pass)
+
+Checked one to one with `reference/src`: engine energy stages, piston speeds, extraction caps, fuel times (furnace
+fuels, lava, oil buckets and pumped oil), redstone engine gain, explosion ranges; every PowerProvider configure and
+perdition row (mining well, pump, quarry, filler, builder, wooden and obsidian pipes); pump layering and surveys;
+block hardness and resistance. The port had no weapons or tools with damage to check.
+
+Fixed:
+- Engines exploded from the block center; createExplosion gets the block corner.
+
+Still unverified: the pump's survey of a very large oil lake runs in one guest call (three host calls a block), so a
+lake of tens of thousands of blocks could near the 500 ms budget; checked by code review only.
+
 ## Bugs to check at the end
 
 - Checked live on the test server: a redstone engine powers a wooden pipe that pulls from a chest into stone pipes
