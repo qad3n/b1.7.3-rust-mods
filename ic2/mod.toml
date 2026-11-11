@@ -4,7 +4,7 @@ name = "IndustrialCraft 2"
 description = "Machines, energy, cables, generators, nuclear reactors, power armor and tools: IndustrialCraft 2 v1.00 for beta 1.7.3"
 authors = ["Alblaka and the IndustrialCraft 2 team", "b173 port"]
 license = "see the original mod, assets extracted from the user's jar"
-api = "1.33"
+api = "1.34"
 side = "both"
 
 [network]

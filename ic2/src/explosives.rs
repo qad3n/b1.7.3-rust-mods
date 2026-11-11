@@ -30,12 +30,7 @@ const LASER: Blast = Blast { m_drop: 0.85, m_damage: 0.55 };
 
 mod ray
 {
-    // Explosion.doExplosionA: rays from the faces of a 16 cube, each a random 70 to 130 percent strong
-    pub const GRID: i32 = 16;
-    pub const STRENGTH_LOW: f32 = 0.7;
-    pub const STRENGTH_SPREAD: f32 = 0.6;
-    pub const STEP: f32 = 0.3;
-    pub const FADE: f32 = 0.75;
+    // the padding Explosion adds to every block's resistance
     pub const RESIST_PAD: f32 = 0.3;
     // entities within twice the size take damage and a push
     pub const REACH: f32 = 2.0;
@@ -47,55 +42,6 @@ mod ray
     pub const PUFF_SPEED: f64 = 0.5;
     pub const PUFF_FALLOFF: f64 = 0.1;
     pub const PUFF_FLOOR: f64 = 0.3;
-}
-
-// the blocks the rays reach before they fade, as doExplosionA collects destroyedBlockPositions
-fn rays(world: World, at: [f64; 3], power: f32) -> BTreeSet<(i32, i32, i32)>
-{
-    let mut hit: BTreeSet<(i32, i32, i32)> = BTreeSet::new();
-    let last: i32 = ray::GRID - 1;
-
-    for i in 0..ray::GRID
-    {
-        for j in 0..ray::GRID
-        {
-            for k in 0..ray::GRID
-            {
-                let face: bool = i == 0 || i == last || j == 0 || j == last || k == 0 || k == last;
-                if !face
-                {
-                    continue;
-                }
-
-                let along = |value: i32| f64::from(value as f32 / last as f32 * 2.0 - 1.0);
-                let length: f64 = (along(i).powi(2) + along(j).powi(2) + along(k).powi(2)).sqrt();
-                let step: [f64; 3] = [along(i) / length, along(j) / length, along(k) / length];
-                let mut strength: f32 =
-                    power * (ray::STRENGTH_LOW + random::float(world) as f32 * ray::STRENGTH_SPREAD);
-                let mut point: [f64; 3] = at;
-
-                while strength > 0.0
-                {
-                    let block: (i32, i32, i32) = (floor(point[0]), floor(point[1]), floor(point[2]));
-                    let id: i32 = world.block(BlockPos::new(block.0, block.1, block.2));
-                    if id > 0
-                    {
-                        strength -= (World::explosionResistance(id) + ray::RESIST_PAD) * ray::STEP;
-                    }
-
-                    if strength > 0.0
-                    {
-                        hit.insert(block);
-                    }
-
-                    point = [0, 1, 2].map(|axis| point[axis] + step[axis] * f64::from(ray::STEP));
-                    strength -= ray::STEP * ray::FADE;
-                }
-            }
-        }
-    }
-
-    hit
 }
 
 // doExplosionA's second half: everything within twice the size takes damage by distance and cover, and a push
@@ -159,7 +105,7 @@ fn destroy(world: World, at: [f64; 3], size: f32, blocks: &BTreeSet<(i32, i32, i
     }
 }
 
-// ExplosionIC2.doExplosionA and doExplosionB
+// ExplosionIC2: Explosion with its own drop rate and entity damage, run by the host so a nuke fits one call
 pub(crate) fn blast(world: World, at: [f64; 3], power: f32, blast: Blast)
 {
     if !world.isAuthority()
@@ -167,9 +113,10 @@ pub(crate) fn blast(world: World, at: [f64; 3], power: f32, blast: Blast)
         return;
     }
 
-    let blocks: BTreeSet<(i32, i32, i32)> = rays(world, at, power);
-    hurt(world, at, power, blast.m_damage);
-    destroy(world, at, power, &blocks, blast.m_drop);
+    if let Err(error) = world.explodeWith(at, power, blast.m_drop, blast.m_damage, false)
+    {
+        warn(&format!("an IC2 explosion at {at:?} failed: {error}"));
+    }
 }
 
 // PointExplosion: dynamite's box of blocks, anything an explosion of this size can break
