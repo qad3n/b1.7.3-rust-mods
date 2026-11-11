@@ -681,8 +681,46 @@ fn containerScreen(title: &str) -> ScreenBuilder
     ScreenBuilder::new(title, gui::WIDTH, gui::HEIGHT).playerInventory(gui::INVENTORY[0], gui::INVENTORY[1])
 }
 
+// every recipe as a recipe viewer page, its fuel counted at 500 ticks an item
+fn registerPages(ctx: &mut RegisterCtx, machine: &Machine) -> Result<()>
+{
+    const ANY_DAMAGE: i32 = -1;
+
+    ctx.machines().register(machine.m_name, Some(machine.m_title), &[machine.m_name])?;
+
+    for recipe in machine.m_recipes
+    {
+        let input: ItemStack = ItemStack::of(recipe.m_input, 1);
+        let made: ItemStack = ItemStack::of(recipe.m_output.unwrap_or(recipe.m_input), 1);
+        let fuel: i32 = (recipe.m_ticks + machine::FUEL_TICKS - 1) / machine::FUEL_TICKS;
+        let mut page = ctx
+            .machines()
+            .recipe(machine.m_name)
+            .input(input.withDamage(ANY_DAMAGE))
+            .input(ItemStack::of(machine.m_fuel, fuel))
+            .output(made)
+            .note(&format!("{} ticks", recipe.m_ticks));
+
+        if recipe.m_output.is_none()
+        {
+            page = page.note("Repairs it fully");
+        }
+
+        if machine.m_booster.is_some()
+        {
+            page = page.note("Faster on enchanted gravitite");
+        }
+
+        page.build()?;
+    }
+
+    Ok(())
+}
+
 fn registerMachine(ctx: &mut RegisterCtx, machine: &'static Machine) -> Result<()>
 {
+    registerPages(ctx, machine)?;
+
     registerBlock(
         ctx,
         machine.m_name,
@@ -706,6 +744,18 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     registerMachine(ctx, &ENCHANTER)?;
     registerMachine(ctx, &FREEZER)?;
     registerBlock(ctx, INCUBATOR, INCUBATOR_FACES, "flame", Rc::new(IncubatorTile))?;
+    ctx.machines().register(INCUBATOR, Some(INCUBATOR_TITLE), &[INCUBATOR])?;
+    let torches: i32 = (machine::HATCH_TICKS + machine::TORCH_TICKS - 1) / machine::TORCH_TICKS;
+    for (kind, egg) in moa::eggs()
+    {
+        ctx.machines()
+            .recipe(INCUBATOR)
+            .input(ItemStack::of(egg.as_str(), 1))
+            .input(ItemStack::of(AMBROSIUM_TORCH, torches))
+            .note(&format!("Hatches a {kind} moa after {} ticks", machine::HATCH_TICKS))
+            .note(&format!("Each torch burns {} ticks", machine::TORCH_TICKS))
+            .build()?;
+    }
     ctx.screens().register(
         INCUBATOR,
         containerScreen(INCUBATOR_TITLE)
