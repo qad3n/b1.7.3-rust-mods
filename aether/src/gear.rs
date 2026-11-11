@@ -1,3 +1,4 @@
+use crate::effects::Effect;
 use crate::entities::lookOf;
 use crate::ids::blockId;
 use b173_api::prelude::*;
@@ -36,7 +37,15 @@ struct SkyrootBucket
     m_kind: Bucket,
 }
 
+// ItemSkyrootBucket.getMaxItemUseDuration for the buckets that are drunk
+const DRINK_TICKS: i32 = 32;
+
 fn empty() -> Option<ItemStack> { Some(ItemStack::of("skyroot_bucket", 1)) }
+
+impl SkyrootBucket
+{
+    fn drunk(&self) -> bool { matches!(self.m_kind, Bucket::Poison | Bucket::Remedy | Bucket::Milk) }
+}
 
 #[item_behavior]
 impl ItemBehavior for SkyrootBucket
@@ -48,7 +57,6 @@ impl ItemBehavior for SkyrootBucket
         {
             return Use::Pass;
         };
-        let entity: Entity = Entity { world, id: player.id };
         // ItemSkyrootBucket stacks empties to sixteen, only a single one fills
         match self.m_kind
         {
@@ -90,17 +98,49 @@ impl ItemBehavior for SkyrootBucket
                 }
                 Use::Done(empty())
             }
-            Bucket::Poison =>
+            Bucket::Poison | Bucket::Remedy | Bucket::Milk =>
             {
-                crate::player::poison(entity);
-                Use::Done(empty())
-            }
-            Bucket::Remedy | Bucket::Milk =>
-            {
-                crate::player::cure(entity);
-                Use::Done(empty())
+                if let Err(error) = player.setItemInUse(DRINK_TICKS)
+                {
+                    warn(&format!("skyroot bucket drink: {error}"));
+                }
+                Use::Done(Some(stack))
             }
         }
+    }
+
+    fn useDuration(&self, _stack: ItemStack) -> i32 { if self.drunk() { DRINK_TICKS } else { 0 } }
+
+    fn useAction(&self, _stack: ItemStack) -> UseAction
+    {
+        if self.drunk()
+        {
+            UseAction::Drink
+        }
+        else
+        {
+            UseAction::None
+        }
+    }
+
+    // ItemSkyrootBucket.onBucketUsed: poison inebriates, the remedy cures it and milk clears the vanilla potions
+    fn onUseFinish(&self, world: World, player: Player, _stack: ItemStack) -> Use
+    {
+        let entity: Entity = Entity { world, id: player.id };
+        match self.m_kind
+        {
+            Bucket::Poison => crate::player::poison(entity),
+            Bucket::Remedy => crate::player::cure(entity),
+            Bucket::Milk if world.isAuthority() =>
+            {
+                crate::effects::remove(entity, Effect::Regeneration);
+                crate::effects::remove(entity, Effect::Weakness);
+            }
+            Bucket::Milk =>
+            {}
+            Bucket::Empty | Bucket::Water => return Use::Pass,
+        }
+        Use::Done(empty())
     }
 }
 
