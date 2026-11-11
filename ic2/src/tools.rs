@@ -691,6 +691,9 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     const SCANNER_USES: i32 = 202;
     const LASER_USES: i32 = 8002;
     const CHAINSAW_DAMAGE: i32 = 10;
+    // ItemElectricTool passes no base damage so a drill hits for its material alone
+    const DRILL_DAMAGE: i32 = 2;
+    const DIAMOND_DRILL_DAMAGE: i32 = 3;
     const IRON: i32 = 2;
     const DIAMOND: i32 = 3;
 
@@ -702,13 +705,13 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     ctx.items().register(
         "mining_drill",
         electricItem("mining_drill", DRILL_USES)
-            .tool(ToolClass::Pickaxe, IRON, speed::DRILL, 0, DRILL_USES)
+            .tool(ToolClass::Pickaxe, IRON, speed::DRILL, DRILL_DAMAGE, DRILL_USES)
             .behavior(ElectricTool { m_kind: ToolKind::Drill }),
     )?;
     ctx.items().register(
         "diamond_drill",
         electricItem("diamond_drill", DIAMOND_USES)
-            .tool(ToolClass::Pickaxe, DIAMOND, speed::DIAMOND_DRILL, 0, DIAMOND_USES)
+            .tool(ToolClass::Pickaxe, DIAMOND, speed::DIAMOND_DRILL, DIAMOND_DRILL_DAMAGE, DIAMOND_USES)
             .behavior(ElectricTool { m_kind: ToolKind::DiamondDrill }),
     )?;
     ctx.items().register(

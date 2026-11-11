@@ -497,19 +497,20 @@ pub(crate) fn armor(slot: usize, durability: i32, layer: &str) -> ArmorSpec
 
 fn registerBronze(ctx: &mut RegisterCtx) -> Result<()>
 {
-    for (name, class) in [
-        ("bronze_pickaxe", ToolClass::Pickaxe),
-        ("bronze_axe", ToolClass::Axe),
-        ("bronze_sword", ToolClass::Sword),
-        ("bronze_shovel", ToolClass::Shovel),
-        ("bronze_hoe", ToolClass::Hoe),
+    // beta's iron tool damage, ItemIC2Sword's own weaponDamage of 7 shadows the private one ItemSword reads
+    for (name, class, damage) in [
+        ("bronze_pickaxe", ToolClass::Pickaxe, 4),
+        ("bronze_axe", ToolClass::Axe, 5),
+        ("bronze_sword", ToolClass::Sword, 6),
+        ("bronze_shovel", ToolClass::Shovel, 3),
+        ("bronze_hoe", ToolClass::Hoe, 1),
     ]
     {
         ctx.items().register(
             name,
             ItemSpecBuilder::new()
                 .texture(&itemTexture(name))
-                .tool(class, bronze::LEVEL, bronze::SPEED, 0, bronze::USES)
+                .tool(class, bronze::LEVEL, bronze::SPEED, damage, bronze::USES)
                 .maxDamage(bronze::USES),
         )?;
     }
