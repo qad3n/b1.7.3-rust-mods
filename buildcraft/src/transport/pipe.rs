@@ -107,8 +107,8 @@ fn provider(kind: Kind) -> Option<Provider>
 {
     match kind
     {
-        Kind::Wooden => Some(WOODEN_POWER.build()),
-        Kind::Obsidian => Some(OBSIDIAN_POWER.build()),
+        Kind::Wooden => Some(WOODEN_POWER.provider()),
+        Kind::Obsidian => Some(OBSIDIAN_POWER.provider()),
         _ => None,
     }
 }

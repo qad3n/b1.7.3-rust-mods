@@ -545,7 +545,7 @@ fn tick(world: World, pos: BlockPos, state: &mut QuarryState)
     if !state.m_started
     {
         state.m_started = true;
-        state.m_provider = FRAME_POWER.build();
+        state.m_provider = FRAME_POWER.provider();
         state.m_digging = true;
     }
 
@@ -681,7 +681,7 @@ impl TileBehavior for QuarryTile
         let state: QuarryState = ctx.tileData();
         if !state.m_started
         {
-            return FRAME_POWER.build().demand();
+            return FRAME_POWER.provider().demand();
         }
 
         state.m_provider.demand()
@@ -693,7 +693,7 @@ impl TileBehavior for QuarryTile
         if !state.m_started
         {
             state.m_started = true;
-            state.m_provider = FRAME_POWER.build();
+            state.m_provider = FRAME_POWER.provider();
             state.m_digging = true;
         }
 

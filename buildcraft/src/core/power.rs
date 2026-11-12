@@ -13,7 +13,7 @@ pub(crate) struct Setup
 
 impl Setup
 {
-    pub(crate) fn build(&self) -> Provider
+    pub(crate) fn provider(&self) -> Provider
     {
         let provider: Provider = Provider::new(
             self.m_latency,
@@ -256,5 +256,6 @@ impl Provider
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.energy().register(MJ_NAME, EnergySpec { worth: MJ_WORTH, label: "MJ".to_owned() })
+    ctx.energy().register(MJ_NAME, Energy::new("MJ", MJ_WORTH))?;
+    Ok(())
 }

@@ -142,7 +142,7 @@ fn publish(world: World, pos: BlockPos, tubeY: f64)
 // TilePump.updateEntity on the server
 fn tick(world: World, pos: BlockPos, state: &mut PumpState)
 {
-    let mut provider: Provider = state.m_provider.take().unwrap_or_else(|| POWER.build());
+    let mut provider: Provider = state.m_provider.take().unwrap_or_else(|| POWER.provider());
     // doWork does nothing for a pump, so the update ends with its power loss
     provider.update(world, pos);
     provider.decay(world);
@@ -315,13 +315,13 @@ impl TileBehavior for PumpTile
     fn energyDemand(&self, ctx: &mut BlockCtx, _face: i32) -> Option<EnergyDemand>
     {
         let state: PumpState = ctx.tileData();
-        state.m_provider.unwrap_or_else(|| POWER.build()).demand()
+        state.m_provider.unwrap_or_else(|| POWER.provider()).demand()
     }
 
     fn receiveEnergy(&self, ctx: &mut BlockCtx, _face: i32, amount: i64, simulate: bool) -> i64
     {
         let mut state: PumpState = ctx.tileData();
-        let mut provider: Provider = state.m_provider.unwrap_or_else(|| POWER.build());
+        let mut provider: Provider = state.m_provider.unwrap_or_else(|| POWER.provider());
         let taken: i64 = provider.take(amount, simulate);
 
         if !simulate

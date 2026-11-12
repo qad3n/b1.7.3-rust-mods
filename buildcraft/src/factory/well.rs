@@ -70,7 +70,7 @@ pub(crate) struct WellState
 
 impl WellState
 {
-    fn provider(&mut self) -> &mut Provider { self.m_provider.get_or_insert_with(|| POWER.build()) }
+    fn provider(&mut self) -> &mut Provider { self.m_provider.get_or_insert_with(|| POWER.provider()) }
 }
 
 // TileMiningWell.doWork: below the shaft the next block goes to the machine's output and the shaft grows

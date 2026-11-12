@@ -408,7 +408,7 @@ impl TileBehavior for BuilderTile
         let pos: BlockPos = ctx.pos();
         let before: BuilderState = ctx.tileData();
         let mut state: BuilderState = before.clone();
-        let mut provider: Provider = state.m_provider.take().unwrap_or_else(|| POWER.build());
+        let mut provider: Provider = state.m_provider.take().unwrap_or_else(|| POWER.provider());
 
         if provider.update(world, pos) && provider.useEnergy(WORK_COST, WORK_COST, true) >= WORK_COST
         {
@@ -438,13 +438,13 @@ impl TileBehavior for BuilderTile
     fn energyDemand(&self, ctx: &mut BlockCtx, _face: i32) -> Option<EnergyDemand>
     {
         let state: BuilderState = ctx.tileData();
-        state.m_provider.unwrap_or_else(|| POWER.build()).demand()
+        state.m_provider.unwrap_or_else(|| POWER.provider()).demand()
     }
 
     fn receiveEnergy(&self, ctx: &mut BlockCtx, _face: i32, amount: i64, simulate: bool) -> i64
     {
         let mut state: BuilderState = ctx.tileData();
-        let mut provider: Provider = state.m_provider.unwrap_or_else(|| POWER.build());
+        let mut provider: Provider = state.m_provider.unwrap_or_else(|| POWER.provider());
         let taken: i64 = provider.take(amount, simulate);
 
         if !simulate

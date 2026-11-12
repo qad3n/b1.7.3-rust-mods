@@ -358,7 +358,7 @@ fn recompute(world: World, pos: BlockPos, state: &mut FillerState)
 // TileFiller.doWork: the first block in its resources is what it places
 fn work(world: World, pos: BlockPos, state: &mut FillerState)
 {
-    if state.m_provider.get_or_insert_with(|| POWER.build()).useEnergy(WORK_COST, WORK_COST, true) < WORK_COST
+    if state.m_provider.get_or_insert_with(|| POWER.provider()).useEnergy(WORK_COST, WORK_COST, true) < WORK_COST
     {
         return;
     }
@@ -420,7 +420,7 @@ impl TileBehavior for FillerTile
 
         recompute(world, pos, &mut state);
 
-        let mut provider: Provider = state.m_provider.take().unwrap_or_else(|| POWER.build());
+        let mut provider: Provider = state.m_provider.take().unwrap_or_else(|| POWER.provider());
         let ready: bool = provider.update(world, pos);
         state.m_provider = Some(provider);
 
@@ -535,13 +535,13 @@ impl TileBehavior for FillerTile
     fn energyDemand(&self, ctx: &mut BlockCtx, _face: i32) -> Option<EnergyDemand>
     {
         let state: FillerState = ctx.tileData();
-        state.m_provider.unwrap_or_else(|| POWER.build()).demand()
+        state.m_provider.unwrap_or_else(|| POWER.provider()).demand()
     }
 
     fn receiveEnergy(&self, ctx: &mut BlockCtx, _face: i32, amount: i64, simulate: bool) -> i64
     {
         let mut state: FillerState = ctx.tileData();
-        let mut provider: Provider = state.m_provider.unwrap_or_else(|| POWER.build());
+        let mut provider: Provider = state.m_provider.unwrap_or_else(|| POWER.provider());
         let taken: i64 = provider.take(amount, simulate);
 
         if !simulate
