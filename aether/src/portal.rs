@@ -7,6 +7,12 @@ const GLOWSTONE: &str = "minecraft:glowstone";
 const FIRE: &str = "minecraft:fire";
 const WATER_BUCKET: &str = "minecraft:water_bucket";
 const BUCKET: &str = "minecraft:bucket";
+const LAVA_BUCKET: &str = "minecraft:lava_bucket";
+const AEROGEL: &str = "aerogel";
+const BED: &str = "minecraft:bed";
+// AetherEventHandler.checkBlockBannedEvent: what only smokes when used in the Aether
+const BANNED: [&str; 2] = ["minecraft:flint_and_steel", "minecraft:torch"];
+const BAN_PUFFS: i32 = 10;
 const COBBLESTONE: &str = "minecraft:cobblestone";
 const PORTALS_KEY: &str = "portals";
 
@@ -620,43 +626,94 @@ pub(crate) fn registerBlock(ctx: &mut RegisterCtx) -> Result<()>
     Ok(())
 }
 
-// AetherEventHandler.onFillBucket, water poured into a glowstone frame lights the portal on both sides
+fn inAether(world: World) -> bool { aetherDimension() == Some(world.dimension) }
+
+// AetherEventHandler.checkBlockBannedEvent: flint and steel and torches only smoke in the Aether
+fn smother(event: &mut Event, world: World, pos: BlockPos)
+{
+    for _ in 0..BAN_PUFFS
+    {
+        world.particle("smoke", [f64::from(pos.x), f64::from(pos.y), f64::from(pos.z)], [0.0; 3]);
+    }
+
+    event.cancel();
+}
+
+// AetherEventHandler.onFillBucket: water in a glowstone frame lights the portal, lava poured in the Aether sets
+// into aerogel
+fn bucketUsed(event: &mut Event)
+{
+    let (Some(stack), Some(player), Some(world)) = (event.stack(), event.player(), event.world())
+    else
+    {
+        return;
+    };
+    let EventData::ItemUse { pos: Some(pos), face, .. } = event.data().clone()
+    else
+    {
+        return;
+    };
+
+    if inAether(world) && BANNED.iter().any(|name| stack.item.is(name))
+    {
+        smother(event, world, pos);
+        return;
+    }
+
+    let Some(face) = Face::fromIndex(face)
+    else
+    {
+        return;
+    };
+
+    // the block next to the clicked face as ItemBucket offsets its target
+    let target: BlockPos = offset(pos, face);
+    let travels: bool = inAether(world) || world.dimension == travel::OVERWORLD;
+    if stack.item.is(WATER_BUCKET) && travels && trySpawn(world, target)
+    {
+        event.cancel();
+
+        if world.isAuthority()
+        {
+            let _ = player.setHeld(Some(ItemStack::of(BUCKET, 1)));
+        }
+
+        return;
+    }
+
+    if !stack.item.is(LAVA_BUCKET) || !inAether(world)
+    {
+        return;
+    }
+
+    event.cancel();
+
+    if world.isAir(target) && world.isAuthority()
+    {
+        let _ = world.place(target, AEROGEL);
+        let _ = player.setHeld(Some(ItemStack::of(BUCKET, 1)));
+    }
+}
+
+// AetherEventHandler.checkBlockBannedEvent: an empty hand never makes a vanilla bed in the Aether
+fn bedUsed(event: &mut Event)
+{
+    let EventData::Block { world, block, player: Some(player), .. } = event.data().clone()
+    else
+    {
+        return;
+    };
+
+    if inAether(World { dimension: world }) && blockIs(block, BED) && (Player { id: player }).held().is_none()
+    {
+        event.cancel();
+    }
+}
+
 pub(crate) fn registerEvents(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.events().on::<ItemUseOnBlock>(Priority::Normal, |event|
-    {
-        let (Some(stack), Some(player), Some(world)) = (event.stack(), event.player(), event.world())
-        else
-        {
-            return;
-        };
-        let EventData::ItemUse { pos: Some(pos), face, .. } = event.data().clone()
-        else
-        {
-            return;
-        };
-        if !stack.item.is(WATER_BUCKET)
-        {
-            return;
-        }
-
-        let Some(face) = Face::fromIndex(face)
-        else
-        {
-            return;
-        };
-
-        // the block next to the clicked face as ItemBucket offsets its target
-        if trySpawn(world, offset(pos, face))
-        {
-            event.cancel();
-
-            if world.isAuthority()
-            {
-                let _ = player.setHeld(Some(ItemStack::of(BUCKET, 1)));
-            }
-        }
-    })?;
+    ctx.events().on::<ItemUseOnBlock>(Priority::Normal, bucketUsed)?;
+    ctx.events().on::<BlockActivate>(Priority::Normal, bedUsed)?;
 
     ctx.events().on::<TickPost>(Priority::Normal, |_|
     {
