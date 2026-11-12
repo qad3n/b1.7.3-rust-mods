@@ -137,7 +137,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         NAME,
         EntitySpec
         {
-            template: Identifier::parse("minecraft:neutral_monster").ok(),
+            // the source cube runs no target task so it never fights back
+            template: Identifier::parse("minecraft:passive_monster").ok(),
             texture: Some("twilightforest:model/cubeofannihilation".to_owned()),
             size: Some([1.2, 2.1]),
             health: Some(10),
