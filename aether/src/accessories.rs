@@ -269,6 +269,36 @@ impl ItemBehavior for Wearable
     }
 }
 
+// PlayerAetherEvents.onPlayerAetherDrops: a player who dies drops what it wore unless the world keeps inventories
+fn spill(event: &mut Event)
+{
+    let EventData::Death { entity: dead, .. } = event.data().clone()
+    else
+    {
+        return;
+    };
+    let world: World = World { dimension: dead.world };
+    let keeps: bool = matches!(gameRule("minecraft:keep_inventory"), Ok(GameRuleValue::Bool(true)));
+    if dead.player.is_none() || !world.isAuthority() || keeps
+    {
+        return;
+    }
+
+    let player: Player = Player { id: dead.id };
+    let mut worn: Worn = Worn::of(player);
+    for index in 0..SLOTS
+    {
+        if let Some(stack) = worn.stack(index)
+        {
+            let _ = world.spawnItem(dead.pos, stack);
+        }
+
+        worn.m_slots[index] = None;
+    }
+
+    worn.save(player);
+}
+
 // SlotAccessory: a click swaps the cursor stack with the slot when the cursor holds an accessory of its kind
 #[derive(Serialize, Deserialize)]
 struct Click
@@ -819,5 +849,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     })?;
 
     ctx.events().on::<PlayerBreakSpeed>(Priority::Normal, breakSpeed)?;
+    ctx.events().on::<LivingDeath>(Priority::Normal, spill)?;
     Ok(())
 }
