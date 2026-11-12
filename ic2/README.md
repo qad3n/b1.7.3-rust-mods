@@ -11,8 +11,6 @@ art from it, following `assets.toml`. The names and screen text are the port's o
 `assets/ic2/lang/en_US.lang`. The zip carries no sounds; IC2 played them from a separate resource download, so a
 texture pack may add them under `assets/ic2/sounds/`.
 
-`assets.toml` is generated: after changing a sprite table in `tools/recipe.py`, run `python3 -I tools/recipe.py`.
-
 ## Build
 
 ```

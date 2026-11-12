@@ -10,8 +10,6 @@ The textures and gui images belong to the original authors and are not in this r
 `mods/buildcraft_assets/` folder. On its next launch the client builds the mod's art from them, following
 `assets.toml`. The names and screen text are the port's own and ship in `assets/buildcraft/lang/en_US.lang`.
 
-`assets.toml` is generated: after changing a sprite table in `tools/recipe.py`, run `python3 -I tools/recipe.py`.
-
 ## Build
 
 ```
