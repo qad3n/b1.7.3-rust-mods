@@ -184,6 +184,8 @@ fn serverArmor(player: Player)
         return;
     }
 
+    crate::gear::openFalling(player, &info);
+
     if entity.flag(EntityField::InWater) && entity.field(EntityField::TicksExisted) % armor::QUENCH_EVERY == 0.0
     {
         quench(player);

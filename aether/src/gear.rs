@@ -15,6 +15,7 @@ mod reach
 const SKYROOT_BUCKET: &str = "skyroot_bucket";
 const MILK_BUCKET: &str = "skyroot_milk_bucket";
 const COW: &str = "minecraft:cow";
+const MAIN_SLOTS: i32 = 36;
 
 fn trace(world: World, info: &EntityInfo, liquids: bool) -> Option<RayHit>
 {
@@ -255,6 +256,9 @@ mod chute
     pub const FALL: f64 = -0.25;
     pub const ABOVE: f64 = 1.5;
     pub const GOLDEN_USES: i32 = 20;
+    // PlayerAether.onUpdate opens a carried parachute below this fall speed
+    pub const PLUMMET: f64 = -2.0;
+    pub const TERMINAL: f64 = -4.0;
     pub const PUFFS: i32 = 1;
 }
 
@@ -265,6 +269,41 @@ struct Chute
 {
     m_rider: i32,
     m_golden: bool,
+}
+
+// EntityParachute over a player, drawn as the cloud its item is made of
+fn open(world: World, player: Player, info: &EntityInfo, golden: bool)
+{
+    let Ok(chute) =
+        world.spawnEntity(&format!("aether:{PARACHUTE}"), [info.pos[0], info.pos[1] + chute::ABOVE, info.pos[2]])
+    else
+    {
+        return;
+    };
+
+    let cloud: &str = if golden
+    {
+        "golden_aercloud"
+    }
+    else
+    {
+        "cold_aercloud"
+    };
+    chute.setField(EntityField::Block, f64::from(numeric(cloud)));
+
+    let _ = chute.setSynced(&Chute { m_rider: player.id, m_golden: golden });
+}
+
+// what is left of a parachute after one opening, the cold one is used up and the golden one wears
+fn spent(stack: ItemStack, golden: bool) -> Option<ItemStack>
+{
+    if golden
+    {
+        let worn: ItemStack = ItemStack { damage: stack.damage + 1, ..stack };
+        return (worn.damage < chute::GOLDEN_USES).then_some(worn);
+    }
+
+    (stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack })
 }
 
 // ItemAetherParachute: opens a cloud over a falling player, the cold one is used up, the golden one wears
@@ -290,30 +329,46 @@ impl ItemBehavior for ParachuteItem
         }
 
         if world.isAuthority()
-            && let Ok(chute) = world
-                .spawnEntity(&format!("aether:{PARACHUTE}"), [info.pos[0], info.pos[1] + chute::ABOVE, info.pos[2]])
         {
-            let cloud: &str = if self.m_golden
-            {
-                "golden_aercloud"
-            }
-            else
-            {
-                "cold_aercloud"
-            };
-            chute.setField(EntityField::Block, f64::from(numeric(cloud)));
-
-            let _ = chute.setSynced(&Chute { m_rider: player.id, m_golden: self.m_golden });
+            open(world, player, &info, self.m_golden);
         }
 
-        if self.m_golden
-        {
-            let worn: ItemStack = ItemStack { damage: stack.damage + 1, ..stack };
-            return Use::Done((worn.damage < chute::GOLDEN_USES).then_some(worn));
-        }
-
-        Use::Done((stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }))
+        Use::Done(spent(stack, self.m_golden))
     }
+}
+
+// the height each player stood at a tick ago, a server never learns a player's own motion
+static LAST_Y: EntityState<Option<f64>> = EntityState::new("last_height");
+
+// PlayerAether.activateParachute: a player falling faster than two blocks a tick opens the first parachute carried
+pub(crate) fn openFalling(player: Player, info: &EntityInfo)
+{
+    let entity: Entity = Entity { world: World { dimension: info.world }, id: player.id };
+    let before: Option<f64> = LAST_Y.get(entity);
+    crate::entities::store(&LAST_Y, entity, &Some(info.pos[1]));
+
+    // a drop past terminal speed is a teleport, never a fall
+    let plummeting = |before: f64| (chute::TERMINAL..chute::PLUMMET).contains(&(info.pos[1] - before));
+    if !before.is_some_and(plummeting)
+    {
+        return;
+    }
+
+    let carried = |slot: i32| -> Option<(i32, ItemStack, bool)>
+    {
+        let stack: ItemStack = player.slot(slot)?;
+        let golden: bool = stack.item.is("golden_parachute");
+        (golden || stack.item.is("cold_parachute")).then_some((slot, stack, golden))
+    };
+    let Some((slot, stack, golden)) = (0..MAIN_SLOTS).find_map(carried)
+    else
+    {
+        return;
+    };
+
+    open(entity.world, player, info, golden);
+
+    let _ = player.setSlot(slot, spent(stack, golden));
 }
 
 // EntityParachute: a cloud hanging over its rider until the rider lands or swims
