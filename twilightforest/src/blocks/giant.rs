@@ -9,7 +9,37 @@ mod cell
     pub const SIZE: i32 = 4;
 }
 
+// TFEventListener.onCrafting: a giant log is worth four stacks of planks, the grid hands one out and three follow
+mod planks
+{
+    pub const ITEM: &str = "minecraft:planks";
+    pub const STACK: i32 = 64;
+    pub const EXTRA_STACKS: i32 = 3;
+}
+
 struct Giant;
+
+// no other recipe hands out a whole stack of planks at once, so the stack alone tells a giant log was crafted
+fn extraPlanks(event: &mut Event)
+{
+    let (Some(player), Some(stack), Some(world)) = (event.player(), event.stack(), event.world())
+    else
+    {
+        return;
+    };
+    if !world.isAuthority() || !stack.item.is(planks::ITEM) || stack.count != planks::STACK
+    {
+        return;
+    }
+
+    for _ in 0..planks::EXTRA_STACKS
+    {
+        if let Err(error) = player.give(ItemStack::of(planks::ITEM, planks::STACK))
+        {
+            warn(&format!("giant log planks: {error}"));
+        }
+    }
+}
 
 fn origin(pos: BlockPos) -> BlockPos
 {
@@ -190,5 +220,5 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         put(ctx, row.m_name, spec)?;
     }
 
-    Ok(())
+    ctx.events().on::<ItemCrafted>(Priority::Normal, extraPlanks)
 }
