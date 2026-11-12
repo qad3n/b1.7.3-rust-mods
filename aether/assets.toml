@@ -30,6 +30,10 @@ from = "assets/aether_legacy/textures/other/"
 to = "textures/other/"
 
 [[copy]]
+from = "assets/aether_legacy/textures/blur/"
+to = "textures/blur/"
+
+[[copy]]
 from = "assets/aether_legacy/textures/tile_entities/"
 to = "textures/tile/"
 

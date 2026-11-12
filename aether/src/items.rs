@@ -146,6 +146,9 @@ const VICTORY_MEDAL_STACK: i32 = 10;
 
 fn texture(path: &str) -> String { format!("aether:item/{path}") }
 
+// ItemWhiteApple.onFoodEaten, its setCured
+const APPLE_CURE: i32 = 300;
+
 // ItemWhiteApple: eating it cures inebriation, the food itself is eaten as usual
 struct WhiteApple;
 
@@ -154,7 +157,7 @@ impl ItemBehavior for WhiteApple
 {
     fn onRightClick(&self, world: World, player: Player, _stack: ItemStack) -> Use
     {
-        crate::player::cure(Entity { world, id: player.id });
+        crate::player::cure(Entity { world, id: player.id }, APPLE_CURE);
         Use::Pass
     }
 }

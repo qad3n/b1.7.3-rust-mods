@@ -39,6 +39,9 @@ struct SkyrootBucket
 
 // ItemSkyrootBucket.getMaxItemUseDuration for the buckets that are drunk
 const DRINK_TICKS: i32 = 32;
+// ItemSkyrootBucket.onBucketUsed, the remedy's setCured
+const REMEDY_CURE: i32 = 200;
+
 
 fn empty() -> Option<ItemStack> { Some(ItemStack::of("skyroot_bucket", 1)) }
 
@@ -144,7 +147,7 @@ impl ItemBehavior for SkyrootBucket
         match self.m_kind
         {
             Bucket::Poison => crate::player::poison(entity),
-            Bucket::Remedy => crate::player::cure(entity),
+            Bucket::Remedy => crate::player::cure(entity, REMEDY_CURE),
 
             Bucket::Milk if world.isAuthority() =>
             {

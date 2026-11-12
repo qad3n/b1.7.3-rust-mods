@@ -39,9 +39,11 @@ pub(crate) fn poison(entity: Entity)
     crate::effects::give(entity, Effect::Inebriation, inebriation::TICKS);
 }
 
-// the remedy bucket and the white apple cure it
-pub(crate) fn cure(entity: Entity)
+// the remedy bucket and the white apple cure it, PlayerAether.setCured tints the cured player's view for a while
+pub(crate) fn cure(entity: Entity, ticks: i32)
 {
+    crate::hud::cured(Player { id: entity.id }, ticks);
+
     if !entity.world.isAuthority()
     {
         return;
