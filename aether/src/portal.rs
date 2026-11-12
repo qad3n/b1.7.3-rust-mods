@@ -2,8 +2,6 @@ use crate::names::{AIR, Pick, block, handle};
 use crate::world::DIMENSION_ID;
 use b173_api::math::{Face, blockOf, floor, offset};
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 
 const GLOWSTONE: &str = "minecraft:glowstone";
 const FIRE: &str = "minecraft:fire";
@@ -268,7 +266,7 @@ fn knownPortal(dimension: i32, x: i32, z: i32) -> Option<[f64; 3]>
         .map(|(_, point)| *point)
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default)]
 struct Visitor
 {
     m_ticks: i32,
@@ -283,9 +281,11 @@ thread_local!
 {
     // ticks of this side's game loop; world clocks are shared between dimensions and step more than once a tick
     static TICKS: std::cell::Cell<i64> = const { std::cell::Cell::new(0) };
-    static VISITORS: RefCell<HashMap<i32, Visitor>> = RefCell::new(HashMap::new());
-    static ARRIVALS: RefCell<HashMap<i32, Option<[f64; 3]>>> = RefCell::new(HashMap::new());
 }
+
+// a player's portal visit, and the known portal a sent player arrives at; both outlive the trip between worlds
+static VISITORS: EntityState<Visitor> = EntityState::new("portal_visit");
+static ARRIVALS: EntityState<Option<Option<[f64; 3]>>> = EntityState::new("portal_arrival");
 
 pub(crate) fn aetherDimension() -> Option<i32>
 {
@@ -331,21 +331,18 @@ pub(crate) fn inPortal(info: &EntityInfo) -> bool
 // a sent player arms again only once seen standing outside every portal, as vanilla waits for the player to leave
 fn rearm()
 {
-    let waiting: Vec<i32> = VISITORS
-        .with(|visitors| visitors.borrow().iter().filter(|(_, visitor)| !visitor.m_armed).map(|(id, _)| *id).collect());
-
-    for id in waiting
+    for (entity, info) in allPlayers().into_iter().filter_map(crate::abilities::entityOf)
     {
-        let outside: bool = Player { id }.info().is_some_and(|info| !inPortal(&info));
-        if outside
+        let Some(mut visitor) = VISITORS.find(entity).filter(|visitor| !visitor.m_armed)
+        else
         {
-            VISITORS.with(|visitors|
-            {
-                if let Some(visitor) = visitors.borrow_mut().get_mut(&id)
-                {
-                    visitor.m_armed = true;
-                }
-            });
+            continue;
+        };
+
+        if !inPortal(&info)
+        {
+            visitor.m_armed = true;
+            crate::entities::store(&VISITORS, entity, &visitor);
         }
     }
 }
@@ -355,18 +352,11 @@ fn enter(world: World, player: Player)
 {
     let now: i64 = TICKS.with(std::cell::Cell::get);
 
-    let ready: bool = VISITORS.with(|visitors|
-    {
-        let mut visitors: RefMut<HashMap<i32, Visitor>> = visitors.borrow_mut();
-        let visitor: &mut Visitor = visitors.entry(player.id).or_insert(Visitor
-        {
-            m_ticks: 0,
-            m_lastTick: now,
-            m_dimension: world.dimension,
-            m_armed: true,
-        });
-        visitor.tick(world.dimension, now)
-    });
+    let entity: Entity = Entity { world, id: player.id };
+    let fresh: Visitor = Visitor { m_ticks: 0, m_lastTick: now, m_dimension: world.dimension, m_armed: true };
+    let mut visitor: Visitor = VISITORS.find(entity).unwrap_or(fresh);
+    let ready: bool = visitor.tick(world.dimension, now);
+    crate::entities::store(&VISITORS, entity, &visitor);
     if !ready
     {
         return;
@@ -389,8 +379,10 @@ fn enter(world: World, player: Player)
     let known: Option<[f64; 3]> = knownPortal(target, x, z);
     let hold: [f64; 3] = known.unwrap_or([x as f64 + 0.5, travel::HOLD_Y, z as f64 + 0.5]);
 
-    ARRIVALS.with(|arrivals| arrivals.borrow_mut().insert(player.id, known));
-    VISITORS.with(|visitors| visitors.borrow_mut().entry(player.id).or_default().sent(target));
+    let mut visitor: Visitor = VISITORS.get(entity);
+    visitor.sent(target);
+    crate::entities::store(&VISITORS, entity, &visitor);
+    crate::entities::store(&ARRIVALS, entity, &Some(known));
 
     let _ = player.teleport(target, hold);
 }
@@ -457,11 +449,14 @@ fn buildPortal(world: World, x: i32, z: i32) -> [f64; 3]
 // runs once the player stands in the target dimension, finds or builds the portal they arrive through
 fn arrive(player: Player, to: i32)
 {
-    let Some(known) = ARRIVALS.with(|arrivals| arrivals.borrow_mut().remove(&player.id))
+    let arriving: Entity = Entity { world: World { dimension: to }, id: player.id };
+    let Some(known) = ARRIVALS.get(arriving)
     else
     {
         return;
     };
+
+    crate::entities::clear(&ARRIVALS, arriving);
 
     let world: World = World { dimension: to };
     let standing: Option<[f64; 3]> = known.filter(|point| world.is(blockOf(*point), block::AETHER_PORTAL));

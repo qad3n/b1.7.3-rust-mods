@@ -41,6 +41,16 @@ where T: serde::Serialize + serde::de::DeserializeOwned + Default
     }
 }
 
+// drops per-entity state ahead of the loader, for a value read once
+pub(crate) fn clear<T>(state: &EntityState<T>, entity: Entity)
+where T: serde::Serialize + serde::de::DeserializeOwned + Default
+{
+    if let Err(error) = state.clear(entity)
+    {
+        warn(&format!("entity {} state: {error}", entity.id));
+    }
+}
+
 pub(crate) fn onAetherGrass(info: &EntityInfo) -> bool
 {
     let world: World = World { dimension: info.world };

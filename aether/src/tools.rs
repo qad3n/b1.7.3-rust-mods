@@ -1,7 +1,5 @@
 use crate::entities::floating_block;
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 mod tool
 {
@@ -135,11 +133,8 @@ mod reach
     pub const LANCE: &str = "valkyrie_lance";
 }
 
-thread_local!
-{
-    // the block and entity reach each player's modifiers were last set for, every set resends their modifiers
-    static REACHING: RefCell<HashMap<i32, (bool, bool)>> = RefCell::new(HashMap::new());
-}
+// the block and entity reach each player's modifiers were last set for, every set resends their modifiers
+static REACHING: EntityState<Option<(bool, bool)>> = EntityState::new("reaching");
 
 fn stretch(entity: Entity, (attribute, base): (&str, f64), on: bool)
 {
@@ -171,15 +166,15 @@ pub(crate) fn valkyrieReach(player: Player)
     let tool: bool = held.as_ref().is_some_and(|stack| stack.item.tagged(crate::tags::VALKYRIE_TOOLS));
     let lance: bool = held.as_ref().is_some_and(|stack| stack.item.is(reach::LANCE));
     let wanted: (bool, bool) = (tool, tool || lance);
-    if REACHING.with(|reaching| reaching.borrow().get(&player.id).copied()) == Some(wanted)
+    let entity: Entity = Entity { world: World { dimension: info.world }, id: player.id };
+    if REACHING.get(entity) == Some(wanted)
     {
         return;
     }
 
-    let entity: Entity = Entity { world: World { dimension: info.world }, id: player.id };
     stretch(entity, reach::BLOCK, wanted.0);
     stretch(entity, reach::ENTITY, wanted.1);
-    REACHING.with(|reaching| reaching.borrow_mut().insert(player.id, wanted));
+    crate::entities::store(&REACHING, entity, &Some(wanted));
 }
 
 pub(crate) fn holystone() -> impl ItemBehavior { Holystone }

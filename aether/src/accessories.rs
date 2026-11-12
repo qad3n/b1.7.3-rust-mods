@@ -2,8 +2,7 @@ use crate::effects::Effect;
 use b173_api::math::floor;
 use b173_api::prelude::*;
 use b173_api::{StackData, WornStack};
-use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::cell::Cell;
 
 // AccessoryType, the slot an accessory goes in
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -385,19 +384,16 @@ mod ability
     pub const FREEZE_REACH: i32 = 1;
 }
 
-thread_local!
-{
-    // players whose step height the agility cape raised, and players whose worn list reached their own client
-    static STEPPING: RefCell<HashMap<i32, bool>> = RefCell::new(HashMap::new());
-    static ANNOUNCED: RefCell<HashMap<i32, bool>> = RefCell::new(HashMap::new());
-    // the life shard count each player's health modifier was last set for
-    static SHARDS: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
-}
+// players whose step height the agility cape raised, and players whose worn list reached their own client
+static STEPPING: EntityState<bool> = EntityState::new("stepping");
+static ANNOUNCED: EntityState<bool> = EntityState::new("announced");
+// the life shard count each player's health modifier was last set for
+static SHARDS: EntityState<Option<i32>> = EntityState::new("shards");
 
 // PlayerAether's health modifier, set only when the shards change since every set resends the player's modifiers
 fn shardHealth(entity: Entity, worn: &Worn)
 {
-    let applied: Option<i32> = SHARDS.with(|shards| shards.borrow().get(&entity.id).copied());
+    let applied: Option<i32> = SHARDS.get(entity);
     if applied == Some(worn.m_lifeShards)
     {
         return;
@@ -410,7 +406,7 @@ fn shardHealth(entity: Entity, worn: &Worn)
         return;
     }
 
-    SHARDS.with(|shards| shards.borrow_mut().insert(entity.id, worn.m_lifeShards));
+    crate::entities::store(&SHARDS, entity, &Some(worn.m_lifeShards));
 }
 
 // the ice ring and pendant freeze water to ice and lava to obsidian around the wearer's feet
@@ -480,11 +476,11 @@ fn serverTick(player: Player)
     worn.m_valkyrieSet = crate::player::wearingSet(player, "valkyrie");
     crate::abilities::repel(player, &mut worn);
 
-    if !ANNOUNCED.with(|announced| announced.borrow().contains_key(&player.id)) && player.canSend(CLICK)
+    if !ANNOUNCED.get(entity) && player.canSend(CLICK)
     {
         // the worn list loaded with the player reaches its client once the mod handshake is done
         worn.save(player);
-        ANNOUNCED.with(|announced| announced.borrow_mut().insert(player.id, true));
+        crate::entities::store(&ANNOUNCED, entity, &true);
     }
 
     if age % ability::WEAR_EVERY == 0.0
@@ -577,7 +573,7 @@ fn localTick()
     let worn: Worn = Worn::of(player);
     let sneaking: bool = entity.flag(EntityField::Sneaking);
     let agile: bool = worn.wearing("agility_cape") && !sneaking;
-    let wasAgile: bool = STEPPING.with(|stepping| stepping.borrow().get(&player.id).copied().unwrap_or(false));
+    let wasAgile: bool = STEPPING.get(entity);
     if agile || wasAgile
     {
         let value: f64 = if agile
@@ -589,7 +585,7 @@ fn localTick()
             ability::NORMAL_STEP
         };
         entity.setField(EntityField::StepHeight, value);
-        STEPPING.with(|stepping| stepping.borrow_mut().insert(player.id, agile));
+        crate::entities::store(&STEPPING, entity, &agile);
     }
 
     if worn.wearing("golden_feather") || worn.wearing("valkyrie_cape")

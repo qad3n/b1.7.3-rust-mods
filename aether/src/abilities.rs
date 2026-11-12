@@ -2,8 +2,7 @@ use crate::accessories::Worn;
 use crate::entities::fraction;
 use crate::progress::{self, Award};
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
+use std::cell::RefCell;
 
 const SHIELD: &str = "repulsion_shield";
 const INVISIBILITY: &str = "invisibility_cape";
@@ -67,11 +66,12 @@ thread_local!
 {
     // AbilityFlight count and modifier of the local player
     static FLIGHT: RefCell<(i32, f64)> = const { RefCell::new((0, 1.0)) };
-    // PlayerAether.wingSinage of every player this side draws
-    static SINAGE: RefCell<HashMap<i32, f32>> = RefCell::new(HashMap::new());
 }
 
-fn entityOf(player: Player) -> Option<(Entity, EntityInfo)>
+// PlayerAether.wingSinage of every player this side draws
+static SINAGE: EntityState<f32> = EntityState::new("wing_sinage");
+
+pub(crate) fn entityOf(player: Player) -> Option<(Entity, EntityInfo)>
 {
     let info: EntityInfo = player.info()?;
     Some((Entity { world: World { dimension: info.world }, id: player.id }, info))
@@ -190,32 +190,29 @@ fn fly(entity: Entity, info: &EntityInfo)
     });
 }
 
-fn flap(entity: Entity, id: i32)
+fn flap(entity: Entity)
 {
     let grounded: bool = entity.flag(EntityField::OnGround);
-
-    SINAGE.with(|sinage|
+    let mut angle: f32 = SINAGE.get(entity);
+    angle += if grounded
     {
-        let mut sinage: RefMut<HashMap<i32, f32>> = sinage.borrow_mut();
-        let angle: &mut f32 = sinage.entry(id).or_insert(0.0);
-        *angle += if grounded
-        {
-            wing::GROUND_FLAP
-        }
-        else
-        {
-            wing::AIR_FLAP
-        };
+        wing::GROUND_FLAP
+    }
+    else
+    {
+        wing::AIR_FLAP
+    };
 
-        if *angle > wing::TURN
-        {
-            *angle -= wing::TURN;
-        }
-        else
-        {
-            *angle += wing::DRIFT;
-        }
-    });
+    if angle > wing::TURN
+    {
+        angle -= wing::TURN;
+    }
+    else
+    {
+        angle += wing::DRIFT;
+    }
+
+    crate::entities::store(&SINAGE, entity, &angle);
 }
 
 fn tick()
@@ -237,7 +234,7 @@ fn tick()
             continue;
         }
 
-        flap(entity, player.id);
+        flap(entity);
 
         if local == Some(player.id) && worn.m_valkyrieSet
         {
@@ -309,7 +306,7 @@ pub(crate) fn wings(player: &EntityInfo, worn: &Worn) -> Option<PlayerLayer>
     }
 
     let entity: Entity = Entity { world: World { dimension: player.world }, id: player.id };
-    let sinage: f32 = SINAGE.with(|sinage| sinage.borrow().get(&player.id).copied().unwrap_or(0.0));
+    let sinage: f32 = SINAGE.get(entity);
     let sneaking: bool = entity.flag(EntityField::Sneaking);
 
     let rollDivisor: f32 = if entity.flag(EntityField::OnGround)
