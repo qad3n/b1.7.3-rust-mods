@@ -31,7 +31,7 @@ struct TagRow
 }
 
 // groups other mods share with the forest, most of its own blocks join their tags where they register
-const ROWS: [TagRow; 17] = [
+const ROWS: [TagRow; 19] = [
     blockTag(LEAVES, &["#minecraft:leaves"]),
     blockTag(
         STONY,
@@ -45,6 +45,8 @@ const ROWS: [TagRow; 17] = [
     itemTag("c:ingots/fiery", &[item::FIERY_INGOT]),
     itemTag("c:ingots/steeleaf", &[item::STEELEAF]),
     itemTag("c:ingots/knightmetal", &[item::KNIGHTMETAL]),
+    itemTag("c:raw_materials", &[item::RAW_IRONWOOD]),
+    itemTag("c:raw_materials/ironwood", &[item::RAW_IRONWOOD]),
     blockTag("c:storage_blocks", &[block::KNIGHTMETAL_BLOCK]),
     blockTag("c:storage_blocks/knightmetal", &[block::KNIGHTMETAL_BLOCK]),
     itemTag("c:storage_blocks", &[block::KNIGHTMETAL_BLOCK]),
