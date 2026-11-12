@@ -5,7 +5,7 @@ description = "Simple single player commands: /give, /fly, /god, /heal, /time, /
 authors = ["simo_415 (original idea)", "b173 port"]
 license = "MIT"
 api = "1.22"
-side = "both"
+side = "client"
 
 [network]
 version = "1"

@@ -52,6 +52,12 @@ fn localFlight()
         return;
     };
 
+    // flight left on from single player stays off on a remote server
+    if !entity.world.isAuthority()
+    {
+        return;
+    }
+
     let vertical: f64 = match (entity.flag(EntityField::Jumping), entity.flag(EntityField::Sneaking))
     {
         (true, false) => flight::VERTICAL,
