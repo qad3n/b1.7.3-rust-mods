@@ -369,7 +369,7 @@ const TREASURES: [Treasure; 405] = [
     row(Table::StrongholdCache, Tier::Uncommon, "firefly", 5, 0, 10),
     row(Table::StrongholdCache, Tier::Uncommon, "charm_of_keeping_1", 1, 0, 10),
     row(Table::StrongholdCache, Tier::Uncommon, "armor_shard", 3, 0, 10),
-    row(Table::StrongholdCache, Tier::Rare, "knightmetal_ingot", 8, 0, 10),
+    row(Table::StrongholdCache, Tier::Rare, "knightmetal", 8, 0, 10),
     row(Table::StrongholdCache, Tier::Rare, "minecraft:bow", 1, 0, 10),
     row(Table::StrongholdCache, Tier::Rare, "minecraft:iron_sword", 1, 0, 10),
     row(Table::StrongholdCache, Tier::Rare, "ironwood_sword", 1, 0, 10),
