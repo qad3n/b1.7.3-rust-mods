@@ -377,7 +377,7 @@ fn adopt(player: Player)
 
 fn unlock(player: Player, gate: Gate)
 {
-    if let Err(error) = player.unlockAchievement(&id(gate))
+    if let Err(error) = player.unlockAchievement(id(gate))
     {
         warn(&format!("progress {gate:?}: {}", error.0));
     }

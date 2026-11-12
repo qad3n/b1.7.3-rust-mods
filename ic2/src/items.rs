@@ -272,7 +272,7 @@ impl ItemBehavior for EmptyCell
         let pos: BlockPos = hit.pos;
         // any fluid some cell holds, as the loader's fluid containers name them
         let Some((filled, _)) =
-            world.fluidAt(pos).filter(|fluid| fluid.source).and_then(|fluid| fill(&stack, &fluid.fluid.to_string()))
+            world.fluidAt(pos).filter(|fluid| fluid.source).and_then(|fluid| fill(&stack, &fluid.fluid))
         else
         {
             return Use::Pass;
