@@ -3,8 +3,6 @@ use crate::electric;
 use crate::items::{armor, wear};
 use crate::keys::{self, Key};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 // the armor slots of the player's inventory, boots first as InventoryPlayer.armorInventory
 mod slot
@@ -74,13 +72,10 @@ pub(crate) fn multiplyFall(entity: Entity, factor: f32)
 {
     let fall: f64 = entity.field(EntityField::FallDistance);
     entity.setField(EntityField::FallDistance, fall * f64::from(factor));
-    STORED.with(|stored|
+    if let Some(store) = STORED.get(entity)
     {
-        if let Some(store) = stored.borrow_mut().get_mut(&entity.id)
-        {
-            *store *= factor;
-        }
-    });
+        crate::core::store(&STORED, entity, &Some(store * factor));
+    }
 }
 
 // ItemArmorBatpack.useBatpackOn: tops up a held electric tool from a worn batpack
@@ -106,15 +101,15 @@ pub(crate) fn batpackCharge(player: Player, tool: &mut ItemStack)
     put(player, slot::CHEST, Some(ItemStack { damage: last - energy / RATIO, ..pack }));
 }
 
-thread_local!
-{
-    // ItemArmorRubBoots.fallStorage and ItemArmorQuantumSuit.fallStorage per player
-    static STORED: RefCell<HashMap<i32, f32>> = RefCell::new(HashMap::new());
-    // ItemArmorJetpack.hoverMode and the last hover key state per player
-    static HOVER: RefCell<HashMap<i32, (bool, bool)>> = RefCell::new(HashMap::new());
-    // ItemArmorQuantumSuit.speedTicker and jumpCharge per player
-    static QUANTUM: RefCell<HashMap<i32, (i32, f32)>> = RefCell::new(HashMap::new());
-}
+// ItemArmorRubBoots.fallStorage and ItemArmorQuantumSuit.fallStorage per player
+static STORED: EntityState<Option<f32>> = EntityState::new("fall_stored");
+// ItemArmorJetpack.hoverMode and the last hover key state per player, the mode lasts through death
+static HOVER: EntityState<(bool, bool)> = EntityState::new("hover").kept();
+// ItemArmorQuantumSuit.speedTicker and jumpCharge per player
+static QUANTUM: EntityState<Option<(i32, f32)>> = EntityState::new("quantum");
+const QUANTUM_START: (i32, f32) = (0, 1.0);
+
+fn quantum(entity: Entity) -> (i32, f32) { QUANTUM.get(entity).unwrap_or(QUANTUM_START) }
 
 mod fall
 {
@@ -129,7 +124,7 @@ mod fall
 fn absorbFall(player: Player, entity: Entity, quantum: bool)
 {
     let mut fallen: f32 = entity.field(EntityField::FallDistance) as f32;
-    let stored: f32 = STORED.with(|stored| stored.borrow().get(&player.id).copied().unwrap_or(0.0));
+    let stored: f32 = STORED.get(entity).unwrap_or(0.0);
     if fallen < 1.0 && stored == 0.0
     {
         return;
@@ -176,7 +171,7 @@ fn absorbFall(player: Player, entity: Entity, quantum: bool)
         store = 0.0;
     }
 
-    STORED.with(|stored| stored.borrow_mut().insert(player.id, store));
+    crate::core::store(&STORED, entity, &Some(store));
 }
 
 mod jet
@@ -204,25 +199,21 @@ mod jet
     pub const HUM_EVERY: i32 = 16;
 }
 
-fn hovering(player: Player) -> bool { HOVER.with(|hover| hover.borrow().get(&player.id).is_some_and(|(on, _)| *on)) }
+fn hovering(player: Player) -> bool { keys::entityOf(player).is_some_and(|entity| HOVER.get(entity).0) }
 
 // ItemArmorJetpack.toggleHover on the hover key's press
 fn toggleHover(player: Player, world: World)
 {
     let pressed: bool = keys::held(player, Key::Hover);
-    let flipped: bool = HOVER.with(|hover|
+    let entity: Entity = Entity { world, id: player.id };
+    let (mut on, was): (bool, bool) = HOVER.get(entity);
+    let flipped: bool = pressed && !was;
+    if flipped
     {
-        let mut hover = hover.borrow_mut();
-        let (on, was): &mut (bool, bool) = hover.entry(player.id).or_insert((false, false));
-        let rising: bool = pressed && !*was;
-        *was = pressed;
-        if rising
-        {
-            *on = !*on;
-        }
+        on = !on;
+    }
 
-        rising
-    });
+    crate::core::store(&HOVER, entity, &(on, pressed));
 
     if flipped && world.isAuthority()
     {
@@ -368,8 +359,7 @@ mod quantum
 fn quantumMoves(player: Player, entity: Entity, info: &EntityInfo)
 {
     let suit: bool = keys::held(player, Key::Suit);
-    let (_, mut jump): (i32, f32) =
-        QUANTUM.with(|quantum| quantum.borrow().get(&player.id).copied().unwrap_or((0, 1.0)));
+    let (_, mut jump): (i32, f32) = quantum(entity);
     let wet: bool = entity.flag(EntityField::InWater);
     let ground: bool = entity.flag(EntityField::OnGround);
     let mut motion: [f64; 3] = info.motion;
@@ -427,7 +417,8 @@ fn quantumMoves(player: Player, entity: Entity, info: &EntityInfo)
         }
     }
 
-    QUANTUM.with(|quantum| quantum.borrow_mut().entry(player.id).or_insert((0, 1.0)).1 = jump);
+    let (ticker, _): (i32, f32) = quantum(entity);
+    crate::core::store(&QUANTUM, entity, &Some((ticker, jump)));
 }
 
 // the wear half of performQuantum and the rest of mod_IC2.OnTickInGame, on the server
@@ -475,17 +466,14 @@ fn serverArmor(player: Player, ticks: i64)
         && keys::held(player, Key::Suit)
         && keys::held(player, Key::Forward)
     {
-        let ticker: i32 = QUANTUM.with(|quantum|
-        {
-            let mut quantum = quantum.borrow_mut();
-            let entry: &mut (i32, f32) = quantum.entry(player.id).or_insert((0, 1.0));
-            entry.0 += 1;
-            entry.0
-        });
+        let (ticker, jump): (i32, f32) = quantum(entity);
+        let ticker: i32 = ticker + 1;
+        let running: bool = ticker >= quantum::RUN_EVERY;
+        let next: i32 = if running { 0 } else { ticker };
+        crate::core::store(&QUANTUM, entity, &Some((next, jump)));
 
-        if ticker >= quantum::RUN_EVERY
+        if running
         {
-            QUANTUM.with(|quantum| quantum.borrow_mut().entry(player.id).or_insert((0, 1.0)).0 = 0);
             put(player, slot::LEGS, wear(legs, 1));
         }
     }
@@ -504,7 +492,7 @@ fn serverArmor(player: Player, ticks: i64)
         }
         else
         {
-            STORED.with(|stored| stored.borrow_mut().insert(player.id, 0.0));
+            crate::core::store(&STORED, entity, &Some(0.0));
         }
     }
 }

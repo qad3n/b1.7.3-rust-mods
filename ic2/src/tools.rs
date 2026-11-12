@@ -5,8 +5,6 @@ use crate::items::wear;
 use crate::keys::{self, Key};
 use crate::machines::{self, mining, personal, terraformer};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 // the player's held stack changed by a tool, logged when the inventory refuses it
 fn hold(player: Player, stack: Option<ItemStack>)
@@ -131,11 +129,8 @@ fn useWrench(world: World, player: Player, stack: ItemStack, pos: BlockPos, face
     false
 }
 
-thread_local!
-{
-    // ItemToolMeter.lastMeasuredTileEntity, lastTotalEnergyConducted and lastMeasureTime per player
-    static METER: RefCell<HashMap<i32, (BlockPos, i64, i64)>> = RefCell::new(HashMap::new());
-}
+// ItemToolMeter.lastMeasuredTileEntity, lastTotalEnergyConducted and lastMeasureTime per player
+static METER: EntityState<Option<(BlockPos, i64, i64)>> = EntityState::new("meter");
 
 // ItemToolMeter.onItemUseFirst: two clicks on one energy block give its average flow between them
 fn useMeter(world: World, player: Player, pos: BlockPos) -> bool
@@ -147,7 +142,8 @@ fn useMeter(world: World, player: Player, pos: BlockPos) -> bool
 
     let conducted: i64 = net::conducted(world, pos);
     let now: i64 = world.time();
-    let last: Option<(BlockPos, i64, i64)> = METER.with(|meter| meter.borrow().get(&player.id).copied());
+    let entity: Entity = Entity { world, id: player.id };
+    let last: Option<(BlockPos, i64, i64)> = METER.get(entity);
 
     match last
     {
@@ -164,7 +160,7 @@ fn useMeter(world: World, player: Player, pos: BlockPos) -> bool
         _ => player.chat("Starting new measurement"),
     }
 
-    METER.with(|meter| meter.borrow_mut().insert(player.id, (pos, conducted, now)));
+    crate::core::store(&METER, entity, &Some((pos, conducted, now)));
     true
 }
 
@@ -599,11 +595,8 @@ const MODES: [Mode; 5] = [
     Mode { m_name: "Explosive", m_cost: 1000, m_range: 12.0, m_explosive: true, m_scatter: false },
 ];
 
-thread_local!
-{
-    // ItemToolMiningLaser.setting per player
-    static LASER_MODE: RefCell<HashMap<i32, usize>> = RefCell::new(HashMap::new());
-}
+// ItemToolMiningLaser.setting per player, a mode the player picked that lasts through death
+static LASER_MODE: EntityState<usize> = EntityState::new("laser_mode").kept();
 
 #[item_behavior]
 impl ItemBehavior for Laser
@@ -613,12 +606,13 @@ impl ItemBehavior for Laser
         const SCATTER_STEP: f32 = 20.0;
         const SCATTER: i32 = 2;
 
-        let mode: usize = LASER_MODE.with(|modes| modes.borrow().get(&player.id).copied().unwrap_or(0));
+        let entity: Entity = Entity { world, id: player.id };
+        let mode: usize = LASER_MODE.get(entity);
 
         if keys::held(player, Key::Laser)
         {
             let next: usize = (mode + 1) % MODES.len();
-            LASER_MODE.with(|modes| modes.borrow_mut().insert(player.id, next));
+            crate::core::store(&LASER_MODE, entity, &next);
             if world.isAuthority()
             {
                 player.chat(&format!("Laser Mode: {}", MODES[next].m_name));

@@ -36,7 +36,7 @@ struct Press
 
 static HELD: EntityState<Vec<Key>> = EntityState::new("held_keys");
 
-fn entityOf(player: Player) -> Option<Entity>
+pub(crate) fn entityOf(player: Player) -> Option<Entity>
 {
     player.info().map(|info| Entity { world: World { dimension: info.world }, id: player.id })
 }
