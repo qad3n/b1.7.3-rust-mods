@@ -1,6 +1,4 @@
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 const CHANNEL: &str = "keys";
 
@@ -36,29 +34,39 @@ struct Press
     m_down: bool,
 }
 
-thread_local!
+static HELD: EntityState<Vec<Key>> = EntityState::new("held_keys");
+
+fn entityOf(player: Player) -> Option<Entity>
 {
-    static HELD: RefCell<HashMap<i32, Vec<Key>>> = RefCell::new(HashMap::new());
+    player.info().map(|info| Entity { world: World { dimension: info.world }, id: player.id })
 }
 
 // Keyboard.isKeyDown for one of IC2's keys, as the player last reported it
 pub(crate) fn held(player: Player, key: Key) -> bool
 {
-    HELD.with(|held| held.borrow().get(&player.id).is_some_and(|keys| keys.contains(&key)))
+    entityOf(player).is_some_and(|entity| HELD.get(entity).contains(&key))
 }
 
 fn record(press: Press, player: Player)
 {
-    HELD.with(|held|
+    let Some(entity) = entityOf(player)
+    else
     {
-        let mut held = held.borrow_mut();
-        let keys: &mut Vec<Key> = held.entry(player.id).or_default();
+        return;
+    };
+
+    let changed: Result<()> = HELD.update(entity, |keys|
+    {
         keys.retain(|key| *key != press.m_key);
         if press.m_down
         {
             keys.push(press.m_key);
         }
     });
+    if let Err(error) = changed
+    {
+        warn(&format!("could not record an IC2 key: {error}"));
+    }
 }
 
 fn report(key: Key, down: bool)
