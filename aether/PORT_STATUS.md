@@ -175,9 +175,9 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
   entity's random instead of the world's. ChunkProviderAether.populate's seventeen steps are named placed features
   (`aether:dungeons`, the three aerclouds, crystal islands, ores, flowers, trees, dungeon oaks, lakes, bronze
   dungeons) the dimension's generator places in order on its chunk random, so the sequence is unchanged and each can be
-  turned off. The highlands biome is in `aether:is_aether` and `c:is_magical`. Dungeon chest loot (`src/world/dungeons/loot.rs`) also stays in
-  code: each pick is one weighted outcome with nested rolls, and `rollLoot` rolls every entry on its own, so a chest
-  table would change the odds.
+  turned off. The highlands biome is in `aether:is_aether` and `c:is_magical`. Dungeon chest loot (`src/world/dungeons/loot.rs`) is five
+  chest loot pools, one weighted pick per roll, whose weights flatten the source's nested switch rolls to the same
+  odds; each chest slot rolls one pick with `rollLoot`, and viewers list the tables.
 - Aether grass joins the `minecraft:flower_soil` tag, so flowers and saplings stay on it as BlockAetherGrass allows.
 - The phoenix bow draws while the use key is held (bow pose, the three `bow_pulling` icons after 0, 13 and 17
   ticks) and looses its flaming arrow on release at three times the draw power, as ItemPhoenixBow. Power, Punch,
