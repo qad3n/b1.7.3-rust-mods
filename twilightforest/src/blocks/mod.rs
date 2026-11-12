@@ -1,6 +1,6 @@
 mod castle;
 mod critters;
-mod giant;
+pub(crate) mod giant;
 mod nagastone;
 mod plants;
 mod slider;

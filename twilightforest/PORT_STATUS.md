@@ -282,6 +282,30 @@ Second pass (every entity, boss, item, block and tile entity class against the p
 - Checked and matching: every other mob and boss, magic leaves tints, trollsteinn's lit faces, force fields, lily
   pads, castle runes, the uncrafting table and the tower devices.
 
+## Audit against 2.4.3 (2026-11-12, third pass)
+
+Method: the loader's registry report of a full client start was compared with the 2.4.3 lang file, entity
+registrations and TFRecipes, then TFEventListener, TFTickHandler and every item use handler were walked against the
+port's event listeners and behaviors.
+
+Registered content is complete: every block, item and entity name of the lang file has its port row.
+
+Found and fixed:
+- Stronghold cache loot named `knightmetal_ingot`, which is no item (the loader warned and dropped the entry); the
+  ingot is `knightmetal`.
+- Block and chain had no recipe (knightmetal loop, three ingots and a knightmetal block).
+- Moonworm queen had no refill recipe (a queen of any wear and three torchberries).
+- A giant log crafted into planks gave one stack; the source hands out four (TFEventListener.onCrafting).
+- Giant's pickaxe broke one block; it now takes every block like its target out of the four block cell, each one
+  wearing the pick, and a cell of nothing but cobblestone leaves one giant cobblestone (TFEventListener.breakBlock
+  and harvestDrops). The source's leftover count that ate later cobblestone drops is not kept.
+
+Still differs:
+- Scepter recharge recipes need ender pearls, fermented spider eyes, rotten flesh and potions, none of which beta
+  has, so scepters cannot be recharged.
+- The giant pick counts as fit for a block when it digs it faster than a bare hand, the loader has no harvest query.
+- Not run: build only.
+
 ## Names, tags and states (2026-11-11)
 
 Moved off numeric ids: the private `ids.rs` id cache and its hand lists are gone, the structure resolver no longer

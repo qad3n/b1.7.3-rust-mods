@@ -47,7 +47,7 @@ fn origin(pos: BlockPos) -> BlockPos
     BlockPos::new(pos.x.div_euclid(size) * size, pos.y.div_euclid(size) * size, pos.z.div_euclid(size) * size)
 }
 
-fn cells(pos: BlockPos) -> impl Iterator<Item = BlockPos>
+pub(crate) fn cells(pos: BlockPos) -> impl Iterator<Item = BlockPos>
 {
     let start: BlockPos = origin(pos);
     let size: i32 = cell::SIZE;

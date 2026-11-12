@@ -1,5 +1,6 @@
 mod bows;
 mod gear;
+mod giant_pick;
 pub(crate) mod magic;
 mod maps;
 pub(crate) mod moonworm;
@@ -134,6 +135,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     moonworm::register(ctx)?;
     thrown::register(ctx)?;
     maps::register(ctx)?;
+    giant_pick::register(ctx)?;
     gear::register(ctx)
 }
 
