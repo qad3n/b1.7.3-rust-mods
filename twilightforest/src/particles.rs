@@ -20,7 +20,7 @@ const fn kind(name: &'static str, base: &'static str) -> Kind
 
 const WHITE: u32 = 0xFFFFFF;
 
-const KINDS: [Kind; 20] = [
+const KINDS: [Kind; 19] = [
     // EntitySmokeFX at eight times the size
     Kind { m_scale: Some(8.0), ..kind("hugesmoke", "smoke") },
     // EntityTFLargeFlameFX, a white flame five times the size
@@ -42,8 +42,7 @@ const KINDS: [Kind; 20] = [
     Kind { m_color: Some(0xE6FF00), m_lifetime: Some(53), ..kind("firefly", "reddust") },
     // EntityTFBossTearFX, a heavy falling drop
     Kind { m_lifetime: Some(40), m_gravity: Some(2.0), ..kind("bosstear", "snowballpoof") },
-    // the 1.7 vanilla particles beta has no texture for
-    Kind { m_color: Some(WHITE), ..kind("crit", "snowshovel") },
+    // the 1.7 vanilla particles beta has no texture for, crit comes from the loader
     Kind { m_color: Some(0x9966FF), ..kind("magic_crit", "snowshovel") },
     Kind { m_scale: Some(4.0), ..kind("largeexplode", "explode") },
     Kind { m_scale: Some(6.0), ..kind("hugeexplosion", "largesmoke") },
