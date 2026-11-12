@@ -21,6 +21,8 @@ mod weapon
     pub const PIG_SLAIN: i32 = 9999;
     pub const VAMPIRE_HEAL: i32 = 1;
     pub const HAMMER_WEAR: i32 = 1;
+    // PlayerAether.setHammerCooldown takes 200 and loses 2 a tick
+    pub const HAMMER_COOLDOWN: i64 = 100;
     // ItemGravititeSword throws what it hits a block up, ItemHolystoneSword knocks a shard loose one hit in twenty
     pub const GRAVITITE_LIFT: f64 = 1.0;
     pub const SHARD_CHANCE: i32 = 20;
@@ -117,7 +119,23 @@ impl ItemBehavior for DartShooter
     }
 }
 
-// ItemNotchHammer: a shockwave hammer that wears with every swing
+// the world time each player's hammer swings again, PlayerAether.cooldown
+static HAMMER_READY: EntityState<i64> = EntityState::new("hammer_ready");
+
+// PlayerAether.getHammerCooldown over getHammerMaxCooldown, 1 right after a swing down to 0 when ready
+pub(crate) fn hammerCooldown(entity: Entity) -> f32
+{
+    // a wait longer than the cooldown means the world clock was set back, the hammer is ready then
+    let left: i64 = HAMMER_READY.get(entity) - entity.world.time();
+    if !(0..=weapon::HAMMER_COOLDOWN).contains(&left)
+    {
+        return 0.0;
+    }
+
+    left as f32 / weapon::HAMMER_COOLDOWN as f32
+}
+
+// ItemNotchHammer: a shockwave hammer that wears with every swing and rests between them
 pub(crate) struct NotchHammer;
 
 #[item_behavior]
@@ -130,16 +148,30 @@ impl ItemBehavior for NotchHammer
         {
             return Use::Pass;
         };
-
-        world.playSound(info.pos, "mob.ghast.fireball", 1.0, shootPitch(world));
-
-        if world.isAuthority()
+        let entity: Entity = Entity { world, id: player.id };
+        let now: i64 = world.time();
+        if hammerCooldown(entity) > 0.0
         {
-            let (from, toward) = aim(&info);
-            projectile::fire(world, HAMMER, from, toward, weapon::THROW_SPEED, weapon::SPREAD, Some(player.id));
+            return Use::Done(Some(stack));
         }
 
-        Use::Done(Some(ItemStack { damage: stack.damage + weapon::HAMMER_WEAR, ..stack }))
+        crate::entities::store(&HAMMER_READY, entity, &(now + weapon::HAMMER_COOLDOWN));
+        world.playSound(info.pos, "mob.ghast.fireball", 1.0, shootPitch(world));
+
+        if !world.isAuthority()
+        {
+            return Use::Done(Some(stack));
+        }
+
+        let (from, toward) = aim(&info);
+        projectile::fire(world, HAMMER, from, toward, weapon::THROW_SPEED, weapon::SPREAD, Some(player.id));
+
+        if let Err(error) = player.damageHeld(weapon::HAMMER_WEAR)
+        {
+            warn(&format!("notch hammer wear: {error}"));
+        }
+
+        Use::Done(player.held())
     }
 }
 

@@ -7,6 +7,7 @@ mod effects;
 mod entities;
 mod gear;
 mod harvest;
+mod hud;
 mod items;
 mod lore;
 mod machines;
@@ -48,6 +49,7 @@ fn register(ctx: &mut RegisterCtx) -> Result<()>
     machines::register(ctx)?;
     portal::registerEvents(ctx)?;
     portal_overlay::register(ctx)?;
+    hud::register(ctx)?;
     player::register(ctx)?;
     tools::register(ctx)?;
     gear::register(ctx)?;
