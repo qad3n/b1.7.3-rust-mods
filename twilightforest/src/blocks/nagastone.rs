@@ -291,12 +291,18 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         let _ = b173_api::world::terrainSlot(&texture(name));
     }
 
+    // values in stored metadata order, so saved nagastone keeps its shape
+    let heads: Vec<&str> = (0..naga::HEADS).map(|meta| HEAD_FACINGS[sourceHead(meta) as usize]).collect();
+    let bodies: Vec<&str> =
+        (0..naga::BODIES).map(|meta| BODY_SHAPES[(sourceBody(meta) - naga::FIRST_BODY) as usize]).collect();
+
     super::put(
         ctx,
         block::NAGASTONE_HEAD,
         base("minecraft:block", "Nagastone Head", Kind::Rock, naga::HARDNESS)
             .resistance(naga::RESISTANCE)
             .texture(&texture("nagastone_face_front"))
+            .property(Property::values("facing", &heads))
             .behavior(Head),
     )?;
     super::put(
@@ -305,19 +311,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         base("minecraft:block", "Nagastone", Kind::Rock, naga::HARDNESS)
             .resistance(naga::RESISTANCE)
             .texture(&texture("nagastone_long_side"))
+            .property(Property::values("shape", &bodies))
             .behavior(Body),
-    )?;
-
-    // values in stored metadata order, so saved nagastone keeps its shape
-    let heads: Vec<&str> = (0..naga::HEADS).map(|meta| HEAD_FACINGS[sourceHead(meta) as usize]).collect();
-    let bodies: Vec<&str> =
-        (0..naga::BODIES).map(|meta| BODY_SHAPES[(sourceBody(meta) - naga::FIRST_BODY) as usize]).collect();
-    ctx.blocks().states(
-        block::NAGASTONE_HEAD,
-        BlockStatesSpec { properties: vec![PropertySpec::new("facing", &heads)], ..BlockStatesSpec::default() },
-    )?;
-    ctx.blocks().states(
-        block::NAGASTONE,
-        BlockStatesSpec { properties: vec![PropertySpec::new("shape", &bodies)], ..BlockStatesSpec::default() },
     )
 }

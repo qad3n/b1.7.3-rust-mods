@@ -518,21 +518,11 @@ impl BlockBehavior for MagicCore
 // so the engine's decay ticks read the same metadata the states store
 const LEAF_KINDS: [&str; 4] = ["0", "1", "2", "3"];
 
-pub(crate) fn leafStates(ctx: &mut RegisterCtx, name: &str) -> Result<()>
+pub(crate) fn leafStates(spec: BlockSpecBuilder) -> BlockSpecBuilder
 {
-    let flag: [&str; 2] = ["false", "true"];
-    ctx.blocks().states(
-        name,
-        BlockStatesSpec
-        {
-            properties: vec![
-                PropertySpec::new("check_decay", &flag),
-                PropertySpec::new("persistent", &flag),
-                PropertySpec::new("kind", &LEAF_KINDS),
-            ],
-            ..BlockStatesSpec::default()
-        },
-    )
+    spec.property(Property::bool("check_decay"))
+        .property(Property::bool("persistent"))
+        .property(Property::values("kind", &LEAF_KINDS))
 }
 
 fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
@@ -543,12 +533,8 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
             .faces(faces(&Look::Column { top: row.m_top, side: row.m_side }))
             .flammable(fire::LOG.0, fire::LOG.1)
             .sustainsLeaves();
-        super::put(ctx, row.m_log, spec)?;
+        super::put(ctx, row.m_log, spec.property(Property::values("axis", &LOG_AXES)))?;
         ctx.tags().add(RegistryKind::Item, tags::LOGS, &[row.m_log])?;
-        ctx.blocks().states(
-            row.m_log,
-            BlockStatesSpec { properties: vec![PropertySpec::new("axis", &LOG_AXES)], ..BlockStatesSpec::default() },
-        )?;
     }
 
     for row in &CORES
@@ -558,24 +544,12 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
             .light(CORE_LIGHT)
             .flammable(fire::LOG.0, fire::LOG.1)
             .sustainsLeaves()
+            .property(Property::bool("stopped"))
+            .variant(
+                Variant::when(&[("stopped", "true")]).faces(faces(&Look::Column { top: row.m_top, side: row.m_off })),
+            )
             .behavior(MagicCore { m_effect: row.m_effect });
         super::put(ctx, row.m_name, spec)?;
-
-        let side: FaceTextures = faces(&Look::Column { top: row.m_top, side: row.m_off });
-        ctx.blocks().states(
-            row.m_name,
-            BlockStatesSpec
-            {
-                properties: vec![PropertySpec::new("stopped", &["false", "true"])],
-                variants: vec![StateVariantSpec
-                {
-                    when: super::when("stopped", "true"),
-                    texture: None,
-                    textures: Some(side),
-                }],
-                ..BlockStatesSpec::default()
-            },
-        )?;
     }
 
     super::put(
@@ -662,8 +636,7 @@ fn registerLeaves(ctx: &mut RegisterCtx) -> Result<()>
             spec = spec.drops(all);
         }
 
-        super::put(ctx, row.m_name, spec)?;
-        leafStates(ctx, row.m_name)?;
+        super::put(ctx, row.m_name, leafStates(spec))?;
         ctx.tags().add(RegistryKind::Item, "minecraft:leaves", &[row.m_name])?;
     }
 

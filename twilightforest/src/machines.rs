@@ -876,8 +876,6 @@ impl Screen for FurnaceScreen
 
 fn registerTable(ctx: &mut RegisterCtx) -> Result<()>
 {
-    let spec: TileEntitySpec = TileEntitySpec { inventory: table::SLOTS, ticks: true, sync: true, behavior: None };
-    ctx.tileEntities().register(TABLE_NAME, spec, Some(std::rc::Rc::new(TableTile)))?;
     ctx.blocks().register(
         TABLE_NAME,
         BlockSpecBuilder::template("minecraft:block")
@@ -893,7 +891,7 @@ fn registerTable(ctx: &mut RegisterCtx) -> Result<()>
                 front: None,
             })
             .tool(ToolClass::Axe, 0)
-            .tileEntity(TABLE_NAME)
+            .tile(Tile::new(TableTile).inventory(table::SLOTS).ticks().synced())
             .behavior(OpensScreen { m_screen: TABLE_NAME }),
     )?;
 

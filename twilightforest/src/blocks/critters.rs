@@ -433,11 +433,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             spec = spec.drops(Vec::new());
         }
 
-        super::put(ctx, row.m_name, spec)?;
-        ctx.blocks().states(
-            row.m_name,
-            BlockStatesSpec { properties: vec![PropertySpec::new("facing", &FACINGS)], ..BlockStatesSpec::default() },
-        )?;
+        super::put(ctx, row.m_name, spec.property(Property::values("facing", &FACINGS)))?;
     }
 
     let inset: f32 = 3.0;

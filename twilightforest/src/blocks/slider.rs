@@ -407,23 +407,13 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .resistance(slider::RESISTANCE)
             .sound("stone")
             .faces(faces(&Look::Column { top: "slider_top", side: "slider_v" }))
+            .property(Property::values("axis", &AXES))
+            .property(Property::values("delay", &DELAYS))
+            .variant(Variant::when(&[("axis", "x")]).faces(lying()))
+            .variant(Variant::when(&[("axis", "z")]).faces(lying()))
+            .stateModel(StateModelSpec { cuboids: (0..AXES.len()).map(pillar).collect() })
             .behavior(Slider),
     )?;
-
-    let variants: Vec<StateVariantSpec> = ["x", "z"]
-        .into_iter()
-        .map(|value| StateVariantSpec { when: when("axis", value), texture: None, textures: Some(lying()) })
-        .collect();
-    ctx.blocks().states(
-        block::SLIDER,
-        BlockStatesSpec
-        {
-            properties: vec![PropertySpec::new("axis", &AXES), PropertySpec::new("delay", &DELAYS)],
-            variants,
-            ..BlockStatesSpec::default()
-        },
-    )?;
-    ctx.blocks().stateModel(block::SLIDER, StateModelSpec { cuboids: (0..AXES.len()).map(pillar).collect() })?;
     ctx.entities().register(
         slide::NAME,
         EntitySpec

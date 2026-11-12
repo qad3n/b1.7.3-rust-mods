@@ -226,9 +226,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     trophy::register(ctx)?;
     ctx.screens().hud(|draw, _partial, width, _height| drawBar(draw, width))?;
 
-    let spec: TileEntitySpec = TileEntitySpec { inventory: 0, ticks: true, sync: false, behavior: None };
-    ctx.tileEntities().register(SPAWNER, spec, Some(std::rc::Rc::new(SpawnerTile)))?;
-
     let unbreakable: f32 = -1.0;
     let resistance: f32 = 6000000.0;
     ctx.blocks().register(
@@ -240,11 +237,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .resistance(resistance)
             .texture(&crate::blocks::vanillaTexture("spawner"))
             .drops(Vec::new())
-            .tileEntity(SPAWNER),
-    )?;
-    ctx.blocks().states(
-        SPAWNER,
-        BlockStatesSpec { properties: vec![PropertySpec::new("boss", &KINDS)], ..BlockStatesSpec::default() },
+            .tile(Tile::new(SpawnerTile).ticks())
+            .property(Property::values("boss", &KINDS)),
     )?;
     Ok(())
 }

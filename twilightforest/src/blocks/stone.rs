@@ -1,4 +1,4 @@
-use super::{Cube, Kind, Look, base, cube, faces, texture, tough, when};
+use super::{Cube, Kind, Look, base, cube, faces, texture, tough};
 use crate::colors;
 use crate::names::{self, block, item};
 use b173_api::math::{Face, add, floor, offset, scale};
@@ -285,53 +285,40 @@ impl BlockBehavior for AuroraTint
     }
 }
 
-fn auroraVariants() -> Vec<StateVariantSpec>
+fn auroraVariants(mut spec: BlockSpecBuilder) -> BlockSpecBuilder
 {
-    (0..aurora::PHASES)
-        .map(|phase|
+    for phase in 0..aurora::PHASES
+    {
+        let index: i32 = if phase < aurora::TEXTURES
         {
-            let index: i32 = if phase < aurora::TEXTURES
-            {
-                phase
-            }
-            else
-            {
-                aurora::PHASES - 1 - phase
-            };
+            phase
+        }
+        else
+        {
+            aurora::PHASES - 1 - phase
+        };
 
-            StateVariantSpec
-            {
-                when: when("phase", &phase.to_string()),
-                texture: Some(texture(&format!("aurorabrick{index}"))),
-                textures: None,
-            }
-        })
-        .collect()
+        let value: String = phase.to_string();
+        spec = spec.variant(Variant::when(&[("phase", &value)]).texture(&texture(&format!("aurorabrick{index}"))));
+    }
+
+    spec
 }
 
 fn phases() -> Vec<String> { (0..aurora::PHASES).map(|phase| phase.to_string()).collect() }
 
 fn registerAurora(ctx: &mut RegisterCtx) -> Result<()>
 {
+    let names: Vec<String> = phases();
+    let values: Vec<&str> = names.iter().map(String::as_str).collect();
     super::put(
         ctx,
         block::AURORA_BRICK,
-        base("minecraft:block", "Aurora Block", Kind::Rock, aurora::HARDNESS)
+        auroraVariants(base("minecraft:block", "Aurora Block", Kind::Rock, aurora::HARDNESS))
             .resistance(aurora::RESISTANCE)
             .texture(&texture("aurorabrick0"))
+            .property(Property::values("phase", &values))
             .behavior(AuroraTint { m_pale: false }),
-    )?;
-
-    let names: Vec<String> = phases();
-    let values: Vec<&str> = names.iter().map(String::as_str).collect();
-    ctx.blocks().states(
-        block::AURORA_BRICK,
-        BlockStatesSpec
-        {
-            properties: vec![PropertySpec::new("phase", &values)],
-            variants: auroraVariants(),
-            ..BlockStatesSpec::default()
-        },
     )?;
 
     let slab: Cuboid =
@@ -435,21 +422,9 @@ fn registerShield(ctx: &mut RegisterCtx) -> Result<()>
                 side: Some(texture("shield_outside")),
                 front: Some(texture("shield_inside")),
             })
+            .property(Property::values("facing", &SIDES))
+            .variant(Variant::when(&[("facing", "none")]).texture(&texture("shield_outside")))
             .behavior(Shield),
-    )?;
-    ctx.blocks().states(
-        block::SHIELD,
-        BlockStatesSpec
-        {
-            properties: vec![PropertySpec::new("facing", &SIDES)],
-            variants: vec![StateVariantSpec
-            {
-                when: when("facing", "none"),
-                texture: Some(texture("shield_outside")),
-                textures: None,
-            }],
-            ..BlockStatesSpec::default()
-        },
     )
 }
 

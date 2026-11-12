@@ -1,4 +1,4 @@
-use super::{Kind, PIXELS, base, texture, when};
+use super::{Kind, PIXELS, base, texture};
 use crate::names::{self, block};
 use b173_api::prelude::*;
 use std::rc::Rc;
@@ -181,12 +181,17 @@ fn colorValues(count: u8) -> Vec<String> { (0..count).map(|value| value.to_strin
 
 fn registerRunes(ctx: &mut RegisterCtx) -> Result<()>
 {
+    let colors: Vec<String> = colorValues(4);
+    let values: Vec<&str> = colors.iter().map(String::as_str).collect();
     super::put(
         ctx,
         block::CASTLE_RUNE_BRICK,
         base("minecraft:block", "Castle Rune Brick", Kind::Rock, rune::HARDNESS)
             .resistance(rune::RESISTANCE)
             .texture(&texture("castleblock_brick"))
+            .property(Property::bool("inverted"))
+            .property(Property::values("spare", &["0", "1"]))
+            .property(Property::values("color", &values))
             .behavior(Runes),
     )?;
 
@@ -195,21 +200,6 @@ fn registerRunes(ctx: &mut RegisterCtx) -> Result<()>
     {
         let _ = b173_api::world::terrainSlot(&runeTexture(index));
     }
-
-    let colors: Vec<String> = colorValues(4);
-    let values: Vec<&str> = colors.iter().map(String::as_str).collect();
-    ctx.blocks().states(
-        block::CASTLE_RUNE_BRICK,
-        BlockStatesSpec
-        {
-            properties: vec![
-                PropertySpec::new("inverted", &["false", "true"]),
-                PropertySpec::new("spare", &["0", "1"]),
-                PropertySpec::new("color", &values),
-            ],
-            ..BlockStatesSpec::default()
-        },
-    )?;
 
     let doors: [(&str, &str, bool); 2] =
         [(block::CASTLE_DOOR, "Castle Door", false), (block::CASTLE_DOOR_VANISHED, "Vanished Castle Door", true)];
@@ -240,28 +230,14 @@ fn registerRunes(ctx: &mut RegisterCtx) -> Result<()>
                 .model(BlockModelSpec { translucent: true, ..BlockModelSpec::default() });
         }
 
-        super::put(ctx, name, spec)?;
-
         let shades: Vec<String> = colorValues(8);
         let shadeValues: Vec<&str> = shades.iter().map(String::as_str).collect();
         let active: String = texture(&format!("{look}_active"));
-        ctx.blocks().states(
-            name,
-            BlockStatesSpec
-            {
-                properties: vec![
-                    PropertySpec::new("active", &["false", "true"]),
-                    PropertySpec::new("color", &shadeValues),
-                ],
-                variants: vec![StateVariantSpec
-                {
-                    when: when("active", "true"),
-                    texture: Some(active),
-                    textures: None,
-                }],
-                ..BlockStatesSpec::default()
-            },
-        )?;
+        spec = spec
+            .property(Property::bool("active"))
+            .property(Property::values("color", &shadeValues))
+            .variant(Variant::when(&[("active", "true")]).texture(&active));
+        super::put(ctx, name, spec)?;
     }
 
     Ok(())
@@ -332,9 +308,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         block::CINDER_LOG,
         base("minecraft:block", "Cinder Log [NYI]", Kind::Wood, cinderHardness)
             .faces(super::faces(&super::Look::Column { top: "cinder_top", side: "cinder_side" }))
+            .property(Property::values("axis", &super::wood::LOG_AXES))
             .sustainsLeaves(),
-    )?;
-
-    let axis: PropertySpec = PropertySpec::new("axis", &super::wood::LOG_AXES);
-    ctx.blocks().states(block::CINDER_LOG, BlockStatesSpec { properties: vec![axis], ..BlockStatesSpec::default() })
+    )
 }

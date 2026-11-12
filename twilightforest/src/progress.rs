@@ -350,11 +350,6 @@ const LEGACY_KEY: &str = "progress";
 
 fn id(gate: Gate) -> String { format!("twilightforest:{}", STEPS[gate as usize].m_name) }
 
-fn identifier(text: &str) -> Result<Identifier>
-{
-    Identifier::parse(text).map_err(|error| Error(format!("achievement {text}: {error:?}")))
-}
-
 // achievements earned before the loader kept them move over once, parents first
 fn adopt(player: Player)
 {
@@ -387,19 +382,19 @@ pub(crate) fn earned(player: Player) -> u64
 {
     adopt(player);
 
-    let earned = STEPS.iter().filter(|step| player.hasAchievement(&id(step.m_gate)));
+    let earned = STEPS.iter().filter(|step| player.hasAchievement(id(step.m_gate)));
     earned.fold(0, |bits, step| bits | 1 << step.m_gate as u32)
 }
 
 pub(crate) fn has(player: Player, gate: Gate) -> bool
 {
-    if player.hasAchievement(&id(gate))
+    if player.hasAchievement(id(gate))
     {
         return true;
     }
 
     adopt(player);
-    player.hasAchievement(&id(gate))
+    player.hasAchievement(id(gate))
 }
 
 // EntityPlayer.triggerAchievement, the loader holds back a child until its parent is earned and shows beta's toast
@@ -565,13 +560,12 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for step in &STEPS
     {
-        let spec: AchievementSpec = AchievementSpec
+        let mut spec: Achievement = Achievement::new(step.m_title, step.m_description, step.m_icon);
+        if let Some(parent) = step.m_parent
         {
-            title: step.m_title.to_owned(),
-            description: step.m_description.to_owned(),
-            icon: identifier(step.m_icon)?,
-            parent: step.m_parent.map(|parent| identifier(&id(parent))).transpose()?,
-        };
+            spec = spec.after(id(parent));
+        }
+
         ctx.achievements().register(step.m_name, spec)?;
     }
 

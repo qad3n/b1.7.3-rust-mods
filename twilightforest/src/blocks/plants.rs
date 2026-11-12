@@ -1,4 +1,4 @@
-use super::{Kind, base, drop, texture, vanillaTexture, when};
+use super::{Kind, base, drop, texture, vanillaTexture};
 use crate::names::{self, block, item};
 use crate::tags;
 use crate::world::biomes;
@@ -584,17 +584,15 @@ impl BlockBehavior for ThornRose
 
 fn registerThorns(ctx: &mut RegisterCtx) -> Result<()>
 {
-    super::put(ctx, block::BROWN_THORNS, thornSpec("Thorns", "brown", false))?;
-    super::put(ctx, block::GREEN_THORNS, thornSpec("Green Thorns", "green", false))?;
-    super::put(ctx, block::BURNT_THORNS, thornSpec("Burnt Thorns", "burnt", true))?;
-
-    for name in [block::BROWN_THORNS, block::GREEN_THORNS, block::BURNT_THORNS]
+    for (name, label, look, burnt) in [
+        (block::BROWN_THORNS, "Thorns", "brown", false),
+        (block::GREEN_THORNS, "Green Thorns", "green", false),
+        (block::BURNT_THORNS, "Burnt Thorns", "burnt", true),
+    ]
     {
-        ctx.blocks().states(
-            name,
-            BlockStatesSpec { properties: vec![PropertySpec::new("axis", &AXES)], ..BlockStatesSpec::default() },
-        )?;
-        ctx.blocks().stateModel(name, thornModel())?;
+        let spec: BlockSpecBuilder =
+            thornSpec(label, look, burnt).property(Property::values("axis", &AXES)).stateModel(thornModel());
+        super::put(ctx, name, spec)?;
     }
 
     let roseHardness: f32 = 10.0;
@@ -783,10 +781,8 @@ impl BlockBehavior for HugeLilyPad
 }
 
 // BlockTFHugeLilyPad.getIcon, the quarter shown is the piece turned by the pad orientation
-fn padVariants() -> Vec<StateVariantSpec>
+fn padVariants(mut spec: BlockSpecBuilder) -> BlockSpecBuilder
 {
-    let mut variants: Vec<StateVariantSpec> = Vec::new();
-
     for orient in 0..lily::PIECES
     {
         for piece in 0..lily::PIECES
@@ -798,27 +794,16 @@ fn padVariants() -> Vec<StateVariantSpec>
                 other => other,
             };
             let display: i32 = (piece + turned) % lily::PIECES;
-            let mut values: std::collections::BTreeMap<String, String> = when("orient", &orient.to_string());
-            values.insert("piece".to_owned(), piece.to_string());
-
+            let (orientValue, pieceValue): (String, String) = (orient.to_string(), piece.to_string());
             let top: String = texture(&format!("huge_lilypad_{display}"));
+            let look: FaceTextures =
+                FaceTextures { top: Some(top.clone()), bottom: Some(top), side: Some(texture("blank")), front: None };
 
-            variants.push(StateVariantSpec
-            {
-                when: values,
-                texture: None,
-                textures: Some(FaceTextures
-                {
-                    top: Some(top.clone()),
-                    bottom: Some(top),
-                    side: Some(texture("blank")),
-                    front: None,
-                }),
-            });
+            spec = spec.variant(Variant::when(&[("orient", &orientValue), ("piece", &pieceValue)]).faces(look));
         }
     }
 
-    variants
+    spec
 }
 
 struct WaterLily;
@@ -839,10 +824,14 @@ impl BlockBehavior for WaterLily
 fn registerWater(ctx: &mut RegisterCtx) -> Result<()>
 {
     let flat: Cuboid = Cuboid { from: [0.0; 3], to: [16.0, lily::THICKNESS, 16.0], ..Cuboid::default() };
+    let quarters: Vec<String> = (0..lily::PIECES).map(|piece| piece.to_string()).collect();
+    let values: Vec<&str> = quarters.iter().map(String::as_str).collect();
     super::put(
         ctx,
         block::HUGE_LILY_PAD,
-        BlockSpecBuilder::template("minecraft:block")
+        padVariants(BlockSpecBuilder::template("minecraft:block"))
+            .property(Property::values("piece", &values))
+            .property(Property::values("orient", &values))
             .name("Huge Lily Pad")
             .material("plants")
             .texture(&texture("huge_lilypad_0"))
@@ -855,17 +844,6 @@ fn registerWater(ctx: &mut RegisterCtx) -> Result<()>
             .itemBehavior(PadItem),
     )?;
 
-    let quarters: Vec<String> = (0..lily::PIECES).map(|piece| piece.to_string()).collect();
-    let values: Vec<&str> = quarters.iter().map(String::as_str).collect();
-    ctx.blocks().states(
-        block::HUGE_LILY_PAD,
-        BlockStatesSpec
-        {
-            properties: vec![PropertySpec::new("piece", &values), PropertySpec::new("orient", &values)],
-            variants: padVariants(),
-            ..BlockStatesSpec::default()
-        },
-    )?;
     super::put(
         ctx,
         block::HUGE_WATER_LILY,
@@ -959,10 +937,17 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
             .sustainsLeaves(),
     )?;
 
+    let stem: FaceTextures = FaceTextures
+    {
+        top: Some(texture("huge_gloom_inside")),
+        bottom: Some(texture("huge_gloom_inside")),
+        side: Some(texture("huge_gloom_stem")),
+        front: None,
+    };
     let gloomHardness: f32 = 0.2;
     // BlockTFHugeGloomBlock drops nothing seven times in ten and up to two mushglooms otherwise
     let gloomDrop: DropSpec = drop(block::MUSHGLOOM, vec![1, 2], 0.3)?;
-    super::put(
+    putMushroom(
         ctx,
         block::HUGE_GLOOM,
         base("minecraft:block", "Huge Mushgloom", Kind::Wood, gloomHardness)
@@ -975,29 +960,9 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
                 front: None,
             })
             .drops(vec![gloomDrop]),
+        &stem,
     )?;
 
-    let stem: FaceTextures = FaceTextures
-    {
-        top: Some(texture("huge_gloom_inside")),
-        bottom: Some(texture("huge_gloom_inside")),
-        side: Some(texture("huge_gloom_stem")),
-        front: None,
-    };
-    ctx.blocks().states(
-        block::HUGE_GLOOM,
-        BlockStatesSpec
-        {
-            properties: vec![PropertySpec::new("part", &["cap", "stem"])],
-            variants: vec![StateVariantSpec
-            {
-                when: when("part", "stem"),
-                texture: None,
-                textures: Some(stem.clone()),
-            }],
-            ..BlockStatesSpec::default()
-        },
-    )?;
     registerMushrooms(ctx, &stem)?;
 
     for (name, label, pine) in
@@ -1007,7 +972,7 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
         super::put(
             ctx,
             name,
-            BlockSpecBuilder::template("minecraft:leaves")
+            super::wood::leafStates(BlockSpecBuilder::template("minecraft:leaves"))
                 .name(label)
                 .texture(&vanillaTexture(foliage::LEAVES_TEXTURE))
                 .hardness(foliage::LEAVES_HARDNESS)
@@ -1015,7 +980,6 @@ fn registerGiantPlants(ctx: &mut RegisterCtx) -> Result<()>
                 .color(color)
                 .drops(Vec::new()),
         )?;
-        super::wood::leafStates(ctx, name)?;
     }
 
     Ok(())
@@ -1051,6 +1015,15 @@ impl BlockBehavior for HugeMushroom
     }
 }
 
+// a huge mushroom block that draws its stem sprites in the stem part
+fn putMushroom(ctx: &mut RegisterCtx, name: &str, spec: BlockSpecBuilder, stem: &FaceTextures) -> Result<()>
+{
+    let spec: BlockSpecBuilder = spec
+        .property(Property::values("part", &["cap", "stem"]))
+        .variant(Variant::when(&[("part", "stem")]).faces(stem.clone()));
+    super::put(ctx, name, spec)
+}
+
 fn registerMushrooms(ctx: &mut RegisterCtx, stem: &FaceTextures) -> Result<()>
 {
     let hardness: f32 = 0.2;
@@ -1062,27 +1035,14 @@ fn registerMushrooms(ctx: &mut RegisterCtx, stem: &FaceTextures) -> Result<()>
 
     for (name, label, small, cap) in rows
     {
-        super::put(
+        putMushroom(
             ctx,
             name,
             base("minecraft:block", label, Kind::Wood, hardness)
                 .texture(&texture("huge_gloom_cap"))
                 .drops(vec![drop(small, vec![1, 2], chance)?])
                 .behavior(HugeMushroom { m_cap: cap }),
-        )?;
-        ctx.blocks().states(
-            name,
-            BlockStatesSpec
-            {
-                properties: vec![PropertySpec::new("part", &["cap", "stem"])],
-                variants: vec![StateVariantSpec
-                {
-                    when: when("part", "stem"),
-                    texture: None,
-                    textures: Some(stem.clone()),
-                }],
-                ..BlockStatesSpec::default()
-            },
+            stem,
         )?;
     }
 

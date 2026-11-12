@@ -114,26 +114,17 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &EFFECTS
     {
-        let modifiers: Vec<EffectModifierSpec> = row
-            .m_modifier
-            .iter()
-            .map(|(attribute, amount, operation)| -> Result<EffectModifierSpec>
-            {
-                let attribute: Identifier =
-                    Identifier::parse(attribute).map_err(|error| Error(format!("attribute {attribute}: {error:?}")))?;
-                Ok(EffectModifierSpec { attribute, amount: *amount, operation: *operation })
-            })
-            .collect::<Result<Vec<EffectModifierSpec>>>()?;
-
-        let spec: EffectSpec = EffectSpec
+        let mut spec: b173_api::Effect = b173_api::Effect::new(row.m_color).every(row.m_interval, row.m_amount);
+        if row.m_beneficial
         {
-            color: row.m_color,
-            beneficial: row.m_beneficial,
-            icon: None,
-            modifiers,
-            interval: row.m_interval,
-            amount: row.m_amount,
-        };
+            spec = spec.beneficial();
+        }
+
+        if let Some((attribute, amount, operation)) = row.m_modifier
+        {
+            spec = spec.modifier(attribute, amount, operation);
+        }
+
         ctx.effects().register(row.m_name, spec)?;
     }
 

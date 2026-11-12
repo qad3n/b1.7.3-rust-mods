@@ -249,21 +249,13 @@ fn registerPedestal(ctx: &mut RegisterCtx) -> Result<()>
             .hardness(pedestal::HARDNESS)
             .resistance(pedestal::RESISTANCE)
             .texture(&blockTexture("top", false))
+            .property(Property::bool("latent"))
+            .property(Property::bool("spare"))
+            .property(Property::values("turn", &pedestal::TURN_VALUES))
+            .stateModel(StateModelSpec { cuboids: pedestalModel() })
             .behavior(Pedestal),
     )?;
-    ctx.blocks().states(
-        block::TROPHY_PEDESTAL,
-        BlockStatesSpec
-        {
-            properties: vec![
-                PropertySpec::new("latent", &["false", "true"]),
-                PropertySpec::new("spare", &["false", "true"]),
-                PropertySpec::new("turn", &pedestal::TURN_VALUES),
-            ],
-            ..BlockStatesSpec::default()
-        },
-    )?;
-    ctx.blocks().stateModel(block::TROPHY_PEDESTAL, StateModelSpec { cuboids: pedestalModel() })
+    Ok(())
 }
 
 // BlockTFTrophy and TileEntityTFTrophy: the block's meta says where it sits, 1 on the floor and 2 to 5 on a wall
@@ -534,13 +526,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .model(BlockModelSpec { translucent: true, ..BlockModelSpec::default() })
             .tileEntity(head::TILE)
             .drops(Vec::new())
+            .property(Property::values("facing", &head::FACINGS))
+            .stateModel(StateModelSpec { cuboids })
             .behavior(TrophyBlock),
     )?;
-    ctx.blocks().states(
-        BLOCK,
-        BlockStatesSpec { properties: vec![PropertySpec::new("facing", &head::FACINGS)], ..BlockStatesSpec::default() },
-    )?;
-    ctx.blocks().stateModel(BLOCK, StateModelSpec { cuboids })?;
 
     for (kind, trophy) in TROPHIES.iter().enumerate()
     {

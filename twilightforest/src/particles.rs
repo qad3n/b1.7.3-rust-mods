@@ -58,14 +58,27 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &KINDS
     {
-        let spec: ParticleSpec = ParticleSpec
+        let mut spec: Particle = Particle::new(row.m_base);
+        if let Some(color) = row.m_color
         {
-            base: row.m_base.to_owned(),
-            color: row.m_color,
-            scale: row.m_scale,
-            lifetime: row.m_lifetime,
-            gravity: row.m_gravity,
-        };
+            spec = spec.color(color);
+        }
+
+        if let Some(scale) = row.m_scale
+        {
+            spec = spec.scale(scale);
+        }
+
+        if let Some(lifetime) = row.m_lifetime
+        {
+            spec = spec.lifetime(lifetime);
+        }
+
+        if let Some(gravity) = row.m_gravity
+        {
+            spec = spec.gravity(gravity);
+        }
+
         ctx.particles().register(row.m_name, spec)?;
     }
 
