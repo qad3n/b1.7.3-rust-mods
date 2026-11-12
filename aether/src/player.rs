@@ -128,6 +128,12 @@ mod armor
 
 fn armorPiece(player: Player, index: usize) -> Option<ItemStack> { player.slot(armor::FIRST_SLOT + index as i32) }
 
+// InventoryAccessories.wearingArmor for the boots
+pub(crate) fn wearingBoots(player: Player, name: &str) -> bool
+{
+    armorPiece(player, 0).is_some_and(|stack| stack.item.is(name))
+}
+
 // isWearingGravititeSet and friends: the four pieces and the matching gloves
 pub(crate) fn wearingSet(player: Player, set: &str) -> bool
 {

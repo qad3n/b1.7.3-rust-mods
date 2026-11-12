@@ -6,6 +6,7 @@ use std::cell::RefCell;
 
 const SHIELD: &str = "repulsion_shield";
 const INVISIBILITY: &str = "invisibility_cape";
+const SENTRY_BOOTS: &str = "sentry_boots";
 const WINGS_TEXTURE: &str = "aether:entity/valkyrie/valkyrie";
 const DEGREES_PER_RADIAN: f32 = 57.29578;
 const WHITE: u32 = 0xFFFFFF;
@@ -142,10 +143,19 @@ fn shielded(event: &mut Event)
 
     let player: Player = Player { id: entity.id };
     let fireproof: bool = crate::damage::burning() && crate::player::wearingSet(player, "phoenix");
-    if fireproof || (crate::damage::projectile() && Worn::of(player).wearing(SHIELD))
+    if fireproof || (crate::damage::projectile() && Worn::of(player).wearing(SHIELD)) || cushioned(player)
     {
         event.cancel();
     }
+}
+
+// AetherEventHandler.onFall: sentry boots and the full gravitite and valkyrie sets take every fall
+fn cushioned(player: Player) -> bool
+{
+    crate::damage::fall()
+        && (crate::player::wearingBoots(player, SENTRY_BOOTS)
+            || crate::player::wearingSet(player, "gravitite")
+            || crate::player::wearingSet(player, "valkyrie"))
 }
 
 // AbilityFlight.onUpdate: holding jump in the full valkyrie set lifts the player a little more each tick

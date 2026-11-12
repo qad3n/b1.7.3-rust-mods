@@ -14,6 +14,7 @@ pub(crate) mod kind
     pub(crate) const IN_FIRE: &str = "minecraft:in_fire";
     pub(crate) const ON_FIRE: &str = "minecraft:on_fire";
     pub(crate) const LAVA: &str = "minecraft:lava";
+    pub(crate) const FALL: &str = "minecraft:fall";
 }
 
 pub(crate) fn hit(victim: Entity, amount: i32, source: Option<i32>, kind: &str) -> bool
@@ -38,6 +39,8 @@ pub(crate) fn burning() -> bool { hurtBy(&[kind::IN_FIRE, kind::ON_FIRE, kind::L
 pub(crate) fn magic() -> bool { hurtBy(&[kind::MAGIC]) }
 
 pub(crate) fn explosion() -> bool { hurtBy(&[kind::EXPLOSION]) }
+
+pub(crate) fn fall() -> bool { hurtBy(&[kind::FALL]) }
 
 // a player's own blow with what it holds
 pub(crate) fn melee() -> bool { hurtBy(&[kind::PLAYER]) }
