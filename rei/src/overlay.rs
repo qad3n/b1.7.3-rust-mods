@@ -53,6 +53,7 @@ mod color
     pub const NOTE: u32 = 0xAAAAAA;
     // the face Draw::panel fills a gui with
     pub const PANEL_FACE: u32 = 0xFFC6C6C6;
+    pub const PANEL_LIGHT: u32 = 0xFFFFFFFF;
 }
 
 // lwjgl key codes

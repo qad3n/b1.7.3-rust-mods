@@ -41,9 +41,20 @@ impl Painter<'_>
 
         if index == view.m_tab
         {
-            // paints over the tab's inner edge and the page's outer edge so the two read as one panel
-            let seam: i32 = tab::OVERLAP + tab::RIM;
-            self.m_draw.rect(x + w - seam, y + tab::RIM, seam, h - tab::RIM * 2, color::PANEL_FACE);
+            // the page's left border column inside the tab
+            let border: i32 = x + w - tab::OVERLAP;
+            let inner: i32 = border + 1;
+            let face: i32 = h - tab::RIM * 3;
+
+            // clears the page border and tab right edge so the two faces join
+            self.m_draw.rect(border, y + tab::RIM + 1, tab::OVERLAP, face, color::PANEL_FACE);
+
+            // the tab's top light turns up into the page's left light
+            self.m_draw.rect(inner, y + 1, tab::RIM, tab::RIM, color::PANEL_LIGHT);
+
+            // the tab's bottom shadow stops at the page border then its edge turns down into the page's
+            self.m_draw.rect(inner, y + h - tab::RIM - 1, tab::OVERLAP - 1, tab::RIM, color::PANEL_FACE);
+            self.m_draw.rect(inner, y + h - 1, tab::RIM, 1, color::PANEL_LIGHT);
         }
 
         self.m_draw.item(x + tab::ICON_INSET, y + (h - layout::ICON) / 2, &category.icon(self.m_catalog));
