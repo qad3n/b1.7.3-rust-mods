@@ -148,8 +148,9 @@ fn enter(kind: Kind, world: World, pos: BlockPos, state: &mut PipeState, mut ite
 
     match state.m_items.iter_mut().find(|held| held.m_id == item.m_id)
     {
-        Some(held) => *held = item,
-        None => state.m_items.push(item),
+        // a pipe already carrying the entity keeps its way, a new one heads it to the center as TilePipe.EntityData
+        Some(held) => *held = Traveler { m_dir: held.m_dir, m_toCenter: held.m_toCenter, ..item },
+        None => state.m_items.push(Traveler { m_toCenter: true, ..item }),
     }
 }
 
