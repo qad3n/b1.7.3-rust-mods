@@ -200,7 +200,7 @@ fn sparkle(entity: Entity, info: &EntityInfo)
     {
         let jitter = || f64::from(crate::math::fraction(world) - crate::math::fraction(world)) * lich::SPARKLE_JITTER;
         let at: [f64; 3] = [hand[0] + jitter(), hand[1] + jitter(), hand[2] + jitter()];
-        crate::particles::spawn(world, "mobSpell", at, color);
+        crate::particles::spawn(world, "mob_spell", at, color);
     }
 }
 

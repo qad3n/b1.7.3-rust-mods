@@ -50,8 +50,8 @@ const KINDS: [Kind; 20] = [
     Kind { m_gravity: Some(0.06), ..kind("drip_water", "splash") },
     Kind { m_color: Some(0xCCCCCC), ..kind("townaura", "smoke") },
     // EntitySpellParticleFX takes its colour from the motion as beta's red dust does
-    kind("mobSpell", "reddust"),
-    Kind { m_color: Some(0x55FF55), ..kind("happyVillager", "reddust") },
+    kind("mob_spell", "reddust"),
+    Kind { m_color: Some(0x55FF55), ..kind("happy_villager", "reddust") },
 ];
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>

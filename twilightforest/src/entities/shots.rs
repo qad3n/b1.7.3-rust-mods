@@ -128,7 +128,7 @@ pub(crate) const SHOTS: [Shot; 11] = [
         m_icon: Icon::Sheet(sheet::SEEDS),
         m_puff: Puff::Crack("minecraft:leaves"),
         m_passes: None,
-        m_trail: Trail::Specks("happyVillager", 5),
+        m_trail: Trail::Specks("happy_villager", 5),
     },
     Shot
     {
@@ -331,7 +331,7 @@ fn leaveTrail(kind: Trail, world: World, info: &EntityInfo)
             {
                 let color: [f64; 3] =
                     trail::SPELL.map(|channel| f64::from((crate::math::fraction(world) * 0.5 + 0.5) * channel));
-                crate::particles::spawn(world, "mobSpell", near(), color);
+                crate::particles::spawn(world, "mob_spell", near(), color);
             }
         }
 
