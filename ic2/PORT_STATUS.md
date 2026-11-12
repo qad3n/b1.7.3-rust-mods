@@ -152,6 +152,14 @@ Review fixes against the Java: stale energy paths kept after a burn-out or overl
 (IC2 ignores the request), the wrench sometimes giving back a plain machine block (IC2 always returns the machine),
 the water mill dropping a generator, cables joining the electrolyzer.
 
+## Audit against v1.00 (2026-11-12)
+
+All 246 crafting recipes were compared in order with `mod_IC2` by pattern, result, count and damage, and every
+ingredient maps to one port item throughout. The two patterns that differ (quantum helmet, terraformer) follow the
+source's unkeyed letters, which beta's crafting leaves empty. Smelting, fuels, scrap box drops, extractor and
+compressor jobs and all 119 display names match. The macerator had a bronze ingot to bronze dust job v1.00 does not
+have (its list names refined iron twice); removed.
+
 ## Needs a real run
 
 - Client: machine textures and active looks, cable models and paint, every screen's gauges and slot layout (reactor

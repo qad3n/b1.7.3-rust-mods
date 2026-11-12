@@ -194,7 +194,7 @@ const fn job(input: &'static str, output: &'static str, count: i32) -> Job
     Job { m_input: input, m_output: output, m_count: count }
 }
 
-const MACERATOR: [Job; 17] = [
+const MACERATOR: [Job; 16] = [
     job("#c:ores/iron", "ic2:iron_dust", 2),
     job("#c:ores/gold", "ic2:gold_dust", 2),
     job("#c:ores/tin", "ic2:tin_dust", 2),
@@ -211,7 +211,6 @@ const MACERATOR: [Job; 17] = [
     job("minecraft:cobblestone", "minecraft:sand", 1),
     job("#c:sandstone_blocks", "minecraft:sand", 1),
     job("minecraft:ice", "minecraft:snowball", 1),
-    job("#c:ingots/bronze", "ic2:bronze_dust", 1),
 ];
 
 const EXTRACTOR: [Job; 6] = [
