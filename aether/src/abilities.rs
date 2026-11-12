@@ -63,10 +63,23 @@ mod wing
     pub const SNEAK_OFFSET: [f32; 2] = [-0.17, 0.112];
 }
 
+mod double
+{
+    pub const SWORD: &str = "skyroot_sword";
+    pub const VALKYRIE: &str = "aether:valkyrie";
+    pub const ITEM: &str = "minecraft:item";
+    // ItemDungeonKey and the victory medal never double
+    pub const KEPT_SINGLE: [&str; 4] = ["bronze_key", "silver_key", "golden_key", "victory_medal"];
+    pub const REACH: f64 = 1.5;
+    pub const FRESH: f64 = 1.0;
+}
+
 thread_local!
 {
     // AbilityFlight count and modifier of the local player
     static FLIGHT: RefCell<(i32, f64)> = const { RefCell::new((0, 1.0)) };
+    // where a skyroot sword made a kill this tick, by dimension
+    static DOUBLES: RefCell<Vec<(i32, [f64; 3])>> = const { RefCell::new(Vec::new()) };
 }
 
 // PlayerAether.wingSinage of every player this side draws
@@ -156,6 +169,56 @@ fn cushioned(player: Player) -> bool
         && (crate::player::wearingBoots(player, SENTRY_BOOTS)
             || crate::player::wearingSet(player, "gravitite")
             || crate::player::wearingSet(player, "valkyrie"))
+}
+
+// AetherEventHandler.onEntityDropLoot: what a skyroot sword kills drops everything twice, the loot only falls after
+// the event so the second helping is laid out at the end of the tick
+fn doubled(event: &mut Event)
+{
+    let EventData::Death { entity: dead, source: Some(killer), .. } = event.data().clone()
+    else
+    {
+        return;
+    };
+    let world: World = World { dimension: dead.world };
+    let spared: bool =
+        dead.player.is_some() || dead.kind.as_ref().is_some_and(|kind| kind.to_string() == double::VALKYRIE);
+    let byPlayer: bool = world.entity(killer).is_some_and(|info| info.player.is_some());
+    if spared || !byPlayer || !world.isAuthority()
+    {
+        return;
+    }
+
+    if !(Player { id: killer }).held().is_some_and(|held| held.item.is(double::SWORD))
+    {
+        return;
+    }
+
+    DOUBLES.with(|doubles| doubles.borrow_mut().push((dead.world, dead.pos)));
+}
+
+fn layDoubles()
+{
+    for (dimension, pos) in DOUBLES.take()
+    {
+        let world: World = World { dimension };
+        for info in world.entitiesNear(pos, double::REACH)
+        {
+            let entity: Entity = Entity { world, id: info.id };
+            let fresh: bool = info.kind.as_ref().is_some_and(|kind| kind.to_string() == double::ITEM)
+                && entity.field(EntityField::TicksExisted) <= double::FRESH;
+            let Some(stack) = entity.itemStack().filter(|_| fresh)
+            else
+            {
+                continue;
+            };
+
+            if !double::KEPT_SINGLE.iter().any(|name| stack.item.is(name))
+            {
+                let _ = world.spawnItem(pos, stack);
+            }
+        }
+    }
 }
 
 // AbilityFlight.onUpdate: holding jump in the full valkyrie set lifts the player a little more each tick
@@ -411,8 +474,13 @@ fn welcome(event: &mut Event)
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.events().on::<TickPost>(Priority::Normal, |_| tick())?;
+    ctx.events().on::<TickPost>(Priority::Normal, |_|
+    {
+        tick();
+        layDoubles();
+    })?;
     ctx.events().on::<LivingAttack>(Priority::Normal, shielded)?;
+    ctx.events().on::<LivingDrops>(Priority::Normal, doubled)?;
     ctx.events().on::<LivingHurt>(Priority::Normal, hardened)?;
     ctx.events().on::<PlayerChangeDimension>(Priority::Normal, welcome)?;
     Ok(())
