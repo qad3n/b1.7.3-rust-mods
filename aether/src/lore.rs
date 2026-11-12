@@ -293,7 +293,7 @@ impl LoreScreen
             {
                 layout::LEFT_TOP
             };
-            draw.plain(center - textWidth(line) / 2, top + layout::LINE * row, line, TEXT_COLOR);
+            draw.text(center - textWidth(line) / 2, top + layout::LINE * row, line, TEXT_COLOR);
         }
 
         self.m_hasPrevious = self.m_page != 0;
@@ -340,7 +340,7 @@ impl Screen for LoreScreen
 
         for (label, x, y) in LABELS
         {
-            draw.plain(x, y, label, TEXT_COLOR);
+            draw.text(x, y, label, TEXT_COLOR);
         }
     }
 

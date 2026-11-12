@@ -842,7 +842,7 @@ impl Painter<'_>
 
         for (index, (line, tint)) in lines.iter().enumerate()
         {
-            self.m_draw.text(x, y + index as i32 * layout::LINE, line, *tint);
+            self.m_draw.shadowed(x, y + index as i32 * layout::LINE, line, *tint);
         }
     }
 
@@ -870,12 +870,12 @@ impl Painter<'_>
         if shown.is_empty() && !state.m_focused
         {
             let hint: String = translate(text::SEARCH);
-            self.m_draw.text(textX, textY, clip(&hint, room, false), color::HINT);
+            self.m_draw.shadowed(textX, textY, clip(&hint, room, false), color::HINT);
             return;
         }
 
         let blink: bool = state.m_focused && (state.m_ticks / timing::BLINK).is_multiple_of(2);
-        self.m_draw.text(textX, textY, &format!("{shown}{}", if blink { "_" } else { "" }), color::TEXT);
+        self.m_draw.shadowed(textX, textY, &format!("{shown}{}", if blink { "_" } else { "" }), color::TEXT);
     }
 
     fn list(&mut self, state: &State, layout: &Layout)
@@ -965,7 +965,7 @@ impl Painter<'_>
         };
         let shown: &str = clip(short, room, false);
         let x: i32 = (container[2] - textWidth(shown)) / 2;
-        self.m_draw.plain(x, top, shown, color::RECIPE_ID);
+        self.m_draw.text(x, top, shown, color::RECIPE_ID);
     }
 
     fn recipePage(&mut self, index: usize, top: i32, bottom: i32) -> (String, Option<String>)
@@ -1013,12 +1013,12 @@ impl Painter<'_>
             String::new()
         };
         let indexLeft: i32 = w - page::INSET - textWidth(&index);
-        self.m_draw.plain(indexLeft, page::TITLE_TOP, &index, color::TITLE);
+        self.m_draw.text(indexLeft, page::TITLE_TOP, &index, color::TITLE);
 
         // a long title keeps clear of the page index
         let room: i32 = indexLeft - page::INSET * 2;
         let title: &str = clip(&title, room, false);
-        self.m_draw.plain((w - textWidth(title)) / 2, page::TITLE_TOP, title, color::TITLE);
+        self.m_draw.text((w - textWidth(title)) / 2, page::TITLE_TOP, title, color::TITLE);
 
         if let Some(id) = id
         {

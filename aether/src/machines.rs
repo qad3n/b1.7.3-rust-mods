@@ -562,7 +562,7 @@ fn tileState<T: serde::de::DeserializeOwned + Default>(pos: Option<BlockPos>) ->
 
 fn labels(draw: &mut Draw, title: &str)
 {
-    draw.centered(gui::WIDTH / 2, gui::TITLE_Y, title, gui::TEXT);
+    draw.text((gui::WIDTH - textWidth(title)) / 2, gui::TITLE_Y, title, gui::TEXT);
     draw.text(gui::INVENTORY[0], gui::INVENTORY_LABEL_Y, "Inventory", gui::TEXT);
 }
 

@@ -264,7 +264,7 @@ impl Screen for AltarScreen
         let title: &str = "Sun Altar";
 
         draw.texture(GUI, 0, 0, 0, 0, altar::WIDTH, altar::HEIGHT);
-        draw.plain((altar::WIDTH - textWidth(title)) / 2, altar::TITLE_Y, title, altar::TITLE_COLOR);
+        draw.text((altar::WIDTH - textWidth(title)) / 2, altar::TITLE_Y, title, altar::TITLE_COLOR);
 
         let [left, top] = self.m_button;
         let half: i32 = slider::WIDTH / 2;

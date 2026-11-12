@@ -74,7 +74,7 @@ impl Painter<'_>
             let label: String = amount(drop, view.sampled);
             let textTop: i32 = y + (layout::ICON - layout::FONT_HEIGHT) / 2;
             let textLeft: i32 = x + layout::ICON + loot::TEXT_GAP;
-            self.m_draw.plain(textLeft, textTop, clip(&label, loot::TEXT_ROOM, false), color::TITLE);
+            self.m_draw.text(textLeft, textTop, clip(&label, loot::TEXT_ROOM, false), color::TITLE);
 
             if inside(self.m_mouse, [x, y, layout::ICON, layout::ICON])
             {
@@ -122,7 +122,7 @@ impl Painter<'_>
                 let label: String = percent(slot.chance, false);
                 let textTop: i32 = y + (layout::ICON - layout::FONT_HEIGHT) / 2;
                 let textLeft: i32 = machine::OUTPUT_LEFT + layout::ICON + loot::TEXT_GAP;
-                self.m_draw.plain(textLeft, textTop, &label, color::TITLE);
+                self.m_draw.text(textLeft, textTop, &label, color::TITLE);
             }
         }
 
@@ -132,7 +132,7 @@ impl Painter<'_>
             let room: i32 = machine::NOTES_ROOM;
             let line: &str = clip(note, room, false);
             let x: i32 = (width - textWidth(line)) / 2;
-            self.m_draw.plain(x, notesTop + row as i32 * layout::LINE, line, color::TITLE);
+            self.m_draw.text(x, notesTop + row as i32 * layout::LINE, line, color::TITLE);
         }
 
         (view.title.clone(), Some(view.id.to_string()))

@@ -688,7 +688,7 @@ impl Screen for Dialogue
                 dialog::SHADE,
                 dialog::SHADE,
             );
-            draw.text(-width / 2, row * dialog::TEXT_LINE, line, dialog::WHITE);
+            draw.shadowed(-width / 2, row * dialog::TEXT_LINE, line, dialog::WHITE);
         }
 
         for index in 0..self.m_options.len()
@@ -699,7 +699,7 @@ impl Screen for Dialogue
             draw.gradient(x, y, w, h, dialog::SHADE, dialog::SHADE);
 
             let label: String = format!("{}[{}]", if over { dialog::HOVER } else { "" }, self.m_options[index]);
-            draw.text(x + dialog::PAD, y + dialog::PAD, &label, dialog::WHITE);
+            draw.shadowed(x + dialog::PAD, y + dialog::PAD, &label, dialog::WHITE);
         }
     }
 

@@ -191,7 +191,7 @@ fn boxed(draw: &mut Draw, text: &str, y: i32)
         draw.rect(left - pad, y - pad, right - left + pad * 2, pad + below, color);
     }
 
-    draw.plain(left, y, text, gui::TEXT);
+    draw.text(left, y, text, gui::TEXT);
 }
 
 fn background(draw: &mut Draw, sheet: &str) { draw.texture(sheet, 0, 0, 0, 0, gui::WIDTH, gui::HEIGHT); }
@@ -510,7 +510,7 @@ impl Screen for SnifferScreen
 
         draw.texture(sheet::SNIFFER, 0, 0, 0, 0, sniffer::WIDTH, sniffer::HEIGHT);
         draw.texture(sniffer::GRID_TEXTURE, x, y, 0, 0, size[0], size[1]);
-        draw.plain(sniffer::WIDTH / 2 - textWidth(&title) / 2, gui::TITLE_Y, &title, gui::TEXT);
+        draw.text(sniffer::WIDTH / 2 - textWidth(&title) / 2, gui::TITLE_Y, &title, gui::TEXT);
     }
 
     // the source redrew from the live ether every frame, the server answers once per tick
