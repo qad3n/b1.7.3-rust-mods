@@ -86,7 +86,7 @@ const FLOWERS: &[&str] = &["white_flower", "purple_flower"];
 const ORES: &[&str] = &["ambrosium_ore", "zanite_ore", "gravitite_ore"];
 
 // logs and leaves blocks join minecraft:logs and minecraft:leaves through their block specs
-const TAGS: [TagRow; 27] = [
+const TAGS: [TagRow; 29] = [
     TagRow { m_registry: RegistryKind::Item, m_tag: DUNGEON_LOOT, m_members: LOOT },
     TagRow { m_registry: RegistryKind::Block, m_tag: SOIL, m_members: SOILS },
     TagRow { m_registry: RegistryKind::Block, m_tag: "minecraft:dirt", m_members: SOILS },
@@ -145,11 +145,25 @@ const TAGS: [TagRow; 27] = [
         m_tag: VALKYRIE_TOOLS,
         m_members: &["valkyrie_pickaxe", "valkyrie_axe", "valkyrie_shovel"],
     },
+    // calm whirlwinds still lift whoever they touch and one in ten hunts players
     TagRow
     {
         m_registry: RegistryKind::Entity,
-        m_tag: UNDEAD,
-        m_members: &["minecraft:zombie", "minecraft:skeleton", "minecraft:pig_zombie"],
+        m_tag: "c:hostile",
+        m_members: &["aechor_plant", "cockatrice", "fire_minion", "mimic", "sentry", "swet", "whirlwind", "zephyr"],
+    },
+    // valkyries fight only when hit and the slider and sun spirit only once a player wakes or talks to them
+    TagRow
+    {
+        m_registry: RegistryKind::Entity,
+        m_tag: "c:neutral",
+        m_members: &["valkyrie", "valkyrie_queen", "slider", "sun_spirit"],
+    },
+    TagRow
+    {
+        m_registry: RegistryKind::Entity,
+        m_tag: "c:passive",
+        m_members: &["aerbunny", "aerwhale", "flying_cow", "mini_cloud", "moa", "phyg", "sheepuff"],
     },
     TagRow
     {
