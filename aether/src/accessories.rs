@@ -236,6 +236,39 @@ fn accessoryOf(stack: &ItemStack) -> Option<&'static Accessory>
     ACCESSORIES.iter().find(|row| stack.item.is(row.m_name))
 }
 
+// ItemAccessory.onItemRightClick: used out of hand it goes into the first free slot of its kind
+struct Wearable;
+
+#[item_behavior]
+impl ItemBehavior for Wearable
+{
+    fn onRightClick(&self, world: World, player: Player, stack: ItemStack) -> Use
+    {
+        let Some(row) = accessoryOf(&stack)
+        else
+        {
+            return Use::Pass;
+        };
+
+        let mut worn: Worn = Worn::of(player);
+        let Some(free) = (0..SLOTS).find(|index| WORN[*index].m_slot == row.m_slot && worn.m_slots[*index].is_none())
+        else
+        {
+            return Use::Pass;
+        };
+
+        if !world.isAuthority()
+        {
+            return Use::Done(Some(stack));
+        }
+
+        worn.m_slots[free] = ItemStack { count: 1, ..stack.clone() }.toRaw().ok();
+        worn.save(player);
+
+        Use::Done((stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }))
+    }
+}
+
 // SlotAccessory: a click swaps the cursor stack with the slot when the cursor holds an accessory of its kind
 #[derive(Serialize, Deserialize)]
 struct Click
@@ -748,7 +781,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             spec = spec.maxDamage(uses);
         }
 
-        ctx.items().register(row.m_name, spec)?;
+        ctx.items().register(row.m_name, spec.behavior(Wearable))?;
     }
 
     for (kind, tag) in KINDS
