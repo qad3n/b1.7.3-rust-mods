@@ -1,12 +1,10 @@
 use super::{BossBar, Home, TRAPDOOR_HIGH_X, TRAPDOOR_LOW_X, bossName, pitch, say, trapdoors, unlock};
-use crate::entities::fraction;
+use crate::entities::{fraction, store};
 use crate::models::{Program, slider as model};
 use crate::names::{Pick, numeric};
 use crate::progress::{self, Award};
 use b173_api::math::{blockOf, distance};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 const NAME: &str = super::SLIDER;
 const LOCKED: [&str; 2] = ["locked_carved_stone", "locked_sentry_stone"];
@@ -70,7 +68,7 @@ mod slide
     pub const EXPLODE_LOW: f32 = 0.7;
 }
 
-#[derive(Clone, Copy, PartialEq, Default)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Default)]
 enum Direction
 {
     #[default]
@@ -95,7 +93,7 @@ struct Sync
 }
 
 // the server's slide in progress, as the Java fields that never reach clients
-#[derive(Default, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Slide
 {
     m_moveTime: i32,
@@ -104,16 +102,13 @@ struct Slide
     m_chatTime: i32,
 }
 
-thread_local!
-{
-    static SLIDES: RefCell<HashMap<i32, Slide>> = RefCell::new(HashMap::new());
-}
+static SLIDES: EntityState<Slide> = EntityState::new("slide");
 
 pub(crate) fn bar(boss: Entity) -> BossBar { boss.synced::<Sync>().m_bar }
 
-fn slide(entity: Entity) -> Slide { SLIDES.with(|slides| slides.borrow().get(&entity.id).copied()).unwrap_or_default() }
+fn slide(entity: Entity) -> Slide { SLIDES.get(entity) }
 
-fn setSlide(entity: Entity, state: Slide) { SLIDES.with(|slides| slides.borrow_mut().insert(entity.id, state)); }
+fn setSlide(entity: Entity, state: Slide) { store(&SLIDES, entity, &state); }
 
 fn sync(entity: Entity) -> Sync
 {
@@ -637,7 +632,6 @@ impl EntityBehavior for Slider
         trapdoors(world, [x, y, z], &rows);
 
         world.playSound(info.pos, sound::DEATH, sound::VOLUME, pitch(world));
-        SLIDES.with(|slides| slides.borrow_mut().remove(&entity.id));
         entity.kill();
     }
 

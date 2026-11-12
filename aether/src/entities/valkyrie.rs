@@ -1,11 +1,9 @@
-use super::fraction;
+use super::{fraction, store};
 use crate::models::{DEGREES_PER_RADIAN, Phases, Program, WALK_RATE, valkyrie as model};
 use crate::names::item::VICTORY_MEDAL;
 use b173_api::math;
 use b173_api::prelude::*;
 pub(crate) use look::{AIR_SINAGE, GROUND_SINAGE};
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::f32::consts::{PI, TAU};
 
 const NAME: &str = "valkyrie";
@@ -59,22 +57,19 @@ pub(crate) mod look
     pub(crate) const GROUND_SINAGE: f32 = 0.15;
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Mood
 {
     m_chatTime: i32,
     m_lastMotionY: f64,
 }
 
-thread_local!
-{
-    static MOODS: RefCell<HashMap<i32, Mood>> = RefCell::new(HashMap::new());
-    static SINAGE: Phases = Phases::default();
-}
+static MOODS: EntityState<Mood> = EntityState::new("mood");
+static SINAGE: Phases = Phases::new("sinage");
 
-fn mood(entity: Entity) -> Mood { MOODS.with(|moods| moods.borrow().get(&entity.id).copied()).unwrap_or_default() }
+fn mood(entity: Entity) -> Mood { MOODS.get(entity) }
 
-fn setMood(entity: Entity, mood: Mood) { MOODS.with(|moods| moods.borrow_mut().insert(entity.id, mood)); }
+fn setMood(entity: Entity, mood: Mood) { store(&MOODS, entity, &mood); }
 
 // EntityValkyrie.chatItUp: one line per three seconds, picked from a numbered lang group
 fn chatItUp(entity: Entity, player: Player, group: &str)
@@ -246,7 +241,6 @@ impl EntityBehavior for Valkyrie
             entity.world.particle("explode", spot, [0.0; 3]);
         }
 
-        MOODS.with(|moods| moods.borrow_mut().remove(&entity.id));
         entity.kill();
     }
 
@@ -260,7 +254,7 @@ impl EntityBehavior for Valkyrie
         {
             look::AIR_SINAGE
         };
-        let sinage: f32 = SINAGE.with(|phases| phases.advance(input.entity.id, input.age as i32, step, TAU));
+        let sinage: f32 = SINAGE.advance(&input.entity, input.age as i32, step, TAU);
         Pose { pre: Vec::new(), model: valkyriePose(input, sinage, 0.0).take() }
     }
 }

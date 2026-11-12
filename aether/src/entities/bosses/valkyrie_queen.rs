@@ -1,15 +1,13 @@
 use super::{BossBar, Home, TRAPDOOR_HIGH_X, TRAPDOOR_LOW_X, freeBox, say, trapdoors};
 use crate::entities::crystal::{self, Kind};
-use crate::entities::fraction;
 use crate::entities::valkyrie::{self, AIR_SINAGE, GROUND_SINAGE, valkyriePose};
+use crate::entities::{fraction, store};
 use crate::models::Phases;
 use crate::names::item::VICTORY_MEDAL;
 use crate::names::{AIR, Pick, handle, holds};
 use crate::progress::{self, Award};
 use b173_api::math::{floor, yawTowards};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::f32::consts::TAU;
 
 const NAME: &str = super::VALKYRIE_QUEEN;
@@ -56,7 +54,7 @@ struct Sync
     m_ready: bool,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Mind
 {
     m_chatTime: i32,
@@ -67,17 +65,16 @@ struct Mind
     m_started: bool,
 }
 
-thread_local!
-{
-    static MINDS: RefCell<HashMap<i32, Mind>> = RefCell::new(HashMap::new());
-    static SINAGE: Phases = Phases::default();
-}
+static MINDS: EntityState<Mind> = EntityState::new("mind");
+// the SafePos height the Java saves with the queen
+static SAFE_Y: EntityState<f64> = EntityState::new("safe_y").saved();
+static SINAGE: Phases = Phases::new("sinage");
 
 pub(crate) fn bar(boss: Entity) -> BossBar { boss.synced::<Sync>().m_bar }
 
-fn mind(entity: Entity) -> Mind { MINDS.with(|minds| minds.borrow().get(&entity.id).copied()).unwrap_or_default() }
+fn mind(entity: Entity) -> Mind { MINDS.get(entity) }
 
-fn setMind(entity: Entity, state: Mind) { MINDS.with(|minds| minds.borrow_mut().insert(entity.id, state)); }
+fn setMind(entity: Entity, state: Mind) { store(&MINDS, entity, &state); }
 
 fn sync(entity: Entity) -> Sync
 {
@@ -316,13 +313,10 @@ impl EntityBehavior for ValkyrieQueen
         let mut thinking: Mind = mind(entity);
         if !thinking.m_started
         {
-            thinking = Mind
-            {
-                m_started: true,
-                m_teleportIn: world.random(queen::TELEPORT_START),
-                m_safeY: info.pos[1],
-                ..thinking
-            };
+            let safeY: f64 = SAFE_Y.find(entity).unwrap_or(info.pos[1]);
+            store(&SAFE_Y, entity, &safeY);
+            thinking =
+                Mind { m_started: true, m_teleportIn: world.random(queen::TELEPORT_START), m_safeY: safeY, ..thinking };
         }
 
         thinking.m_chatTime -= 1;
@@ -455,7 +449,6 @@ impl EntityBehavior for ValkyrieQueen
         }
 
         poof(world, info.pos);
-        MINDS.with(|minds| minds.borrow_mut().remove(&entity.id));
         entity.kill();
     }
 
@@ -469,7 +462,7 @@ impl EntityBehavior for ValkyrieQueen
         {
             AIR_SINAGE
         };
-        let sinage: f32 = SINAGE.with(|phases| phases.advance(input.entity.id, input.age as i32, step, TAU));
+        let sinage: f32 = SINAGE.advance(&input.entity, input.age as i32, step, TAU);
         Pose { pre: Vec::new(), model: valkyriePose(input, sinage, 0.0).take() }
     }
 }

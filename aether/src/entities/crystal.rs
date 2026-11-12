@@ -1,10 +1,8 @@
-use super::{fraction, lookOf};
+use super::{fraction, lookOf, store};
 use crate::effects::Effect;
 use crate::models::{DEGREES_PER_RADIAN, Program, crystal as model};
 use b173_api::math::{floor, yawTowards};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::f32::consts::TAU;
 
 const NAME: &str = "crystal";
@@ -106,7 +104,7 @@ pub(crate) struct Look
 }
 
 // the server's flight, the Java smotion, deflection and homing fields
-#[derive(Default, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Flight
 {
     m_motion: [f64; 3],
@@ -115,17 +113,11 @@ struct Flight
     m_target: Option<i32>,
 }
 
-thread_local!
-{
-    static FLIGHTS: RefCell<HashMap<i32, Flight>> = RefCell::new(HashMap::new());
-}
+static FLIGHTS: EntityState<Flight> = EntityState::new("flight");
 
-fn flight(entity: Entity) -> Flight
-{
-    FLIGHTS.with(|flights| flights.borrow().get(&entity.id).copied()).unwrap_or_default()
-}
+fn flight(entity: Entity) -> Flight { FLIGHTS.get(entity) }
 
-fn setFlight(entity: Entity, state: Flight) { FLIGHTS.with(|flights| flights.borrow_mut().insert(entity.id, state)); }
+fn setFlight(entity: Entity, state: Flight) { store(&FLIGHTS, entity, &state); }
 
 fn drift(world: World) -> f64
 {
@@ -290,7 +282,6 @@ fn fade(entity: Entity, info: &EntityInfo, kind: Kind)
     }
 
     puffs(world, info.pos, row.m_fade.1, crystal::FADE_PUFFS, crystal::PUFF_SPREAD, 0.0);
-    FLIGHTS.with(|flights| flights.borrow_mut().remove(&entity.id));
     entity.kill();
 }
 

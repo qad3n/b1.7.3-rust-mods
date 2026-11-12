@@ -1,7 +1,6 @@
+use super::store;
 use crate::models::{HALF_PI, Program};
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 
 pub(crate) const SADDLE: &str = "minecraft:saddle";
 
@@ -125,19 +124,15 @@ pub(crate) const WINGED: Steering = Steering
     m_glide: ride::GLIDE,
 };
 
-#[derive(Default, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Flight
 {
     m_jumpsLeft: i32,
     m_wasJumping: bool,
 }
 
-thread_local!
-{
-    static FLIGHTS: RefCell<HashMap<i32, Flight>> = RefCell::new(HashMap::new());
-}
-
-pub(crate) fn forget(entity: Entity) { FLIGHTS.with(|flights| flights.borrow_mut().remove(&entity.id)); }
+// the Java saves the jumps left as Remaining and remainingJumps
+static FLIGHTS: EntityState<Flight> = EntityState::new("flight").saved();
 
 // EntityMountable.moveEntityWithHeading for a player ridden mount, false leaves the move to the template
 pub(crate) fn travel(mount: Entity, steering: Steering) -> bool
@@ -230,33 +225,32 @@ pub(crate) fn travel(mount: Entity, steering: Steering) -> bool
 // a fresh jump press lifts the mount from the ground or spends an air jump, the motion it leaves
 fn jump(mount: Entity, steering: Steering, onGround: bool, jumping: bool, motionY: f64) -> f64
 {
-    FLIGHTS.with(|flights|
+    let mut flight: Flight = FLIGHTS.get(mount);
+    if onGround
     {
-        let mut flights: RefMut<HashMap<i32, Flight>> = flights.borrow_mut();
-        let flight: &mut Flight = flights.entry(mount.id).or_default();
+        flight.m_jumpsLeft = steering.m_airJumps;
+    }
 
-        if onGround
-        {
-            flight.m_jumpsLeft = steering.m_airJumps;
-        }
+    let pressed: bool = jumping && !flight.m_wasJumping;
+    flight.m_wasJumping = jumping;
 
-        let pressed: bool = jumping && !flight.m_wasJumping;
-        flight.m_wasJumping = jumping;
-
-        let airReady: bool = flight.m_jumpsLeft > 0 && (!steering.m_airJumpFalling || motionY < 0.0);
-        if !pressed || !(onGround || airReady)
-        {
-            return motionY;
-        }
-
-        if onGround
-        {
-            return steering.m_jump as f64;
-        }
-
+    let airReady: bool = flight.m_jumpsLeft > 0 && (!steering.m_airJumpFalling || motionY < 0.0);
+    let motion: f64 = if !pressed || !(onGround || airReady)
+    {
+        motionY
+    }
+    else if onGround
+    {
+        steering.m_jump as f64
+    }
+    else
+    {
         flight.m_jumpsLeft -= 1;
         steering.m_airJump as f64
-    })
+    };
+
+    store(&FLIGHTS, mount, &flight);
+    motion
 }
 
 mod flap
@@ -273,7 +267,7 @@ mod flap
     pub const HEIGHT: f32 = 12.0;
 }
 
-#[derive(Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy, PartialEq)]
 struct Wings
 {
     m_fold: f32,
@@ -282,44 +276,38 @@ struct Wings
     m_lastTick: i32,
 }
 
-thread_local!
-{
-    static WINGS: RefCell<HashMap<i32, Wings>> = RefCell::new(HashMap::new());
-}
+static WINGS: EntityState<Wings> = EntityState::new("wings");
 
 // EntityPhyg.onUpdate wing state, stepped on the client once per tick it renders
 fn wings(input: &PoseInput) -> (f32, f32)
 {
-    WINGS.with(|wings|
+    let entity: Entity = Entity { world: World { dimension: input.entity.world }, id: input.entity.id };
+    let tick: i32 = input.age as i32;
+    let fresh: Wings = Wings { m_fold: flap::FOLDED, m_angle: 0.0, m_ticks: 0.0, m_lastTick: tick };
+    let stored: Option<Wings> = WINGS.find(entity);
+    let mut state: Wings = stored.unwrap_or(fresh);
+    while state.m_lastTick < tick
     {
-        let mut wings: RefMut<HashMap<i32, Wings>> = wings.borrow_mut();
-        let tick: i32 = input.age as i32;
-
-        let state: &mut Wings = wings.entry(input.entity.id).or_insert(Wings
+        let aim: f32 = if input.on_ground
         {
-            m_fold: flap::FOLDED,
-            m_angle: 0.0,
-            m_ticks: 0.0,
-            m_lastTick: tick,
-        });
-        while state.m_lastTick < tick
-        {
-            let aim: f32 = if input.on_ground
-            {
-                flap::FOLDED
-            }
-            else
-            {
-                flap::SPREAD
-            };
-            state.m_ticks += 1.0;
-            state.m_angle = state.m_fold * (state.m_ticks / flap::PERIOD).sin();
-            state.m_fold += (aim - state.m_fold) / flap::EASE;
-            state.m_lastTick += 1;
+            flap::FOLDED
         }
+        else
+        {
+            flap::SPREAD
+        };
+        state.m_ticks += 1.0;
+        state.m_angle = state.m_fold * (state.m_ticks / flap::PERIOD).sin();
+        state.m_fold += (aim - state.m_fold) / flap::EASE;
+        state.m_lastTick += 1;
+    }
 
-        (state.m_fold, state.m_angle)
-    })
+    if stored != Some(state)
+    {
+        store(&WINGS, entity, &state);
+    }
+
+    (state.m_fold, state.m_angle)
 }
 
 // PhygWingModel.render and FlyingCowWingModel.render for an adult, parts are left inner, left outer, right inner, right outer

@@ -1,9 +1,7 @@
-use super::{creature, onAetherGrass, sounds};
+use super::{creature, onAetherGrass, sounds, store};
 use crate::models::{Program, aerwhale as model};
 use b173_api::math;
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 const NAME: &str = "aerwhale";
 const TEXTURE: &str = "aether:entity/aerwhale/aerwhale";
@@ -32,17 +30,14 @@ mod course
     pub const JITTER_STEPS: i32 = 1000000;
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Heading
 {
     m_yaw: f64,
     m_pitch: f64,
 }
 
-thread_local!
-{
-    static HEADINGS: RefCell<HashMap<i32, Heading>> = RefCell::new(HashMap::new());
-}
+static HEADINGS: EntityState<Heading> = EntityState::new("heading");
 
 // AerwhaleAITravelCourse.checkForTravelableCourse: distance to the first block along a heading, or the full sight
 fn openDistance(world: World, info: &EntityInfo, yawOffset: f32, pitchOffset: f32) -> f64
@@ -146,8 +141,7 @@ impl EntityBehavior for Aerwhale
             }
         });
 
-        let mut heading: Heading =
-            HEADINGS.with(|headings| headings.borrow().get(&entity.id).copied()).unwrap_or_default();
+        let mut heading: Heading = HEADINGS.get(entity);
         let mut yaw: f32 = info.yaw;
         let mut pitch: f32 = info.pitch;
 
@@ -230,7 +224,7 @@ impl EntityBehavior for Aerwhale
             }
         }
 
-        HEADINGS.with(|headings| headings.borrow_mut().insert(entity.id, heading));
+        store(&HEADINGS, entity, &heading);
         entity.setField(EntityField::Yaw, yaw as f64);
         entity.setField(EntityField::Pitch, pitch as f64);
 

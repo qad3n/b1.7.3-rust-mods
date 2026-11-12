@@ -1,7 +1,6 @@
 use crate::models::{DEGREES_PER_RADIAN, HALF_PI, Program, WALK_RATE, moa as layout, quadruped};
+use b173_api::prelude::*;
 use b173_api::{PoseInput, math};
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 
 // MoaModel and CockatriceModel share their eleven parts and their animation
 mod wing
@@ -15,7 +14,7 @@ mod wing
     pub const SITTING_JAW: f32 = -0.3;
 }
 
-#[derive(Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy, PartialEq)]
 struct Wing
 {
     m_rotation: f32,
@@ -23,38 +22,36 @@ struct Wing
     m_lastTick: i32,
 }
 
-thread_local!
-{
-    static WINGS: RefCell<HashMap<i32, Wing>> = RefCell::new(HashMap::new());
-}
+static WINGS: EntityState<Wing> = EntityState::new("wing");
 
 // EntityMoa.updateWingRotation and MoaRenderer.getWingRotation, stepped on the client per rendered tick
 pub(crate) fn wingSwing(input: &PoseInput) -> f32
 {
-    WINGS.with(|wings|
+    let entity: Entity = Entity { world: World { dimension: input.entity.world }, id: input.entity.id };
+    let tick: i32 = input.age as i32;
+    let stored: Option<Wing> = WINGS.find(entity);
+    let mut state: Wing = stored.unwrap_or(Wing { m_rotation: 0.0, m_open: 0.0, m_lastTick: tick });
+    while state.m_lastTick < tick
     {
-        let mut wings: RefMut<HashMap<i32, Wing>> = wings.borrow_mut();
-        let tick: i32 = input.age as i32;
-        let state: &mut Wing =
-            wings.entry(input.entity.id).or_insert(Wing { m_rotation: 0.0, m_open: 0.0, m_lastTick: tick });
+        state.m_rotation += wing::FLAP;
 
-        while state.m_lastTick < tick
+        state.m_open = if input.on_ground
         {
-            state.m_rotation += wing::FLAP;
-
-            state.m_open = if input.on_ground
-            {
-                0.0
-            }
-            else
-            {
-                (state.m_open + wing::OPEN).clamp(wing::MIN_OPEN, 1.0)
-            };
-            state.m_lastTick += 1;
+            0.0
         }
+        else
+        {
+            (state.m_open + wing::OPEN).clamp(wing::MIN_OPEN, 1.0)
+        };
+        state.m_lastTick += 1;
+    }
 
-        (math::sin(state.m_rotation) + 1.0) * state.m_open
-    })
+    if stored != Some(state)
+    {
+        super::store(&WINGS, entity, &state);
+    }
+
+    (math::sin(state.m_rotation) + 1.0) * state.m_open
 }
 
 // MoaModel.setRotationAngles and render for the eleven parts starting at base

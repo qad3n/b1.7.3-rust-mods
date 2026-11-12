@@ -1,11 +1,9 @@
 use super::projectile::{self, POISON_NEEDLE};
-use super::{closestPlayer, creature, onAetherGrass};
+use super::{closestPlayer, creature, onAetherGrass, store};
 use crate::models::{Program, aechor_plant as model};
 use crate::names::{block, item};
 use b173_api::math::floor;
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 use std::f32::consts::PI;
 
 const NAME: &str = "aechor_plant";
@@ -59,12 +57,9 @@ struct PlantState
     m_hunting: bool,
 }
 
-thread_local!
-{
-    static RELOADS: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
-    static SINAGE: RefCell<HashMap<i32, (f32, i32)>> = RefCell::new(HashMap::new());
-    static POISON_LEFT: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
-}
+static RELOADS: EntityState<i32> = EntityState::new("reload");
+static SINAGE: EntityState<(f32, i32)> = EntityState::new("sinage");
+static POISON_LEFT: EntityState<i32> = EntityState::new("poison_left");
 
 fn size(entity: Entity) -> i32
 {
@@ -106,7 +101,7 @@ impl EntityBehavior for AechorPlant
         let reach: f64 = plant::LOOK + plantSize as f64 / 2.0;
         let target: Option<EntityInfo> = closestPlayer(world, info, plant::SIGHT.min(reach));
         let hunted: Option<EntityInfo> = target.clone();
-        let mut reload: i32 = RELOADS.with(|reloads| reloads.borrow().get(&entity.id).copied()).unwrap_or(0);
+        let mut reload: i32 = RELOADS.get(entity);
 
         match hunted
         {
@@ -152,7 +147,7 @@ impl EntityBehavior for AechorPlant
             let _ = entity.setSynced(&PlantState { m_size: plantSize, m_hunting: hunting });
         }
 
-        RELOADS.with(|reloads| reloads.borrow_mut().insert(entity.id, reload));
+        store(&RELOADS, entity, &reload);
     }
 
     // EntityAechorPlant.interact: an empty skyroot bucket draws poison while the plant has some left
@@ -164,13 +159,16 @@ impl EntityBehavior for AechorPlant
             return false;
         };
 
-        let left: i32 = POISON_LEFT.with(|left|
+        let left: i32 = match POISON_LEFT.find(entity)
         {
-            *left
-                .borrow_mut()
-                .entry(entity.id)
-                .or_insert_with(|| entity.world.random(plant::POISON_SPREAD) + plant::POISON_MIN)
-        });
+            Some(left) => left,
+            None =>
+            {
+                let left: i32 = entity.world.random(plant::POISON_SPREAD) + plant::POISON_MIN;
+                store(&POISON_LEFT, entity, &left);
+                left
+            }
+        };
         if left <= 0
         {
             return false;
@@ -187,7 +185,7 @@ impl EntityBehavior for AechorPlant
             let _ = player.setHeld(Some(ItemStack { count: held.count - 1, ..held }));
             let _ = player.give(poison);
         }
-        POISON_LEFT.with(|poison| poison.borrow_mut().insert(entity.id, left - 1));
+        store(&POISON_LEFT, entity, &(left - 1));
         false
     }
 
@@ -201,31 +199,32 @@ impl EntityBehavior for AechorPlant
     {
         let state: PlantState = b173_api::fromBytes(&input.synced).unwrap_or_default();
 
-        let sinage: f32 = SINAGE.with(|sinage|
+        let entity: Entity = Entity { world: World { dimension: input.entity.world }, id: input.entity.id };
+        let tick: i32 = input.age as i32;
+        let stored: Option<(f32, i32)> = SINAGE.find(entity);
+        let (mut sinage, mut seen): (f32, i32) = stored.unwrap_or((0.0, tick));
+        while seen < tick
         {
-            let mut sinage: RefMut<HashMap<i32, (f32, i32)>> = sinage.borrow_mut();
-            let tick: i32 = input.age as i32;
-            let entry: &mut (f32, i32) = sinage.entry(input.entity.id).or_insert((0.0, tick));
-            while entry.1 < tick
+            let step: f32 = if input.hurt_time > 0
             {
-                let step: f32 = if input.hurt_time > 0
-                {
-                    sway::HURT
-                }
-                else if state.m_hunting
-                {
-                    sway::HUNTING
-                }
-                else
-                {
-                    sway::IDLE
-                };
-                entry.0 = (entry.0 + step) % (2.0 * PI);
-                entry.1 += 1;
+                sway::HURT
             }
+            else if state.m_hunting
+            {
+                sway::HUNTING
+            }
+            else
+            {
+                sway::IDLE
+            };
+            sinage = (sinage + step) % (2.0 * PI);
+            seen += 1;
+        }
 
-            entry.0
-        });
+        if stored != Some((sinage, seen))
+        {
+            store(&SINAGE, entity, &(sinage, seen));
+        }
 
         let hurt: bool = input.hurt_time > 0;
         let wave: f32 = if hurt

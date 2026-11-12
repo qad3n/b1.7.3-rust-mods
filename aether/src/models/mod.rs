@@ -3,10 +3,11 @@
 #[allow(clippy::approx_constant, clippy::excessive_precision)]
 mod generated;
 
-use b173_api::{EntityModelSpec, ModelBox, ModelOp, ModelPart, PoseInput, math};
+use b173_api::
+{
+    Entity, EntityInfo, EntityModelSpec, EntityState, ModelBox, ModelOp, ModelPart, PoseInput, World, math,
+};
 pub(crate) use generated::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 use std::vec::IntoIter;
 
 // builders the generated models call, kept short so each generated part stays on one line
@@ -193,24 +194,31 @@ pub(crate) fn quadrupedPose(
 }
 
 // a per entity angle a Java entity steps once a tick for its renderer, kept on the client by the last tick seen
-#[derive(Default)]
 pub(crate) struct Phases
 {
-    m_phases: RefCell<HashMap<i32, (f32, i32)>>,
+    m_phases: EntityState<(f32, i32)>,
 }
 
 impl Phases
 {
-    pub(crate) fn advance(&self, id: i32, tick: i32, step: f32, wrap: f32) -> f32
+    pub(crate) const fn new(key: &'static str) -> Self { Phases { m_phases: EntityState::new(key) } }
+
+    pub(crate) fn advance(&self, info: &EntityInfo, tick: i32, step: f32, wrap: f32) -> f32
     {
-        let mut phases: RefMut<HashMap<i32, (f32, i32)>> = self.m_phases.borrow_mut();
-        let entry: &mut (f32, i32) = phases.entry(id).or_insert((0.0, tick));
-        while entry.1 < tick
+        let entity: Entity = Entity { world: World { dimension: info.world }, id: info.id };
+        let stored: Option<(f32, i32)> = self.m_phases.find(entity);
+        let (mut phase, mut seen): (f32, i32) = stored.unwrap_or((0.0, tick));
+        while seen < tick
         {
-            entry.0 = (entry.0 + step) % wrap;
-            entry.1 += 1;
+            phase = (phase + step) % wrap;
+            seen += 1;
         }
 
-        entry.0
+        if stored != Some((phase, seen))
+        {
+            crate::entities::store(&self.m_phases, entity, &(phase, seen));
+        }
+
+        phase
     }
 }

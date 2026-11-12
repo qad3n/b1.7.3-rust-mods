@@ -1,9 +1,7 @@
-use super::{closestPlayer, fraction, sounds};
+use super::{closestPlayer, fraction, sounds, store};
 use crate::models::{Program, slime_outer};
 use b173_api::math::{distance, flatLength, yawTowards};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 const NAME: &str = "sentry";
 const SLEEPING: &str = "aether:entity/sentry/sentry";
@@ -37,7 +35,7 @@ struct Watch
     m_awake: bool,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Search
 {
     m_ticks: i32,
@@ -47,10 +45,7 @@ struct Search
     m_wasOnGround: bool,
 }
 
-thread_local!
-{
-    static SEARCHES: RefCell<HashMap<i32, Search>> = RefCell::new(HashMap::new());
-}
+static SEARCHES: EntityState<Search> = EntityState::new("search");
 
 // EntityLivingBase.canEntityBeSeen from the sentry's middle to the target's eyes
 fn visible(world: World, info: &EntityInfo, target: &EntityInfo) -> bool
@@ -149,8 +144,7 @@ impl EntityBehavior for Sentry
     fn onAi(&self, entity: Entity, info: &EntityInfo)
     {
         let world: World = entity.world;
-        let mut search: Search =
-            SEARCHES.with(|searches| searches.borrow().get(&entity.id).copied()).unwrap_or_default();
+        let mut search: Search = SEARCHES.get(entity);
         let watch: Watch = entity.synced();
         let onGround: bool = entity.flag(EntityField::OnGround);
 
@@ -221,14 +215,18 @@ impl EntityBehavior for Sentry
         }
 
         search.m_wasOnGround = onGround;
-        SEARCHES.with(|searches| searches.borrow_mut().insert(entity.id, search));
+        store(&SEARCHES, entity, &search);
     }
 
     fn onHurt(&self, entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
     {
         if let Some(attacker) = source
         {
-            SEARCHES.with(|searches| searches.borrow_mut().entry(entity.id).or_default().m_target = Some(attacker));
+            if let Err(error) = SEARCHES.update(entity, |search| search.m_target = Some(attacker))
+            {
+                warn(&format!("sentry {} target: {error}", entity.id));
+            }
+
             setAwake(entity, true);
         }
 

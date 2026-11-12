@@ -1,8 +1,6 @@
-use super::{closestPlayer, fraction, monster, onAetherGrass};
+use super::{closestPlayer, fraction, monster, onAetherGrass, store};
 use b173_api::math::{blockOf, distance, flatLength};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 const NAME: &str = "whirlwind";
 
@@ -68,7 +66,7 @@ struct Wind
     m_evil: bool,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Course
 {
     m_life: i32,
@@ -78,10 +76,9 @@ struct Course
     m_speed: f64,
 }
 
-thread_local!
-{
-    static COURSES: RefCell<HashMap<i32, Course>> = RefCell::new(HashMap::new());
-}
+static COURSES: EntityState<Course> = EntityState::new("course");
+// movementAngle and movementCurve, the parts of the course the Java saves
+static TURN: EntityState<(f64, f64)> = EntityState::new("turn").saved();
 
 fn wind(entity: Entity) -> Wind
 {
@@ -97,23 +94,30 @@ fn wind(entity: Entity) -> Wind
 
 fn course(entity: Entity, evil: bool) -> Course
 {
-    COURSES.with(|courses|
+    if let Some(course) = COURSES.find(entity)
     {
-        *courses.borrow_mut().entry(entity.id).or_insert_with(||
-        {
-            let world: World = entity.world;
-            let life: i32 = wind::LIFE_MIN + world.random(wind::LIFE_SPREAD);
+        return course;
+    }
 
-            Course
-            {
-                m_life: if evil { life / 2 } else { life },
-                m_timer: 0,
-                m_angle: fraction(world) * wind::FULL_TURN,
-                m_curve: (fraction(world) - fraction(world)) * wind::CURVE,
-                m_speed: wind::SPEED_MIN + fraction(world) * wind::SPEED_SPREAD,
-            }
-        })
-    })
+    let world: World = entity.world;
+    let life: i32 = wind::LIFE_MIN + world.random(wind::LIFE_SPREAD);
+    let mut course: Course = Course
+    {
+        m_life: if evil { life / 2 } else { life },
+        m_timer: 0,
+        m_angle: fraction(world) * wind::FULL_TURN,
+        m_curve: (fraction(world) - fraction(world)) * wind::CURVE,
+        m_speed: wind::SPEED_MIN + fraction(world) * wind::SPEED_SPREAD,
+    };
+
+    if let Some((angle, curve)) = TURN.find(entity)
+    {
+        course.m_angle = angle;
+        course.m_curve = curve;
+    }
+
+    store(&COURSES, entity, &course);
+    course
 }
 
 fn randomDrop(world: World) -> &'static str
@@ -293,7 +297,8 @@ impl EntityBehavior for Whirlwind
         }
 
         pull(world, info, entity, &mut current);
-        COURSES.with(|courses| courses.borrow_mut().insert(entity.id, current));
+        store(&COURSES, entity, &current);
+        store(&TURN, entity, &(current.m_angle, current.m_curve));
     }
 
     // EntityWhirlwind.updateParticles: a funnel of spinning puffs, dark for an evil one

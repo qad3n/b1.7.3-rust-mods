@@ -1,9 +1,7 @@
-use super::{creature, drop, fraction, onAetherGrass, sounds};
+use super::{creature, drop, fraction, onAetherGrass, sounds, store};
 use crate::models::{DEGREES_PER_RADIAN, HALF_PI, Program, aerbunny as model};
 use b173_api::math;
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 
 const NAME: &str = "aerbunny";
 const TEXTURE: &str = "aether:entity/aerbunny/aerbunny";
@@ -25,25 +23,25 @@ mod hop
 }
 
 // the client works the puff out from the hops it sees, EntityAerbunny.puffiness counts down from 11 after a jump
-thread_local!
-{
-    static HOPS: RefCell<HashMap<i32, (bool, f32)>> = RefCell::new(HashMap::new());
-}
+static HOPS: EntityState<(bool, f32)> = EntityState::new("hops");
 
 fn puffiness(input: &PoseInput) -> f32
 {
-    HOPS.with(|hops|
+    let entity: Entity = Entity { world: World { dimension: input.entity.world }, id: input.entity.id };
+    let stored: Option<(bool, f32)> = HOPS.find(entity);
+    let mut state: (bool, f32) = stored.unwrap_or((input.on_ground, f32::MIN));
+    if state.0 && !input.on_ground && input.entity.motion[1] > 0.0
     {
-        let mut hops: RefMut<HashMap<i32, (bool, f32)>> = hops.borrow_mut();
-        let state: &mut (bool, f32) = hops.entry(input.entity.id).or_insert((input.on_ground, f32::MIN));
-        if state.0 && !input.on_ground && input.entity.motion[1] > 0.0
-        {
-            state.1 = input.age;
-        }
+        state.1 = input.age;
+    }
 
-        state.0 = input.on_ground;
-        (hop::PUFF_TICKS - (input.age - state.1)).clamp(0.0, hop::PUFF_TICKS) / 10.0
-    })
+    state.0 = input.on_ground;
+    if stored != Some(state)
+    {
+        store(&HOPS, entity, &state);
+    }
+
+    (hop::PUFF_TICKS - (input.age - state.1)).clamp(0.0, hop::PUFF_TICKS) / 10.0
 }
 
 struct Aerbunny;

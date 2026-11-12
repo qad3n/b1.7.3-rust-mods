@@ -31,6 +31,16 @@ pub(crate) const BIOME: &str = "aether:highlands";
 // EntityAetherAnimal.getCanSpawnHere: on aether grass in some light
 const SPAWN_LIGHT: i32 = 9;
 
+// writes per-entity state and logs a failed host call since the next tick reads the default
+pub(crate) fn store<T>(state: &EntityState<T>, entity: Entity, value: &T)
+where T: serde::Serialize + serde::de::DeserializeOwned + Default
+{
+    if let Err(error) = state.set(entity, value)
+    {
+        warn(&format!("entity {} state: {error}", entity.id));
+    }
+}
+
 pub(crate) fn onAetherGrass(info: &EntityInfo) -> bool
 {
     let world: World = World { dimension: info.world };

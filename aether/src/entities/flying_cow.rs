@@ -1,4 +1,4 @@
-use super::mount::{Saddle, WINGED, forget, saddleInteract, travel, wingPose};
+use super::mount::{Saddle, WINGED, saddleInteract, travel, wingPose};
 use super::{creature, drop, onAetherGrass};
 use crate::models::{Program, combine, flying_cow, flying_cow_saddle, flying_cow_wing, quadruped, quadrupedPose};
 use b173_api::prelude::*;
@@ -64,8 +64,6 @@ impl EntityBehavior for FlyingCow
             Some(amount)
         }
     }
-
-    fn onDeath(&self, entity: Entity, _source: Option<i32>) { forget(entity); }
 
     fn onTravel(&self, entity: Entity, _info: &EntityInfo, _strafe: f32, _forward: f32) -> bool
     {

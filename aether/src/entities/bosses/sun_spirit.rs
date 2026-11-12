@@ -1,14 +1,12 @@
 use super::{BossBar, Home, bossName, freeBox};
 use crate::entities::crystal::{self, Kind};
 use crate::entities::fire_minion::{SPIRIT_TEXTURE, spiritPose};
-use crate::entities::fraction;
+use crate::entities::{fraction, store};
 use crate::models::Program;
 use crate::names::{AIR, Pick, holds};
 use crate::progress::{self, Award};
 use b173_api::math::{floor, yawTowards};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 const NAME: &str = super::SUN_SPIRIT;
 const FROZEN_TEXTURE: &str = "aether:entity/boss/sun_spirit/frozen_sun_spirit";
@@ -87,7 +85,7 @@ struct Sync
     m_freezing: bool,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Mind
 {
     m_started: bool,
@@ -99,16 +97,19 @@ struct Mind
     m_chatCount: i32,
 }
 
-thread_local!
-{
-    static MINDS: RefCell<HashMap<i32, Mind>> = RefCell::new(HashMap::new());
-}
+static MINDS: EntityState<Mind> = EntityState::new("mind");
+// the chatLog line the Java saves with the spirit
+static CHAT_LINE: EntityState<u8> = EntityState::new("chat_line").saved();
 
 pub(crate) fn bar(boss: Entity) -> BossBar { boss.synced::<Sync>().m_bar }
 
-fn mind(entity: Entity) -> Mind { MINDS.with(|minds| minds.borrow().get(&entity.id).copied()).unwrap_or_default() }
+fn mind(entity: Entity) -> Mind { MINDS.get(entity) }
 
-fn setMind(entity: Entity, state: Mind) { MINDS.with(|minds| minds.borrow_mut().insert(entity.id, state)); }
+fn setMind(entity: Entity, state: Mind)
+{
+    store(&MINDS, entity, &state);
+    store(&CHAT_LINE, entity, &state.m_chatLine);
+}
 
 fn sync(entity: Entity) -> Sync
 {
@@ -388,6 +389,7 @@ impl EntityBehavior for SunSpirit
         if !thinking.m_started
         {
             thinking.m_started = true;
+            thinking.m_chatLine = CHAT_LINE.get(entity);
             thinking.m_rotary = fraction(world) * spirit::FULL_TURN;
         }
 
@@ -540,7 +542,6 @@ impl EntityBehavior for SunSpirit
         unlockTreasure(world, &home);
 
         crate::sun_altar::unlock();
-        MINDS.with(|minds| minds.borrow_mut().remove(&entity.id));
     }
 
     // SunSpiritRenderer: the fire minion's body drawn larger, frozen blue while hurt

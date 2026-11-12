@@ -1,10 +1,8 @@
 use super::crystal::{self, Kind};
-use super::{fraction, lookOf};
+use super::{fraction, lookOf, store};
 use crate::models::{Program, mini_cloud as model};
 use b173_api::math::{distance, length, sub};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 const NAME: &str = "mini_cloud";
 const TEXTURE: &str = "aether:entity/mini_cloud/mini_cloud";
@@ -34,10 +32,8 @@ struct Bond
     m_left: bool,
 }
 
-thread_local!
-{
-    static RELOADS: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
-}
+// the Java saves it as ShotTimer
+static RELOADS: EntityState<i32> = EntityState::new("reload").saved();
 
 fn target(owner: &EntityInfo, cloud: &EntityInfo, left: bool) -> [f64; 3]
 {
@@ -81,7 +77,7 @@ impl EntityBehavior for MiniCloud
             return;
         };
 
-        let mut reload: i32 = RELOADS.with(|reloads| reloads.borrow().get(&entity.id).copied()).unwrap_or(0);
+        let mut reload: i32 = RELOADS.get(entity);
         reload -= 1;
 
         let goal: [f64; 3] = target(&owner, info, bond.m_left);
@@ -121,7 +117,7 @@ impl EntityBehavior for MiniCloud
                 (info.motion[2] + offset[2] / pull) / 2.0,
             ]);
         }
-        RELOADS.with(|reloads| reloads.borrow_mut().insert(entity.id, reload));
+        store(&RELOADS, entity, &reload);
     }
 
     // its owner's own clouds and walls never hurt it

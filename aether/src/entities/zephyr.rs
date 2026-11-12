@@ -1,10 +1,8 @@
 use super::projectile::{self, ZEPHYR_SNOWBALL};
-use super::{closestPlayer, monster, onAetherGrass, sounds};
+use super::{closestPlayer, monster, onAetherGrass, sounds, store};
 use crate::models::{Program, zephyr as model};
 use b173_api::math::{distanceSquared, sub};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 const NAME: &str = "zephyr";
 const TEXTURE: &str = "aether:entity/zephyr/zephyr_main";
@@ -32,7 +30,7 @@ mod flight
     pub const RANDOM_STEPS: i32 = 1000000;
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Course
 {
     m_waypoint: [f64; 3],
@@ -40,10 +38,7 @@ struct Course
     m_attack: i32,
 }
 
-thread_local!
-{
-    static COURSES: RefCell<HashMap<i32, Course>> = RefCell::new(HashMap::new());
-}
+static COURSES: EntityState<Course> = EntityState::new("course");
 
 // the attack counter the client draws the squash from
 #[derive(Serialize, Deserialize, Default, Clone, Copy)]
@@ -63,7 +58,7 @@ impl EntityBehavior for Zephyr
     fn onAi(&self, entity: Entity, info: &EntityInfo)
     {
         let world: World = entity.world;
-        let mut course: Course = COURSES.with(|courses| courses.borrow().get(&entity.id).copied()).unwrap_or_default();
+        let mut course: Course = COURSES.get(entity);
         let mut motion: [f64; 3] = info.motion;
         let offset: [f64; 3] = sub(course.m_waypoint, info.pos);
         let squared: f64 = offset.iter().map(|value| value * value).sum();
@@ -149,7 +144,7 @@ impl EntityBehavior for Zephyr
             let _ = entity.setSynced(&Charge { m_counter: course.m_attack });
         }
 
-        COURSES.with(|courses| courses.borrow_mut().insert(entity.id, course));
+        store(&COURSES, entity, &course);
 
         let _ = entity.setMotion(motion);
     }

@@ -1,11 +1,9 @@
-use super::{closestPlayer, fraction, monster, sounds};
+use super::{closestPlayer, fraction, monster, sounds, store};
 use crate::models::{Program, combine, slime_inner, slime_outer};
 use crate::names::{block, item};
 use b173_api::math::{distance, yawTowards};
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 
 const NAME: &str = "swet";
 const TEXTURES: [&str; 2] = ["aether:entity/swet/swet_blue", "aether:entity/swet/swet_golden"];
@@ -53,7 +51,7 @@ struct SwetState
     m_kind: u8,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Hunt
 {
     m_delay: i32,
@@ -61,7 +59,7 @@ struct Hunt
     m_wasOnGround: bool,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy, PartialEq)]
 struct Shape
 {
     m_height: f32,
@@ -70,11 +68,8 @@ struct Shape
     m_lastTick: i32,
 }
 
-thread_local!
-{
-    static HUNTS: RefCell<HashMap<i32, Hunt>> = RefCell::new(HashMap::new());
-    static SHAPES: RefCell<HashMap<i32, Shape>> = RefCell::new(HashMap::new());
-}
+static HUNTS: EntityState<Hunt> = EntityState::new("hunt");
+static SHAPES: EntityState<Shape> = EntityState::new("shape");
 
 fn state(entity: Entity) -> SwetState
 {
@@ -141,7 +136,7 @@ impl EntityBehavior for Swet
     {
         let world: World = entity.world;
         let onGround: bool = entity.flag(EntityField::OnGround);
-        let mut hunt: Hunt = HUNTS.with(|hunts| hunts.borrow().get(&entity.id).copied()).unwrap_or_default();
+        let mut hunt: Hunt = HUNTS.get(entity);
 
         if entity.rider().is_some()
         {
@@ -209,7 +204,7 @@ impl EntityBehavior for Swet
             entity.setField(EntityField::Jumping, if jump { 1.0 } else { 0.0 });
         }
         hunt.m_wasOnGround = onGround;
-        HUNTS.with(|hunts| hunts.borrow_mut().insert(entity.id, hunt));
+        store(&HUNTS, entity, &hunt);
     }
 
     // SwetRenderer: the inner slime, then the translucent gel stretched by the jump and the swallowed player
@@ -217,44 +212,41 @@ impl EntityBehavior for Swet
     {
         let current: SwetState = b173_api::fromBytes(&input.synced).unwrap_or_default();
 
-        let (height, width) = SHAPES.with(|shapes|
+        let entity: Entity = Entity { world: World { dimension: input.entity.world }, id: input.entity.id };
+        let tick: i32 = input.age as i32;
+        let fresh: Shape = Shape { m_height: 1.0, m_width: 1.0, m_airTicks: 0.0, m_lastTick: tick };
+        let stored: Option<Shape> = SHAPES.find(entity);
+        let mut shape: Shape = stored.unwrap_or(fresh);
+        while shape.m_lastTick < tick
         {
-            let mut shapes: RefMut<HashMap<i32, Shape>> = shapes.borrow_mut();
-            let tick: i32 = input.age as i32;
-
-            let shape: &mut Shape = shapes.entry(input.entity.id).or_insert(Shape
+            if input.on_ground
             {
-                m_height: 1.0,
-                m_width: 1.0,
-                m_airTicks: 0.0,
-                m_lastTick: tick,
-            });
-            while shape.m_lastTick < tick
-            {
-                if input.on_ground
-                {
-                    shape.m_airTicks = 0.0;
-                    shape.m_height = (shape.m_height + squash::STEP).min(1.0);
-                    shape.m_width = (shape.m_width - squash::STEP).max(1.0);
-                }
-                else
-                {
-                    shape.m_airTicks += 1.0;
-                    shape.m_height = squash::JUMP_HEIGHT;
-                    shape.m_width = squash::JUMP_WIDTH;
-
-                    if shape.m_airTicks > squash::STRETCH_AFTER
-                    {
-                        let stretch: f32 = shape.m_airTicks.min(squash::STRETCH_LIMIT) * squash::STRETCH;
-                        shape.m_height -= stretch;
-                        shape.m_width += stretch;
-                    }
-                }
-                shape.m_lastTick += 1;
+                shape.m_airTicks = 0.0;
+                shape.m_height = (shape.m_height + squash::STEP).min(1.0);
+                shape.m_width = (shape.m_width - squash::STEP).max(1.0);
             }
+            else
+            {
+                shape.m_airTicks += 1.0;
+                shape.m_height = squash::JUMP_HEIGHT;
+                shape.m_width = squash::JUMP_WIDTH;
 
-            (shape.m_height, shape.m_width)
-        });
+                if shape.m_airTicks > squash::STRETCH_AFTER
+                {
+                    let stretch: f32 = shape.m_airTicks.min(squash::STRETCH_LIMIT) * squash::STRETCH;
+                    shape.m_height -= stretch;
+                    shape.m_width += stretch;
+                }
+            }
+            shape.m_lastTick += 1;
+        }
+
+        if stored != Some(shape)
+        {
+            store(&SHAPES, entity, &shape);
+        }
+
+        let (height, width): (f32, f32) = (shape.m_height, shape.m_width);
 
         let size: f32 = squash::SIZE + input.rider_size * squash::RIDER_SIZE;
         let mut pre: Program = Program::new();

@@ -1,4 +1,4 @@
-use super::mount::{SADDLE, Steering, forget, travel};
+use super::mount::{SADDLE, Steering, travel};
 use super::{bird, creature};
 use crate::models::{Program, combine, moa as model};
 use b173_api::prelude::*;
@@ -245,8 +245,6 @@ impl EntityBehavior for Moa
             Some(amount)
         }
     }
-
-    fn onDeath(&self, entity: Entity, _source: Option<i32>) { forget(entity); }
 
     // a moa leaps high from the ground, then flaps as many times as its type allows once it falls
     fn onTravel(&self, entity: Entity, _info: &EntityInfo, _strafe: f32, _forward: f32) -> bool

@@ -1,4 +1,4 @@
-use super::mount::{Saddle, WINGED, forget, saddleInteract, travel, wingPose};
+use super::mount::{Saddle, WINGED, saddleInteract, travel, wingPose};
 use super::{creature, drop, onAetherGrass};
 use crate::models::{Program, combine, phyg_wing, pig, pig_saddle, quadruped, quadrupedPose};
 use crate::progress::{self, Award};
@@ -47,8 +47,6 @@ impl EntityBehavior for Phyg
             Some(amount)
         }
     }
-
-    fn onDeath(&self, entity: Entity, _source: Option<i32>) { forget(entity); }
 
     fn onTravel(&self, entity: Entity, _info: &EntityInfo, _strafe: f32, _forward: f32) -> bool
     {

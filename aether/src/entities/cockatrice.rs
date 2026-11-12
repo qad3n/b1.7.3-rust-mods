@@ -1,10 +1,8 @@
 use super::projectile::{self, POISON_NEEDLE};
-use super::{bird, drop, monster, sounds};
+use super::{bird, drop, monster, sounds, store};
 use crate::models::{Program, cockatrice as model};
 use b173_api::math::yawTowards;
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 const NAME: &str = "cockatrice";
 const TEXTURE: &str = "aether:entity/cockatrice/cockatrice";
@@ -22,10 +20,7 @@ mod aim
     pub const SLOW_FALL: f64 = 0.6;
 }
 
-thread_local!
-{
-    static TIMERS: RefCell<HashMap<i32, i32>> = RefCell::new(HashMap::new());
-}
+static TIMERS: EntityState<i32> = EntityState::new("aim_timer");
 
 struct Cockatrice;
 
@@ -59,7 +54,7 @@ impl EntityBehavior for Cockatrice
 
         entity.setField(EntityField::Yaw, f64::from(yawTowards(info.pos, goal.pos)));
 
-        let timer: i32 = TIMERS.with(|timers| timers.borrow().get(&entity.id).copied()).unwrap_or(0);
+        let timer: i32 = TIMERS.get(entity);
         let seen: bool = entity.world.rayTrace(eyes(info), eyes(&goal), false).is_none();
         let next: i32 = if timer >= aim::READY && seen
         {
@@ -86,7 +81,7 @@ impl EntityBehavior for Cockatrice
         {
             timer
         };
-        TIMERS.with(|timers| timers.borrow_mut().insert(entity.id, next));
+        store(&TIMERS, entity, &next);
     }
 
     fn onHurt(&self, entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>
