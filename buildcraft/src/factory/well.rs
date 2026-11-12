@@ -3,8 +3,6 @@ use crate::core::items::{gear, material};
 use crate::core::power::{Provider, Setup};
 use crate::core::stacks;
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 // TileMiningWell: twenty five energy per block, drilling a shaft of mining pipe straight down
 const NAME: &str = "mining_well";
@@ -23,22 +21,6 @@ const FACES: Faces = Faces
     m_back: Some("buildcraft:block/mining_well_back"),
 };
 
-const ACTIVE_CHANNEL: &str = "mining_well";
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
-struct ActivePacket
-{
-    m_world: i32,
-    m_pos: BlockPos,
-    m_digging: bool,
-}
-
-thread_local!
-{
-    // whether each mining well a client sees still digs, for the glow of the machines around it
-    static ACTIVE: RefCell<HashMap<(i32, BlockPos), bool>> = RefCell::new(HashMap::new());
-}
-
 // IMachine.isActive, a mining well is active until it reaches bedrock
 pub(crate) fn active(world: World, pos: BlockPos) -> bool
 {
@@ -48,15 +30,15 @@ pub(crate) fn active(world: World, pos: BlockPos) -> bool
         return state.m_provider.is_none() || state.m_digging;
     }
 
-    ACTIVE.with(|active| active.borrow().get(&(world.dimension, pos)).copied()).unwrap_or(true)
+    // clients see whether the well still digs, for the glow of the machines around it
+    world.tileAttachment::<Option<bool>>(pos).unwrap_or(true)
 }
 
 fn publish(world: World, pos: BlockPos, digging: bool)
 {
-    let packet: ActivePacket = ActivePacket { m_world: world.dimension, m_pos: pos, m_digging: digging };
-    if let Err(error) = send(&format!("buildcraft:{ACTIVE_CHANNEL}"), Target::Tracking(world.dimension, pos), &packet)
+    if let Err(error) = world.setTileAttachment(pos, &Some(digging))
     {
-        warn(&format!("could not send a mining well update: {error}"));
+        warn(&format!("could not share a mining well's digging: {error}"));
     }
 }
 
@@ -198,14 +180,7 @@ impl BlockBehavior for MachineBlock
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     FACES.reserve();
-    ctx.channels().register(ACTIVE_CHANNEL, Direction::ToClient, |packet: ActivePacket, _player|
-    {
-        let world: World = World { dimension: packet.m_world };
-        if !world.isAuthority()
-        {
-            ACTIVE.with(|active| active.borrow_mut().insert((packet.m_world, packet.m_pos), packet.m_digging));
-        }
-    })?;
+    ctx.attachments().sync(AttachmentHolder::Tile)?;
     ctx.blocks().register(
         NAME,
         BlockSpecBuilder::template("minecraft:block")
