@@ -323,6 +323,30 @@ Kept in the port on purpose: ores stay in the Aether decorator, since moving the
 random order that places clouds, plants and trees after them. The silver treasure's cape and feather follow the
 config as it stands when the game starts. Not verified in game.
 
+## Done (loader API 1.48 to 1.55, registries and data pass, 2026-11-11)
+
+- Manifest `api = "1.52"`. Builds against the current SDK, register calls return handles.
+- One declaration per block: machine tiles (`Tile::new(..).inventory().ticks().synced()`), the open treasure chest's
+  plain tile and every named state (`Property::bool/values`) sit in the block's builder. `harvest::tracked` adds the
+  `dungeon` and `placed` flags. Effects, particles and achievements use the `Effect`, `Particle` and `Achievement`
+  builders.
+- Per-entity state lives in `EntityState<T>` statics, no entity id maps: aerwhale, valkyrie, zephyr, cockatrice,
+  mount flights and wings, moa wings, mini cloud, sentry, slider, aechor plant, crystal, valkyrie queen, whirlwind,
+  swet, aerbunny, sun spirit and the renderer phases (`models::Phases`). Saved like the Java NBT: mount jumps left
+  (`Remaining`, `remainingJumps`), the mini cloud's `ShotTimer`, the queen's `SafePos` height, the whirlwind's
+  `movementAngle` and `movementCurve`, the sun spirit's `chatLog`. The `forget` calls on death are gone; the sun
+  spirit still clears its mind at death because it keeps ticking while it dies.
+- Kept as code on purpose: the golden oak amber, skyroot double drops and the bed item roll in `onHarvest`, which
+  replaces the harvest drop path, so a block table there would roll without the harvester's tool. The holystone
+  tool's shard drops from any block it mines, the present's crate can prime TNT instead of dropping, and the
+  sheepuff wool, moa eggs, whirlwind drops and floating blocks are not deaths or harvests.
+- `c:` tags were already explicit (ores, zanite gem and block, accessories).
+- Left: player caches keyed by entity id in `tools.rs`, `accessories.rs`, `abilities.rs` and `portal.rs` hold the
+  modifier or portal state last applied to a player. Their lifetime across death and respawn needs checking in a
+  live run before they move to `EntityState` (`.kept()` would also save them). The sun altar's sky packet stays
+  since it also sets the client's sky time.
+- Not run: build and clippy only.
+
 ## Todo, in order
 
 1. Aether main menu and menu button (config, off by default in the source).

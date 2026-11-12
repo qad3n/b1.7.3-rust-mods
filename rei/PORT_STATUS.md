@@ -43,6 +43,10 @@ time and gamemode buttons are left out.
 - [x] Mob spawners: one per living entity in the loader entity registry (API 1.31 `mobList`), vanilla and every mod's mobs, damage = entity id as old item viewers did. Placing one sets the spawner's mob on the authority, vanilla slot tooltips name the mob. Beta difference: a multiplayer client mirrors spawners as pigs since beta never syncs the mob
 - [x] Build, clippy and fmt clean for the mod and the rewrite
 
+## Loader API 1.48 to 1.55 (2026-11-11)
+
+- Builds against the current SDK unchanged. It registers no blocks, entities or loot of its own.
+
 ## Bugs to check at the end
 
 - [ ] Live check: none run yet. Tabs, loot pages and tag pages unseen. Deploy, open the inventory, search, craftable, recipe pages, cheat as op and non-op on a dedicated server

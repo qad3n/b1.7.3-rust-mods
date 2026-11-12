@@ -27,3 +27,5 @@ runs in `TickPost`, the server clears fall distance.
 
 - [x] commands, abilities, build and clippy clean
 - [ ] live check on the test server (blocked: shared test server busy)
+
+Builds against loader API 1.55 unchanged (2026-11-11). It registers no content of its own.

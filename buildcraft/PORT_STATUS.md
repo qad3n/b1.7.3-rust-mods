@@ -151,6 +151,20 @@ Not registered, and why:
 - Dye ingredients (ink, lapis, yellow) are damage values of `minecraft:dye`. Tags hold whole items, so they stay
   item stacks.
 
+## Loader API 1.48 to 1.55 (registries and data pass, 2026-11-11)
+
+- Manifest `api = "1.51"`. `Setup::build` became `Setup::provider`, since the SDK's `Build` trait covers every type.
+- One declaration per block: pipes, pump, tank, quarry, mining well, auto workbench, filler, builder, template
+  table and marker take their tile (`Tile::new`), facing or pipe property, state model and item model in the block
+  builder. Frame, mining pipe and engine item models too. The engine tile stays registered on its own because all
+  three engines share it. Oil uses the `Fluid` builder and MJ the `Energy` builder.
+- The mining well's digging flag reaches clients as a synced tile attachment instead of its own channel, so a client
+  that joins later sees it too.
+- Kept: the engine, pump and quarry view packets and the pipe item and liquid packets carry per tick animation the
+  tiles do not store, so synced tile data would resend whole states every tick.
+- No per-entity maps, no code rolled drops. `c:` gears, oil and wrench tags were already explicit.
+- Not run: build and clippy only.
+
 ## Bugs to check at the end
 
 - Checked live on the test server: a redstone engine powers a wooden pipe that pulls from a chest into stone pipes

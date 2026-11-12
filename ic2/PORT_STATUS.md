@@ -161,6 +161,19 @@ the water mill dropping a generator, cables joining the electrolyzer.
   with an MFE, miner with a scanner and pump, terraformer blueprints, transformer redstone flip, cable shock and
   burn-out, overload explosions, ore and rubber tree generation in a fresh world.
 
+## Loader API 1.48 to 1.55 (registries and data pass, 2026-11-11)
+
+- Manifest `api = "1.52"`. Names go to SDK calls unborrowed.
+- One declaration per block: every machine's tile, facing and active flag, the luminator's tile and facing, rubber
+  wood resin holes, cable paint colors, the reinforced door, rubber sheet, iron fence charge and explosive states
+  are declared in the block builder. EU uses the `Energy` builder.
+- Held IC2 keys live in `EntityState` (`keys.rs`), not saved, so they reset when a player dies or changes
+  dimension, as a client only reports key changes.
+- Left: `tools.rs` keeps the EU meter reading and the mining laser mode per player id. In the source both are
+  fields of the shared item, not per player; moving them needs a decision on whether they should survive death.
+- `c:` ores, ingots, dusts, plates and storage blocks were already explicit. No code rolled drops.
+- Not run: build and clippy only.
+
 ## Bugs to check at the end
 
 - Named states need a look: rubber wood resin holes on the right face, cable paint colors, machine fronts and

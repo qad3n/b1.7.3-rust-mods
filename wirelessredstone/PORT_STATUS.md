@@ -136,6 +136,11 @@ Not run: multiplayer with two players, crafting in a table, a texture pack repla
 - Pulse closed the remote gui from inside its own mouse callback; the host reentered the screen with `Close` and the
   wasm trapped (`panic_already_borrowed`), which killed the mod. The close waits for the next client tick now.
 
+## Loader API 1.48 to 1.55 (registries and data pass, 2026-11-11)
+
+- Receiver, transmitter and clocker declare their tile, `powered` property and lit faces in one block builder.
+- No per-entity state, loot or `c:` material tags to move. Not run: build and clippy only.
+
 ## Bugs to check at the end
 
 - Anaglyph colors of the triangulator needle are not ported (the source mixed them when 3D anaglyph was on).

@@ -353,6 +353,27 @@ Not converted, and why:
   are vanilla dimension populate steps and do not apply. No biome tags yet, the port's biome lists name its own
   biomes. The source has no game rules; display names come through each spec's `name`.
 
+## Loader API 1.48 to 1.55 (registries and data pass, 2026-11-11)
+
+- Manifest `api = "1.52"`.
+- One declaration per block: named states, variants and state models of slider, nagastone, castle runes and doors,
+  cinder and forest logs, magic cores, leaves, thorns, huge lily pad, huge mushrooms, aurora and shield blocks,
+  trophy pedestal, trophy, boss spawner and critters are in the block builders. The uncrafting table and boss
+  spawner declare their tile there too. Effects, particles and achievements use the builders.
+- Tiles kept registered on their own: the cinder furnace's (shared by its lit and unlit blocks), the tower machine
+  tiles (shared), and the critter and trophy tiles, whose names differ from their blocks and are saved in chunks.
+- Per-entity state lives in `EntityState<T>`: goblin, lich, breath, goblin knight, naga, redcap, yeti, snow queen,
+  ur-ghast, hydra (and its head and neck parts), the mob AI timers, knight formation orders and kobold panic. The
+  `ai::forget` calls on death are gone. Bosses that keep ticking while they die still clear their brain in
+  `onDeath`. The snow queen's ice shields now name their queen instead of searching every brain.
+- `c:raw_materials/ironwood` is declared for raw ironwood instead of being guessed from the name.
+- Kept as code: shears and trophy drops (`onHarvest` replaces the drop path, and the trophy kind is tile data), the
+  quest ram reward, slide block spills, the fiery tools' smelting (`BlockHarvestDrops`). Boss treasure already rolls
+  chest tables.
+- Left: `items/thrown.rs` (chain block and cube out per player and kind) and `items/magic.rs` (fan gust per player)
+  stay keyed by player id, like the source's item fields; moving them needs a live check of death and respawn.
+- Not run: build and clippy only.
+
 ## Bugs to check at the end
 
 - TFClientProxy.spawnParticle classes are loader mod particles (api 1.24, `particles.rs`): a beta particle recolored, resized, retimed or weighted toward each EntityFX; their own textures and animated fading are not reproduced.
