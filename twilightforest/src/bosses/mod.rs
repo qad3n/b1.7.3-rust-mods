@@ -36,6 +36,9 @@ const BOSSES: [Boss; 6] = [
 
 pub(crate) const KINDS: [&str; 6] = ["naga", "lich", "hydra", "ur_ghast", "knights", "snow_queen"];
 
+// the bosses whose synced slot starts with a bar
+const BARRED: [&str; 5] = [naga::NAME, lich::NAME, hydra::NAME, snow_queen::NAME, ur_ghast::NAME];
+
 pub(crate) mod kind
 {
     pub(crate) const KNIGHTS: i32 = 4;
@@ -116,7 +119,7 @@ pub(crate) struct BossBar
     pub m_maxHealth: i32,
 }
 
-mod bar
+mod hud
 {
     // GuiIngame.renderBossHealth, beta has no boss bar sheet so the bar is drawn in plain colors
     pub const WIDTH: i32 = 182;
@@ -129,18 +132,42 @@ mod bar
     pub const SEARCH: f64 = 64.0;
 }
 
-pub(crate) fn showBar(entity: Entity, name: &str, info: &EntityInfo)
+// what a boss mirrors to its clients, the bar and its own shown state share the mod's one synced slot
+#[derive(Serialize, Deserialize, Default, Clone, PartialEq)]
+pub(crate) struct Synced<T>
 {
-    let shown: BossBar = BossBar
+    pub m_bar: BossBar,
+    pub m_shown: T,
+}
+
+pub(crate) fn bar(entity: Entity, name: &str, info: &EntityInfo) -> BossBar
+{
+    BossBar
     {
         m_name: name.to_owned(),
         m_health: info.health.unwrap_or(0),
         m_maxHealth: entity.field(EntityField::MaxHealth) as i32,
-    };
-    if entity.synced::<BossBar>() != shown
-    {
-        let _ = entity.setSynced(&shown);
     }
+}
+
+pub(crate) fn sync<T>(entity: Entity, synced: Synced<T>)
+where T: Serialize + serde::de::DeserializeOwned + Default + PartialEq
+{
+    if entity.synced::<Synced<T>>() != synced
+    {
+        let _ = entity.setSynced(&synced);
+    }
+}
+
+pub(crate) fn shown<T: serde::de::DeserializeOwned + Default>(entity: Entity) -> T
+{
+    entity.synced::<Synced<T>>().m_shown
+}
+
+pub(crate) fn parseShown<T: serde::de::DeserializeOwned + Default>(bytes: &[u8]) -> T
+{
+    let synced: Synced<T> = b173_api::fromBytes(bytes).unwrap_or_default();
+    synced.m_shown
 }
 
 fn drawBar(draw: &mut Draw, width: i32)
@@ -152,11 +179,12 @@ fn drawBar(draw: &mut Draw, width: i32)
     };
 
     let world: World = World { dimension: local.world };
-    let found: Option<BossBar> = world.entitiesNear(local.pos, bar::SEARCH).into_iter().find_map(|other|
+    let found: Option<BossBar> = world.entitiesNear(local.pos, hud::SEARCH).into_iter().find_map(|other|
     {
-        other.kind.as_ref().filter(|kind| kind.namespace() == "twilightforest")?;
+        other.kind.as_ref().filter(|kind| kind.namespace() == "twilightforest" && BARRED.contains(&kind.path()))?;
 
-        let shown: BossBar = Entity { world, id: other.id }.synced();
+        // postcard ignores trailing bytes so the bar decodes without the boss's own shown state
+        let shown: BossBar = Entity { world, id: other.id }.synced::<Synced<()>>().m_bar;
         (shown.m_maxHealth > 0 && shown.m_health > 0).then_some(shown)
     });
     let Some(shown) = found
@@ -165,11 +193,11 @@ fn drawBar(draw: &mut Draw, width: i32)
         return;
     };
 
-    let left: i32 = width / 2 - bar::WIDTH / 2;
+    let left: i32 = width / 2 - hud::WIDTH / 2;
 
-    draw.centered(width / 2, bar::TITLE_Y, &shown.m_name, bar::TITLE);
-    draw.rect(left, bar::TOP, bar::WIDTH, bar::HEIGHT, bar::BACK);
-    draw.rect(left, bar::TOP, shown.m_health * bar::WIDTH / shown.m_maxHealth.max(1), bar::HEIGHT, bar::FILL);
+    draw.centered(width / 2, hud::TITLE_Y, &shown.m_name, hud::TITLE);
+    draw.rect(left, hud::TOP, hud::WIDTH, hud::HEIGHT, hud::BACK);
+    draw.rect(left, hud::TOP, shown.m_health * hud::WIDTH / shown.m_maxHealth.max(1), hud::HEIGHT, hud::FILL);
 }
 
 // ChunkProviderTwilightForest.setStructureConquered, kept as the feature centers whose boss is beaten

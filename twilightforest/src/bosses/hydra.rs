@@ -1,4 +1,4 @@
-use super::{killer, showBar};
+use super::{Synced, bar, killer, sync};
 use crate::entities::{clear, store};
 use crate::math::look;
 use crate::models::{Program, tf_hydra, tf_hydra_head, tf_hydra_mortar, tf_hydra_neck};
@@ -1306,7 +1306,7 @@ impl EntityBehavior for Hydra
         body(entity, info, &mut brain);
         store(&BRAINS, entity, &brain);
 
-        showBar(entity, LABEL, info);
+        sync(entity, Synced { m_bar: bar(entity, LABEL, info), m_shown: () });
     }
 
     // EntityTFHydra.attackEntityFromPart for its body, armored and out of reach from afar

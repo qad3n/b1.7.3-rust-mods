@@ -1,4 +1,4 @@
-use super::{killer, showBar};
+use super::{BossBar, Synced, bar, killer, parseShown, shown, sync};
 use crate::entities::ai::{eyes, face, target};
 use crate::entities::shots::{self, LICH_BOLT, LICH_BOMB};
 use crate::entities::{clear, store};
@@ -85,14 +85,10 @@ fn state(entity: Entity) -> Lich
     Lich { m_shield: lich::SHIELD, m_minions: lich::MINIONS, m_started: true, ..lich }
 }
 
-fn save(entity: Entity, lich: Lich)
+fn save(entity: Entity, lich: Lich, bar: BossBar)
 {
     let _ = entity.setData(&lich);
-
-    if entity.synced::<Lich>() != lich
-    {
-        let _ = entity.setSynced(&lich);
-    }
+    sync(entity, Synced { m_bar: bar, m_shown: lich });
 }
 
 // EntityTFLich.getPhase
@@ -182,7 +178,7 @@ fn teleport(entity: Entity, info: &EntityInfo, goal: &EntityInfo)
 fn sparkle(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
-    let lich: Lich = entity.synced();
+    let lich: Lich = shown(entity);
     let yaw: f64 = entity.field(EntityField::BodyYaw).to_radians();
     let height: f64 = entity.field(EntityField::Height);
     let hand: [f64; 3] = [
@@ -277,7 +273,7 @@ fn caster(entity: Entity, info: &EntityInfo, lich: &mut Lich, brain: &mut Brain,
                     && let Some(clone) =
                         crate::entities::spawnAt(world, &format!("twilightforest:{NAME}"), spot, info.yaw)
                 {
-                    save(clone, Lich { m_clone: true, m_master: entity.id, ..Lich::default() });
+                    save(clone, Lich { m_clone: true, m_master: entity.id, ..Lich::default() }, BossBar::default());
                     clone.setField(EntityField::TargetId, f64::from(goal.id));
                     trail(world, info.pos, spot, "portal");
                 }
@@ -388,12 +384,15 @@ impl EntityBehavior for TwilightLich
         lich.m_bomb = brain.m_bomb;
         store(&BRAINS, entity, &brain);
 
-        save(entity, lich);
-
-        if !lich.m_clone
+        let shown: BossBar = if lich.m_clone
         {
-            showBar(entity, LABEL, info);
+            BossBar::default()
         }
+        else
+        {
+            bar(entity, LABEL, info)
+        };
+        save(entity, lich, shown);
     }
 
     // EntityTFLich.attackEntityFrom, clones only fizz, the shield takes the hard hits one by one
@@ -427,7 +426,7 @@ impl EntityBehavior for TwilightLich
             if source.is_some() && amount > lich::SHIELD_CRACK
             {
                 lich.m_shield -= 1;
-                save(entity, lich);
+                save(entity, lich, entity.synced::<Synced<Lich>>().m_bar);
             }
 
             if let Some(attacker) =
@@ -477,7 +476,7 @@ impl EntityBehavior for TwilightLich
     // RenderTFLich, a clone drawn dark and see through
     fn pose(&self, input: &PoseInput) -> Pose
     {
-        let lich: Lich = b173_api::fromBytes(&input.synced).unwrap_or_default();
+        let lich: Lich = parseShown(&input.synced);
         let mut body: Program = Program::new();
 
         if lich.m_clone

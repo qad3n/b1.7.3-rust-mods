@@ -1,4 +1,4 @@
-use super::{killer, showBar};
+use super::{Synced, bar, killer, parseShown, shown, sync};
 use crate::entities::shots::{self, UR_FIREBALL};
 use crate::entities::{clear, store};
 use crate::math::look;
@@ -686,12 +686,7 @@ impl EntityBehavior for UrGhast
             1
         };
         let shown: Shown = Shown { m_status: status, m_attack: brain.m_attack, m_tantrum: brain.m_tantrum };
-        if entity.synced::<Shown>() != shown
-        {
-            let _ = entity.setSynced(&shown);
-        }
-
-        showBar(entity, LABEL, info);
+        sync(entity, Synced { m_bar: bar(entity, LABEL, info), m_shown: shown });
     }
 
     // the tears a tantrum sheds
@@ -699,7 +694,7 @@ impl EntityBehavior for UrGhast
     {
         let world: World = entity.world;
         // the tantrum drips are each client's own
-        if world.isAuthority() || !entity.synced::<Shown>().m_tantrum
+        if world.isAuthority() || !shown::<Shown>(entity).m_tantrum
         {
             return;
         }
@@ -792,7 +787,7 @@ impl EntityBehavior for UrGhast
     // RenderTFUrGhast and ModelTFTowerBoss.setRotationAngles: eyes by attack status, swelling before a shot
     fn pose(&self, input: &PoseInput) -> Pose
     {
-        let shown: Shown = b173_api::fromBytes(&input.synced).unwrap_or_default();
+        let shown: Shown = parseShown(&input.synced);
         let swell: f32 = (shown.m_attack.max(0) as f32 / boss::SWELL_TICKS).powi(boss::SWELL_POWER) * boss::SWELL + 1.0;
         let swell: f32 = 1.0 / swell;
         let (across, up): (f32, f32) = ((boss::SCALE + 1.0 / swell) / 2.0, (boss::SCALE + swell) / 2.0);

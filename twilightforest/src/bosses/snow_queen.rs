@@ -1,4 +1,4 @@
-use super::{killer, showBar};
+use super::{Synced, bar, killer, shown, sync};
 use crate::entities::ai::{eyes, face};
 use crate::entities::{clear, store};
 use crate::math::look;
@@ -462,10 +462,7 @@ fn think(entity: Entity, info: &EntityInfo, brain: &mut Brain)
     }
 
     let shown: Shown = Shown { m_phase: brain.m_phase, m_breathing: brain.m_phase == Phase::Beam && brain.m_act > 0 };
-    if entity.synced::<Shown>() != shown
-    {
-        let _ = entity.setSynced(&shown);
-    }
+    sync(entity, Synced { m_bar: bar(entity, LABEL, info), m_shown: shown });
 }
 
 // EntityTFSnowQueen.onLivingUpdate's snow and warning flakes and the ice beam, drawn on the clients
@@ -478,7 +475,7 @@ fn sparkle(entity: Entity, info: &EntityInfo)
     }
 
     let world: World = entity.world;
-    let shown: Shown = entity.synced();
+    let shown: Shown = shown(entity);
     let height: f64 = entity.field(EntityField::Height) * 0.85;
 
     for _ in 0..3
@@ -524,8 +521,6 @@ impl EntityBehavior for SnowQueen
         let mut brain: Brain = BRAINS.get(entity);
         think(entity, info, &mut brain);
         store(&BRAINS, entity, &brain);
-
-        showBar(entity, LABEL, info);
     }
 
     fn onTick(&self, entity: Entity, info: &EntityInfo) { sparkle(entity, info); }

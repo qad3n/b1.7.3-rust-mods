@@ -1,4 +1,4 @@
-use super::{home, killer, showBar};
+use super::{Synced, bar, home, killer, sync};
 use crate::entities::ai::face;
 use crate::entities::{clear, store};
 use crate::models::{Program, tf_naga};
@@ -421,7 +421,7 @@ impl EntityBehavior for Naga
         think(entity, info, &mut brain);
         store(&BRAINS, entity, &brain);
 
-        showBar(entity, LABEL, info);
+        sync(entity, Synced { m_bar: bar(entity, LABEL, info), m_shown: () });
     }
 
     // EntityTFNaga.attackEntityFrom, nothing from outside the courtyard hurts it
