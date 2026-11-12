@@ -21,6 +21,9 @@ mod weapon
     pub const PIG_SLAIN: i32 = 9999;
     pub const VAMPIRE_HEAL: i32 = 1;
     pub const HAMMER_WEAR: i32 = 1;
+    // ItemGravititeSword throws what it hits a block up, ItemHolystoneSword knocks a shard loose one hit in twenty
+    pub const GRAVITITE_LIFT: f64 = 1.0;
+    pub const SHARD_CHANCE: i32 = 20;
     pub const SHOOT_PITCH_LOW: f64 = 0.8;
     pub const SHOOT_PITCH_SPREAD: f64 = 0.4;
 }
@@ -189,6 +192,8 @@ enum Blade
     Vampire,
     PigSlayer,
     CandyCane,
+    Gravitite,
+    Holystone,
 }
 
 pub(crate) struct Sword
@@ -253,19 +258,43 @@ impl ItemBehavior for Sword
                     let _ = world.spawnItem(info.pos, ItemStack::of("candy_cane", 1));
                 }
             }
+
+            Blade::Gravitite =>
+            {
+                if let Some(info) = target.info()
+                {
+                    let _ = target.setMotion([info.motion[0], info.motion[1] + weapon::GRAVITITE_LIFT, info.motion[2]]);
+                }
+            }
+
+            Blade::Holystone =>
+            {
+                let wielder: Entity = Entity { world, id: attacker };
+                let byPlayer: bool = wielder.info().is_some_and(|info| info.player.is_some());
+                let alive: bool = target.field(EntityField::DeathTime) <= 0.0;
+                if byPlayer
+                    && alive
+                    && world.random(weapon::SHARD_CHANCE) == 0
+                    && let Some(info) = target.info()
+                {
+                    let _ = world.spawnItem(info.pos, ItemStack::of("ambrosium_shard", 1));
+                }
+            }
         }
 
         true
     }
 }
 
-const BLADES: [(&str, Blade); 6] = [
+const BLADES: [(&str, Blade); 8] = [
     ("flaming_sword", Blade::Flaming),
     ("lightning_sword", Blade::Lightning),
     ("holy_sword", Blade::Holy),
     ("vampire_blade", Blade::Vampire),
     ("pig_slayer", Blade::PigSlayer),
     ("candy_cane_sword", Blade::CandyCane),
+    ("gravitite_sword", Blade::Gravitite),
+    ("holystone_sword", Blade::Holystone),
 ];
 
 const SHOOTERS: [(&str, &str); 3] = [

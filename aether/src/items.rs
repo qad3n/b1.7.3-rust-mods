@@ -283,13 +283,17 @@ fn registerTools(ctx: &mut RegisterCtx) -> Result<()>
     for (material, tier) in SWORDS
     {
         let name: String = format!("{material}_sword");
-        ctx.items().register(
-            &name,
-            ItemSpecBuilder::new()
-                .texture(&texture(&format!("weapons/{name}")))
-                .tool(ToolClass::Sword, tier.m_level, tier.m_speed, baseDamage(ToolClass::Sword, tier), tier.m_uses)
-                .tag(SWORD_TAG),
-        )?;
+        let mut spec: ItemSpecBuilder = ItemSpecBuilder::new()
+            .texture(&texture(&format!("weapons/{name}")))
+            .tool(ToolClass::Sword, tier.m_level, tier.m_speed, baseDamage(ToolClass::Sword, tier), tier.m_uses)
+            .tag(SWORD_TAG);
+
+        if let Some(blade) = crate::weapons::blade(&name)
+        {
+            spec = spec.behavior(blade);
+        }
+
+        ctx.items().register(&name, spec)?;
     }
 
     Ok(())
