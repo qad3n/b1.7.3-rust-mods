@@ -134,6 +134,9 @@ struct Flight
 // the Java saves the jumps left as Remaining and remainingJumps
 static FLIGHTS: EntityState<Flight> = EntityState::new("flight").saved();
 
+// EntityMoa.getRemainingJumps for the jump bar
+pub(crate) fn jumpsLeft(mount: Entity) -> i32 { FLIGHTS.get(mount).m_jumpsLeft }
+
 // EntityMountable.moveEntityWithHeading for a player ridden mount, false leaves the move to the template
 pub(crate) fn travel(mount: Entity, steering: Steering) -> bool
 {

@@ -79,6 +79,13 @@ fn state(entity: Entity) -> MoaState
 
 fn moaType(state: &MoaState) -> &'static MoaType { &TYPES[(state.m_kind as usize).min(TYPES.len() - 1)] }
 
+// EntityMoa.getMaxJumps and getRemainingJumps of the moa an entity is, None for anything else
+pub(crate) fn jumps(entity: Entity) -> Option<(i32, i32)>
+{
+    let moa: bool = entity.info()?.kind?.to_string() == format!("aether:{NAME}");
+    moa.then(|| (moaType(&state(entity)).m_jumps, super::mount::jumpsLeft(entity)))
+}
+
 fn eggName(kind: &MoaType) -> String { format!("{}_moa_egg", kind.m_name) }
 
 // TileEntityIncubator.updateEntity: a hatched moa is a player grown baby of the egg's type
