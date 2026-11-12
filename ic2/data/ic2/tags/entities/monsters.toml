@@ -1,2 +1,2 @@
-# the EntityMob kinds the luminator sets alight
-values = ["minecraft:zombie", "minecraft:skeleton", "minecraft:spider", "minecraft:creeper", "minecraft:pig_zombie", "minecraft:monster"]
+# every EntityMob kind the luminator sets alight so the pig zombie and giant but no slime or ghast
+values = ["minecraft:zombie", "minecraft:skeleton", "minecraft:spider", "minecraft:creeper", "minecraft:pig_zombie", "minecraft:giant", "minecraft:monster"]
