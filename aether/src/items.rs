@@ -143,6 +143,11 @@ const MATERIALS: [(&str, &str); 6] = [
 ];
 
 const VICTORY_MEDAL_STACK: i32 = 10;
+// ItemAmbrosiumShard.onItemRightClick heals this much
+const SHARD_HEAL: i32 = 1;
+// ItemSwettyBall.onItemUse: the dirt it is used on and the grass it leaves
+const SWET_GROWS: [(&str, &str); 2] =
+    [(block::AETHER_DIRT, block::AETHER_GRASS), ("minecraft:dirt", "minecraft:grass")];
 
 fn texture(path: &str) -> String { format!("aether:item/{path}") }
 
@@ -183,17 +188,24 @@ impl ItemBehavior for HealingStone
     }
 }
 
-// ItemAmbrosiumShard.onItemUse, a shard enchants the aether grass it is used on
+fn oneLess(stack: ItemStack) -> Option<ItemStack>
+{
+    let remaining: i32 = stack.count - 1;
+    (remaining > 0).then_some(ItemStack { count: remaining, ..stack })
+}
+
+// ItemAmbrosiumShard: a shard enchants the aether grass it is used on, and eaten out of hand it heals half a heart
 struct AmbrosiumShard;
 
 #[item_behavior]
 impl ItemBehavior for AmbrosiumShard
 {
+    // any block takes the click, so a shard is only eaten when used on nothing
     fn onUseOnBlock(&self, world: World, _player: Player, stack: ItemStack, pos: BlockPos, _face: i32) -> Use
     {
         if !world.is(pos, block::AETHER_GRASS)
         {
-            return Use::Pass;
+            return Use::Done(Some(stack));
         }
 
         if world.isAuthority()
@@ -201,8 +213,47 @@ impl ItemBehavior for AmbrosiumShard
             let _ = world.place(pos, block::ENCHANTED_AETHER_GRASS);
         }
 
-        let remaining: i32 = stack.count - 1;
-        Use::Done((remaining > 0).then_some(ItemStack { count: remaining, ..stack }))
+        Use::Done(oneLess(stack))
+    }
+
+    fn onRightClick(&self, world: World, player: Player, stack: ItemStack) -> Use
+    {
+        let entity: Entity = Entity { world, id: player.id };
+        let health: i32 = entity.field(EntityField::Health) as i32;
+        if health <= 0 || health >= entity.field(EntityField::MaxHealth) as i32
+        {
+            return Use::Pass;
+        }
+
+        if world.isAuthority()
+        {
+            entity.setField(EntityField::Health, f64::from(health + SHARD_HEAL));
+        }
+
+        Use::Done(oneLess(stack))
+    }
+}
+
+// ItemSwettyBall: a swet ball grows grass over the dirt it is used on
+struct SwetBall;
+
+#[item_behavior]
+impl ItemBehavior for SwetBall
+{
+    fn onUseOnBlock(&self, world: World, _player: Player, stack: ItemStack, pos: BlockPos, _face: i32) -> Use
+    {
+        let Some((_, grass)) = SWET_GROWS.iter().find(|(dirt, _)| world.is(pos, dirt))
+        else
+        {
+            return Use::Pass;
+        };
+
+        if world.isAuthority()
+        {
+            let _ = world.place(pos, grass);
+        }
+
+        Use::Done(oneLess(stack))
     }
 }
 
@@ -307,13 +358,11 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     for (name, path) in MATERIALS
     {
         let spec: ItemSpecBuilder = ItemSpecBuilder::new().texture(&texture(path));
-        let spec: ItemSpecBuilder = if name == item::AMBROSIUM_SHARD
+        let spec: ItemSpecBuilder = match name
         {
-            spec.behavior(AmbrosiumShard)
-        }
-        else
-        {
-            spec
+            item::AMBROSIUM_SHARD => spec.behavior(AmbrosiumShard),
+            item::SWET_BALL => spec.behavior(SwetBall),
+            _ => spec,
         };
         ctx.items().register(name, spec)?;
     }
