@@ -112,32 +112,28 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &EFFECTS
     {
-        let modifiers: Vec<EffectModifierSpec> = match row.m_modifier
+        let mut spec: b173_api::Effect = b173_api::Effect::new(row.m_color).every(row.m_interval, row.m_amount);
+        if row.m_beneficial
         {
-            Some((attribute, amount, operation)) => vec![EffectModifierSpec
-            {
-                attribute: Identifier::parse(attribute).map_err(|error| Error(error.to_string()))?,
-                amount,
-                operation,
-            }],
-            None => Vec::new(),
-        };
+            spec = spec.beneficial();
+        }
 
-        let spec: EffectSpec = EffectSpec
+        if let Some(icon) = row.m_icon
         {
-            color: row.m_color,
-            beneficial: row.m_beneficial,
-            icon: row.m_icon.map(str::to_owned),
-            modifiers,
-            interval: row.m_interval,
-            amount: row.m_amount,
-        };
+            spec = spec.icon(icon);
+        }
+
+        if let Some((attribute, amount, operation)) = row.m_modifier
+        {
+            spec = spec.modifier(attribute, amount, operation);
+        }
+
         let name: &str = row.m_id.trim_start_matches("aether:");
         match row.m_behavior
         {
             Some(behavior) => ctx.effects().registerWith(name, spec, behavior())?,
             None => ctx.effects().register(name, spec)?,
-        }
+        };
     }
 
     Ok(())

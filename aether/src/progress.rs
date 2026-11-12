@@ -153,7 +153,7 @@ fn identifier(text: &str) -> Result<Identifier>
 // EntityPlayer.triggerAchievement, a first unlock plays the Aether's own jingle as PacketAchievement does
 pub(crate) fn grant(player: Player, award: Award)
 {
-    match player.unlockAchievement(&id(award))
+    match player.unlockAchievement(id(award))
     {
         Ok(true) =>
         {
