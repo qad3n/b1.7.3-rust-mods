@@ -8,7 +8,13 @@ mod reach
 {
     // ItemBucket traces five blocks ahead of the eyes
     pub const BUCKET: f64 = 5.0;
+    // a milked cow stands within a player's arm of whoever holds the bucket
+    pub const MILKING: f64 = 6.0;
 }
+
+const SKYROOT_BUCKET: &str = "skyroot_bucket";
+const MILK_BUCKET: &str = "skyroot_milk_bucket";
+const COW: &str = "minecraft:cow";
 
 fn trace(world: World, info: &EntityInfo, liquids: bool) -> Option<RayHit>
 {
@@ -42,8 +48,51 @@ const DRINK_TICKS: i32 = 32;
 // ItemSkyrootBucket.onBucketUsed, the remedy's setCured
 const REMEDY_CURE: i32 = 200;
 
+fn empty() -> Option<ItemStack> { Some(ItemStack::of(SKYROOT_BUCKET, 1)) }
 
-fn empty() -> Option<ItemStack> { Some(ItemStack::of("skyroot_bucket", 1)) }
+// AetherEventHandler.onEntityInteract: an empty skyroot bucket milks cows and flying cows, one bucket of a stack at
+// a time
+pub(crate) fn milk(player: Player) -> bool
+{
+    let Some(held) = player.held().filter(|held| held.item.is(SKYROOT_BUCKET))
+    else
+    {
+        return false;
+    };
+
+    let milked: ItemStack = ItemStack::of(MILK_BUCKET, 1);
+    if held.count <= 1
+    {
+        let _ = player.setHeld(Some(milked));
+
+        return true;
+    }
+
+    let _ = player.setHeld(Some(ItemStack { count: held.count - 1, ..held }));
+    if let Err(error) = player.give(milked)
+    {
+        warn(&format!("skyroot milk bucket: {error}"));
+    }
+
+    true
+}
+
+// the item hook names no player, the milker is the nearest one holding an empty skyroot bucket
+fn milker(world: World, cow: &EntityInfo) -> Option<Player>
+{
+    let reach = |player: &Player| -> Option<f64>
+    {
+        let info: EntityInfo = player.info()?;
+        let held: bool = player.held().is_some_and(|held| held.item.is(SKYROOT_BUCKET));
+        Some(b173_api::math::distance(info.pos, cow.pos)).filter(|distance| held && *distance <= reach::MILKING)
+    };
+    world
+        .players()
+        .into_iter()
+        .filter_map(|player| reach(&player).map(|distance| (player, distance)))
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(player, _)| player)
+}
 
 impl SkyrootBucket
 {
@@ -100,6 +149,13 @@ impl ItemBehavior for SkyrootBucket
                 };
 
                 let at: BlockPos = offset(hit.pos, face);
+
+                // AetherEventHandler.onFillBucket: skyroot water lights a glowstone frame as a water bucket does
+                if crate::portal::trySpawn(world, at)
+                {
+                    return Use::Done(empty());
+                }
+
                 if !world.isAir(at)
                 {
                     return Use::Pass;
@@ -122,6 +178,22 @@ impl ItemBehavior for SkyrootBucket
 
                 Use::Done(Some(stack))
             }
+        }
+    }
+
+    fn onInteractEntity(&self, _stack: ItemStack, target: Entity)
+    {
+        let world: World = target.world;
+        if self.m_kind != Bucket::Empty || !world.isAuthority()
+        {
+            return;
+        }
+
+        let cow: Option<EntityInfo> =
+            target.info().filter(|info| info.kind.as_ref().is_some_and(|kind| kind.to_string() == COW));
+        if let Some(player) = cow.and_then(|cow| milker(world, &cow))
+        {
+            milk(player);
         }
     }
 

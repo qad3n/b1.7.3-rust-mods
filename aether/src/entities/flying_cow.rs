@@ -50,6 +50,11 @@ impl EntityBehavior for FlyingCow
             return true;
         }
 
+        if crate::gear::milk(player)
+        {
+            return true;
+        }
+
         saddleInteract(entity, player)
     }
 

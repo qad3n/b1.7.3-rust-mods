@@ -226,7 +226,7 @@ fn placeQuiet(world: World, pos: BlockPos, pick: Pick)
 }
 
 // BlockAetherPortal.trySpawnPortal
-fn trySpawn(world: World, pos: BlockPos) -> bool
+pub(crate) fn trySpawn(world: World, pos: BlockPos) -> bool
 {
     for axis in 0..AXES.len()
     {
