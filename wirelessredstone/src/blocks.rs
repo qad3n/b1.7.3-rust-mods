@@ -1,8 +1,6 @@
 use crate::{ether, labels, screens};
 use b173_api::prelude::*;
 use b173_api::world::{BlockCtx, Player, World};
-use std::collections::BTreeMap;
-use std::rc::Rc;
 use wirelessredstone_api::FREQUENCIES;
 
 pub(crate) const RECEIVER: &str = "receiver";
@@ -19,7 +17,6 @@ mod clock
 }
 
 const POWERED: &str = "powered";
-const STATES: [&str; 2] = ["false", "true"];
 const AIR: &str = "minecraft:air";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -427,9 +424,8 @@ fn faces(side: &str, state: &str) -> FaceTextures
 
 fn registerBlock(ctx: &mut RegisterCtx, row: &Row) -> Result<()>
 {
-    let spec: TileEntitySpec = TileEntitySpec { inventory: 0, ticks: true, sync: true, behavior: None };
-    ctx.tileEntities().register(row.m_name, spec, Some(Rc::new(WirelessTile { m_kind: row.m_kind })))?;
-    ctx.tileEntities().model(row.m_name, EntityModelSpec::default())?;
+    let tile: b173_api::Tile =
+        b173_api::Tile::new(WirelessTile { m_kind: row.m_kind }).ticks().synced().model(EntityModelSpec::default());
     ctx.blocks().register(
         row.m_name,
         BlockSpecBuilder::template("minecraft:block")
@@ -438,21 +434,12 @@ fn registerBlock(ctx: &mut RegisterCtx, row: &Row) -> Result<()>
             .sound("metal")
             .opacity(0)
             .faces(faces(row.m_side, "off"))
-            .tileEntity(row.m_name)
+            .tile(tile)
+            .property(Property::bool(POWERED))
+            .variant(Variant::when(&[(POWERED, "true")]).faces(faces(row.m_side, "on")))
             .behavior(WirelessBlock { m_kind: row.m_kind, m_screen: screens::screenFor(row.m_kind) }),
     )?;
-
-    let property: PropertySpec = PropertySpec { name: POWERED.to_owned(), values: STATES.map(str::to_owned).to_vec() };
-    let on: StateVariantSpec = StateVariantSpec
-    {
-        when: BTreeMap::from([(POWERED.to_owned(), STATES[1].to_owned())]),
-        texture: None,
-        textures: Some(faces(row.m_side, "on")),
-    };
-    ctx.blocks().states(
-        row.m_name,
-        BlockStatesSpec { properties: vec![property], variants: vec![on], ..BlockStatesSpec::default() },
-    )
+    Ok(())
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
