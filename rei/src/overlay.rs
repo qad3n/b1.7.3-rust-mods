@@ -1135,7 +1135,7 @@ fn origin(catalog: &Catalog, key: Key) -> Option<&str>
         return None;
     }
 
-    catalog.origin(key.m_id)
+    catalog.origin(key)
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>

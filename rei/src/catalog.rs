@@ -27,6 +27,19 @@ impl Key
         stack.item.id().ok().map(|id| Self { m_id: id, m_damage: stack.damage })
     }
 
+    // the id alone finds the mod so damaged tools match too, only a spawner keeps the mob it holds
+    fn origin(self) -> Self
+    {
+        if spawner::held(&self)
+        {
+            self
+        }
+        else
+        {
+            Self { m_id: self.m_id, m_damage: 0 }
+        }
+    }
+
     // a recipe ingredient with damage -1 takes every damage of its item
     pub(crate) fn accepts(self, other: Self) -> bool
     {
@@ -62,7 +75,7 @@ pub(crate) struct Catalog
     pub m_loot: Vec<LootView>,
     pub m_machines: Vec<MachineView>,
     m_byKey: HashMap<Key, usize>,
-    m_origins: HashMap<i32, String>,
+    m_origins: HashMap<Key, String>,
     m_mods: HashMap<String, String>,
     m_details: RefCell<HashMap<i32, Rc<[String]>>>,
     m_members: RefCell<HashMap<Identifier, Rc<[Key]>>>,
@@ -109,19 +122,20 @@ impl Catalog
     fn build(generation: i32) -> Self
     {
         let mut entries: Vec<Entry> = itemCatalog().into_iter().filter_map(Self::listed).collect();
+        entries.sort_by(|left, right| left.group().cmp(&right.group()));
+
         let spawners: Vec<Entry> = spawner::stacks().into_iter().filter_map(Self::named).collect();
-        // each mob's spawner sits right after the plain one
+        // each mob's spawner sits right after the plain one even when its mob comes from a mod
         let at: usize = spawners
             .first()
             .and_then(|first| entries.iter().position(|entry| entry.m_key.m_id == first.m_key.m_id))
             .map_or(entries.len(), |index| index + 1);
         entries.splice(at..at, spawners);
-        entries.sort_by(|left, right| left.group().cmp(&right.group()));
 
         let byKey: HashMap<Key, usize> =
             entries.iter().enumerate().map(|(index, entry)| (entry.m_key, index)).collect();
         let names: HashMap<String, String> = names(&entries);
-        let origins: HashMap<i32, String> = origins(&entries, &names);
+        let origins: HashMap<Key, String> = origins(&entries, &names);
         let mods: HashMap<String, String> =
             names.into_iter().map(|(namespace, name)| (namespace, name.to_lowercase())).collect();
 
@@ -161,11 +175,14 @@ impl Catalog
         })
     }
 
-    fn named((stack, name): (ItemStack, String)) -> Option<Entry>
+    // a spawner belongs to the mod of the mob it holds
+    fn named((stack, name, mob): (ItemStack, String, Identifier)) -> Option<Entry>
     {
         let mut entry: Entry = Self::listed(stack)?;
         entry.m_search = name.to_lowercase();
         entry.m_name = name;
+        entry.m_namespace = mob.namespace().to_owned();
+        entry.m_vanilla = mob.isVanilla();
         Some(entry)
     }
 
@@ -174,8 +191,7 @@ impl Catalog
         self.m_byKey.get(&key).map(|index| &self.m_entries[*index])
     }
 
-    // keyed by id alone so damaged tools find their mod too
-    pub(crate) fn origin(&self, id: i32) -> Option<&str> { self.m_origins.get(&id).map(String::as_str) }
+    pub(crate) fn origin(&self, key: Key) -> Option<&str> { self.m_origins.get(&key.origin()).map(String::as_str) }
 
     // asked of the host once per item id, so hovering costs nothing after the first frame
     pub(crate) fn details(&self, id: i32) -> Rc<[String]>
@@ -430,13 +446,13 @@ fn shown(namespace: &str) -> String
 }
 
 // one tooltip line per item id
-fn origins(entries: &[Entry], names: &HashMap<String, String>) -> HashMap<i32, String>
+fn origins(entries: &[Entry], names: &HashMap<String, String>) -> HashMap<Key, String>
 {
     entries
         .iter()
         .filter_map(|entry|
         {
-            names.get(&entry.m_namespace).map(|name| (entry.m_key.m_id, format!("{ORIGIN_STYLE}{name}")))
+            names.get(&entry.m_namespace).map(|name| (entry.m_key.origin(), format!("{ORIGIN_STYLE}{name}")))
         })
         .collect()
 }

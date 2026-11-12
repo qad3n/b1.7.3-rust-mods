@@ -22,7 +22,7 @@ pub(crate) fn humanize(path: &str) -> String
 }
 
 // one spawner per registered mob with the entity id as its damage, the way old item viewers carried the mob
-pub(crate) fn stacks() -> Vec<(ItemStack, String)>
+pub(crate) fn stacks() -> Vec<(ItemStack, String, Identifier)>
 {
     if spawner().is_err()
     {
@@ -36,7 +36,7 @@ pub(crate) fn stacks() -> Vec<(ItemStack, String)>
         {
             let numeric: i32 = resolve(RegistryKind::Entity, &mob).ok()?;
             let name: String = format!("{} {SUFFIX}", humanize(mob.path()));
-            Some((ItemStack::of(SPAWNER, 1).withDamage(numeric), name))
+            Some((ItemStack::of(SPAWNER, 1).withDamage(numeric), name, mob))
         })
         .collect()
 }
