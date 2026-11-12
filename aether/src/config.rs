@@ -4,6 +4,8 @@ pub(crate) const VALKYRIE_CAPE: &str = "loot.valkyrie_cape";
 pub(crate) const GOLDEN_FEATHER: &str = "loot.golden_feather";
 pub(crate) const SUN_ALTAR_MULTIPLAYER: &str = "gameplay.sun_altar_multiplayer";
 pub(crate) const DISABLE_ETERNAL_DAY: &str = "gameplay.disable_eternal_day";
+pub(crate) const CHRISTMAS_CONTENT: &str = "world.christmas_content";
+pub(crate) const TALL_GRASS: &str = "world.tall_grass";
 const MAX_LIFE_SHARDS: &str = "gameplay.max_life_shards";
 const LIFE_SHARD_LIMIT: i64 = 100;
 const SPAWN_RATE_CATEGORY: &str = "spawn_rates";
@@ -48,6 +50,12 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         Setting::bool(DISABLE_ETERNAL_DAY, false)
             .label("Disable Eternal Day")
             .comment("Disables eternal day making time cycle in the Aether without having to kill the Sun Spirit."),
+        Setting::bool(CHRISTMAS_CONTENT, false)
+            .label("Christmas Content")
+            .comment("Holiday trees with presents under them generate in new Aether chunks"),
+        Setting::bool(TALL_GRASS, false)
+            .label("Enable Tall Grass")
+            .comment("Tall grass generates in new Aether chunks"),
     ];
     settings.extend(
         SPAWN_RATES.iter().map(|row|

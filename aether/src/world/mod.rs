@@ -1,6 +1,7 @@
 mod decorate;
 pub(crate) mod dungeons;
 mod gen_world;
+mod holiday;
 mod lakes;
 mod terrain;
 pub(crate) mod trees;

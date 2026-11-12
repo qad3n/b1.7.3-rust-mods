@@ -261,6 +261,49 @@ Second pass (every entity, ability and machine class against the port by its num
   succeeds in the source), queen, slider, sun spirit (its body parts only take player hits, which it ignores), fire
   minion, crystals, armor abilities, repulsion, accessories and the freezer table.
 
+## Audit against 1.1.2.5 (2026-11-12, third pass)
+
+Method: the loader's registry report of a full client start was compared name by name with ItemsAether, BlocksAether,
+EntitiesAether and AetherRegistries, then every item use handler, PlayerAether, PlayerAetherEvents, AetherEventHandler
+and AetherOverlay were walked against the port's behaviors and event listeners.
+
+Registered content is complete: every item, block, entity, achievement, crafting recipe (the lead recipe aside,
+beta has no leads), enchanter row (nine rows for discs beta lacks left out) and freezer row (packed ice left out).
+
+Missing behavior found and added:
+- Swet ball used on aether dirt or dirt grows grass (ItemSwettyBall).
+- Aether portal frame item builds a lit glowstone portal where it is used (ItemAetherPortalFrame).
+- An accessory used out of hand goes into the first free slot of its kind (ItemAccessory.onItemRightClick).
+- Ambrosium shard eaten out of hand heals half a heart when hurt, and a click on any block no longer eats it.
+- Hammer of Notch rests 100 ticks between swings (PlayerAether.setHammerCooldown), breaks when worn out, and shows
+  its cooldown bar (AetherOverlay.renderCooldown).
+- Gravitite sword throws what it hits a block up, holystone sword knocks an ambrosium shard loose one hit in twenty,
+  skyroot sword doubles what a mob drops (keys and victory medals stay single, valkyries and players are spared).
+- Lava poured in the Aether sets into aerogel, flint and steel and torches only smoke there, an empty hand never
+  makes a vanilla bed there (AetherEventHandler.onFillBucket and checkBlockBannedEvent).
+- Skyroot water bucket lights a glowstone frame as a water bucket does; water lights portals only in the overworld
+  and the Aether.
+- Empty skyroot buckets milk cows and flying cows.
+- Sentry boots and the full gravitite and valkyrie sets take every fall (AetherEventHandler.onFall).
+- A player falling faster than two blocks a tick opens the first parachute carried (PlayerAether.activateParachute);
+  the fall is read from the height lost in a tick since a server never learns a player's own motion.
+- A dead player drops what it wore unless the world keeps inventories (PlayerAetherEvents.onPlayerAetherDrops).
+- Moa jump bar while riding a moa, poison vignette pulsing with the inebriation beat, cure vignette for 200 ticks
+  after a remedy bucket and 300 after a white apple (AetherOverlay; `textures/blur/` joins `assets.toml`).
+- Holiday trees with snow and presents (AetherGenHolidayTree) behind `world.christmas_content`, tall grass
+  (WorldGenTallGrass) behind `world.tall_grass`, both off as in the Java config. Neither draws from the chunk random
+  while off, so existing seeds generate the same.
+
+Still differs:
+- Seasonal holiday trees (on in December and January in the source) need the wall clock, which a mod cannot read.
+- Lightning never spares the holder of a lightning sword or knife: the loader has no strike event to cancel.
+- The iron bubble's extra air bubbles on the HUD are not drawn.
+- Config options without a port feature yet: Aether menu and its button, loading screen trivia, legacy visuals,
+  legacy altar name, portal frame on first spawn, skyroot bucket only portals, Sun Spirit dialogue repeat.
+- The skyroot sword's second helping copies the item entities found fresh at the kill at the end of the tick, the
+  drop event names no drops.
+- Not run: build only, none of the above was seen in a game.
+
 ## Done (loader API 1.39, names, tags and states)
 
 The port no longer keeps numeric ids or reads metadata bits. `ids.rs` is gone, `names.rs` holds registry names and

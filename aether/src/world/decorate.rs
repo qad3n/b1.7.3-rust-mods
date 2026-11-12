@@ -1,6 +1,6 @@
 use super::gen_world::GenWorld;
 use super::trees::{self, Tree};
-use crate::names::block;
+use crate::names::{Pick, block};
 use b173_api::prelude::*;
 use b173_api::terrain::{Random, math};
 
@@ -42,6 +42,11 @@ mod feature
     pub const TREES: i32 = 3;
     pub const OAK_CHANCE: i32 = 30;
     pub const DUNGEON_OAKS: i32 = 25;
+    pub const HOLIDAY_TREE_CHANCE: i32 = 15;
+    // AetherBiomeDecorator draws tall grass heights over twice the 1.7 world, the patches then sink to the ground
+    pub const GRASS_PATCHES: i32 = 10;
+    pub const GRASS_HEIGHT: i32 = 512;
+    pub const GRASS_TRIES: i32 = 128;
     pub const LAKE_CHANCE: i32 = 10;
     pub const LAKE_SPREAD: i32 = 256;
     pub const PLANT_TRIES: i32 = 64;
@@ -145,6 +150,34 @@ impl Decorator<'_>
         }
     }
 
+    // AetherConfig.shouldLoadHolidayContent: the Java draws its chance only when the trees are on
+    fn holidayTrees(&self)
+    {
+        if crate::config::enabled(crate::config::CHRISTMAS_CONTENT) && self.shouldSpawn(feature::HOLIDAY_TREE_CHANCE)
+        {
+            let x: i32 = self.m_x + feature::OFFSET;
+            let z: i32 = self.m_z + feature::OFFSET;
+            super::holiday::holidayTree(self.m_world, self.m_random, x, self.m_world.height(x, z), z);
+        }
+    }
+
+    // AetherConfig.tallgrassEnabled
+    fn tallGrass(&self)
+    {
+        if !crate::config::enabled(crate::config::TALL_GRASS)
+        {
+            return;
+        }
+
+        for _ in 0..feature::GRASS_PATCHES
+        {
+            let x: i32 = self.m_x + self.nextInt(CHUNK) + feature::OFFSET;
+            let z: i32 = self.m_z + self.nextInt(CHUNK) + feature::OFFSET;
+            let y: i32 = self.nextInt(feature::GRASS_HEIGHT);
+            grassPatch(self.m_world, self.m_random, x, y, z);
+        }
+    }
+
     fn dungeonOaks(&self)
     {
         for _ in 0..feature::DUNGEON_OAKS
@@ -181,8 +214,8 @@ impl Decorator<'_>
 }
 
 // one step of ChunkProviderAether.populate, a named feature placed in this order on the chunk's random, so the
-// loader lists every Aether decoration and players can turn one off; holiday trees and tall grass stay off as in the
-// Java config
+// loader lists every Aether decoration and players can turn one off; holiday trees and tall grass follow their
+// config options, off as in the Java config
 struct Decoration
 {
     m_name: &'static str,
@@ -190,7 +223,7 @@ struct Decoration
     m_run: fn(&Decorator),
 }
 
-const DECORATIONS: [Decoration; 17] = [
+const DECORATIONS: [Decoration; 19] = [
     Decoration { m_name: "dungeons", m_step: FeatureStep::SurfaceStructures, m_run: |decorator| decorator.dungeons() },
     Decoration
     {
@@ -276,9 +309,21 @@ const DECORATIONS: [Decoration; 17] = [
     Decoration { m_name: "trees", m_step: FeatureStep::VegetalDecoration, m_run: |decorator| decorator.trees() },
     Decoration
     {
+        m_name: "holiday_trees",
+        m_step: FeatureStep::VegetalDecoration,
+        m_run: |decorator| decorator.holidayTrees(),
+    },
+    Decoration
+    {
         m_name: "dungeon_oaks",
         m_step: FeatureStep::VegetalDecoration,
         m_run: |decorator| decorator.dungeonOaks(),
+    },
+    Decoration
+    {
+        m_name: "tall_grass",
+        m_step: FeatureStep::VegetalDecoration,
+        m_run: |decorator| decorator.tallGrass(),
     },
     Decoration { m_name: "lakes", m_step: FeatureStep::Lakes, m_run: |decorator| decorator.lakes() },
     Decoration
@@ -427,6 +472,34 @@ fn plantPatch(world: &GenWorld, random: &Random, block: &'static str, x: i32, y:
         if world.isAir(plantX, plantY, plantZ) && world.tagged(plantX, plantY - 1, plantZ, crate::tags::SOIL)
         {
             world.set(plantX, plantY, plantZ, block);
+        }
+    }
+}
+
+// WorldGenTallGrass.generate: the patch sinks through air and leaves to the ground, then grass takes root around it
+fn grassPatch(world: &GenWorld, random: &Random, x: i32, y: i32, z: i32)
+{
+    const TALL_GRASS: Pick = Pick::with("minecraft:tallgrass", &[("meta", "1")]);
+
+    let open = |y: i32| world.isAir(x, y, z) || world.tagged(x, y, z, "minecraft:leaves");
+    let mut ground: i32 = y.min(feature::HEIGHT - 1);
+    while ground > 0 && open(ground)
+    {
+        ground -= 1;
+    }
+
+    for _ in 0..feature::GRASS_TRIES
+    {
+        let grassX: i32 =
+            x + random.nextIntBounded(feature::PLANT_SPREAD) - random.nextIntBounded(feature::PLANT_SPREAD);
+        let grassY: i32 =
+            ground + random.nextIntBounded(feature::PLANT_RISE) - random.nextIntBounded(feature::PLANT_RISE);
+        let grassZ: i32 =
+            z + random.nextIntBounded(feature::PLANT_SPREAD) - random.nextIntBounded(feature::PLANT_SPREAD);
+
+        if world.isAir(grassX, grassY, grassZ) && world.tagged(grassX, grassY - 1, grassZ, crate::tags::SOIL)
+        {
+            world.put(grassX, grassY, grassZ, TALL_GRASS);
         }
     }
 }
