@@ -1,6 +1,5 @@
 use crate::core::render::{self, Scene};
 use b173_api::prelude::*;
-use std::rc::Rc;
 
 // TileTank: sixteen buckets each, a column of tanks fills from the bottom and empties from the top
 const NAME: &str = "tank";
@@ -197,12 +196,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         render::slot(sprite);
     }
 
-    ctx.tileEntities().register(
-        NAME,
-        TileEntitySpec { inventory: 0, ticks: false, sync: true, behavior: None },
-        Some(Rc::new(TankTile)),
-    )?;
-    ctx.tileEntities().model(NAME, EntityModelSpec::default())?;
+    let cuboid: Cuboid = Cuboid { from: shape::FROM, to: shape::TO, texture: None, metas: Vec::new(), connect: None };
     ctx.blocks().register(
         NAME,
         BlockSpecBuilder::template("minecraft:block")
@@ -223,12 +217,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 }],
                 ..BlockModelSpec::default()
             })
-            .tileEntity(NAME)
+            .tile(Tile::new(TankTile).synced().model(EntityModelSpec::default()))
+            .itemModel(ItemModelSpec { cuboids: vec![cuboid], ..ItemModelSpec::default() })
             .behavior(TankBlock),
     )?;
-
-    let cuboid: Cuboid = Cuboid { from: shape::FROM, to: shape::TO, texture: None, metas: Vec::new(), connect: None };
-    ctx.blocks().itemModel(NAME, ItemModelSpec { cuboids: vec![cuboid], ..ItemModelSpec::default() })?;
 
     ctx.recipes()
         .shaped(NAME, ItemStack::of("buildcraft:tank", 1))

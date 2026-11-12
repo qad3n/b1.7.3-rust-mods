@@ -2,7 +2,6 @@ use crate::core::area::Area;
 use crate::core::render::{self, Laser, Scene};
 use crate::core::{dir, stacks, state};
 use b173_api::prelude::*;
-use std::rc::Rc;
 
 // TileMarker: landmarks a block apart on the three axes link into one box, drawn with red lasers
 pub(crate) const NAME: &str = "marker";
@@ -276,23 +275,16 @@ impl BlockBehavior for MarkerBlock
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.tileEntities().register(
-        NAME,
-        TileEntitySpec { inventory: 0, ticks: false, sync: true, behavior: None },
-        Some(Rc::new(MarkerTile)),
-    )?;
-    ctx.tileEntities().model(NAME, EntityModelSpec::default())?;
     ctx.blocks().register(
         NAME,
-        BlockSpecBuilder::template("minecraft:torch")
+        super::landmark::supports(BlockSpecBuilder::template("minecraft:torch"))
             .material("circuits")
             .texture(super::landmark::SPRITE)
             .light(LIGHT)
             .collision(Vec::new())
-            .tileEntity(NAME)
+            .tile(Tile::new(MarkerTile).synced().model(EntityModelSpec::default()))
             .behavior(MarkerBlock),
     )?;
-    super::landmark::register(ctx, NAME)?;
 
     ctx.recipes()
         .shaped(NAME, ItemStack::of(BLOCK, 1))

@@ -67,10 +67,7 @@ pub(crate) fn facePlacer(ctx: &mut BlockCtx, entity: Entity)
 }
 
 // a facing machine's named states, in the face order BuildCraft stored as metadata
-pub(crate) fn registerFacing(ctx: &mut RegisterCtx, block: &str) -> Result<()>
-{
-    state::register(ctx, block, state::FACING, &dir::NAMES)
-}
+pub(crate) fn facing() -> Property { Property::values(state::FACING, &dir::NAMES) }
 
 // MangoPackUtils.isBlockUnbreakable, missing from the BuildCraft zips, read as Utils.unbreakableBlock's bedrock and
 // lava plus any block that cannot be mined
@@ -133,10 +130,9 @@ fn registerFrames(ctx: &mut RegisterCtx) -> Result<()>
             .drops(Vec::new())
             .tag(crate::machines::CONNECTORS)
             .model(BlockModelSpec { cuboids, ..BlockModelSpec::default() })
+            .itemModel(render::column(Some(frame)))
             .behavior(FrameBlock),
     )?;
-
-    ctx.blocks().itemModel("frame", render::column(Some(frame)))?;
 
     // BlockPlainPipe, the mining well's shaft, dropping nothing
     let shaft: &str = "buildcraft:block/mining_pipe";
@@ -153,9 +149,10 @@ fn registerFrames(ctx: &mut RegisterCtx) -> Result<()>
             {
                 cuboids: vec![cuboid(PIPE_FROM, PIPE_TO, shaft, None)],
                 ..BlockModelSpec::default()
-            }),
+            })
+            .itemModel(render::column(Some(shaft))),
     )?;
-    ctx.blocks().itemModel("mining_pipe", render::column(Some(shaft)))
+    Ok(())
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>

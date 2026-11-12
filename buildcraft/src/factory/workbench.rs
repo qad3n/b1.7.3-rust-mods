@@ -1,6 +1,5 @@
 use crate::core::{dir, items, render, stacks};
 use b173_api::prelude::*;
-use std::rc::Rc;
 
 // TileAutoWorkbench: a crafting grid that only refills stacks already in it and crafts whenever a pipe pulls,
 // taking the last item of a slot from the inventories around it
@@ -237,12 +236,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     render::slot(TOP);
     render::slot(SIDE);
 
-    let tile: Rc<dyn TileBehavior> = Rc::new(WorkbenchTile);
-    ctx.tileEntities().register(
-        NAME,
-        TileEntitySpec { inventory: SLOTS, ticks: false, sync: false, behavior: None },
-        Some(tile),
-    )?;
+    let tile: WorkbenchTile = WorkbenchTile;
     ctx.blocks().register(
         NAME,
         BlockSpecBuilder::template("minecraft:block")
@@ -250,7 +244,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .sound("wood")
             .hardness(HARDNESS)
             .texture(SIDE)
-            .tileEntity(NAME)
+            .tile(Tile::new(tile).inventory(SLOTS))
             .behavior(WorkbenchBlock),
     )?;
     ctx.machines().workstation("minecraft:crafting", NAME)?;

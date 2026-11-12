@@ -1,11 +1,10 @@
-use super::{Faces, MINING_PIPE, facePlacer, registerFacing, unbreakable};
+use super::{Faces, MINING_PIPE, facePlacer, facing, unbreakable};
 use crate::core::items::{gear, material};
 use crate::core::power::{Provider, Setup};
 use crate::core::stacks;
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 
 // TileMiningWell: twenty five energy per block, drilling a shaft of mining pipe straight down
 const NAME: &str = "mining_well";
@@ -207,11 +206,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             ACTIVE.with(|active| active.borrow_mut().insert((packet.m_world, packet.m_pos), packet.m_digging));
         }
     })?;
-    ctx.tileEntities().register(
-        NAME,
-        TileEntitySpec { inventory: 0, ticks: true, sync: false, behavior: None },
-        Some(Rc::new(WellTile)),
-    )?;
     ctx.blocks().register(
         NAME,
         BlockSpecBuilder::template("minecraft:block")
@@ -220,12 +214,12 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .hardness(HARDNESS)
             .resistance(RESISTANCE)
             .texture(FACES.m_front)
-            .tileEntity(NAME)
+            .tile(Tile::new(WellTile).ticks())
+            .property(facing())
             .tag(crate::machines::MACHINES)
             .tag(crate::machines::CONNECTORS)
             .behavior(MachineBlock { m_faces: &FACES }),
     )?;
-    registerFacing(ctx, NAME)?;
 
     if !super::mining()
     {

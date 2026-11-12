@@ -3,10 +3,9 @@ use crate::core::area::Area;
 use crate::core::power::{Provider, Setup};
 use crate::core::render::{self, Laser, Scene};
 use crate::core::{AIR, dir, items, stacks, state};
-use crate::factory::{Faces, facePlacer, registerFacing, soft, unbreakable};
+use crate::factory::{Faces, facePlacer, soft, unbreakable};
 use b173_api::prelude::*;
 use std::collections::BTreeMap;
-use std::rc::Rc;
 
 // BluePrint: a mask of filled and empty blocks with an anchor, saved with the world and named by the template's damage
 const STORE: &str = "blueprints";
@@ -591,17 +590,11 @@ fn registerMachine(
     faces: &'static Faces,
     hardness: f32,
     slots: i32,
-    tile: Rc<dyn TileBehavior>,
+    tile: impl TileBehavior + 'static,
     poweredTop: bool,
 ) -> Result<()>
 {
     faces.reserve();
-    ctx.tileEntities().register(
-        name,
-        TileEntitySpec { inventory: slots, ticks: true, sync: true, behavior: None },
-        Some(tile),
-    )?;
-    ctx.tileEntities().model(name, EntityModelSpec::default())?;
     ctx.blocks().register(
         name,
         BlockSpecBuilder::template("minecraft:block")
@@ -609,17 +602,18 @@ fn registerMachine(
             .sound("metal")
             .hardness(hardness)
             .texture(faces.m_front)
-            .tileEntity(name)
+            .tile(Tile::new(tile).inventory(slots).ticks().synced().model(EntityModelSpec::default()))
+            .property(crate::factory::facing())
             .behavior(TurnableBlock { m_faces: faces, m_screen: name, m_poweredTop: poweredTop }),
     )?;
-    registerFacing(ctx, name)
+    Ok(())
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     render::slot(TOP_POWERED);
 
-    registerMachine(ctx, TABLE, &TABLE_FACES, TABLE_HARDNESS, TABLE_SLOTS, Rc::new(TableTile), true)?;
+    registerMachine(ctx, TABLE, &TABLE_FACES, TABLE_HARDNESS, TABLE_SLOTS, TableTile, true)?;
     ctx.tileEntities().stackLimit(TABLE, 1)?;
     let table: ScreenBuilder = ScreenBuilder::new("", gui::WIDTH, gui::STANDARD_HEIGHT)
         .background(gui::TABLE_BACKGROUND)
@@ -628,7 +622,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         .playerInventory(gui::TABLE_INVENTORY[0], gui::TABLE_INVENTORY[1]);
     ctx.screens().register(TABLE, table, TableScreen { m_pos: None })?;
 
-    registerMachine(ctx, BUILDER, &BUILDER_FACES, BUILDER_HARDNESS, BUILDER_SLOTS, Rc::new(BuilderTile), false)?;
+    registerMachine(ctx, BUILDER, &BUILDER_FACES, BUILDER_HARDNESS, BUILDER_SLOTS, BuilderTile, false)?;
     let mut builder: ScreenBuilder = ScreenBuilder::new("", gui::WIDTH, gui::HEIGHT)
         .background(gui::BUILDER_BACKGROUND)
         .slot(0, gui::BUILDER_TEMPLATE[0], gui::BUILDER_TEMPLATE[1])

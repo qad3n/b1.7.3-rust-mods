@@ -256,20 +256,7 @@ fn populate(ctx: &FeatureCtx) -> bool
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.fluids().register(
-        "oil",
-        FluidSpec
-        {
-            style: FluidStyle::Water,
-            flowing: Identifier::parse(OIL).expect("oil is an identifier"),
-            still: Identifier::parse(STILL).expect("still oil is an identifier"),
-            bucket: Some(Identifier::parse(BUCKET).expect("the oil bucket is an identifier")),
-            tick_rate: None,
-            decay: None,
-            nether_decay: None,
-            infinite: Some(false),
-        },
-    )?;
+    ctx.fluids().register("oil", Fluid::new(FluidStyle::Water, OIL, STILL).bucket(BUCKET).infinite(false))?;
 
     for (name, template, texture) in [
         ("oil", "minecraft:flowing_fluid", "buildcraft:block/oil_flow"),

@@ -8,7 +8,6 @@ use crate::core::{dir, stacks, state};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 
 // TileQuarry: builds a frame around its area, then a mechanical arm digs it out layer by layer
 const NAME: &str = "quarry";
@@ -724,12 +723,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     render::slot(DRILL);
     render::slot(DRILL_HEAD);
 
-    ctx.tileEntities().register(
-        NAME,
-        TileEntitySpec { inventory: 0, ticks: true, sync: false, behavior: None },
-        Some(Rc::new(QuarryTile)),
-    )?;
-    ctx.tileEntities().model(NAME, EntityModelSpec::default())?;
     ctx.blocks().register(
         NAME,
         BlockSpecBuilder::template("minecraft:block")
@@ -738,12 +731,12 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .hardness(HARDNESS)
             .resistance(RESISTANCE)
             .texture(FACES.m_front)
-            .tileEntity(NAME)
+            .tile(Tile::new(QuarryTile).ticks().model(EntityModelSpec::default()))
+            .property(super::facing())
             .tag(crate::machines::MACHINES)
             .tag(crate::machines::CONNECTORS)
             .behavior(MachineBlock { m_faces: &FACES }),
     )?;
-    super::registerFacing(ctx, NAME)?;
     ctx.channels().register(VIEW_CHANNEL, Direction::ToClient, |packet: ViewPacket, _player| onView(packet))?;
 
     if !super::mining()

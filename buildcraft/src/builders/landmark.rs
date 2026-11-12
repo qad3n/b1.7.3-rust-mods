@@ -34,10 +34,10 @@ fn holds(world: World, pos: BlockPos, support: i32) -> bool { supported(world, d
 
 fn lean(world: World, pos: BlockPos, support: i32) { state::set(world, pos, SUPPORT, dir::name(support)); }
 
-pub(crate) fn register(ctx: &mut RegisterCtx, block: &str) -> Result<()>
+// the side a landmark leans on and the torch shape it draws for each
+pub(crate) fn supports(spec: BlockSpecBuilder) -> BlockSpecBuilder
 {
-    state::register(ctx, block, SUPPORT, &SUPPORTS)?;
-    ctx.blocks().stateModel(block, model())
+    spec.property(Property::values(SUPPORT, &SUPPORTS)).stateModel(model())
 }
 
 // canPlaceBlockAt: any neighbour drawn as a full block

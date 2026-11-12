@@ -11,7 +11,6 @@ use crate::core::{dir, state};
 use b173_api::prelude::*;
 pub(crate) use pipe::toRandomPipe;
 use std::collections::BTreeMap;
-use std::rc::Rc;
 
 // the states a model cuboid shows in, one when entry each
 type Whens = Vec<BTreeMap<String, String>>;
@@ -327,12 +326,7 @@ impl BlockBehavior for PipeBlock
 
 fn registerPipe(ctx: &mut RegisterCtx, row: &'static Pipe) -> Result<()>
 {
-    if let Some((name, values)) = row.m_state
-    {
-        state::register(ctx, row.m_name, name, values)?;
-    }
-
-    let tile: Rc<dyn TileBehavior> = Rc::new(pipe::PipeTile { m_kind: row.m_kind });
+    let tile: pipe::PipeTile = pipe::PipeTile { m_kind: row.m_kind };
     let slots: i32 = if row.m_kind == Kind::Diamond
     {
         diamond::SLOTS
@@ -341,28 +335,26 @@ fn registerPipe(ctx: &mut RegisterCtx, row: &'static Pipe) -> Result<()>
     {
         0
     };
-    ctx.tileEntities().register(
-        row.m_name,
-        TileEntitySpec { inventory: slots, ticks: true, sync: false, behavior: None },
-        Some(tile),
-    )?;
-    ctx.tileEntities().model(row.m_name, EntityModelSpec::default())?;
+
+    let mut spec: BlockSpecBuilder = BlockSpecBuilder::template("minecraft:block")
+        .material(row.m_material)
+        .sound(row.m_sound)
+        .hardness(shape::HARDNESS)
+        .texture(&texture(row.m_name))
+        .opacity(0)
+        .tile(Tile::new(tile).inventory(slots).ticks().model(EntityModelSpec::default()))
+        .tag("buildcraft:pipes");
+    if let Some((name, values)) = row.m_state
+    {
+        spec = spec.property(Property::values(name, values));
+    }
 
     ctx.blocks().register(
         row.m_name,
-        BlockSpecBuilder::template("minecraft:block")
-            .material(row.m_material)
-            .sound(row.m_sound)
-            .hardness(shape::HARDNESS)
-            .texture(&texture(row.m_name))
-            .opacity(0)
-            .tileEntity(row.m_name)
-            .tag("buildcraft:pipes")
+        spec.stateModel(model(row.m_kind, row.m_name))
+            .itemModel(crate::core::render::column(Some(&texture(row.m_name))))
             .behavior(PipeBlock { m_kind: row.m_kind }),
     )?;
-
-    ctx.blocks().stateModel(row.m_name, model(row.m_kind, row.m_name))?;
-    ctx.blocks().itemModel(row.m_name, crate::core::render::column(Some(&texture(row.m_name))))?;
 
     // BuildCraftTransport: eight pipes from two ingredient blocks around a glass pane
     ctx.recipes()

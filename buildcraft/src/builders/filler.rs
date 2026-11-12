@@ -5,7 +5,6 @@ use crate::core::render::{self, Laser, Scene};
 use crate::core::{items, stacks};
 use crate::factory::{soft, unbreakable};
 use b173_api::prelude::*;
-use std::rc::Rc;
 
 // TileFiller: a pattern laid in its 3 by 3 grid, worked over the landmark box a block at a time from its resources
 pub(crate) const NAME: &str = "filler";
@@ -635,13 +634,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         render::slot(sprite);
     }
 
-    let tile: Rc<dyn TileBehavior> = Rc::new(FillerTile);
-    ctx.tileEntities().register(
-        NAME,
-        TileEntitySpec { inventory: SLOTS, ticks: true, sync: true, behavior: None },
-        Some(tile),
-    )?;
-    ctx.tileEntities().model(NAME, EntityModelSpec::default())?;
+    let tile: FillerTile = FillerTile;
     ctx.blocks().register(
         NAME,
         BlockSpecBuilder::template("minecraft:block")
@@ -649,7 +642,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .sound("metal")
             .hardness(HARDNESS)
             .texture(SIDE)
-            .tileEntity(NAME)
+            .tile(Tile::new(tile).inventory(SLOTS).ticks().synced().model(EntityModelSpec::default()))
             .behavior(FillerBlock),
     )?;
 

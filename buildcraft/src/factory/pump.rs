@@ -4,7 +4,6 @@ use crate::core::{AIR, dir};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-use std::rc::Rc;
 
 // TilePump: lowers a tube to the oil below it and pumps the top layer of the pool first, a bucket at a time
 const NAME: &str = "pump";
@@ -366,12 +365,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         render::slot(sprite);
     }
 
-    ctx.tileEntities().register(
-        NAME,
-        TileEntitySpec { inventory: 0, ticks: true, sync: false, behavior: None },
-        Some(Rc::new(PumpTile)),
-    )?;
-    ctx.tileEntities().model(NAME, EntityModelSpec::default())?;
     ctx.blocks().register(
         NAME,
         BlockSpecBuilder::template("minecraft:block")
@@ -379,7 +372,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .sound("metal")
             .hardness(HARDNESS)
             .texture(SIDE)
-            .tileEntity(NAME)
+            .tile(Tile::new(PumpTile).ticks().model(EntityModelSpec::default()))
             .tag(crate::machines::MACHINES)
             .behavior(PumpBlock),
     )?;

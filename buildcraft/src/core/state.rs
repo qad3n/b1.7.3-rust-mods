@@ -6,13 +6,6 @@ use std::rc::Rc;
 // BlockQuarry, BlockMiningWell, BlockBuilder and BlockTemplate face a side, an unplaced item faces down
 pub(crate) const FACING: &str = "facing";
 
-// one property listed in the order its values were stored as metadata before blocks had states
-pub(crate) fn register(ctx: &mut RegisterCtx, block: &str, name: &str, values: &[&str]) -> Result<()>
-{
-    let properties: Vec<PropertySpec> = vec![PropertySpec::new(name, values)];
-    ctx.blocks().states(block, BlockStatesSpec { properties, ..BlockStatesSpec::default() })
-}
-
 // the states of one property a model cuboid shows in, one when entry per value shown
 pub(crate) fn when(property: &str, values: &[&str], shown: impl Fn(&str) -> bool) -> Vec<BTreeMap<String, String>>
 {

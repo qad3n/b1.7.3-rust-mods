@@ -142,6 +142,13 @@ impl BlockBehavior for EngineBlock
 
 fn registerEngine(ctx: &mut RegisterCtx, row: &'static EngineRow) -> Result<()>
 {
+    // RenderEngine.inventoryRender, the engine at rest pointing up
+    let item: ItemModelSpec = ItemModelSpec
+    {
+        cuboids: Vec::new(),
+        tile: Some(Identifier::parse(&format!("buildcraft:{TILE}")).expect("the engine tile is an identifier")),
+        pose: model::itemPose(row.m_name),
+    };
     ctx.blocks().register(
         row.m_name,
         BlockSpecBuilder::template("minecraft:block")
@@ -155,17 +162,9 @@ fn registerEngine(ctx: &mut RegisterCtx, row: &'static EngineRow) -> Result<()>
             .tileEntity(TILE)
             .tag(TAG)
             .tag(crate::machines::CONNECTORS)
+            .itemModel(item)
             .behavior(EngineBlock),
     )?;
-
-    // RenderEngine.inventoryRender, the engine at rest pointing up
-    let item: ItemModelSpec = ItemModelSpec
-    {
-        cuboids: Vec::new(),
-        tile: Some(Identifier::parse(&format!("buildcraft:{TILE}")).expect("the engine tile is an identifier")),
-        pose: model::itemPose(row.m_name),
-    };
-    ctx.blocks().itemModel(row.m_name, item)?;
 
     // BuildCraftEnergy: a plate, a glass pane, two gears and a piston
     ctx.recipes()
