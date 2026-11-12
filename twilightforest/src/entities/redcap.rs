@@ -1,8 +1,6 @@
 use super::ai::target;
 use b173_api::math::{blockOf, distance};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 // EntityTFRedcap's own tasks: EntityAITFRedcapShy circles a player who looks at it, EntityAITFRedcapLightTNT lights
 // tnt nearby, EntityAITFRedcapPlantTNT has the sapper plant its three tnt behind a player's back
@@ -31,7 +29,7 @@ const SAPPER_TNT: i32 = 3;
 const TNT: &str = "minecraft:tnt";
 const PRIMED: &str = "minecraft:primed_tnt";
 
-#[derive(Default, Clone, Copy)]
+#[derive(Serialize, Deserialize, Default, Clone, Copy)]
 struct Redcap
 {
     m_lefty: bool,
@@ -40,31 +38,21 @@ struct Redcap
     m_planted: i32,
 }
 
-thread_local!
-{
-    static REDCAPS: RefCell<HashMap<(i32, i32), Redcap>> = RefCell::new(HashMap::new());
-}
+static REDCAPS: EntityState<Redcap> = EntityState::new("redcap");
 
 fn state(entity: Entity) -> Redcap
 {
-    REDCAPS.with(|redcaps|
+    if let Some(redcap) = REDCAPS.find(entity)
     {
-        *redcaps
-            .borrow_mut()
-            .entry((entity.world.dimension, entity.id))
-            .or_insert_with(|| Redcap { m_lefty: entity.world.random(2) == 0, ..Redcap::default() })
-    })
+        return redcap;
+    }
+
+    let redcap: Redcap = Redcap { m_lefty: entity.world.random(2) == 0, ..Redcap::default() };
+    setState(entity, redcap);
+    redcap
 }
 
-fn setState(entity: Entity, redcap: Redcap)
-{
-    REDCAPS.with(|redcaps| redcaps.borrow_mut().insert((entity.world.dimension, entity.id), redcap));
-}
-
-pub(crate) fn forget(entity: Entity)
-{
-    REDCAPS.with(|redcaps| redcaps.borrow_mut().remove(&(entity.world.dimension, entity.id)));
-}
+fn setState(entity: Entity, redcap: Redcap) { super::store(&REDCAPS, entity, &redcap); }
 
 // recentlyHit for the shy check
 pub(crate) fn hurt(entity: Entity)

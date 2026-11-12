@@ -1,13 +1,12 @@
 use super::{killer, showBar};
 use crate::entities::ai::{eyes, face, target};
 use crate::entities::shots::{self, LICH_BOLT, LICH_BOMB};
+use crate::entities::{clear, store};
 use crate::models::{Program, bipedPose, tf_lich};
 use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::math::{distance, floor};
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 use std::rc::Rc;
 
 // EntityTFLich: a shielded caster that splits into shadow clones, then calls up zombie minions, then fights hand to
@@ -66,17 +65,14 @@ struct Lich
     m_bomb: bool,
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default)]
 struct Brain
 {
     m_attack: i32,
     m_bomb: bool,
 }
 
-thread_local!
-{
-    static BRAINS: RefCell<HashMap<(i32, i32), Brain>> = RefCell::new(HashMap::new());
-}
+static BRAINS: EntityState<Brain> = EntityState::new("brain");
 
 fn state(entity: Entity) -> Lich
 {
@@ -381,19 +377,16 @@ impl EntityBehavior for TwilightLich
             return;
         }
 
-        BRAINS.with(|brains|
+        let mut brain: Brain = BRAINS.get(entity);
+        brain.m_attack = (brain.m_attack - 1).max(0);
+
+        if let Some(goal) = target(entity)
         {
-            let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
-            let brain: &mut Brain = brains.entry((world.dimension, entity.id)).or_default();
-            brain.m_attack = (brain.m_attack - 1).max(0);
+            caster(entity, info, &mut lich, &mut brain, &goal);
+        }
 
-            if let Some(goal) = target(entity)
-            {
-                caster(entity, info, &mut lich, brain, &goal);
-            }
-
-            lich.m_bomb = brain.m_bomb;
-        });
+        lich.m_bomb = brain.m_bomb;
+        store(&BRAINS, entity, &brain);
 
         save(entity, lich);
 
@@ -459,7 +452,7 @@ impl EntityBehavior for TwilightLich
     fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
         let world: World = entity.world;
-        BRAINS.with(|brains| brains.borrow_mut().remove(&(world.dimension, entity.id)));
+        clear(&BRAINS, entity);
 
         let lich: Lich = state(entity);
         if lich.m_clone || !world.isAuthority()

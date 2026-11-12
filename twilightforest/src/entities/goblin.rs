@@ -2,8 +2,6 @@ use super::ai::target;
 use crate::models::{Program, combine, tf_block_goblin, tf_goblin_chain, tf_spike_block};
 use b173_api::math::add;
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 // EntityTFBlockGoblin swings its spiked block on a chain around itself, wide while it hunts, and the block hurts
 // whatever it sweeps through
@@ -41,10 +39,7 @@ struct Chain
     m_swinging: bool,
 }
 
-thread_local!
-{
-    static RECOIL: RefCell<HashMap<(i32, i32), i32>> = RefCell::new(HashMap::new());
-}
+static RECOIL: EntityState<i32> = EntityState::new("recoil");
 
 pub(crate) fn model() -> EntityModelSpec
 {
@@ -72,16 +67,10 @@ fn blockOffset(angle: f64, length: f64) -> [f64; 3]
     [radians.cos() * length, tuning::HANG - length / tuning::HANG_DROP, radians.sin() * length]
 }
 
-pub(crate) fn forget(entity: Entity)
-{
-    RECOIL.with(|recoil| recoil.borrow_mut().remove(&(entity.world.dimension, entity.id)));
-}
-
 pub(crate) fn tick(entity: Entity, info: &EntityInfo)
 {
     let world: World = entity.world;
-    let key: (i32, i32) = (world.dimension, entity.id);
-    let recoil: i32 = RECOIL.with(|recoil| recoil.borrow().get(&key).copied().unwrap_or(0)).saturating_sub(1).max(0);
+    let recoil: i32 = RECOIL.get(entity).saturating_sub(1).max(0);
     let swinging: bool = target(entity).is_some() && recoil == 0;
     let shown: Chain = entity.synced();
     if shown.m_swinging != swinging
@@ -115,7 +104,7 @@ pub(crate) fn tick(entity: Entity, info: &EntityInfo)
         }
     }
 
-    RECOIL.with(|recoil| recoil.borrow_mut().insert(key, left));
+    super::store(&RECOIL, entity, &left);
 }
 
 // a world offset from the goblin's feet in the space its model draws in, undoing RenderLiving's turn and flip

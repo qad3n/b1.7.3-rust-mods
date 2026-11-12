@@ -2,8 +2,6 @@ use super::ai::{eyes, face, target};
 use crate::math::{gaussian, look};
 use b173_api::math::distance;
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 // EntityAITFBreathAttack with IBreathAttacker: a winter wolf breathes frost and a fire beetle breathes fire at what
 // it hunts within five blocks, the beetle's flames burn what they reach
@@ -54,15 +52,7 @@ pub(crate) fn breathing(synced: &[u8]) -> bool
     b173_api::fromBytes::<Breathing>(synced).is_ok_and(|state| state.m_on)
 }
 
-thread_local!
-{
-    static LEFT: RefCell<HashMap<(i32, i32), i32>> = RefCell::new(HashMap::new());
-}
-
-pub(crate) fn forget(entity: Entity)
-{
-    LEFT.with(|left| left.borrow_mut().remove(&(entity.world.dimension, entity.id)));
-}
+static LEFT: EntityState<i32> = EntityState::new("breath_left");
 
 fn setOn(entity: Entity, on: bool)
 {
@@ -115,8 +105,7 @@ fn scorch(entity: Entity, info: &EntityInfo)
 // the server side, EntityAITFBreathAttack's start, continue and update
 pub(crate) fn tick(entity: Entity, info: &EntityInfo, breath: &Breath)
 {
-    let key: (i32, i32) = (entity.world.dimension, entity.id);
-    let left: i32 = LEFT.with(|left| left.borrow().get(&key).copied().unwrap_or(0));
+    let left: i32 = LEFT.get(entity);
     let goal: Option<EntityInfo> = target(entity).filter(|goal| inReach(entity, info, goal));
     let next: i32 = match goal
     {
@@ -124,7 +113,7 @@ pub(crate) fn tick(entity: Entity, info: &EntityInfo, breath: &Breath)
         Some(_) if crate::math::fraction(entity.world) < tuning::CHANCE => tuning::TICKS,
         _ => 0,
     };
-    LEFT.with(|left| left.borrow_mut().insert(key, next));
+    super::store(&LEFT, entity, &next);
     setOn(entity, next > 0);
 
     let Some(goal) = goal.filter(|_| next > 0)

@@ -1,8 +1,6 @@
 use super::shots;
 use b173_api::math::{distance, flatLength, floor, yawTowards};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 // the parts of the twilight mobs' EntityAI tasks the beta templates do not have
 #[derive(Clone, Copy, PartialEq)]
@@ -96,21 +94,12 @@ mod tuning
     pub const IDLE: f64 = 0.01;
 }
 
-thread_local!
-{
-    // per mob countdowns, by dimension and id
-    static TIMERS: RefCell<HashMap<(i32, i32), i32>> = RefCell::new(HashMap::new());
-}
+// per mob countdowns
+static TIMERS: EntityState<i32> = EntityState::new("timer");
 
-fn timer(entity: Entity) -> i32
-{
-    TIMERS.with(|timers| timers.borrow().get(&(entity.world.dimension, entity.id)).copied().unwrap_or(0))
-}
+fn timer(entity: Entity) -> i32 { TIMERS.get(entity) }
 
-fn setTimer(entity: Entity, value: i32)
-{
-    TIMERS.with(|timers| timers.borrow_mut().insert((entity.world.dimension, entity.id), value));
-}
+fn setTimer(entity: Entity, value: i32) { super::store(&TIMERS, entity, &value); }
 
 pub(crate) fn target(entity: Entity) -> Option<EntityInfo>
 {
@@ -518,13 +507,4 @@ pub(crate) fn tick(ai: Ai, entity: Entity, info: &EntityInfo)
         Ai::Termite => burrow(entity, info),
         Ai::Breather(breath) => super::breath::tick(entity, info, breath),
     }
-}
-
-pub(crate) fn forget(entity: Entity)
-{
-    super::redcap::forget(entity);
-    super::goblin::forget(entity);
-    super::goblin_knight::forget(entity);
-    super::breath::forget(entity);
-    TIMERS.with(|timers| timers.borrow_mut().remove(&(entity.world.dimension, entity.id)));
 }

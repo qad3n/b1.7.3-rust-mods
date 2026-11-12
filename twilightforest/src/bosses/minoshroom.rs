@@ -30,8 +30,6 @@ impl EntityBehavior for Minoshroom
 
     fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
-        ai::forget(entity);
-
         let world: World = entity.world;
 
         let Some(info) = entity.info()

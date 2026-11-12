@@ -1,6 +1,7 @@
 use super::{Home, home, killer};
 use crate::entities::ai::face;
 use crate::entities::shots::{self, THROWN_AXE, THROWN_PICK};
+use crate::entities::{clear, store};
 use crate::models::{Program, bipedPose, combine, tf_knight_phantom, tf_phantom_armor};
 use crate::names;
 use crate::progress::{self, Gate};
@@ -8,8 +9,6 @@ use crate::treasure::{self, Table};
 use crate::world::generate::GenWorld;
 use b173_api::math::{distance, flatLength, floor, length, sub};
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 use std::rc::Rc;
 
 // EntityTFKnightPhantom, six ghostly knights of the stronghold that fly in formations around their spawner and take
@@ -123,11 +122,8 @@ struct Shown
     m_weapon: Weapon,
 }
 
-thread_local!
-{
-    // the formation a leader hands out reaches every knight this tick
-    static ORDERS: RefCell<HashMap<(i32, i32), Formation>> = RefCell::new(HashMap::new());
-}
+// the formation a leader hands out reaches every knight this tick
+static ORDERS: EntityState<Option<Formation>> = EntityState::new("order");
 
 impl Formation
 {
@@ -277,22 +273,18 @@ fn nextFormation(entity: Entity, info: &EntityInfo, state: &mut Knight)
             let nobodyCharging: bool = near.iter().all(|(_, other)| !other.m_formation.charging());
             let charger: Option<i32> = nobodyCharging.then(|| near[world.random(near.len() as i32) as usize].0.id);
 
-            ORDERS.with(|orders|
+            for (other, knightState) in &near
             {
-                let mut orders: RefMut<HashMap<(i32, i32), Formation>> = orders.borrow_mut();
-
-                for (other, knightState) in &near
+                let knight: Entity = Entity { world, id: other.id };
+                if Some(other.id) == charger
                 {
-                    if Some(other.id) == charger
-                    {
-                        orders.insert((world.dimension, other.id), Formation::AttackStart);
-                    }
-                    else if !knightState.m_formation.charging() && other.id != entity.id
-                    {
-                        orders.insert((world.dimension, other.id), formation);
-                    }
+                    store(&ORDERS, knight, &Some(Formation::AttackStart));
                 }
-            });
+                else if !knightState.m_formation.charging() && other.id != entity.id
+                {
+                    store(&ORDERS, knight, &Some(formation));
+                }
+            }
 
             if charger == Some(entity.id)
             {
@@ -343,8 +335,9 @@ fn throwWeapon(entity: Entity, info: &EntityInfo, state: &Knight, target: &Entit
 fn think(entity: Entity, info: &EntityInfo, state: &mut Knight)
 {
     let world: World = entity.world;
-    if let Some(order) = ORDERS.with(|orders| orders.borrow_mut().remove(&(world.dimension, entity.id)))
+    if let Some(order) = ORDERS.get(entity)
     {
+        clear(&ORDERS, entity);
         switch(state, order);
     }
 

@@ -1406,8 +1406,6 @@ impl EntityBehavior for Posed
             _ =>
             {}
         }
-
-        ai::forget(entity);
     }
 
     fn onHurt(&self, entity: Entity, source: Option<i32>, amount: i32) -> Option<i32>

@@ -1,5 +1,6 @@
 use super::{home, killer};
 use crate::entities::ai::{eyes, face};
+use crate::entities::{clear, store};
 use crate::items::{put, texture};
 use crate::math::look;
 use crate::models::{Program, bipedPose, tf_yeti_alpha};
@@ -7,8 +8,6 @@ use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::math::{blockOf, distance, flatLength, floor, length, sub};
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 use std::rc::Rc;
 
 // EntityTFYetiAlpha, the yeti cave's boss: ice bombs until hurt, then rampages that bring the ceiling down
@@ -91,7 +90,7 @@ struct Shown
     m_tired: bool,
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default)]
 struct Brain
 {
     m_canRampage: bool,
@@ -104,12 +103,7 @@ struct Brain
     m_grounded: bool,
 }
 
-thread_local!
-{
-    static BRAINS: RefCell<HashMap<(i32, i32), Brain>> = RefCell::new(HashMap::new());
-}
-
-fn key(entity: Entity) -> (i32, i32) { (entity.world.dimension, entity.id) }
+static BRAINS: EntityState<Brain> = EntityState::new("brain");
 
 // EntityTFYetiAlpha.destroyBlocksInAABB, all but obsidian, end stone and bedrock
 fn destroyBox(world: World, low: [f64; 3], high: [f64; 3])
@@ -465,7 +459,9 @@ impl EntityBehavior for YetiAlpha
             return;
         }
 
-        BRAINS.with(|brains| think(entity, info, brains.borrow_mut().entry(key(entity)).or_default()));
+        let mut brain: Brain = BRAINS.get(entity);
+        think(entity, info, &mut brain);
+        store(&BRAINS, entity, &brain);
     }
 
     fn onTick(&self, entity: Entity, info: &EntityInfo) { effects(entity, info); }
@@ -488,25 +484,22 @@ impl EntityBehavior for YetiAlpha
         let kind: Option<Identifier> = b173_api::world::damageType();
         let ranged: bool = kind.is_some_and(|kind| matches!(kind.path(), "arrow" | "thrown" | "fireball"));
 
-        BRAINS.with(|brains|
+        let mut brain: Brain = BRAINS.get(entity);
+        if !brain.m_canRampage && brain.m_tired <= 0 && ranged
         {
-            let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
-            let brain: &mut Brain = brains.entry(key(entity)).or_default();
-            if !brain.m_canRampage && brain.m_tired <= 0 && ranged
-            {
-                return None;
-            }
+            return None;
+        }
 
-            brain.m_canRampage = true;
-            Some(amount)
-        })
+        brain.m_canRampage = true;
+        store(&BRAINS, entity, &brain);
+        Some(amount)
     }
 
     fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
         let world: World = entity.world;
 
-        BRAINS.with(|brains| brains.borrow_mut().remove(&key(entity)));
+        clear(&BRAINS, entity);
 
         let Some(info) = entity.info()
         else

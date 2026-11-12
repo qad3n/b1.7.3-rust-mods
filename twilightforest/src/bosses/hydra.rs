@@ -1,12 +1,12 @@
 use super::{killer, showBar};
+use crate::entities::{clear, store};
 use crate::math::look;
 use crate::models::{Program, tf_hydra, tf_hydra_head, tf_hydra_mortar, tf_hydra_neck};
 use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::math::{distance, flatLength, floor, length, sub, yawTowards};
 use b173_api::prelude::*;
-use std::cell::{Cell, RefCell, RefMut};
-use std::collections::HashMap;
+use std::cell::Cell;
 use std::rc::Rc;
 
 // EntityTFHydra and HydraHeadContainer: a body that only turns, seven heads on necks that bite, breathe fire and
@@ -284,7 +284,7 @@ mod mortar
     pub const HIT_RADIUS: f64 = 0.4;
 }
 
-#[derive(Clone, Copy, Default)]
+#[derive(Serialize, Deserialize, Clone, Copy, Default)]
 struct Head
 {
     m_id: Option<i32>,
@@ -303,7 +303,7 @@ struct Head
     m_pitch: f32,
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default)]
 struct Brain
 {
     m_heads: [Head; HEADS],
@@ -324,11 +324,12 @@ struct HeadShown
     m_mouth: f32,
 }
 
+static BRAINS: EntityState<Brain> = EntityState::new("brain");
+// the hydra and head a head or neck entity belongs to
+static PARTS: EntityState<(i32, Option<usize>)> = EntityState::new("part");
+
 thread_local!
 {
-    static BRAINS: RefCell<HashMap<(i32, i32), Brain>> = RefCell::new(HashMap::new());
-    // the head and neck entities back to the hydra and head they belong to
-    static PARTS: RefCell<HashMap<(i32, i32), (i32, Option<usize>)>> = RefCell::new(HashMap::new());
     // damage the hydra deals itself through its parts skips the body armor
     static DIRECT: Cell<bool> = const { Cell::new(false) };
 }
@@ -478,7 +479,7 @@ fn spawnPart(world: World, kind: &str, at: [f64; 3], hydra: i32, head: Option<us
     {
         Ok(spawned) =>
         {
-            PARTS.with(|parts| parts.borrow_mut().insert((world.dimension, spawned.id), (hydra, head)));
+            store(&PARTS, spawned, &(hydra, head));
             Some(spawned.id)
         }
 
@@ -1285,7 +1286,6 @@ fn removeParts(world: World, brain: Brain)
             }
 
             Entity { world, id }.kill();
-            PARTS.with(|parts| parts.borrow_mut().remove(&(world.dimension, id)));
         }
     }
 }
@@ -1302,10 +1302,9 @@ impl EntityBehavior for Hydra
             return;
         }
 
-        BRAINS.with(|brains|
-        {
-            body(entity, info, brains.borrow_mut().entry((entity.world.dimension, entity.id)).or_default())
-        });
+        let mut brain: Brain = BRAINS.get(entity);
+        body(entity, info, &mut brain);
+        store(&BRAINS, entity, &brain);
 
         showBar(entity, LABEL, info);
     }
@@ -1322,13 +1321,11 @@ impl EntityBehavior for Hydra
             return None;
         }
 
-        BRAINS.with(|brains|
+        if let Some(mut brain) = BRAINS.find(entity)
         {
-            if let Some(brain) = brains.borrow_mut().get_mut(&(entity.world.dimension, entity.id))
-            {
-                brain.m_quiet = 0;
-            }
-        });
+            brain.m_quiet = 0;
+            store(&BRAINS, entity, &brain);
+        }
 
         Some((amount as f32 / hydra::ARMOR).round() as i32)
     }
@@ -1348,14 +1345,20 @@ impl EntityBehavior for Hydra
             return;
         }
 
-        let key: (i32, i32) = (world.dimension, entity.id);
-        let done: bool =
-            BRAINS.with(|brains| brains.borrow_mut().get_mut(&key).is_some_and(|brain| dying(entity, info, brain)));
-
-        if done && let Some(brain) = BRAINS.with(|brains| brains.borrow_mut().remove(&key))
+        let Some(mut brain) = BRAINS.find(entity)
+        else
         {
-            removeParts(world, brain);
+            return;
+        };
+
+        if !dying(entity, info, &mut brain)
+        {
+            store(&BRAINS, entity, &brain);
+            return;
         }
+
+        clear(&BRAINS, entity);
+        removeParts(world, brain);
     }
 
     fn onDeath(&self, entity: Entity, source: Option<i32>)
@@ -1416,7 +1419,7 @@ fn far(entity: Entity, source: Option<i32>) -> bool
 fn hurtFromPart(entity: Entity, source: Option<i32>, amount: i32)
 {
     let world: World = entity.world;
-    let Some((hydraId, number)) = PARTS.with(|parts| parts.borrow().get(&(world.dimension, entity.id)).copied())
+    let Some((hydraId, number)) = PARTS.find(entity)
     else
     {
         return;
@@ -1439,10 +1442,8 @@ fn hurtFromPart(entity: Entity, source: Option<i32>, amount: i32)
 
     let isHead: bool = entity.info().is_some_and(|info| info.kind.as_ref().is_some_and(|kind| kind.path() == HEAD));
 
-    let dealt: Option<i32> = BRAINS.with(|brains|
+    let dealt: Option<i32> = BRAINS.find(hydraEntity).and_then(|mut brain|
     {
-        let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
-        let brain: &mut Brain = brains.get_mut(&(world.dimension, hydraId))?;
         let head: Option<&mut Head> = number.filter(|_| isHead).map(|number| &mut brain.m_heads[number]);
         let dealt: i32 = match head
         {
@@ -1465,6 +1466,7 @@ fn hurtFromPart(entity: Entity, source: Option<i32>, amount: i32)
         };
 
         brain.m_quiet = 0;
+        store(&BRAINS, hydraEntity, &brain);
         Some(dealt)
     });
     if let Some(dealt) = dealt.filter(|dealt| *dealt > 0)
@@ -1486,8 +1488,7 @@ impl EntityBehavior for Part
     // the hydra places its heads and necks, they never move or think on their own
     fn onAi(&self, entity: Entity, _info: &EntityInfo)
     {
-        if entity.world.isAuthority()
-            && PARTS.with(|parts| !parts.borrow().contains_key(&(entity.world.dimension, entity.id)))
+        if entity.world.isAuthority() && PARTS.find(entity).is_none()
         {
             entity.kill();
         }

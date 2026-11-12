@@ -22,6 +22,26 @@ pub(crate) const SKELETON_DRUID: &str = "twilightforest:skeleton_druid";
 pub(crate) const SWARM_SPIDER: &str = "twilightforest:swarm_spider";
 pub(crate) const UR_GHAST: &str = "twilightforest:ur_ghast";
 
+// writes per-entity state and logs a failed host call since the next tick reads the default
+pub(crate) fn store<T>(state: &EntityState<T>, entity: Entity, value: &T)
+where T: Serialize + serde::de::DeserializeOwned + Default
+{
+    if let Err(error) = state.set(entity, value)
+    {
+        warn(&format!("entity {} state: {error}", entity.id));
+    }
+}
+
+// drops per-entity state before the entity leaves its world, as a boss that keeps ticking while it dies
+pub(crate) fn clear<T>(state: &EntityState<T>, entity: Entity)
+where T: Serialize + serde::de::DeserializeOwned + Default
+{
+    if let Err(error) = state.clear(entity)
+    {
+        warn(&format!("entity {} state: {error}", entity.id));
+    }
+}
+
 // TileEntityTFGhastTrapActive.setInTrap, a held ur-ghast stops hunting while the trap pulls it down
 pub(crate) fn ghastTrapped(entity: Entity, boss: bool)
 {

@@ -1,13 +1,12 @@
 use super::{killer, showBar};
 use crate::entities::ai::{eyes, face};
+use crate::entities::{clear, store};
 use crate::math::look;
 use crate::models::{Program, bipedPose, tf_snow_queen};
 use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::math::{blockOf, distance, floor, length, sub};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 // EntityTFSnowQueen, the aurora palace's boss: she hovers summoning ice crystals, drops on the player to smash the
@@ -70,7 +69,7 @@ enum Phase
     Beam,
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default)]
 struct Brain
 {
     m_phase: Phase,
@@ -97,10 +96,9 @@ struct Shown
     m_breathing: bool,
 }
 
-thread_local!
-{
-    static BRAINS: RefCell<HashMap<(i32, i32), Brain>> = RefCell::new(HashMap::new());
-}
+static BRAINS: EntityState<Brain> = EntityState::new("brain");
+// the queen an ice shield circles, it melts once she no longer holds it
+static OWNER: EntityState<i32> = EntityState::new("owner");
 
 impl Brain
 {
@@ -394,6 +392,7 @@ fn shields(entity: Entity, info: &EntityInfo, brain: &mut Brain)
         let Some(live) = live.or_else(||
         {
             let spawned: Entity = world.spawnEntity(&format!("twilightforest:{SHIELD}"), at).ok()?;
+            store(&OWNER, spawned, &entity.id);
             crate::world::palette::withPlain("minecraft:ice", |state| spawned.setCarried(state));
             Some(spawned)
         })
@@ -522,10 +521,9 @@ impl EntityBehavior for SnowQueen
             return;
         }
 
-        BRAINS.with(|brains|
-        {
-            think(entity, info, brains.borrow_mut().entry((entity.world.dimension, entity.id)).or_default())
-        });
+        let mut brain: Brain = BRAINS.get(entity);
+        think(entity, info, &mut brain);
+        store(&BRAINS, entity, &brain);
 
         showBar(entity, LABEL, info);
     }
@@ -535,14 +533,12 @@ impl EntityBehavior for SnowQueen
     // EntityTFSnowQueen.attackEntityFrom, damage taken while beaming ends the beam phase
     fn onHurt(&self, entity: Entity, _source: Option<i32>, amount: i32) -> Option<i32>
     {
-        BRAINS.with(|brains|
+        if let Some(mut brain) = BRAINS.find(entity)
+            && brain.m_phase == Phase::Beam
         {
-            if let Some(brain) = brains.borrow_mut().get_mut(&(entity.world.dimension, entity.id))
-                && brain.m_phase == Phase::Beam
-            {
-                brain.m_beamDamage += amount;
-            }
-        });
+            brain.m_beamDamage += amount;
+            store(&BRAINS, entity, &brain);
+        }
 
         Some(amount)
     }
@@ -550,8 +546,9 @@ impl EntityBehavior for SnowQueen
     fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
         let world: World = entity.world;
-        if let Some(brain) = BRAINS.with(|brains| brains.borrow_mut().remove(&(world.dimension, entity.id)))
+        if let Some(brain) = BRAINS.find(entity)
         {
+            clear(&BRAINS, entity);
             for id in brain.m_shields.into_iter().flatten()
             {
                 Entity { world, id }.kill();
@@ -599,8 +596,8 @@ impl EntityBehavior for IceShield
             return;
         }
 
-        let owned: bool =
-            BRAINS.with(|brains| brains.borrow().values().any(|brain| brain.m_shields.contains(&Some(entity.id))));
+        let queen: Option<Brain> = OWNER.find(entity).and_then(|id| BRAINS.find(Entity { world: entity.world, id }));
+        let owned: bool = queen.is_some_and(|brain| brain.m_shields.contains(&Some(entity.id)));
 
         if !owned
         {

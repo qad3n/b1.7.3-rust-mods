@@ -2,7 +2,6 @@ use super::ai::target;
 use b173_api::math::{blockOf, distance, flatLength, floor};
 use b173_api::prelude::*;
 use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 
 // EntityAITFFlockToSameKind, EntityAITFPanicOnFlockDeath and EntityAILeapAtTarget, the kobold's pack habits
 mod tuning
@@ -39,8 +38,10 @@ thread_local!
 {
     // where and when pack members died, by dimension
     static DEATHS: RefCell<Vec<(i32, [f64; 3], i64)>> = const { RefCell::new(Vec::new()) };
-    static FLEEING: RefCell<HashMap<(i32, i32), i64>> = RefCell::new(HashMap::new());
 }
+
+// the time a pack member stops fleeing
+static FLEEING: EntityState<i64> = EntityState::new("fleeing");
 
 fn same(world: World, info: &EntityInfo, reach: f64) -> Vec<EntityInfo>
 {
@@ -58,7 +59,7 @@ pub(crate) fn died(entity: Entity, info: &EntityInfo)
         deaths.push((entity.world.dimension, info.pos, now));
     });
 
-    FLEEING.with(|fleeing| fleeing.borrow_mut().remove(&(entity.world.dimension, entity.id)));
+    super::clear(&FLEEING, entity);
 }
 
 fn frightened(world: World, info: &EntityInfo) -> bool
@@ -94,9 +95,8 @@ fn setPanicked(entity: Entity, panicked: bool)
 fn panic(entity: Entity, info: &EntityInfo) -> bool
 {
     let world: World = entity.world;
-    let key: (i32, i32) = (world.dimension, entity.id);
     let now: i64 = world.time();
-    let until: Option<i64> = FLEEING.with(|fleeing| fleeing.borrow().get(&key).copied()).filter(|until| *until > now);
+    let until: Option<i64> = FLEEING.find(entity).filter(|until| *until > now);
     if until.is_none() && !frightened(world, info)
     {
         setPanicked(entity, false);
@@ -105,7 +105,7 @@ fn panic(entity: Entity, info: &EntityInfo) -> bool
 
     if until.is_none()
     {
-        FLEEING.with(|fleeing| fleeing.borrow_mut().insert(key, now + tuning::PANIC_TICKS));
+        super::store(&FLEEING, entity, &(now + tuning::PANIC_TICKS));
 
         let spot: BlockPos = BlockPos::new(
             floor(info.pos[0]) + world.random(tuning::FLEE * 2 + 1) - tuning::FLEE,

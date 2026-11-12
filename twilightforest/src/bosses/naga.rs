@@ -1,12 +1,11 @@
 use super::{home, killer, showBar};
 use crate::entities::ai::face;
+use crate::entities::{clear, store};
 use crate::models::{Program, tf_naga};
 use crate::names::item;
 use crate::progress::{self, Gate};
 use b173_api::math::{distance, flatLength, floor, normalize, sqrt, sub};
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 use std::f64::consts::PI;
 use std::rc::Rc;
 
@@ -47,7 +46,7 @@ mod naga
     pub const KNOCK_UP: f64 = 0.1;
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default)]
 struct Brain
 {
     m_segments: Vec<i32>,
@@ -63,10 +62,7 @@ struct Brain
     m_cooldown: i32,
 }
 
-thread_local!
-{
-    static BRAINS: RefCell<HashMap<(i32, i32), Brain>> = RefCell::new(HashMap::new());
-}
+static BRAINS: EntityState<Brain> = EntityState::new("brain");
 
 fn inHome(home: Option<[i32; 3]>, at: [f64; 3]) -> bool
 {
@@ -420,15 +416,10 @@ impl EntityBehavior for Naga
 
         voice(entity.world, info);
 
-        let key: (i32, i32) = (entity.world.dimension, entity.id);
-
-        BRAINS.with(|brains|
-        {
-            let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
-            let brain: &mut Brain =
-                brains.entry(key).or_insert_with(|| Brain { m_circle: 15, m_speed: naga::NORMAL, ..Brain::default() });
-            think(entity, info, brain);
-        });
+        let mut brain: Brain =
+            BRAINS.find(entity).unwrap_or_else(|| Brain { m_circle: 15, m_speed: naga::NORMAL, ..Brain::default() });
+        think(entity, info, &mut brain);
+        store(&BRAINS, entity, &brain);
 
         showBar(entity, LABEL, info);
     }
@@ -442,18 +433,17 @@ impl EntityBehavior for Naga
             return None;
         }
 
-        BRAINS.with(|brains|
+        if let Some(mut brain) = BRAINS.find(entity)
         {
-            if let Some(brain) = brains.borrow_mut().get_mut(&(entity.world.dimension, entity.id))
-            {
-                brain.m_quiet = 0;
+            brain.m_quiet = 0;
 
-                if let Some(attacker) = source.filter(|id| *id != entity.id)
-                {
-                    brain.m_target = Some(attacker);
-                }
+            if let Some(attacker) = source.filter(|id| *id != entity.id)
+            {
+                brain.m_target = Some(attacker);
             }
-        });
+
+            store(&BRAINS, entity, &brain);
+        }
 
         Some(amount)
     }
@@ -462,10 +452,8 @@ impl EntityBehavior for Naga
     fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
         let world: World = entity.world;
-        let segments: Vec<i32> = BRAINS
-            .with(|brains| brains.borrow_mut().remove(&(world.dimension, entity.id)))
-            .map(|brain| brain.m_segments)
-            .unwrap_or_default();
+        let segments: Vec<i32> = BRAINS.find(entity).map(|brain| brain.m_segments).unwrap_or_default();
+        clear(&BRAINS, entity);
 
         for id in segments
         {

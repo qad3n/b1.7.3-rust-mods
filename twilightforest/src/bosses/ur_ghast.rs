@@ -1,5 +1,6 @@
 use super::{killer, showBar};
 use crate::entities::shots::{self, UR_FIREBALL};
+use crate::entities::{clear, store};
 use crate::math::look;
 use crate::models::{Program, cuboid, part};
 use crate::names;
@@ -8,8 +9,6 @@ use crate::treasure::{self, Table};
 use crate::world::generate::GenWorld;
 use b173_api::math::{blockOf, distance, flatLength, floor, length, sub};
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 use std::rc::Rc;
 
 // EntityTFUrGhast, the dark tower's boss: it circles the tower's ghast traps, spits triple fireballs, and every 48
@@ -156,7 +155,7 @@ pub(crate) fn drawBody(body: &mut Program, first: u16, age: f32, look: [f32; 2])
     }
 }
 
-#[derive(Default)]
+#[derive(Serialize, Deserialize, Default)]
 struct Brain
 {
     m_course: Option<[f64; 3]>,
@@ -187,10 +186,7 @@ struct Shown
     m_tantrum: bool,
 }
 
-thread_local!
-{
-    static BRAINS: RefCell<HashMap<(i32, i32), Brain>> = RefCell::new(HashMap::new());
-}
+static BRAINS: EntityState<Brain> = EntityState::new("brain");
 
 fn trapAt(world: World, pos: BlockPos) -> bool
 {
@@ -654,13 +650,11 @@ fn storm()
 
 pub(crate) fn trapped(entity: Entity)
 {
-    BRAINS.with(|brains|
+    if let Some(mut brain) = BRAINS.find(entity)
     {
-        if let Some(brain) = brains.borrow_mut().get_mut(&(entity.world.dimension, entity.id))
-        {
-            brain.m_trapped = boss::TRAP_HOLD;
-        }
-    });
+        brain.m_trapped = boss::TRAP_HOLD;
+        store(&BRAINS, entity, &brain);
+    }
 }
 
 struct UrGhast;
@@ -675,26 +669,23 @@ impl EntityBehavior for UrGhast
             return;
         }
 
-        let shown: Shown = BRAINS.with(|brains|
-        {
-            let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
-            let brain: &mut Brain = brains.entry((entity.world.dimension, entity.id)).or_default();
-            think(entity, info, brain);
+        let mut brain: Brain = BRAINS.get(entity);
+        think(entity, info, &mut brain);
+        store(&BRAINS, entity, &brain);
 
-            let status: u8 = if brain.m_attack > boss::SPIT_CHARGE
-            {
-                2
-            }
-            else if brain.m_aggro <= 0 && !brain.m_aggressive
-            {
-                0
-            }
-            else
-            {
-                1
-            };
-            Shown { m_status: status, m_attack: brain.m_attack, m_tantrum: brain.m_tantrum }
-        });
+        let status: u8 = if brain.m_attack > boss::SPIT_CHARGE
+        {
+            2
+        }
+        else if brain.m_aggro <= 0 && !brain.m_aggressive
+        {
+            0
+        }
+        else
+        {
+            1
+        };
+        let shown: Shown = Shown { m_status: status, m_attack: brain.m_attack, m_tantrum: brain.m_tantrum };
         if entity.synced::<Shown>() != shown
         {
             let _ = entity.setSynced(&shown);
@@ -733,33 +724,31 @@ impl EntityBehavior for UrGhast
 
         let world: World = entity.world;
 
-        BRAINS.with(|brains|
+        let mut brain: Brain = BRAINS.get(entity);
+        let dealt: i32 = if brain.m_tantrum
         {
-            let mut brains: RefMut<HashMap<(i32, i32), Brain>> = brains.borrow_mut();
-            let brain: &mut Brain = brains.entry((world.dimension, entity.id)).or_default();
-            let dealt: i32 = if brain.m_tantrum
-            {
-                amount / boss::TANTRUM_SHIELD
-            }
-            else
-            {
-                amount
-            };
-            brain.m_untilPhase -= dealt;
-            if brain.m_untilPhase <= 0
-            {
-                switchPhase(world, brain);
-            }
+            amount / boss::TANTRUM_SHIELD
+        }
+        else
+        {
+            amount
+        };
+        brain.m_untilPhase -= dealt;
+        if brain.m_untilPhase <= 0
+        {
+            switchPhase(world, &mut brain);
+        }
 
-            Some(dealt)
-        })
+        store(&BRAINS, entity, &brain);
+        Some(dealt)
     }
 
     // EntityTFUrGhast.onDeathUpdate and onDeath, the boss treasure over the middle of the traps
     fn onDeath(&self, entity: Entity, source: Option<i32>)
     {
         let world: World = entity.world;
-        let brain: Option<Brain> = BRAINS.with(|brains| brains.borrow_mut().remove(&(world.dimension, entity.id)));
+        let brain: Option<Brain> = BRAINS.find(entity);
+        clear(&BRAINS, entity);
 
         if let Some(player) = killer(world, source)
         {

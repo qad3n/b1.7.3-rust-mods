@@ -6,8 +6,6 @@ use crate::models::
 use b173_api::math;
 use b173_api::math::{distance, flatLength};
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 use std::f32::consts::{PI, TAU};
 
 // EntityTFGoblinKnightLower carries EntityTFGoblinKnightUpper, the rider's shield guards their backs, both wear
@@ -70,18 +68,8 @@ struct Gear
     m_spear: i64,
 }
 
-thread_local!
-{
-    static SHIELD_HITS: RefCell<HashMap<(i32, i32), i32>> = RefCell::new(HashMap::new());
-    static LOOSE: RefCell<HashMap<(i32, i32), i32>> = RefCell::new(HashMap::new());
-}
-
-pub(crate) fn forget(entity: Entity)
-{
-    let key: (i32, i32) = (entity.world.dimension, entity.id);
-    SHIELD_HITS.with(|hits| hits.borrow_mut().remove(&key));
-    LOOSE.with(|loose| loose.borrow_mut().remove(&key));
-}
+static SHIELD_HITS: EntityState<i32> = EntityState::new("shield_hits");
+static LOOSE: EntityState<i32> = EntityState::new("loose");
 
 fn setGear(entity: Entity, gear: Gear)
 {
@@ -132,15 +120,8 @@ fn armored(amount: i32, armor: i32) -> i32 { amount * (tuning::ARMOR_SCALE - arm
 // damageShield, the third dent breaks it
 fn dent(upper: Entity, info: &EntityInfo)
 {
-    let key: (i32, i32) = (upper.world.dimension, upper.id);
-
-    let hits: i32 = SHIELD_HITS.with(|hits|
-    {
-        let mut hits: RefMut<HashMap<(i32, i32), i32>> = hits.borrow_mut();
-        let count: &mut i32 = hits.entry(key).or_insert(0);
-        *count += 1;
-        *count
-    });
+    let hits: i32 = SHIELD_HITS.get(upper) + 1;
+    super::store(&SHIELD_HITS, upper, &hits);
 
     breakSound(upper, info);
 
@@ -358,22 +339,15 @@ pub(crate) fn upperTick(entity: Entity, info: &EntityInfo)
         }
     }
 
-    let key: (i32, i32) = (world.dimension, entity.id);
-
-    let loose: i32 = LOOSE.with(|loose|
+    let loose: i32 = if entity.riding().is_some()
     {
-        let mut loose: RefMut<HashMap<(i32, i32), i32>> = loose.borrow_mut();
-        let ticks: &mut i32 = loose.entry(key).or_insert(0);
-        *ticks = if entity.riding().is_some()
-        {
-            0
-        }
-        else
-        {
-            *ticks + 1
-        };
-        *ticks
-    });
+        0
+    }
+    else
+    {
+        LOOSE.get(entity) + 1
+    };
+    super::store(&LOOSE, entity, &loose);
     // a pair reloaded from disk gets a moment to remount before the shield falls
     if loose > tuning::REMOUNT_GRACE && current.m_shield
     {
