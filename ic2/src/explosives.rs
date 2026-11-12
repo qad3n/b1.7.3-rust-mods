@@ -197,28 +197,25 @@ const PRIMED: [Primed; 2] = [
     Primed { m_charge: Charge::Nuke, m_block: "nuke", m_fuse: 300, m_power: 40.0, m_drop: 0.05, m_damage: 1.5 },
 ];
 
+// the charge a primed explosive carries, the primed_block template runs its fuse and fall
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Debug, Default)]
-struct Fuse
+struct Lit
 {
     m_charge: Charge,
-    m_fuse: i32,
-    m_motion: [f64; 3],
-    m_started: bool,
 }
 
 mod fall
 {
-    // EntityIC2Explosive.onUpdate: falls like primed TNT
-    pub const GRAVITY: f64 = 0.04;
-    pub const DRAG: f64 = 0.98;
-    pub const GROUND_DRAG: f64 = 0.7;
-    pub const BOUNCE: f64 = -0.5;
+    // tracked as primed TNT is
+    pub const TRACKING: i32 = 160;
+    pub const UPDATES: i32 = 10;
+    // EntityIC2Explosive's constructor hop
     pub const POP: f64 = 0.2;
     pub const NUDGE: f64 = 0.02;
     pub const SMOKE_HEIGHT: f64 = 0.5;
 }
 
-// EntityIC2Explosive
+// EntityIC2Explosive: falls and flashes as primed TNT, then goes off with its charge's blast
 struct PrimedCharge;
 
 #[entity_behavior]
@@ -227,42 +224,15 @@ impl EntityBehavior for PrimedCharge
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
         let world: World = entity.world;
-        if !world.isAuthority()
+        if !world.isAuthority() || entity.field(EntityField::Fuse) >= 0.0
         {
             return;
         }
 
-        let mut fuse: Fuse = entity.data();
-        let primed: &Primed = PRIMED.iter().find(|row| row.m_charge == fuse.m_charge).unwrap_or(&PRIMED[0]);
-        let mut motion: [f64; 3] = if fuse.m_started
-        {
-            fuse.m_motion
-        }
-        else
-        {
-            start(world)
-        };
-        fuse.m_started = true;
-
-        motion[1] -= fall::GRAVITY;
-        motion = motion.map(|value| value * fall::DRAG);
-        if entity.flag(EntityField::OnGround)
-        {
-            motion = [motion[0] * fall::GROUND_DRAG, motion[1] * fall::BOUNCE, motion[2] * fall::GROUND_DRAG];
-        }
-
-        fuse.m_fuse -= 1;
-        if fuse.m_fuse < 0
-        {
-            entity.kill();
-            blast(world, info.pos, primed.m_power, Blast { m_drop: primed.m_drop, m_damage: primed.m_damage });
-            return;
-        }
-
-        world.particle("smoke", [info.pos[0], info.pos[1] + fall::SMOKE_HEIGHT, info.pos[2]], [0.0; 3]);
-        fuse.m_motion = motion;
-        let _ = entity.setMotion(motion);
-        let _ = entity.setData(&fuse);
+        let lit: Lit = entity.data();
+        let primed: &Primed = PRIMED.iter().find(|row| row.m_charge == lit.m_charge).unwrap_or(&PRIMED[0]);
+        entity.kill();
+        blast(world, info.pos, primed.m_power, Blast { m_drop: primed.m_drop, m_damage: primed.m_damage });
     }
 }
 
@@ -283,9 +253,24 @@ fn prime(world: World, pos: BlockPos, charge: Charge, fuse: Option<i32>)
         return;
     };
 
-    let state: Fuse =
-        Fuse { m_charge: charge, m_fuse: fuse.unwrap_or(primed.m_fuse), m_motion: [0.0; 3], m_started: false };
-    let _ = entity.setData(&state);
+    match StateHandle::named(primed.m_block)
+    {
+        Ok(state) => entity.setCarried(&state),
+        Err(error) => warn(&format!("a primed {} has no block to draw: {error}", primed.m_block)),
+    }
+
+    entity.setField(EntityField::Fuse, f64::from(fuse.unwrap_or(primed.m_fuse)));
+
+    if let Err(error) = entity.setData(&Lit { m_charge: charge })
+    {
+        warn(&format!("could not store the primed explosive's charge: {error}"));
+    }
+
+    if let Err(error) = entity.setMotion(start(world))
+    {
+        warn(&format!("could not start the primed explosive moving: {error}"));
+    }
+
     world.playSound(dir::center(pos), "random.fuse", 1.0, 1.0);
 }
 
@@ -975,7 +960,14 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 
     ctx.entities().register(
         "primed_explosive",
-        projectile(&blockTexture("industrial_tnt_side")),
+        EntitySpec
+        {
+            template: Identifier::parse("minecraft:primed_block").ok(),
+            tracking_range: Some(fall::TRACKING),
+            update_frequency: Some(fall::UPDATES),
+            send_velocity: Some(true),
+            ..EntitySpec::default()
+        },
         Some(Rc::new(PrimedCharge)),
     )?;
     ctx.entities().register("dynamite_stick", projectile(&itemTexture("dynamite")), Some(Rc::new(Dynamite)))?;

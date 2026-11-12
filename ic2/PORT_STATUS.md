@@ -71,6 +71,8 @@ placement now draws from the loader's per feature random, so a seed gives differ
   `crates/modloader/src/blast.rs` and `b173_api/src/world/blast.rs`: mods run their own explosions the way
   `Explosion` does. Used for `ExplosionIC2`, `PointExplosion` and the mining laser.
 - `minecraft:door` block template (`BlockDoor`), used by the reinforced door.
+- API 1.57: `minecraft:primed_block` template and `EntityField::Fuse`, so primed ITNT and nukes fall, bounce,
+  swell and flash as `EntityTNTPrimed` does with their own block. Manifest `api = "1.57"`.
 - API 1.40 (Aether's): machine jobs and `matchJob`, per machine fuels and `machineFuel`, weighted loot pools.
 - SDK only: `findJob` and `machineFuel` answer from a per epoch cache, and `nameWith` reads a block's name without
   copying it, so every machine tick and energy packet costs a hash lookup instead of a host round trip.
@@ -122,7 +124,7 @@ Everything else is checked by build and clippy only.
 - The luminator renders at normal brightness; IC2 v1.00 drew it full bright but never lit the world either.
 - The reinforced door uses its own top and bottom sprites; IC2 v1.00 showed unfilled sheet slots in the world.
 - Nano and quantum armor keep IC2's all-or-nothing absorption, but plain armor still counts once a hit gets through.
-- Primed ITNT, nukes, dynamite and lasers draw as flat sprites, not as blocks and crossed quads.
+- Dynamite and lasers draw as flat sprites, not as crossed quads.
 - Energy paths are rebuilt whenever an IC2 block or a player-placed block changes, so the EU-reader's totals
   restart then.
 - Machines accept and give items through other mods' pipes by the loader's chest rule, as IC2's plain
