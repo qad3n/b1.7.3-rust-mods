@@ -429,6 +429,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         {
             spec = spec.behavior(crate::accessories::lifeShard());
         }
+        else if name == "aether_portal_frame"
+        {
+            spec = spec.behavior(crate::portal::FrameKit);
+        }
         ctx.items().register(name, spec)?;
     }
 

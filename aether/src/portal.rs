@@ -36,6 +36,20 @@ mod build
     pub const HEIGHT: i32 = 3;
 }
 
+// ItemAetherPortalFrame.createPortalFrame: glowstone four wide and five tall around a two by three portal
+mod kit
+{
+    pub const WIDTH: i32 = 4;
+    pub const ROWS: std::ops::Range<i32> = -1..4;
+    pub const INNER_COLUMNS: std::ops::Range<i32> = 1..3;
+    pub const INNER_ROWS: std::ops::Range<i32> = 0..3;
+    // the base row sits on the clicked block, or in its place when that block gives way
+    pub const ON_TOP: i32 = 2;
+    pub const IN_PLACE: i32 = 1;
+    pub const QUARTERS: f64 = 4.0;
+    pub const TURN: f64 = 360.0;
+}
+
 // Direction.offsetX and offsetZ for the BlockPortal axis tables, left then right
 const AXES: [[[i32; 2]; 2]; 2] = [[[1, 0], [-1, 0]], [[0, -1], [0, 1]]];
 
@@ -477,6 +491,78 @@ fn arrive(player: Player, to: i32)
         }
     };
     let _ = player.teleport(to, spot);
+}
+
+fn replaceable(world: World, pos: BlockPos) -> bool
+{
+    world.isAir(pos) || World::blockInfo(world.block(pos)).replaceable
+}
+
+// ItemAetherPortalFrame.createPortalFrame: nothing is built unless the whole frame has room
+fn buildFrame(world: World, clicked: BlockPos, yaw: f32) -> bool
+{
+    let facing: i32 = floor(f64::from(yaw) * kit::QUARTERS / kit::TURN + 0.5) & 3;
+    let alongX: bool = facing == 0 || facing == 2;
+    let lift: i32 = if replaceable(world, clicked)
+    {
+        kit::IN_PLACE
+    }
+    else
+    {
+        kit::ON_TOP
+    };
+    let base: BlockPos = clicked.offset(0, lift, 0);
+    let cell = |along: i32, up: i32| -> BlockPos
+    {
+        if alongX
+        {
+            base.offset(along - 1, up, 0)
+        }
+        else
+        {
+            base.offset(0, up, along - 1)
+        }
+    };
+    let cells = |columns: std::ops::Range<i32>, rows: std::ops::Range<i32>| -> Vec<BlockPos>
+    {
+        columns.flat_map(|along| rows.clone().map(move |up| (along, up))).map(|(along, up)| cell(along, up)).collect()
+    };
+
+    let frame: Vec<BlockPos> = cells(0..kit::WIDTH, kit::ROWS);
+    if !frame.iter().all(|at| replaceable(world, *at))
+    {
+        return false;
+    }
+
+    for at in frame
+    {
+        placeQuiet(world, at, Pick::of(GLOWSTONE));
+    }
+
+    for at in cells(kit::INNER_COLUMNS, kit::INNER_ROWS)
+    {
+        placeQuiet(world, at, AIR);
+    }
+
+    trySpawn(world, cell(kit::INNER_COLUMNS.start, kit::INNER_ROWS.start))
+}
+
+// ItemAetherPortalFrame: one use builds a whole lit portal on the block it is used on
+pub(crate) struct FrameKit;
+
+#[item_behavior]
+impl ItemBehavior for FrameKit
+{
+    fn onUseOnBlock(&self, world: World, player: Player, stack: ItemStack, pos: BlockPos, _face: i32) -> Use
+    {
+        let built: bool = world.isAuthority() && player.info().is_some_and(|info| buildFrame(world, pos, info.yaw));
+        if !built
+        {
+            return Use::Done(Some(stack));
+        }
+
+        Use::Done((stack.count > 1).then(|| ItemStack { count: stack.count - 1, ..stack }))
+    }
 }
 
 // BlockAetherPortal: glowstone framed portal blocks that send players between the Aether and the overworld
