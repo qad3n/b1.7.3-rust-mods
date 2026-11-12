@@ -32,20 +32,15 @@ into the `mods/` folder of the client and the server.
 
 Mods made here commit their assets with the source.
 
-Ported mods do not: their textures, sounds and lang files belong to the original authors. Each ported mod's `README.md`
-says which jar to supply and how to extract the assets from it before building, for example:
-
-```
-cd aether
-python3 -I tools/extract_assets.py <path to aether-1.7.10-v1.1.2.5.jar>
-```
-
-A new port adds its `<mod>/assets/` to `.gitignore`.
+Ported mods do not: their textures, sounds and lang files belong to the original authors and never go in a `.bmod`.
+Each ported mod ships an `assets.toml` recipe instead, and its `README.md` names the download a player puts in the
+game's `mods/<modid>_assets/` folder. The client converts that download once and serves it below the mod's own
+assets. Text the port wrote itself, such as names a mod set in code, ships in the mod's own `lang/en_US.lang`.
 
 Every mod uses the modern resource pack layout only: `assets/<modid>/textures/<path>.png` with one file per sprite
 (an animated sprite is a strip of square frames with a `.png.mcmeta` beside it), `assets/<modid>/sounds/<path>.ogg`
-(discs under `sounds/record/`) and `assets/<modid>/lang/en_US.lang`. Old grid sheets are split into sprites with
-`../tools/modport/split_sheet.py`. The loader serves each mod's `assets/` as a texture pack layer above the beta jar,
+(discs under `sounds/record/`) and `assets/<modid>/lang/en_US.lang`. Old grid sheets are split into sprites by
+`[[slice]]` steps in the port's `assets.toml`. The loader serves each mod's `assets/` as a texture pack layer above the beta jar,
 so a player's texture pack retextures a mod or replaces its sounds and lang keys at the same paths.
 
 ## Licenses

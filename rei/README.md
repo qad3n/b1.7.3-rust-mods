@@ -5,14 +5,9 @@ and cheat mode. One `.bmod` runs on the client and the server.
 
 ## Assets
 
-The lang strings belong to the original authors and are not in this repository. Supply them from your own copy of the
-original mod jar before building:
-
-```
-python3 -I tools/extract_assets.py <path to RoughlyEnoughItems-16.0.799-fabric.jar>
-```
-
-This writes `assets/rei/lang/en_US.lang`, which stays untracked.
+The lang strings belong to the original authors and are not in this repository or in the `.bmod`. Put your own
+`RoughlyEnoughItems-16.0.799-fabric.jar` in the game's `mods/rei_assets/` folder. On its next launch the client copies
+the strings the port shows out of it, following `assets.toml`.
 
 ## Building
 

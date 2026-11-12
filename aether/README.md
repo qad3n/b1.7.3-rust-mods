@@ -5,14 +5,9 @@ server.
 
 ## Assets
 
-The textures, sounds and lang files are All Rights Reserved by the original authors and are not in this repository.
-Supply them from your own copy of the original mod jar before building:
-
-```
-python3 -I tools/extract_assets.py <path to aether-1.7.10-v1.1.2.5.jar>
-```
-
-This fills `assets/aether/`, which stays untracked.
+The textures, sounds and lang files are All Rights Reserved by the original authors and are not in this repository or in the `.bmod`. Put your own
+`aether-1.7.10-v1.1.2.5.jar` in the game's `mods/aether_assets/` folder. On its next launch the client builds the
+mod's art from it, following `assets.toml`.
 
 ## Building
 

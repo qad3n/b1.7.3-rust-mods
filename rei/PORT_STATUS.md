@@ -2,7 +2,7 @@
 
 Source: RoughlyEnoughItems-16.0.799-fabric.jar (`reference/src`, Vineflower decompile, never committed).
 Target: b1.7.3_rewrite mod loader, one `rei-<version>.bmod` for client and server. Needs loader API 1.33.
-Assets: never committed, `python3 -I tools/extract_assets.py <jar>` copies the lang lines the port uses into `assets/rei`.
+Assets: never committed, `assets.toml` copies the lang lines the port uses from the player's jar in `mods/rei_assets/`.
 
 Not a 1:1 port: only the core concept, rebuilt small on the loader's overlay API. REI's plugin system, entry types,
 favorites, config screens, transfer handlers, and the weather,

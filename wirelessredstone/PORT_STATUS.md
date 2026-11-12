@@ -6,8 +6,8 @@ Source: ali4z's Wireless Redstone 1.4 for b1.7.3 (ModLoader) and its five addons
 decompiled with Vineflower into `reference/src` (never committed). Obfuscated names resolve through
 `b1.7.3_decomp/mappings/b1.7.3-client.tiny`.
 Target: b1.7.3_rewrite loader, one `wirelessredstone-<version>.bmod` for client and server. All six mods are one mod.
-Assets: `python3 -I tools/extract_assets.py "<folder with the six zips>"` copies the sprites and gui sheets into the
-modern layout and writes the lang file.
+Assets: `assets.toml` copies the sprites and gui sheets of the six zips in `mods/wirelessredstone_assets/` into the
+modern layout. Names ship in the port's own `assets/wirelessredstone/lang/en_US.lang`.
 Build: `./build.sh`. Test: `../../tools/modport/test.sh deploy ports/wirelessredstone`.
 
 ## Design

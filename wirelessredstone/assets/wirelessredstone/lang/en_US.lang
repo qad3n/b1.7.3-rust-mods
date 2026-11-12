@@ -1,0 +1,12 @@
+tile.wirelessredstone.receiver.name=Wireless Receiver
+tile.wirelessredstone.transmitter.name=Wireless Transmitter
+tile.wirelessredstone.clocker.name=Wireless Clocker
+item.wirelessredstone.remote.name=Wireless Remote
+item.wirelessredstone.power_configurator.name=Power Configurator
+item.wirelessredstone.sniffer.name=Wireless Sniffer
+item.wirelessredstone.triangulator.name=Wireless Triangulator
+wirelessredstone.gui.frequency=Frequency
+wirelessredstone.gui.clock=Clocking Frequency
+wirelessredstone.gui.pulse=Pulse
+wirelessredstone.gui.direction=Power Direction
+wirelessredstone.gui.indirect=Indirect Power

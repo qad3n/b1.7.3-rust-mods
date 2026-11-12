@@ -1,0 +1,113 @@
+[[download]]
+name = "WirelessRedstone14.zip"
+sha256 = ["4b7bfad80f8c1ab87b161ff23831d34440c339a76572c90f2753ffa4e724b0d9"]
+
+[[download]]
+name = "WirelessRedstoneClocker02.zip"
+sha256 = ["0dc5b173a8c924f60d84894e3c98e8d4993d76281b2eaafd55e7cd57bedbf982"]
+
+[[download]]
+name = "WirelessRedstonePowerConfigurator05.zip"
+sha256 = ["ef8de83f3096b16d3680d7cb6884b578f49d710b97b3aa5f83e87e54e1a1ac19"]
+
+[[download]]
+name = "WirelessRemote04.zip"
+sha256 = ["d103a077299d06dfb50ccf766f72db4e910a0c08ddf70f303dd5d314010a608d"]
+
+[[download]]
+name = "WirelessSniffer05.zip"
+sha256 = ["d9cb84a710ccbb1bc4e8c3004c4741c2065f27402285e7d9f7a9dfd3d1c272ea"]
+
+[[download]]
+name = "WirelessTriangulator04.zip"
+sha256 = ["7afdeb1ac87830038d92984756a5838124c14aa207257b1b3d38598090389e19"]
+
+[[copy]]
+source = "WirelessRedstone14.zip"
+from = "WirelessSprites/topOn.png"
+to = "textures/block/top_on.png"
+
+[[copy]]
+source = "WirelessRedstone14.zip"
+from = "WirelessSprites/topOff.png"
+to = "textures/block/top_off.png"
+
+[[copy]]
+source = "WirelessRedstone14.zip"
+from = "WirelessSprites/rxOn.png"
+to = "textures/block/receiver_on.png"
+
+[[copy]]
+source = "WirelessRedstone14.zip"
+from = "WirelessSprites/rxOff.png"
+to = "textures/block/receiver_off.png"
+
+[[copy]]
+source = "WirelessRedstone14.zip"
+from = "WirelessSprites/txOn.png"
+to = "textures/block/transmitter_on.png"
+
+[[copy]]
+source = "WirelessRedstone14.zip"
+from = "WirelessSprites/txOff.png"
+to = "textures/block/transmitter_off.png"
+
+[[copy]]
+source = "WirelessRedstoneClocker02.zip"
+from = "WirelessSprites/clockerSideOn.png"
+to = "textures/block/clocker_on.png"
+
+[[copy]]
+source = "WirelessRedstoneClocker02.zip"
+from = "WirelessSprites/clockerSideOff.png"
+to = "textures/block/clocker_off.png"
+
+[[copy]]
+source = "WirelessRemote04.zip"
+from = "WirelessSprites/remote.png"
+to = "textures/item/remote.png"
+
+[[copy]]
+source = "WirelessRedstonePowerConfigurator05.zip"
+from = "WirelessSprites/pd.png"
+to = "textures/item/power_configurator.png"
+
+[[copy]]
+source = "WirelessSniffer05.zip"
+from = "WirelessSprites/sniff.png"
+to = "textures/item/sniffer.png"
+
+[[copy]]
+source = "WirelessTriangulator04.zip"
+from = "WirelessSprites/triang.png"
+to = "textures/item/triangulator.png"
+
+[[copy]]
+source = "WirelessRedstone14.zip"
+from = "gui/wifi_small.png"
+to = "textures/gui/wifi_small.png"
+
+[[copy]]
+source = "WirelessRedstone14.zip"
+from = "gui/wifi_medium.png"
+to = "textures/gui/wifi_medium.png"
+
+[[copy]]
+source = "WirelessRedstone14.zip"
+from = "gui/wifi_large.png"
+to = "textures/gui/wifi_large.png"
+
+[[copy]]
+source = "WirelessSniffer05.zip"
+from = "gui/wifiSniff.png"
+to = "textures/gui/sniffer.png"
+
+[[copy]]
+source = "WirelessRedstonePowerConfigurator05.zip"
+from = "gui/guiOn.png"
+to = "textures/gui/button_on.png"
+
+[[copy]]
+source = "WirelessRedstonePowerConfigurator05.zip"
+from = "gui/guiOff.png"
+to = "textures/gui/button_off.png"

@@ -5,14 +5,12 @@ One `.bmod` runs on the client and the server. Needs loader API 1.33.
 
 ## Assets
 
-The textures and gui images belong to the original authors and are not in this repository. Supply them from your own
-copy of the BuildCraft 2.1.1 zips before building:
+The textures and gui images belong to the original authors and are not in this repository or in the `.bmod`. Put your own `BuildCraft Core 2.1.1.zip`,
+`BuildCraft Builders 2.1.1.zip`, `BuildCraft Energy 2.1.1.zip` and `BuildCraft Transport 2.1.1.zip` in the game's
+`mods/buildcraft_assets/` folder. On its next launch the client builds the mod's art from them, following
+`assets.toml`. The names and screen text are the port's own and ship in `assets/buildcraft/lang/en_US.lang`.
 
-```
-python3 -I tools/extract_assets.py "<folder holding the BuildCraft *.zip files>"
-```
-
-This fills `assets/buildcraft/`, which stays untracked.
+`assets.toml` is generated: after changing a sprite table in `tools/recipe.py`, run `python3 -I tools/recipe.py`.
 
 ## Build
 

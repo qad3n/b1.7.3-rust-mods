@@ -1,0 +1,16 @@
+[[download]]
+name = "RoughlyEnoughItems-16.0.799-fabric.jar"
+
+# only the strings the port shows, each rule matches one key
+[[lang]]
+from = "assets/roughlyenoughitems/lang/en_us.json"
+rules = [
+    { from = "text.rei.no_permission_cheat", to = "rei.text.rei.no_permission_cheat" },
+    { from = "text.rei.failed_cheat_items", to = "rei.text.rei.failed_cheat_items" },
+    { from = "text.rei.search.field.suggestion", to = "rei.text.rei.search.field.suggestion" },
+    { from = "text.rei.back", to = "rei.text.rei.back" },
+    { from = "text.rei.left_arrow", to = "rei.text.rei.left_arrow" },
+    { from = "text.rei.right_arrow", to = "rei.text.rei.right_arrow" },
+    { from = "category.rei.crafting", to = "rei.category.rei.crafting" },
+    { from = "category.rei.smelting", to = "rei.category.rei.smelting" },
+]

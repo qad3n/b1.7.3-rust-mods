@@ -2,7 +2,7 @@
 
 Source: Aether Legacy 1.7.10 v1.1.2.5 (`reference/src`, Vineflower decompile of the user's jar, SRG names).
 Target: b1.7.3_rewrite mod loader, one `aether-<version>.bmod` for client and server.
-Assets: never committed, `python3 -I tools/extract_assets.py <jar>` fills `assets/aether`.
+Assets: never committed, `assets.toml` builds them from the player's jar in `mods/aether_assets/`.
 
 ## Build and test
 

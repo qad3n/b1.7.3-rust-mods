@@ -3,11 +3,6 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-if [[ ! -d assets ]]; then
-    echo "assets/ is missing, extract it first: ../../tools/modport/py.sh extract_assets.py <TwilightForest-2.4.3.jar> twilightforest" >&2
-    exit 1
-fi
-
 tool=(cargo-b173)
 if ! command -v cargo-b173 > /dev/null; then
     sdk="${B173_SDK:-$PWD/../../b1.7.3_rewrite/vendor/b1.7.3-modding-sdk}"

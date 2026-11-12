@@ -4,11 +4,8 @@ Port of The Twilight Forest to the b1.7.3_rewrite mod loader. One `.bmod` runs o
 
 ## Assets
 
-The textures, sounds and lang files belong to the original authors and are not in this repository. Supply them from
-your own copy of the original mod jar before building:
+The textures, sounds and lang files belong to the original authors and are not in this repository or in the `.bmod`. Put your own
+`TwilightForest-2.4.3.jar` in the game's `mods/twilightforest_assets/` folder. On its next launch the client builds the
+mod's art from it, following `assets.toml`.
 
-```
-../../tools/modport/py.sh extract_assets.py <path to TwilightForest-2.4.3.jar> twilightforest
-```
-
-This fills `assets/twilightforest/`, which stays untracked.
+`assets.toml` is generated from the jar: `python3 -I tools/recipe.py <path to TwilightForest-2.4.3.jar>`.

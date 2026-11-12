@@ -2,10 +2,11 @@
 */reference/
 */Cargo.lock
 */out/
-# assets of ported mods belong to their authors, our own mods commit theirs
+# art of ported mods belongs to its authors and comes from the player's download through assets.toml
+# ports whose names the port wrote itself commit only that lang file
 aether/assets/
 rei/assets/
 twilightforest/assets/
-buildcraft/assets/
-ic2/assets/
-wirelessredstone/assets/
+buildcraft/assets/*/textures/
+ic2/assets/*/textures/
+wirelessredstone/assets/*/textures/

@@ -1,0 +1,90 @@
+[[download]]
+name = "aether-1.7.10-v1.1.2.5.jar"
+
+[[copy]]
+from = "assets/aether_legacy/textures/blocks/"
+to = "textures/block/"
+
+[[copy]]
+from = "assets/aether_legacy/textures/items/"
+to = "textures/item/"
+
+[[copy]]
+from = "assets/aether_legacy/textures/entities/"
+to = "textures/entity/"
+
+[[copy]]
+from = "assets/aether_legacy/textures/bosses/"
+to = "textures/entity/boss/"
+
+[[copy]]
+from = "assets/aether_legacy/textures/armor/"
+to = "textures/armor/"
+
+[[copy]]
+from = "assets/aether_legacy/textures/gui/"
+to = "textures/gui/"
+
+[[copy]]
+from = "assets/aether_legacy/textures/other/"
+to = "textures/other/"
+
+[[copy]]
+from = "assets/aether_legacy/textures/tile_entities/"
+to = "textures/tile/"
+
+[[copy]]
+from = "assets/aether_legacy/sounds/"
+to = "sounds/"
+
+# beta draws chests as plain cubes, so each face stacks the ModelChest lid over the base and scales it to a block face
+[[compose]]
+from = "assets/aether_legacy/textures/tile_entities/treasure_chest.png"
+to = "textures/block/treasure_chest_front.png"
+canvas = [14, 15]
+size = [16, 16]
+parts = [
+    { rect = [14, 14, 14, 5], at = [0, 0] },
+    { rect = [14, 33, 14, 10], at = [0, 5] },
+    { rect = [1, 1, 2, 4], at = [7, 3] },
+]
+
+[[compose]]
+from = "assets/aether_legacy/textures/tile_entities/treasure_chest.png"
+to = "textures/block/treasure_chest_side.png"
+canvas = [14, 15]
+size = [16, 16]
+parts = [
+    { rect = [0, 14, 14, 5], at = [0, 0] },
+    { rect = [0, 33, 14, 10], at = [0, 5] },
+]
+
+[[compose]]
+from = "assets/aether_legacy/textures/tile_entities/treasure_chest.png"
+to = "textures/block/treasure_chest_top.png"
+canvas = [14, 14]
+size = [16, 16]
+parts = [
+    { rect = [14, 0, 14, 14], at = [0, 0] },
+]
+
+# PotionInebriation draws an 18 pixel cell of a 1.7 status icon sheet, the loader takes a whole icon texture
+[[compose]]
+from = "assets/aether_legacy/textures/gui/inventory/inebriation.png"
+to = "textures/gui/effect/inebriation.png"
+canvas = [18, 18]
+size = [18, 18]
+parts = [
+    { rect = [0, 198, 18, 18], at = [0, 0] },
+]
+
+# block and item names, screen text, boss titles and book of lore entries under the port's namespace
+[[lang]]
+from = "assets/aether_legacy/lang/en_US.lang"
+rules = [
+    { from = "tile.", to = "tile.aether." },
+    { from = "item.", to = "item.aether." },
+    { from = "gui.", to = "aether.gui." },
+    { from = "title.aether_legacy.", to = "aether.title.", cut = ".name" },
+    { from = "lore.aether_legacy.", to = "aether.lore." },
+]

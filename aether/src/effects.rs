@@ -51,7 +51,7 @@ const EFFECTS: [EffectRow; 3] = [
         m_id: "aether:inebriation",
         m_color: colour::INEBRIATION,
         m_beneficial: false,
-        m_icon: Some("aether:gui/inventory/inebriation"),
+        m_icon: Some("aether:gui/effect/inebriation"),
         m_modifier: None,
         m_interval: pulse::INEBRIATION_TICKS,
         m_amount: pulse::INEBRIATION_HURT,

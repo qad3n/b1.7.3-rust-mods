@@ -6,14 +6,11 @@ loader as one mod. One `.bmod` runs on the client and the server.
 
 ## Assets
 
-The textures belong to the original author and are not in this repository. Supply them from your own copies of the
-six original zips before building:
-
-```
-python3 -I tools/extract_assets.py <folder with the original zips>
-```
-
-This fills `assets/wirelessredstone/`, which stays untracked.
+The textures belong to the original author and are not in this repository or in the `.bmod`. Put your own copies of the six original zips
+(`WirelessRedstone14.zip`, `WirelessRedstoneClocker02.zip`, `WirelessRedstonePowerConfigurator05.zip`,
+`WirelessRemote04.zip`, `WirelessSniffer05.zip`, `WirelessTriangulator04.zip`) in the game's
+`mods/wirelessredstone_assets/` folder. On its next launch the client builds the mod's art from them, following
+`assets.toml`. The names and screen text are the port's own and ship in `assets/wirelessredstone/lang/en_US.lang`.
 
 ## Building
 
