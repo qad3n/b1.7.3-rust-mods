@@ -644,11 +644,11 @@ fn registerSpecial(ctx: &mut RegisterCtx) -> Result<()>
     // BlockAetherGrass.canSustainPlant takes the plains plants, flowers and saplings
     blocks.register(
         block::AETHER_GRASS,
-        cube(&AETHER_GRASS)?.tickRandomly().tag("minecraft:flower_soil").behavior(AetherGrass),
+        harvest::tracked(cube(&AETHER_GRASS)?, true).tickRandomly().tag("minecraft:flower_soil").behavior(AetherGrass),
     )?;
     blocks.register(
         block::QUICKSOIL,
-        BlockSpecBuilder::template("minecraft:block")
+        harvest::tracked(BlockSpecBuilder::template("minecraft:block"), false)
             .material("sand")
             .texture(&texture("quicksoil"))
             .hardness(QUICKSOIL_HARDNESS)
@@ -762,15 +762,18 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         let mut spec: BlockSpecBuilder = cube(row)?;
         spec = match row.m_name
         {
-            block::SKYROOT_LOG | block::GOLDEN_OAK_LOG => spec.sustainsLeaves().behavior(harvest::Log),
+            block::SKYROOT_LOG | block::GOLDEN_OAK_LOG =>
+            {
+                harvest::tracked(spec, false).sustainsLeaves().behavior(harvest::Log)
+            }
 
             block::GRAVITITE_ORE | block::ENCHANTED_GRAVITITE =>
             {
                 spec.behavior(Floating { m_leveled: row.m_name == block::ENCHANTED_GRAVITITE })
             }
 
-            block::HOLYSTONE => spec.behavior(harvest::DoubleDrop { m_tool: "pickaxe" }),
-            block::AETHER_DIRT => spec.behavior(harvest::DoubleDrop { m_tool: "shovel" }),
+            block::HOLYSTONE => harvest::tracked(spec, false).behavior(harvest::DoubleDrop { m_tool: "pickaxe" }),
+            block::AETHER_DIRT => harvest::tracked(spec, false).behavior(harvest::DoubleDrop { m_tool: "shovel" }),
             block::AMBROSIUM_ORE | block::ZANITE_ORE => spec.behavior(harvest::Ore),
             _ => spec,
         };
@@ -778,16 +781,5 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     }
 
     registerSpecial(ctx)?;
-    harvest::registerStates(
-        ctx,
-        &[
-            block::AETHER_GRASS,
-            block::AETHER_DIRT,
-            block::HOLYSTONE,
-            block::QUICKSOIL,
-            block::SKYROOT_LOG,
-            block::GOLDEN_OAK_LOG,
-        ],
-    )?;
     crate::portal::registerBlock(ctx)
 }

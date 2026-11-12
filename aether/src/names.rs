@@ -1,4 +1,4 @@
-use b173_api::{BlockCtx, BlockPos, BlockStatesSpec, Identifier, PropertySpec, StateData, StateHandle, World};
+use b173_api::{BlockCtx, BlockPos, Identifier, StateData, StateHandle, World};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -91,15 +91,6 @@ pub(crate) fn handle(pick: Pick) -> Rc<StateHandle>
 
 // the id a block's default state is stored as, for engine fields that hold a numeric block
 pub(crate) fn numeric(name: &'static str) -> i32 { handle(Pick::of(name)).block() }
-
-// a true or false property, false first so metadata 0 stays the plain block
-pub(crate) fn flag(name: &str) -> PropertySpec { PropertySpec::new(name, &["false", "true"]) }
-
-// properties in metadata order, the last one changing fastest
-pub(crate) fn states(properties: Vec<PropertySpec>) -> BlockStatesSpec
-{
-    BlockStatesSpec { properties, ..BlockStatesSpec::default() }
-}
 
 // the block's state with one property changed, written where it stands
 pub(crate) fn setProperty(ctx: &BlockCtx, property: &str, value: impl ToString)

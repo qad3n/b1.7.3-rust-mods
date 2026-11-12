@@ -4,7 +4,6 @@ use crate::progress::{self, Award};
 use b173_api::prelude::*;
 use b173_api::screen::Draw;
 use b173_api::{JobBuilder, JobMatch, JobOutput, machineFuel, matchJob};
-use std::rc::Rc;
 
 // one AetherEnchantment or AetherFreezable row, a None output gives back the input fully repaired
 struct Recipe
@@ -649,11 +648,9 @@ fn registerBlock(
     name: &'static str,
     names: [&str; 3],
     particle: &'static str,
-    tile: Rc<dyn TileBehavior>,
+    tile: impl TileBehavior + 'static,
 ) -> Result<()>
 {
-    let spec: TileEntitySpec = TileEntitySpec { inventory: slot::MACHINE, ticks: true, sync: true, behavior: None };
-    ctx.tileEntities().register(name, spec, Some(tile))?;
     ctx.blocks().register(
         name,
         BlockSpecBuilder::template("minecraft:block")
@@ -662,10 +659,11 @@ fn registerBlock(
             .hardness(machine::HARDNESS)
             .sound("stone")
             .tool(ToolClass::Pickaxe, machine::HARVEST_LEVEL)
-            .tileEntity(name)
+            .tile(Tile::new(tile).inventory(slot::MACHINE).ticks().synced())
+            .property(Property::bool(lit::PROPERTY))
             .behavior(ContainerBlock { m_screen: name, m_particle: particle }),
     )?;
-    ctx.blocks().states(name, crate::names::states(vec![crate::names::flag(lit::PROPERTY)]))
+    Ok(())
 }
 
 fn containerScreen(title: &str) -> ScreenBuilder
@@ -703,13 +701,7 @@ fn registerMachine(ctx: &mut RegisterCtx, machine: &'static Machine) -> Result<(
 {
     registerJobs(ctx, machine)?;
 
-    registerBlock(
-        ctx,
-        machine.m_name,
-        machine.m_faces,
-        machine.m_particle,
-        Rc::new(MachineTile { m_machine: machine }),
-    )?;
+    registerBlock(ctx, machine.m_name, machine.m_faces, machine.m_particle, MachineTile { m_machine: machine })?;
     ctx.screens().register(
         machine.m_name,
         containerScreen(machine.m_title)
@@ -725,7 +717,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     registerMachine(ctx, &ENCHANTER)?;
     registerMachine(ctx, &FREEZER)?;
-    registerBlock(ctx, INCUBATOR, INCUBATOR_FACES, "flame", Rc::new(IncubatorTile))?;
+    registerBlock(ctx, INCUBATOR, INCUBATOR_FACES, "flame", IncubatorTile)?;
     ctx.machines().register(INCUBATOR, Some(INCUBATOR_TITLE), &[INCUBATOR])?;
     ctx.machines().fuel(INCUBATOR, AMBROSIUM_TORCH, machine::TORCH_TICKS)?;
     for (kind, egg) in moa::eggs()

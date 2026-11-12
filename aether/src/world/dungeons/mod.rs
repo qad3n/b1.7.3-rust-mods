@@ -452,11 +452,6 @@ fn registerChests(ctx: &mut RegisterCtx) -> Result<()>
             .drops(Vec::new())
             .behavior(TreasureChest),
     )?;
-    ctx.tileEntities().register(
-        OPEN_TREASURE,
-        TileEntitySpec { inventory: block::CHEST_SLOTS, ticks: false, sync: true, behavior: None },
-        None,
-    )?;
     ctx.blocks().register(
         OPEN_TREASURE,
         BlockSpecBuilder::template("minecraft:block")
@@ -466,7 +461,7 @@ fn registerChests(ctx: &mut RegisterCtx) -> Result<()>
             .resistance(block::OPEN_TREASURE_RESISTANCE)
             .sound("stone")
             .drops(Vec::new())
-            .tileEntity(OPEN_TREASURE)
+            .tile(Tile::plain().inventory(block::CHEST_SLOTS).synced())
             .behavior(OpenTreasureChest),
     )?;
 

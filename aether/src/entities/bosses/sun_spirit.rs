@@ -542,6 +542,13 @@ impl EntityBehavior for SunSpirit
         unlockTreasure(world, &home);
 
         crate::sun_altar::unlock();
+
+        // the spirit ticks on while it dies and starts its mind over as the source's fresh fields do
+        let cleared: Result<()> = MINDS.clear(entity).and_then(|()| CHAT_LINE.clear(entity));
+        if let Err(error) = cleared
+        {
+            warn(&format!("sun spirit {} mind: {error}", entity.id));
+        }
     }
 
     // SunSpiritRenderer: the fire minion's body drawn larger, frozen blue while hurt

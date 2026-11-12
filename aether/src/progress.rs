@@ -145,11 +145,6 @@ thread_local!
 
 fn id(award: Award) -> String { format!("aether:{}", ROWS[award as usize].m_name) }
 
-fn identifier(text: &str) -> Result<Identifier>
-{
-    Identifier::parse(text).map_err(|error| Error(format!("achievement {text}: {error:?}")))
-}
-
 // EntityPlayer.triggerAchievement, a first unlock plays the Aether's own jingle as PacketAchievement does
 pub(crate) fn grant(player: Player, award: Award)
 {
@@ -267,16 +262,12 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &ROWS
     {
-        let parent: Option<Identifier> =
-            (row.m_award != Award::EnterAether).then(|| identifier(&id(Award::EnterAether))).transpose()?;
-
-        let spec: AchievementSpec = AchievementSpec
+        let mut spec: Achievement = Achievement::new(row.m_title, row.m_description, row.m_icon);
+        if row.m_award != Award::EnterAether
         {
-            title: row.m_title.to_owned(),
-            description: row.m_description.to_owned(),
-            icon: identifier(row.m_icon)?,
-            parent,
-        };
+            spec = spec.after(id(Award::EnterAether));
+        }
+
         ctx.achievements().register(row.m_name, spec)?;
     }
 

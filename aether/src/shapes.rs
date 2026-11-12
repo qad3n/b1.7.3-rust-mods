@@ -423,8 +423,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     for row in &STONES
     {
         let stairsName: String = format!("{}_stairs", row.m_name);
-        blocks.register(&stairsName, stairs(row))?;
-        blocks.states(&stairsName, names::states(vec![PropertySpec::new(state::FACING, &state::STAIRS)]))?;
+        blocks.register(&stairsName, stairs(row).property(Property::values(state::FACING, &state::STAIRS)))?;
 
         let double: String = format!("{}_double_slab", row.m_name);
         let slabDrop: DropSpec = crate::entities::drop(&format!("{}_slab", row.m_name), [2, 2]);
@@ -449,10 +448,9 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         }
     }
 
-    blocks.register("skyroot_fence_gate", gate())?;
-    blocks.states(
+    blocks.register(
         "skyroot_fence_gate",
-        names::states(vec![names::flag(state::OPEN), PropertySpec::new(state::FACING, &state::QUARTERS)]),
+        gate().property(Property::bool(state::OPEN)).property(Property::values(state::FACING, &state::QUARTERS)),
     )?;
 
     let sheet = |name: &str| texture(&format!("skyroot_bed_{name}"));
@@ -474,15 +472,10 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .hardness(0.2)
             .sound("wood")
             .drops(Vec::new())
+            .property(Property::bool(state::HEAD))
+            .property(Property::bool(state::OCCUPIED))
+            .property(Property::values(state::FACING, &state::QUARTERS))
             .behavior(Bed),
-    )?;
-    blocks.states(
-        BED,
-        names::states(vec![
-            names::flag(state::HEAD),
-            names::flag(state::OCCUPIED),
-            PropertySpec::new(state::FACING, &state::QUARTERS),
-        ]),
     )?;
     blocks.register(
         "present",

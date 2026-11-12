@@ -6,23 +6,18 @@ const PLACED: &str = "placed";
 // golden dungeon grass is neither grown nor placed and never doubles
 const DUNGEON: &str = "dungeon";
 
-// blocks that remember being placed by a player, aether grass also remembers the golden dungeon marking it
-pub(crate) fn registerStates(ctx: &mut RegisterCtx, blocks: &[&str]) -> Result<()>
+// a block that remembers being placed by a player, aether grass also remembers the golden dungeon marking it
+pub(crate) fn tracked(spec: BlockSpecBuilder, marked: bool) -> BlockSpecBuilder
 {
-    for name in blocks
+    let spec: BlockSpecBuilder = if marked
     {
-        let flags: &[&str] = if *name == block::AETHER_GRASS
-        {
-            &[DUNGEON, PLACED]
-        }
-        else
-        {
-            &[PLACED]
-        };
-        ctx.blocks().states(name, names::states(flags.iter().map(|flag| names::flag(flag)).collect()))?;
+        spec.property(Property::bool(DUNGEON))
     }
-
-    Ok(())
+    else
+    {
+        spec
+    };
+    spec.property(Property::bool(PLACED))
 }
 
 // BlockAetherLog: the stronger axes chip one or two golden amber out of golden oak
