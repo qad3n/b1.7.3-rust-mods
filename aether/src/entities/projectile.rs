@@ -42,6 +42,8 @@ pub(crate) enum Impact
 pub(crate) enum Look
 {
     Dart,
+    // PhoenixArrowRenderer on the vanilla arrow layout
+    Arrow,
     Sprite,
     // a whole item icon facing the camera
     Icon,
@@ -193,7 +195,7 @@ pub(crate) const SHOTS: [Shot; 8] = [
         m_poison: false,
         m_knockback: None,
         m_lifetime: arrow::STUCK_TICKS,
-        m_look: Look::Dart,
+        m_look: Look::Arrow,
         m_impact: Impact::Stick,
         m_burn: 100.0,
         m_pickup: Some("minecraft:arrow"),
@@ -443,9 +445,14 @@ impl EntityBehavior for Projectile
     // EntityArrow.onUpdate: the loader already moved it, so the hit check runs back over this tick's path
     fn onTick(&self, entity: Entity, info: &EntityInfo)
     {
-        if !entity.world.isAuthority()
+        // a single player world is both the client and the authority
+        if isClient()
         {
             trail(self.m_shot, entity, info);
+        }
+
+        if !entity.world.isAuthority()
+        {
             return;
         }
 
@@ -554,7 +561,8 @@ impl EntityBehavior for Projectile
 
         match self.m_shot.m_look
         {
-            Look::Dart => dart(&mut program, input),
+            Look::Dart => arrow(&mut program, input, &DART_FINS),
+            Look::Arrow => arrow(&mut program, input, &ARROW_FINS),
             Look::Sprite => snowball(&mut program),
 
             Look::Icon =>
@@ -568,13 +576,30 @@ impl EntityBehavior for Projectile
     }
 }
 
-// DartBaseRenderer.renderDart, an arrow's crossed fins and shaft on the dart sheet
-fn dart(program: &mut Program, input: &PoseInput)
+// the sheet rows a shot's tail and shaft come from and how many shaft fins turn around it
+struct Fins
+{
+    m_tail: [f32; 2],
+    m_shaft: [f32; 2],
+    m_count: i32,
+}
+
+// DartBaseRenderer.renderDart reads the dart sheet with five fins
+const DART_FINS: Fins = Fins { m_tail: [15.0 / 32.0, 20.0 / 32.0], m_shaft: [10.0 / 32.0, 15.0 / 32.0], m_count: 5 };
+// PhoenixArrowRenderer reads the top rows of the vanilla arrow layout with four fins
+const ARROW_FINS: Fins = Fins { m_tail: [5.0 / 32.0, 10.0 / 32.0], m_shaft: [0.0, 5.0 / 32.0], m_count: 4 };
+
+// an arrow's crossed tail and shaft fins
+fn arrow(program: &mut Program, input: &PoseInput, fins: &Fins)
 {
     const SIZE: f32 = 0.05625;
+    const TURN: f32 = 360.0;
 
-    let [tail0, tail1, tail2, tail3]: [f32; 4] = [0.0, 0.15625, 15.0 / 32.0, 20.0 / 32.0];
-    let [shaft0, shaft1, shaft2, shaft3]: [f32; 4] = [0.0, 0.5, 10.0 / 32.0, 15.0 / 32.0];
+    let [tail2, tail3]: [f32; 2] = fins.m_tail;
+    let [shaft2, shaft3]: [f32; 2] = fins.m_shaft;
+    let [tail0, tail1]: [f32; 2] = [0.0, 0.15625];
+    let [shaft0, shaft1]: [f32; 2] = [0.0, 0.5];
+    let step: f32 = TURN / fins.m_count as f32;
 
     program.rotate(input.head_yaw - 90.0, 0.0, 1.0, 0.0).rotate(input.head_pitch, 0.0, 0.0, 1.0);
     program.rotate(45.0, 1.0, 0.0, 0.0).scale(SIZE, SIZE, SIZE).translate(-4.0, 0.0, 0.0);
@@ -591,9 +616,9 @@ fn dart(program: &mut Program, input: &PoseInput)
         [-7.0, -2.0, -2.0, tail0, tail3],
     ]);
 
-    for _ in 0..5
+    for _ in 0..fins.m_count
     {
-        program.rotate(72.0, 1.0, 0.0, 0.0).normal(0.0, 0.0, SIZE).quad([
+        program.rotate(step, 1.0, 0.0, 0.0).normal(0.0, 0.0, SIZE).quad([
             [-8.0, -2.0, 0.0, shaft0, shaft2],
             [8.0, -2.0, 0.0, shaft1, shaft2],
             [8.0, 2.0, 0.0, shaft1, shaft3],
