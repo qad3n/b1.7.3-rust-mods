@@ -241,20 +241,16 @@ impl BlockBehavior for CableBlock
 }
 
 // BlockCable.getBlockTexture, a column of the cable sheet per paint color
-fn colorStates(name: &str) -> BlockStatesSpec
+fn colorStates(spec: BlockSpecBuilder, name: &str) -> BlockSpecBuilder
 {
     let colors: Vec<&str> = (0..COLORS.len()).map(colorName).collect();
-    let variants: Vec<StateVariantSpec> = colors
-        .iter()
-        .skip(1)
-        .map(|color| StateVariantSpec
-        {
-            when: [(COLOR.to_owned(), (*color).to_owned())].into(),
-            texture: Some(blockTexture(&format!("{name}_{color}"))),
-            textures: None,
-        })
-        .collect();
-    BlockStatesSpec { properties: vec![PropertySpec::new(COLOR, &colors)], variants, ..BlockStatesSpec::default() }
+    let mut spec: BlockSpecBuilder = spec.property(Property::values(COLOR, &colors));
+    for color in colors.iter().skip(1)
+    {
+        spec = spec.variant(Variant::when(&[(COLOR, color)]).texture(&blockTexture(&format!("{name}_{color}"))));
+    }
+
+    spec
 }
 
 // RenderBlockCable: the core box and an arm toward each joined face
@@ -290,7 +286,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     {
         ctx.blocks().register(
             row.m_name,
-            BlockSpecBuilder::template("minecraft:block")
+            colorStates(BlockSpecBuilder::template("minecraft:block"), row.m_name)
                 .material("sand")
                 .sound("cloth")
                 .hardness(HARDNESS)
@@ -308,7 +304,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .tag("ic2:cables")
                 .behavior(CableBlock),
         )?;
-        ctx.blocks().states(row.m_name, colorStates(row.m_name))?;
         super::add(row.m_name, row);
     }
 

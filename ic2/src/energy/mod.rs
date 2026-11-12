@@ -84,7 +84,7 @@ pub(crate) fn demand(max: i32) -> Option<EnergyDemand>
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.energy().register("eu", EnergySpec { worth: WORTH, label: "EU".to_owned() })?;
+    ctx.energy().register("eu", Energy::new("EU", WORTH))?;
     net::register(ctx)?;
     cable::register(ctx)?;
     storage::register(ctx)

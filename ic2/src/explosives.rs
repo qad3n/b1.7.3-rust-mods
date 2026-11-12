@@ -991,11 +991,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .hardness(0.0)
                 .faces(explosiveFaces(primed.m_block))
                 .drops(Vec::new())
+                .property(Property::values(lit::LIT, &FLAG))
                 .behavior(ExplosiveBlock { m_charge: primed.m_charge }),
-        )?;
-        ctx.blocks().states(
-            primed.m_block,
-            BlockStatesSpec { properties: vec![PropertySpec::new(lit::LIT, &FLAG)], ..BlockStatesSpec::default() },
         )?;
     }
 
@@ -1011,15 +1008,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .texture(&blockTexture(sprite))
                 .drops(Vec::new())
                 .tickRandomly()
+                .property(Property::values(lean::LEAN, &lean::SIDES))
                 .behavior(DynamiteBlock { m_remote: remote }),
-        )?;
-        ctx.blocks().states(
-            name,
-            BlockStatesSpec
-            {
-                properties: vec![PropertySpec::new(lean::LEAN, &lean::SIDES)],
-                ..BlockStatesSpec::default()
-            },
         )?;
     }
 

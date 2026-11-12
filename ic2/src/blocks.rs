@@ -601,25 +601,17 @@ fn woodFaces(hole: Option<&str>) -> FaceTextures
     }
 }
 
-fn woodStates() -> BlockStatesSpec
+// the resin hole's fill and side, drawn on the face it opens
+fn woodStates(spec: BlockSpecBuilder) -> BlockSpecBuilder
 {
     let resins: Vec<&str> = RESINS.iter().map(|(_, name)| *name).collect();
-    let hole = |resin: Sap, sprite: &str| -> StateVariantSpec
-    {
-        StateVariantSpec
-        {
-            when: [(wood::RESIN.to_owned(), resinName(resin).to_owned())].into(),
-            texture: None,
-            textures: Some(woodFaces(Some(sprite))),
-        }
-    };
+    let hole =
+        |resin: Sap, sprite: &str| Variant::when(&[(wood::RESIN, resinName(resin))]).faces(woodFaces(Some(sprite)));
 
-    BlockStatesSpec
-    {
-        properties: vec![PropertySpec::new(wood::RESIN, &resins), PropertySpec::new(wood::FACING, &wood::HOLE_FACES)],
-        variants: vec![hole(Sap::Wet, "rubber_wood_resin"), hole(Sap::Dry, "rubber_wood_tapped")],
-        ..BlockStatesSpec::default()
-    }
+    spec.property(Property::values(wood::RESIN, &resins))
+        .property(Property::values(wood::FACING, &wood::HOLE_FACES))
+        .variant(hole(Sap::Wet, "rubber_wood_resin"))
+        .variant(hole(Sap::Dry, "rubber_wood_tapped"))
 }
 
 fn registerRubberTree(ctx: &mut RegisterCtx) -> Result<()>
@@ -632,7 +624,7 @@ fn registerRubberTree(ctx: &mut RegisterCtx) -> Result<()>
 
     ctx.blocks().register(
         "rubber_wood",
-        BlockSpecBuilder::template("minecraft:block")
+        woodStates(BlockSpecBuilder::template("minecraft:block"))
             .material("wood")
             .sound("wood")
             .hardness(WOOD_HARDNESS)
@@ -644,8 +636,6 @@ fn registerRubberTree(ctx: &mut RegisterCtx) -> Result<()>
             .drops(vec![DropSpec { item: Identifier::parse(RUBBER_WOOD)?, count: vec![1], meta: 0, chance: 1.0 }])
             .behavior(RubberWood),
     )?;
-
-    ctx.blocks().states("rubber_wood", woodStates())?;
 
     ctx.blocks().register(
         "rubber_leaves",
@@ -711,11 +701,8 @@ fn registerSpecial(ctx: &mut RegisterCtx) -> Result<()>
             .opacity(0)
             .model(BlockModelSpec { cuboids: slab(sheet::THICKNESS), ..BlockModelSpec::default() })
             .collision(slab(sheet::THICKNESS))
+            .property(Property::values(sheet::SUPPORTED, &FLAG))
             .behavior(RubberSheet),
-    )?;
-    ctx.blocks().states(
-        sheet::NAME,
-        BlockStatesSpec { properties: vec![PropertySpec::new(sheet::SUPPORTED, &FLAG)], ..BlockStatesSpec::default() },
     )?;
 
     // BlockPoleFence takes the iron furnace top sprite and lets entities into its pole
@@ -729,15 +716,8 @@ fn registerSpecial(ctx: &mut RegisterCtx) -> Result<()>
             .texture(&blockTexture("iron_furnace_top"))
             .tool(ToolClass::Pickaxe, 0)
             .collision(poleBox())
+            .property(Property::values(pole::CHARGE, &pole::LEVELS))
             .behavior(IronFence),
-    )?;
-    ctx.blocks().states(
-        pole::NAME,
-        BlockStatesSpec
-        {
-            properties: vec![PropertySpec::new(pole::CHARGE, &pole::LEVELS)],
-            ..BlockStatesSpec::default()
-        },
     )?;
 
     ctx.blocks().register(
@@ -913,25 +893,11 @@ pub(crate) fn registerDoor(ctx: &mut RegisterCtx) -> Result<()>
             .resistance(door::RESISTANCE)
             .texture(&blockTexture("reinforced_door_bottom"))
             .tool(ToolClass::Pickaxe, 3)
-            .drops(vec![drop(&own("reinforced_door"), 1.0)?]),
-    )?;
-    ctx.blocks().states(
-        door::NAME,
-        BlockStatesSpec
-        {
-            properties: vec![
-                PropertySpec::new(door::HALF, &door::HALVES),
-                PropertySpec::new(door::OPEN, &FLAG),
-                PropertySpec::new(door::FACING, &door::FACINGS),
-            ],
-            variants: vec![StateVariantSpec
-            {
-                when: [(door::HALF.to_owned(), door::HALVES[1].to_owned())].into(),
-                texture: Some(blockTexture("reinforced_door_top")),
-                textures: None,
-            }],
-            ..BlockStatesSpec::default()
-        },
+            .drops(vec![drop(&own("reinforced_door"), 1.0)?])
+            .property(Property::values(door::HALF, &door::HALVES))
+            .property(Property::values(door::OPEN, &FLAG))
+            .property(Property::values(door::FACING, &door::FACINGS))
+            .variant(Variant::when(&[(door::HALF, door::HALVES[1])]).texture(&blockTexture("reinforced_door_top"))),
     )?;
     ctx.items().register(
         "reinforced_door",

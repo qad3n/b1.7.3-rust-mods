@@ -229,11 +229,6 @@ pub(crate) fn isLuminator(world: World, pos: BlockPos) -> bool { world.is(pos, N
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.tileEntities().register(
-        NAME,
-        TileEntitySpec { inventory: 0, ticks: true, sync: false, behavior: None },
-        Some(Rc::new(LampTile)),
-    )?;
     ctx.blocks().register(
         NAME,
         BlockSpecBuilder::template("minecraft:block")
@@ -243,18 +238,11 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .resistance(lamp::RESISTANCE)
             .texture(&blockTexture(NAME))
             .opacity(0)
-            .tileEntity(NAME)
+            .tile(Tile::new(LampTile).ticks())
+            // BlockLuminator metadata, the side it faces, which only the item damage sets
+            .property(Property::values(super::state::FACING, &dir::NAMES))
             .drops(Vec::new())
             .behavior(LampBlock),
-    )?;
-    // BlockLuminator metadata, the side it faces, which only the item damage sets
-    ctx.blocks().states(
-        NAME,
-        BlockStatesSpec
-        {
-            properties: vec![PropertySpec::new(super::state::FACING, &dir::NAMES)],
-            ..BlockStatesSpec::default()
-        },
     )?;
     energy::add(NAME, &LUMINATOR);
     Ok(())

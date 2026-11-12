@@ -6,7 +6,6 @@ use crate::energy::{self, EnergyTile, net};
 use b173_api::prelude::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 
 const SCRAP: &str = "ic2:scrap";
 // items the recycler refuses, sticks and scrap in IC2
@@ -1112,7 +1111,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             continue;
         };
 
-        registerBlock(ctx, machine, Rc::new(ProcessTile { m_process: process }), true)?;
+        registerBlock(ctx, machine, ProcessTile { m_process: process }, true)?;
         registerScreen(ctx, process)?;
 
         if process.m_kind != Kind::IronFurnace

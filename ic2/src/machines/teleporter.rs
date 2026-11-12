@@ -4,7 +4,6 @@ use crate::energy::net;
 use crate::energy::storage::{Bank, anyBankAt, bankEnergy, setBankEnergy};
 use b173_api::prelude::*;
 use std::collections::BTreeMap;
-use std::rc::Rc;
 
 pub(crate) static MACHINE: Machine = Machine
 {
@@ -292,7 +291,4 @@ pub(crate) fn tune(world: World, pos: BlockPos, player: Player, transmitter: Ite
     player.chat(&format!("Frequency of Transmitter set to: {}", link.m_own));
 }
 
-pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
-{
-    registerBlock(ctx, &MACHINE, Rc::new(TeleporterTile), false)
-}
+pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()> { registerBlock(ctx, &MACHINE, TeleporterTile, false) }

@@ -6,7 +6,6 @@ use crate::electric;
 use crate::energy::{self, EnergyTile, net};
 use b173_api::prelude::*;
 use std::cell::Cell;
-use std::rc::Rc;
 
 mod slot
 {
@@ -721,7 +720,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             continue;
         };
 
-        registerBlock(ctx, machine, Rc::new(SourceTile { m_source: source }), true)?;
+        registerBlock(ctx, machine, SourceTile { m_source: source }, true)?;
         registerScreen(ctx, source)?;
         energy::add(source.m_name, source);
     }

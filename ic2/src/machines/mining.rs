@@ -6,7 +6,6 @@ use crate::core::{dir, sound, stacks};
 use crate::electric;
 use crate::energy::{self, EnergyTile, net};
 use b173_api::prelude::*;
-use std::rc::Rc;
 
 const HARDNESS: f32 = 2.0;
 
@@ -903,7 +902,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     for (machine, digger, slots, sheet) in
         [(&MACHINES[0], &MINER, &MINER_SLOTS[..], "miner"), (&MACHINES[1], &PUMP, &PUMP_SLOTS[..], "pump")]
     {
-        registerBlock(ctx, machine, Rc::new(DiggerTile { m_digger: digger }), true)?;
+        registerBlock(ctx, machine, DiggerTile { m_digger: digger }, true)?;
         energy::add(machine.m_name, digger);
 
         let mut builder: ScreenBuilder = screen::container(sheet);

@@ -2,7 +2,6 @@ use super::{Faces, Look, Machine, registerBlock};
 use crate::core::{dir, itemTexture, own, sound, stacks};
 use crate::energy::{self, EnergyTile, net};
 use b173_api::prelude::*;
-use std::rc::Rc;
 
 pub(crate) static MACHINE: Machine = Machine
 {
@@ -704,7 +703,7 @@ impl ItemBehavior for BlueprintItem
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
-    registerBlock(ctx, &MACHINE, Rc::new(TerraTile), false)?;
+    registerBlock(ctx, &MACHINE, TerraTile, false)?;
     energy::add(MACHINE.m_name, &TERRAFORMER);
 
     for row in &BLUEPRINTS

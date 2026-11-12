@@ -3,7 +3,6 @@ use crate::core::{blockTexture, dir, random, sound, stacks};
 use crate::energy::{self, EnergyTile, net};
 use crate::explosives;
 use b173_api::prelude::*;
-use std::rc::Rc;
 
 pub(crate) static MACHINE: Machine = Machine
 {
@@ -853,7 +852,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     const MAX_SIZE: i32 = 9;
     const CHAMBER_HARDNESS: f32 = 3.0;
 
-    registerBlock(ctx, &MACHINE, Rc::new(ReactorTile), true)?;
+    registerBlock(ctx, &MACHINE, ReactorTile, true)?;
     energy::add(MACHINE.m_name, &REACTOR);
 
     // ContainerNuclearReactor lays out the columns the reactor has, centered

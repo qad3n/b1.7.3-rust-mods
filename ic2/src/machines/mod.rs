@@ -12,7 +12,6 @@ pub(crate) mod terraformer;
 use crate::core::{FLAG, blockTexture, dir, own, sprites, stacks};
 use crate::energy::net;
 use b173_api::prelude::*;
-use std::rc::Rc;
 
 // TileEntityBlock.facing and .active as block states, so the texture hooks and the client need no tile data
 mod state
@@ -63,15 +62,6 @@ pub(crate) fn setFacing(world: World, pos: BlockPos, face: i32)
     if let Err(error) = world.setBlockState(pos, (*state).clone().with(state::FACING, dir::name(face)))
     {
         warn(&format!("the machine at {pos:?} could not turn: {error}"));
-    }
-}
-
-fn states() -> BlockStatesSpec
-{
-    BlockStatesSpec
-    {
-        properties: vec![PropertySpec::new(state::FACING, &dir::NAMES), PropertySpec::new(state::ACTIVE, &FLAG)],
-        ..BlockStatesSpec::default()
     }
 }
 
@@ -300,16 +290,13 @@ pub(crate) fn dismantle(world: World, pos: BlockPos, machine: &Machine)
 pub(crate) fn registerBlock(
     ctx: &mut RegisterCtx,
     machine: &'static Machine,
-    tile: Rc<dyn TileBehavior>,
+    tile: impl TileBehavior + 'static,
     sync: bool,
 ) -> Result<()>
 {
     machine.m_look.reserve();
-    ctx.tileEntities().register(
-        machine.m_name,
-        TileEntitySpec { inventory: machine.m_slots, ticks: true, sync, behavior: None },
-        Some(tile),
-    )?;
+    let tile: Tile = Tile::new(tile).inventory(machine.m_slots).ticks();
+    let tile: Tile = if sync { tile.synced() } else { tile };
     ctx.blocks().register(
         machine.m_name,
         BlockSpecBuilder::template("minecraft:block")
@@ -318,7 +305,9 @@ pub(crate) fn registerBlock(
             .hardness(machine.m_hardness)
             .texture(&blockTexture(machine.m_look.m_idle[2]))
             .tool(ToolClass::Pickaxe, 0)
-            .tileEntity(machine.m_name)
+            .tile(tile)
+            .property(Property::values(state::FACING, &dir::NAMES))
+            .property(Property::values(state::ACTIVE, &FLAG))
             .drops(vec![DropSpec
             {
                 item: Identifier::parse(&own(machine.m_drop))?,
@@ -329,7 +318,6 @@ pub(crate) fn registerBlock(
             .tag("ic2:machines")
             .behavior(MachineBlock { m_machine: machine }),
     )?;
-    ctx.blocks().states(machine.m_name, states())?;
     Ok(())
 }
 

@@ -1,7 +1,6 @@
 use super::{Faces, Look, Machine, registerBlock, screen};
 use crate::core::{dir, sound};
 use b173_api::prelude::*;
-use std::rc::Rc;
 
 // BlockPersonal.setBlockUnbreakable: only the owner's wrench takes these apart
 const UNBREAKABLE: f32 = -1.0;
@@ -303,8 +302,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         [(trade::WANT, [24, 17]), (trade::OFFER, [24, 53]), (trade::PAID, [80, 17]), (trade::GOODS, [80, 53])];
     const CLOSED: [(i32, [i32; 2]); 2] = [(trade::PAID, [143, 17]), (trade::GOODS, [143, 53])];
 
-    registerBlock(ctx, &MACHINES[0], Rc::new(SafeTile), true)?;
-    registerBlock(ctx, &MACHINES[1], Rc::new(TradeTile), true)?;
+    registerBlock(ctx, &MACHINES[0], SafeTile, true)?;
+    registerBlock(ctx, &MACHINES[1], TradeTile, true)?;
 
     let mut chest: ScreenBuilder = ScreenBuilder::new("", screen::WIDTH, safe::HEIGHT)
         .background("minecraft:gui/container")

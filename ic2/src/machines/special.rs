@@ -7,7 +7,6 @@ use crate::energy::storage::{Bank, bankAt, bankEnergy, setBankEnergy};
 use crate::energy::{self, EnergyTile, net};
 use crate::explosives;
 use b173_api::prelude::*;
-use std::rc::Rc;
 
 const HARDNESS: f32 = 2.0;
 
@@ -859,7 +858,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             continue;
         };
 
-        registerBlock(ctx, machine, Rc::new(SpecialTile { m_special: special }), true)?;
+        registerBlock(ctx, machine, SpecialTile { m_special: special }, true)?;
         registerScreen(ctx, special)?;
         energy::add(special.m_name, special);
     }
