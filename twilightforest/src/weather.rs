@@ -4,8 +4,7 @@ use b173_api::math::{flatLength, floor};
 use b173_api::prelude::*;
 use b173_api::terrain::Random;
 use b173_api::terrain::structure::StructureBox;
-use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::cell::Cell;
 
 // TFWeatherRenderer: in a biome the player has not earned, blizzards, mosquito clouds, ash, dark streams or heavy
 // rain fill the air around them, and a guarded piece they were turned away from glitters inside its box while
@@ -54,10 +53,12 @@ struct Guarded
 
 thread_local!
 {
-    static SENT: RefCell<HashMap<i32, u64>> = RefCell::new(HashMap::new());
     static GATES: Cell<u64> = const { Cell::new(0) };
     static BOX: Cell<Option<(Guarded, i64)>> = const { Cell::new(None) };
 }
+
+// the gates last sent to each player
+static SENT: EntityState<Option<u64>> = EntityState::new("gates_sent");
 
 // the server tells each player in the forest what they have earned, the client draws the locks from it
 fn syncProgress()
@@ -76,7 +77,8 @@ fn syncProgress()
     for player in world.players()
     {
         let gates: u64 = progress::earned(player);
-        if SENT.with(|sent| sent.borrow().get(&player.id) == Some(&gates))
+        let entity: Entity = Entity { world, id: player.id };
+        if SENT.get(entity) == Some(gates)
         {
             continue;
         }
@@ -87,7 +89,7 @@ fn syncProgress()
             continue;
         }
 
-        SENT.with(|sent| sent.borrow_mut().insert(player.id, gates));
+        crate::entities::store(&SENT, entity, &Some(gates));
     }
 }
 

@@ -4,8 +4,6 @@ use crate::names::{self, block, item};
 use crate::tags;
 use b173_api::math::{cos, floor, sin};
 use b173_api::prelude::*;
-use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 // the twilight tools that act on the world, ItemTFOreMagnet through ItemTFTowerKey
@@ -214,11 +212,8 @@ impl ItemBehavior for CrumbleHorn
     }
 }
 
-thread_local!
-{
-    // ticks left on the jump boost a fan gust in the air gives, the source's Potion.jump
-    static GUSTED: RefCell<HashMap<i32, i64>> = RefCell::new(HashMap::new());
-}
+// the time the jump boost a fan gust in the air gives runs out, the source's Potion.jump
+static GUSTED: EntityState<i64> = EntityState::new("gusted");
 
 const GUST_TICKS: i64 = 45;
 
@@ -231,13 +226,13 @@ impl PeacockFan
     {
         let entity: Entity = Entity { world, id: player.id };
         let now: i64 = world.time();
-        let boosted: bool = GUSTED.with(|gusted| gusted.borrow().get(&player.id).is_some_and(|until| *until > now));
+        let boosted: bool = GUSTED.get(entity) > now;
         if boosted
         {
             return;
         }
 
-        GUSTED.with(|gusted| gusted.borrow_mut().insert(player.id, now + GUST_TICKS));
+        crate::entities::store(&GUSTED, entity, &(now + GUST_TICKS));
 
         let (push, lift): (f64, f64) = (3.0, 1.5);
         let _ = entity.setMotion([info.motion[0] * push, lift, info.motion[2] * push]);

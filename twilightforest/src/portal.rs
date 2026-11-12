@@ -4,7 +4,6 @@ use crate::world::{dimension, isTwilight};
 use b173_api::math::{centerOf, distanceSquared, floor};
 use b173_api::prelude::*;
 use std::cell::RefCell;
-use std::collections::HashMap;
 
 // BlockTFPortal and TFTeleporter, a pool ringed by flowers turns into a portal when a diamond lands in it
 const PORTALS_KEY: &str = "portals";
@@ -343,9 +342,6 @@ fn makePortal(world: World, at: [f64; 3]) -> [f64; 3]
 
 thread_local!
 {
-    // a player must step out of the portal before it sends them again, as timeUntilPortal holds them
-    static SENT: RefCell<HashMap<i32, bool>> = RefCell::new(HashMap::new());
-    static ARRIVALS: RefCell<HashMap<i32, [f64; 3]>> = RefCell::new(HashMap::new());
     // the player whose diamond is about to join the world, and the tossed diamonds being watched
     static TOSSER: std::cell::Cell<Option<i32>> = const { std::cell::Cell::new(None) };
     static TOSSED: RefCell<Vec<(Entity, Player)>> = const { RefCell::new(Vec::new()) };
@@ -361,10 +357,16 @@ fn inPortal(info: &EntityInfo) -> bool
     isPortal(world, x, y, z) || isPortal(world, x, y + 1, z)
 }
 
+// a player must step out of the portal before it sends them again, as timeUntilPortal holds them
+static SENT: EntityState<bool> = EntityState::new("portal_sent");
+// where a sent player left from, read once they stand in the target dimension
+static ARRIVALS: EntityState<Option<[f64; 3]>> = EntityState::new("portal_from");
+
 // BlockTFPortal.onEntityCollidedWithBlock for a player, off to the twilight forest or back home
 fn enter(world: World, player: Player)
 {
-    if SENT.with(|sent| sent.borrow().get(&player.id).copied().unwrap_or(false))
+    let entity: Entity = Entity { world, id: player.id };
+    if SENT.get(entity)
     {
         return;
     }
@@ -388,8 +390,8 @@ fn enter(world: World, player: Player)
         crate::progress::grant(player, crate::progress::Gate::Portal);
     }
 
-    SENT.with(|sent| sent.borrow_mut().insert(player.id, true));
-    ARRIVALS.with(|arrivals| arrivals.borrow_mut().insert(player.id, info.pos));
+    crate::entities::store(&SENT, entity, &true);
+    crate::entities::store(&ARRIVALS, entity, &Some(info.pos));
 
     let hold: [f64; 3] = [info.pos[0], travel::HOLD_Y, info.pos[2]];
     if let Err(error) = player.teleport(target, hold)
@@ -401,11 +403,14 @@ fn enter(world: World, player: Player)
 // once the player stands in the target dimension, the nearest portal there or a new one takes them in
 fn arrive(player: Player, to: i32)
 {
-    let Some(from) = ARRIVALS.with(|arrivals| arrivals.borrow_mut().remove(&player.id))
+    let arriving: Entity = Entity { world: World { dimension: to }, id: player.id };
+    let Some(from) = ARRIVALS.get(arriving)
     else
     {
         return;
     };
+
+    crate::entities::clear(&ARRIVALS, arriving);
 
     let world: World = World { dimension: to };
     let spot: [f64; 3] = existing(world, from).unwrap_or_else(|| makePortal(world, from));
@@ -423,15 +428,18 @@ fn arrive(player: Player, to: i32)
 
 fn rearm()
 {
-    let waiting: Vec<i32> =
-        SENT.with(|sent| sent.borrow().iter().filter(|(_, held)| **held).map(|(id, _)| *id).collect());
-
-    for id in waiting
+    for player in allPlayers()
     {
-        let outside: bool = Player { id }.info().is_some_and(|info| !inPortal(&info));
-        if outside
+        let Some(info) = player.info()
+        else
         {
-            SENT.with(|sent| sent.borrow_mut().insert(id, false));
+            continue;
+        };
+
+        let entity: Entity = Entity { world: World { dimension: info.world }, id: player.id };
+        if SENT.get(entity) && !inPortal(&info)
+        {
+            crate::entities::store(&SENT, entity, &false);
         }
     }
 }

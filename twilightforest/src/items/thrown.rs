@@ -5,8 +5,6 @@ use crate::models::{Program, tf_cube_of_annihilation, tf_spike_block};
 use crate::names::{block, item};
 use b173_api::math::{blockOf, distance, length, sub};
 use b173_api::prelude::*;
-use std::cell::{RefCell, RefMut};
-use std::collections::HashMap;
 use std::rc::Rc;
 
 // ItemTFChainBlock with EntityTFChainBlock and ItemTFCubeOfAnnihilation with EntityTFCubeOfAnnihilation: a spiked
@@ -53,27 +51,20 @@ struct Flight
     m_blocked: bool,
 }
 
-thread_local!
-{
-    // ItemTFChainBlock.launchedBlocksMap and the cube's thrown flag, the ball or cube each player has out
-    static OUT: RefCell<HashMap<(i32, &'static str), i32>> = RefCell::new(HashMap::new());
-}
+// ItemTFChainBlock.launchedBlocksMap and the cube's thrown flag, the ball or cube each player has out
+static BALL_OUT: EntityState<Option<i32>> = EntityState::new("chain_ball_out");
+static CUBE_OUT: EntityState<Option<i32>> = EntityState::new("cube_out");
 
-fn outFor(player: i32, kind: &'static str) -> Option<i32> { OUT.with(|out| out.borrow().get(&(player, kind)).copied()) }
-
-fn setOut(player: i32, kind: &'static str, entity: Option<i32>)
+fn out(kind: &str) -> &'static EntityState<Option<i32>>
 {
-    OUT.with(|out|
+    match kind
     {
-        let mut out: RefMut<HashMap<(i32, &'static str), i32>> = out.borrow_mut();
-
-        match entity
-        {
-            Some(id) => out.insert((player, kind), id),
-            None => out.remove(&(player, kind)),
-        };
-    });
+        CHAIN_BALL => &BALL_OUT,
+        _ => &CUBE_OUT,
+    }
 }
+
+fn setOut(player: Entity, kind: &str, thrown: Option<i32>) { crate::entities::store(out(kind), player, &thrown); }
 
 fn launch(world: World, player: Player, kind: &'static str, speed: f64) -> bool
 {
@@ -83,8 +74,9 @@ fn launch(world: World, player: Player, kind: &'static str, speed: f64) -> bool
         return false;
     };
 
+    let thrower: Entity = Entity { world, id: player.id };
     let alive: bool =
-        outFor(player.id, kind).is_some_and(|id| Entity { world, id }.info().is_some_and(|info| info.alive));
+        out(kind).get(thrower).is_some_and(|id| Entity { world, id }.info().is_some_and(|info| info.alive));
 
     if alive
     {
@@ -104,7 +96,7 @@ fn launch(world: World, player: Player, kind: &'static str, speed: f64) -> bool
     let _ = thrown.setMotion(velocity);
     let _ = thrown.setData(&Flight { m_owner: player.id, m_velocity: velocity, ..Flight::default() });
 
-    setOut(player.id, kind, Some(thrown.id));
+    setOut(thrower, kind, Some(thrown.id));
     world.playSound(info.pos, "random.bow", 1.0, 1.0 / (crate::math::fraction(world) * 0.4 + 1.2));
     true
 }
@@ -168,7 +160,7 @@ impl EntityBehavior for ChainBall
 
         if state.m_returning && away < chain::CATCH
         {
-            setOut(state.m_owner, CHAIN_BALL, None);
+            setOut(Entity { world, id: state.m_owner }, CHAIN_BALL, None);
             entity.kill();
             return;
         }
@@ -283,7 +275,7 @@ impl EntityBehavior for Cube
         let returning: bool = state.m_blocked || !using;
         if returning && distance(owner.pos, info.pos) < cube::CATCH
         {
-            setOut(state.m_owner, CUBE, None);
+            setOut(Entity { world: entity.world, id: state.m_owner }, CUBE, None);
             entity.kill();
             return;
         }
