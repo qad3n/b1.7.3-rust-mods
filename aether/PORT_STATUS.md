@@ -341,10 +341,11 @@ config as it stands when the game starts. Not verified in game.
   tool's shard drops from any block it mines, the present's crate can prime TNT instead of dropping, and the
   sheepuff wool, moa eggs, whirlwind drops and floating blocks are not deaths or harvests.
 - `c:` tags were already explicit (ores, zanite gem and block, accessories).
-- Left: player caches keyed by entity id in `tools.rs`, `accessories.rs`, `abilities.rs` and `portal.rs` hold the
-  modifier or portal state last applied to a player. Their lifetime across death and respawn needs checking in a
-  live run before they move to `EntityState` (`.kept()` would also save them). The sun altar's sky packet stays
-  since it also sets the client's sky time.
+- Player state is `EntityState` too: valkyrie wing sinage, the valkyrie reach, life shard and agility cape caches,
+  the worn list announcement, and portal visits and arrivals. The loader keeps a player's values through dimension
+  changes and drops them at death, so a respawned player gets the reach, shard and step modifiers set again and the
+  worn list sent again. None of them were saved in the Java. The sun altar's sky packet stays since it also sets
+  the client's sky time.
 - Not run: build and clippy only.
 
 ## Todo, in order

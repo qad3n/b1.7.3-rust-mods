@@ -370,8 +370,11 @@ Not converted, and why:
 - Kept as code: shears and trophy drops (`onHarvest` replaces the drop path, and the trophy kind is tile data), the
   quest ram reward, slide block spills, the fiery tools' smelting (`BlockHarvestDrops`). Boss treasure already rolls
   chest tables.
-- Left: `items/thrown.rs` (chain block and cube out per player and kind) and `items/magic.rs` (fan gust per player)
-  stay keyed by player id, like the source's item fields; moving them needs a live check of death and respawn.
+- Player state is `EntityState` too: the chain block ball and annihilation cube each player has out, the peacock
+  fan's gust, the portal's sent flag and departure point, and the progress gates last sent to a client. The loader
+  keeps them through dimension changes and drops them at death, so a respawned player is sent their gates again.
+- Kept: each magic map chart's record of the version each player was last sent (`items/maps.rs`) belongs to the
+  map, as beta's `MapData` tracks its viewers, and the block info cache in `world/generate.rs` is keyed by block.
 - Not run: build and clippy only.
 
 ## Bugs to check at the end

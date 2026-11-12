@@ -167,10 +167,11 @@ the water mill dropping a generator, cables joining the electrolyzer.
 - One declaration per block: every machine's tile, facing and active flag, the luminator's tile and facing, rubber
   wood resin holes, cable paint colors, the reinforced door, rubber sheet, iron fence charge and explosive states
   are declared in the block builder. EU uses the `Energy` builder.
-- Held IC2 keys live in `EntityState` (`keys.rs`), not saved, so they reset when a player dies or changes
-  dimension, as a client only reports key changes.
-- Left: `tools.rs` keeps the EU meter reading and the mining laser mode per player id. In the source both are
-  fields of the shared item, not per player; moving them needs a decision on whether they should survive death.
+- Per-player state lives in `EntityState`: held keys (`keys.rs`), rubber and quantum boot fall storage, quantum
+  run ticker and jump charge, the EU meter's last reading, the jetpack hover mode and the mining laser mode. The
+  loader keeps them through dimension changes and drops them at death, except hover and laser modes, which are
+  `.kept()` so a chosen mode still survives death as it did with the id maps (kept values also save with the
+  player). In the source all of these are fields of the shared item.
 - `c:` ores, ingots, dusts, plates and storage blocks were already explicit. No code rolled drops.
 - Not run: build and clippy only.
 
