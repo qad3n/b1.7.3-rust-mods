@@ -166,7 +166,7 @@ const SHAPED: [Shaped; 22] = [
     ),
 ];
 
-const SHAPELESS: [Shapeless; 13] = [
+const SHAPELESS: [Shapeless; 14] = [
     shapeless("firefly_jar", block::FIREFLY_JAR, 1, &[block::FIREFLY, BOTTLE]),
     shapeless(
         "magic_map_focus",
@@ -197,6 +197,12 @@ const SHAPELESS: [Shapeless; 13] = [
         &[item::CHARM_OF_LIFE_1, item::CHARM_OF_LIFE_1, item::CHARM_OF_LIFE_1, item::CHARM_OF_LIFE_1],
     ),
     shapeless("knightmetal_from_block", item::KNIGHTMETAL, 9, &[block::KNIGHTMETAL_BLOCK]),
+    shapeless(
+        "chain_block",
+        item::CHAIN_BLOCK,
+        1,
+        &[item::KNIGHTMETAL_RING, item::KNIGHTMETAL, item::KNIGHTMETAL, item::KNIGHTMETAL, block::KNIGHTMETAL_BLOCK],
+    ),
     shapeless("cobble_from_giant", "minecraft:cobblestone", 64, &[block::GIANT_COBBLE]),
     shapeless("planks_from_giant", "minecraft:planks", 64, &[block::GIANT_LOG]),
     shapeless("leaves_from_giant", "minecraft:leaves", 64, &[block::GIANT_LEAVES]),
@@ -366,6 +372,21 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .collect();
         ctx.recipes().shapelessTagged(name, ItemStack::of(item::EMPTY_ORE_MAP, 1), ingredients)?;
     }
+
+    // TFRecipes: three torchberries bring a moonworm queen of any wear back to new
+    let queen: IngredientSpec = IngredientSpec
+    {
+        item: Some(Identifier::parseIn(item::MOONWORM_QUEEN, &modId())?),
+        tag: None,
+        meta: ANY_DAMAGE,
+    };
+    let berry: IngredientSpec =
+        IngredientSpec { item: Some(Identifier::parseIn(item::TORCHBERRIES, &modId())?), tag: None, meta: 0 };
+    ctx.recipes().shapelessTagged(
+        "moonworm_queen_refill",
+        ItemStack::of(item::MOONWORM_QUEEN, 1),
+        vec![queen, berry.clone(), berry.clone(), berry],
+    )?;
 
     for (input, output, count) in SMELTING
     {
