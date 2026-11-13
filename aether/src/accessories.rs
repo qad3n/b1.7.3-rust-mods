@@ -103,7 +103,7 @@ fn kindTag(slot: Slot) -> &'static str
 {
     KINDS.iter().find(|(kind, _)| *kind == slot).map_or(KINDS[0].1, |(_, tag)| tag)
 }
-const SLOTS: usize = 8;
+pub(crate) const SLOTS: usize = 8;
 const CLICK: &str = "accessory_click";
 
 // what a player wears, held in the loader's accessory slots, with the life shards it used and the valkyrie set flag

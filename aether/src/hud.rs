@@ -6,7 +6,10 @@ const COOLDOWN_BAR: &str = "aether:gui/cooldown_bar";
 const JUMPS: &str = "aether:gui/jumps";
 const POISON_VIGNETTE: &str = "aether:blur/poison_vignette";
 const CURE_VIGNETTE: &str = "aether:blur/cure_vignette";
+const ICONS: &str = "minecraft:gui/icons";
 const HAMMER: &str = "notch_hammer";
+const IRON_BUBBLE: &str = "iron_bubble";
+const WATER: &str = "minecraft:water";
 const WHITE: u32 = 0xFFFFFFFF;
 
 // AetherOverlay.renderCooldown
@@ -27,6 +30,21 @@ mod jump
     pub const STEP: i32 = 8;
     pub const SIZE: [i32; 2] = [9, 11];
     pub const SPENT_U: i32 = 10;
+}
+
+// AetherOverlay.renderIronBubble: a full air bubble per worn iron bubble over beta's air bubbles, which sit above
+// the hearts and climb with the extra heart rows life shards add, as GuiIngame lays them out
+mod bubble
+{
+    pub const LEFT: i32 = 91;
+    pub const STEP: i32 = 8;
+    pub const ABOVE_BOTTOM: i32 = 41;
+    pub const UV: [i32; 2] = [16, 18];
+    pub const SIZE: i32 = 9;
+    // EntityPlayer.getEyeHeight above the position a player reports
+    pub const EYES: f64 = 0.12;
+    pub const HEARTS_PER_ROW: i32 = 10;
+    pub const MIN_ROW_HEIGHT: i32 = 3;
 }
 
 // AetherOverlay.renderPoison and renderCure: grey vignettes, the poison one pulsing with each fifty tick beat
@@ -114,6 +132,41 @@ fn drawCooldown(draw: &mut Draw, entity: Entity, width: i32)
     draw.texture(COOLDOWN_BAR, x, cooldown::BAR_Y, 0, 0, (left * cooldown::WIDTH as f32) as i32, cooldown::HEIGHT);
 }
 
+// GuiIngame's lift of the air bubbles over every heart row past the first
+fn heartLift(entity: Entity) -> i32
+{
+    let hearts: i32 = ((entity.field(EntityField::MaxHealth) as i32 + 1) / 2).max(bubble::HEARTS_PER_ROW);
+    let rows: i32 = (hearts + bubble::HEARTS_PER_ROW - 1) / bubble::HEARTS_PER_ROW;
+    let rowHeight: i32 = (bubble::HEARTS_PER_ROW - (rows - 2)).max(bubble::MIN_ROW_HEIGHT);
+    (hearts - 1) / bubble::HEARTS_PER_ROW * rowHeight
+}
+
+fn drawIronBubbles(draw: &mut Draw, entity: Entity, width: i32, height: i32)
+{
+    let Some(info) = entity.info()
+    else
+    {
+        return;
+    };
+
+    let eyes: BlockPos = b173_api::math::blockOf([info.pos[0], info.pos[1] + bubble::EYES, info.pos[2]]);
+    if !entity.world.tagged(eyes, WATER)
+    {
+        return;
+    }
+
+    let worn: crate::accessories::Worn = crate::accessories::Worn::ofEntity(entity);
+    let count: i32 = (0..crate::accessories::SLOTS)
+        .filter(|index| worn.stack(*index).is_some_and(|stack| stack.item.is(IRON_BUBBLE)))
+        .count() as i32;
+    let y: i32 = height - bubble::ABOVE_BOTTOM - heartLift(entity);
+    for index in 0..count
+    {
+        let x: i32 = width / 2 - bubble::LEFT + index * bubble::STEP;
+        draw.texture(ICONS, x, y, bubble::UV[0], bubble::UV[1], bubble::SIZE, bubble::SIZE);
+    }
+}
+
 fn drawJumps(draw: &mut Draw, entity: Entity, width: i32)
 {
     let Some((most, left)) =
@@ -141,6 +194,7 @@ fn draw(draw: &mut Draw, _partial: f32, width: i32, height: i32)
     };
 
     drawVignettes(draw, width, height);
+    drawIronBubbles(draw, entity, width, height);
     drawCooldown(draw, entity, width);
     drawJumps(draw, entity, width);
 }
