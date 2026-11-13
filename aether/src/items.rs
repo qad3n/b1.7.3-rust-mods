@@ -41,6 +41,7 @@ const SLOTS: [(ArmorSlot, &str, &str); 4] = [
 ];
 const FOOT_ARMOR: &str = "minecraft:foot_armor";
 const SWORD_TAG: &str = "minecraft:swords";
+const DISC_TAG: &str = "c:music_discs";
 
 // one Aether armor set, tinted sets reuse the vanilla iron sheet
 struct ArmorSet
@@ -442,6 +443,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             name,
             ItemSpecBuilder::new()
                 .texture(&texture(&format!("music/{name}")))
+                .tag(DISC_TAG)
                 .record(&format!("aether.record.{name}"), &format!("{artist} - {song}")),
         )?;
     }
