@@ -11,8 +11,11 @@ const WINGS_TEXTURE: &str = "aether:entity/valkyrie/valkyrie";
 const DEGREES_PER_RADIAN: f32 = 57.29578;
 const WHITE: u32 = 0xFFFFFF;
 const ENTERED: &str = "entered_aether";
-// PlayerAetherEvents.onAchievementGet: the first trip into the Aether hands these over
-const WELCOME_GIFTS: [&str; 2] = ["lore_book", "golden_parachute"];
+// PlayerAetherEvents.onAchievementGet: the first trip into the Aether hands these over, each behind its option
+const WELCOME_GIFTS: [(&str, &str); 2] =
+    [("lore_book", crate::config::GIVE_LORE_BOOK), ("golden_parachute", crate::config::GIVE_GOLDEN_PARACHUTE)];
+// PlayerAether.shouldGetPortal, cleared once a player logged in with the option off or got the frame
+const PORTAL_FRAME_HANDLED: &str = "portal_frame_handled";
 
 mod repel
 {
@@ -445,6 +448,31 @@ fn hardened(event: &mut Event)
     }
 }
 
+// PlayerAetherEvents.onPlayerAetherLoggedIn: with the option on a player gets one portal frame on the first login
+fn starter(event: &mut Event)
+{
+    let (Some(player), Some(world)) = (event.player(), event.world())
+    else
+    {
+        return;
+    };
+    if !world.isAuthority() || player.data::<bool>(PORTAL_FRAME_HANDLED)
+    {
+        return;
+    }
+
+    if crate::config::enabled(crate::config::PORTAL_FRAME_START)
+        && let Err(error) = player.give(ItemStack::of("aether_portal_frame", 1))
+    {
+        warn(&format!("starting portal frame: {error}"));
+    }
+
+    if let Err(error) = player.setData(PORTAL_FRAME_HANDLED, &true)
+    {
+        warn(&format!("starting portal frame flag: {error}"));
+    }
+}
+
 fn welcome(event: &mut Event)
 {
     let (EventData::Dimension { to, .. }, Some(player)) = (event.data().clone(), event.player())
@@ -466,9 +494,12 @@ fn welcome(event: &mut Event)
 
     let _ = player.setData(ENTERED, &true);
 
-    for gift in WELCOME_GIFTS
+    for (gift, option) in WELCOME_GIFTS
     {
-        let _ = player.give(ItemStack::of(gift, 1));
+        if crate::config::enabled(option)
+        {
+            let _ = player.give(ItemStack::of(gift, 1));
+        }
     }
 }
 
@@ -483,5 +514,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     ctx.events().on::<LivingDrops>(Priority::Normal, doubled)?;
     ctx.events().on::<LivingHurt>(Priority::Normal, hardened)?;
     ctx.events().on::<PlayerChangeDimension>(Priority::Normal, welcome)?;
+    ctx.events().on::<PlayerLogin>(Priority::Normal, starter)?;
     Ok(())
 }

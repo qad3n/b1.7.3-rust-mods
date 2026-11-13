@@ -4,6 +4,12 @@ pub(crate) const VALKYRIE_CAPE: &str = "loot.valkyrie_cape";
 pub(crate) const GOLDEN_FEATHER: &str = "loot.golden_feather";
 pub(crate) const SUN_ALTAR_MULTIPLAYER: &str = "gameplay.sun_altar_multiplayer";
 pub(crate) const DISABLE_ETERNAL_DAY: &str = "gameplay.disable_eternal_day";
+pub(crate) const SKYROOT_BUCKET_ONLY: &str = "misc.skyroot_bucket_only";
+pub(crate) const PORTAL_FRAME_START: &str = "gameplay.portal_frame_start";
+pub(crate) const LEGACY_ALTAR_NAME: &str = "misc.legacy_altar_name";
+pub(crate) const REPEAT_SPIRIT_DIALOGUE: &str = "misc.repeat_sun_spirit_dialogue";
+pub(crate) const GIVE_LORE_BOOK: &str = "misc.give_lore_book";
+pub(crate) const GIVE_GOLDEN_PARACHUTE: &str = "misc.give_golden_parachute";
 pub(crate) const CHRISTMAS_CONTENT: &str = "world.christmas_content";
 pub(crate) const TALL_GRASS: &str = "world.tall_grass";
 const MAX_LIFE_SHARDS: &str = "gameplay.max_life_shards";
@@ -50,6 +56,24 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         Setting::bool(DISABLE_ETERNAL_DAY, false)
             .label("Disable Eternal Day")
             .comment("Disables eternal day making time cycle in the Aether without having to kill the Sun Spirit."),
+        Setting::bool(SKYROOT_BUCKET_ONLY, false)
+            .label("Skyroot Bucket Portals")
+            .comment("Activate portal with only Skyroot bucket"),
+        Setting::bool(PORTAL_FRAME_START, false)
+            .label("Starting Portal Frame")
+            .comment("Spawns Player with Aether Portal Frame"),
+        Setting::bool(LEGACY_ALTAR_NAME, false)
+            .label("Legacy Altar Name")
+            .comment("Changes whether the Altar should be named Enchanter or not."),
+        Setting::bool(REPEAT_SPIRIT_DIALOGUE, true)
+            .label("Repeat Sun Spirit Dialogue")
+            .comment("If disabed, the Sun Spirit's dialog will only show once per world."),
+        Setting::bool(GIVE_LORE_BOOK, true)
+            .label("First Entry Book of Lore")
+            .comment("Gives the Player a Book of Lore upon entering the Aether for the first time"),
+        Setting::bool(GIVE_GOLDEN_PARACHUTE, true)
+            .label("First Entry Golden Parachute")
+            .comment("Gives the Player a Golden Parachute upon entering the Aether for the first time"),
         Setting::bool(CHRISTMAS_CONTENT, false)
             .label("Christmas Content")
             .comment("Holiday trees with presents under them generate in new Aether chunks"),

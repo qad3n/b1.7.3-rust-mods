@@ -294,12 +294,23 @@ Missing behavior found and added:
   (WorldGenTallGrass) behind `world.tall_grass`, both off as in the Java config. Neither draws from the chunk random
   while off, so existing seeds generate the same.
 
+Added after the pass:
+- Worn iron bubbles draw full air bubbles over beta's own while the player's eyes are in water
+  (AetherOverlay.renderIronBubble), placed where GuiIngame puts the bubbles, above any extra life shard heart rows.
+- Config options: `misc.skyroot_bucket_only` (only skyroot water lights portals), `gameplay.portal_frame_start`
+  (one portal frame on a player's first login, a player who logged in with it off never gets one, as
+  shouldGetPortal), `misc.legacy_altar_name`, `misc.repeat_sun_spirit_dialogue`, `misc.give_lore_book` and
+  `misc.give_golden_parachute`.
+- The enchanter now shows as Altar in its item name and screen title, the source's default; the legacy option
+  brings back Enchanter.
+- Fixed source bug: the Java never set seenSpiritDialog, so turning dialogue repeats off did nothing. The flag is
+  set once a player hears the Sun Spirit's challenge.
+
 Still differs:
 - Seasonal holiday trees (on in December and January in the source) need the wall clock, which a mod cannot read.
-- Lightning never spares the holder of a lightning sword or knife: the loader has no strike event to cancel.
-- The iron bubble's extra air bubbles on the HUD are not drawn.
-- Config options without a port feature yet: Aether menu and its button, loading screen trivia, legacy visuals,
-  legacy altar name, portal frame on first spawn, skyroot bucket only portals, Sun Spirit dialogue repeat.
+- Config options without a port feature: Aether menu and its button (it would replace the vanilla title screen),
+  loading screen trivia, legacy visuals (the old aerwhale and zephyr models). Floating block collision, boss names
+  and the music toggle are read nowhere in 1.1.2.5.
 - The skyroot sword's second helping copies the item entities found fresh at the kill at the end of the tick, the
   drop event names no drops.
 - Not run: build only, none of the above was seen in a game.

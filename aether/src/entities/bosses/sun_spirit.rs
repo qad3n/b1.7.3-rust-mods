@@ -13,6 +13,9 @@ const FROZEN_TEXTURE: &str = "aether:entity/boss/sun_spirit/frozen_sun_spirit";
 const LOCKED: &str = "locked_hellfire_stone";
 const LOCKED_LIGHT: &str = "locked_light_hellfire_stone";
 
+// PlayerAether.seenSpiritDialog
+const SEEN_DIALOGUE: &str = "seen_spirit_dialog";
+
 mod spirit
 {
     // EntitySunSpirit
@@ -439,6 +442,13 @@ impl EntityBehavior for SunSpirit
 
         let fighting: bool = sync(entity).m_bar.m_focus.is_some();
 
+        // the Java read this flag but never set it, it is set here once a player heard the whole warning
+        let repeat: bool = crate::config::enabled(crate::config::REPEAT_SPIRIT_DIALOGUE);
+        if !repeat && player.data::<bool>(SEEN_DIALOGUE) && state.m_chatLine < spirit::DIALOGUE_LINES
+        {
+            state.m_chatLine = spirit::DUEL_LINE;
+        }
+
         match state.m_chatLine
         {
             spoken if spoken < spirit::DIALOGUE_LINES =>
@@ -456,6 +466,10 @@ impl EntityBehavior for SunSpirit
             spirit::DUEL_LINE =>
             {
                 line(player, GOLD, "line9");
+                if let Err(error) = player.setData(SEEN_DIALOGUE, &true)
+                {
+                    warn(&format!("sun spirit dialogue flag: {error}"));
+                }
                 state.m_chatLine = spirit::RETORT_LINE;
 
                 if let (Some(info), Some(seen)) = (entity.info(), player.info())

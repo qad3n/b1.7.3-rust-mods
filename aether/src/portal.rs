@@ -669,7 +669,8 @@ fn bucketUsed(event: &mut Event)
     // the block next to the clicked face as ItemBucket offsets its target
     let target: BlockPos = offset(pos, face);
     let travels: bool = inAether(world) || world.dimension == travel::OVERWORLD;
-    if stack.item.is(WATER_BUCKET) && travels && trySpawn(world, target)
+    let waterLights: bool = !crate::config::enabled(crate::config::SKYROOT_BUCKET_ONLY);
+    if stack.item.is(WATER_BUCKET) && waterLights && travels && trySpawn(world, target)
     {
         event.cancel();
 

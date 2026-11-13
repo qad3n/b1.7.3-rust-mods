@@ -560,6 +560,35 @@ fn tileState<T: serde::de::DeserializeOwned + Default>(pos: Option<BlockPos>) ->
     Some(World { dimension: local.world }.tileData(pos))
 }
 
+// ItemBlockEnchanter and GuiEnchanter: the enchanter goes by Altar unless the legacy name is chosen
+fn title(machine: &Machine) -> String
+{
+    if machine.m_name != ENCHANTER.m_name
+    {
+        return machine.m_title.to_owned();
+    }
+
+    let legacy: bool = crate::config::enabled(crate::config::LEGACY_ALTAR_NAME);
+    translate(
+        if legacy
+        {
+            "tile.aether.enchanter.name"
+        }
+        else
+        {
+            "tile.aether.altar.name"
+        },
+    )
+}
+
+struct AltarName;
+
+#[item_behavior]
+impl ItemBehavior for AltarName
+{
+    fn name(&self, _stack: ItemStack) -> Option<String> { Some(title(&ENCHANTER)) }
+}
+
 fn labels(draw: &mut Draw, title: &str)
 {
     draw.text((gui::WIDTH - textWidth(title)) / 2, gui::TITLE_Y, title, gui::TEXT);
@@ -579,7 +608,7 @@ impl Screen for MachineScreen
 
     fn draw(&mut self, draw: &mut Draw, _mouse: [i32; 2], _partial: f32)
     {
-        labels(draw, self.m_machine.m_title);
+        labels(draw, &title(self.m_machine));
 
         let Some(state) = tileState::<Work>(self.m_pos)
         else
@@ -651,10 +680,18 @@ fn registerBlock(
     tile: impl TileBehavior + 'static,
 ) -> Result<()>
 {
+    let spec: BlockSpecBuilder = BlockSpecBuilder::template("minecraft:block");
+    let spec: BlockSpecBuilder = if name == ENCHANTER.m_name
+    {
+        spec.itemBehavior(AltarName)
+    }
+    else
+    {
+        spec
+    };
     ctx.blocks().register(
         name,
-        BlockSpecBuilder::template("minecraft:block")
-            .material("rock")
+        spec.material("rock")
             .faces(faces(names))
             .hardness(machine::HARDNESS)
             .sound("stone")
@@ -674,7 +711,7 @@ fn containerScreen(title: &str) -> ScreenBuilder
 // every row as a job of the machine registry, which runs it and shows it to recipe viewers
 fn registerJobs(ctx: &mut RegisterCtx, machine: &Machine) -> Result<()>
 {
-    ctx.machines().register(machine.m_name, Some(machine.m_title), &[machine.m_name])?;
+    ctx.machines().register(machine.m_name, Some(&title(machine)), &[machine.m_name])?;
     ctx.machines().fuel(machine.m_name, machine.m_fuel, machine::FUEL_TICKS)?;
 
     for recipe in machine.m_recipes
@@ -704,7 +741,7 @@ fn registerMachine(ctx: &mut RegisterCtx, machine: &'static Machine) -> Result<(
     registerBlock(ctx, machine.m_name, machine.m_faces, machine.m_particle, MachineTile { m_machine: machine })?;
     ctx.screens().register(
         machine.m_name,
-        containerScreen(machine.m_title)
+        containerScreen(&title(machine))
             .background(ALTAR_SHEET)
             .slot(slot::INPUT, gui::INPUT[0], gui::INPUT[1])
             .slot(slot::FUEL, gui::FUEL[0], gui::FUEL[1])
