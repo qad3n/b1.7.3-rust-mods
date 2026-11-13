@@ -40,7 +40,7 @@ const fn shaped(
 }
 
 // beta doors and signs stack to one, so they craft one at a time instead of the source's three
-const SHAPED: [Shaped; 37] = [
+const SHAPED: [Shaped; 36] = [
     shaped(
         "nature_staff",
         "nature_staff",
@@ -141,13 +141,6 @@ const SHAPED: [Shaped; 37] = [
     shaped("zanite_gloves", "zanite_gloves", 1, &["C C"], &[('C', item::ZANITE_GEMSTONE, 0)]),
     shaped("gravitite_gloves", "gravitite_gloves", 1, &["C C"], &[('C', ENCHANTED_GRAVITITE, 0)]),
     shaped("skyroot_fence", "skyroot_fence", 3, &["ZXZ", "ZXZ"], &[('Z', PLANKS, 0), ('X', item::SKYROOT_STICK, 0)]),
-    shaped(
-        "skyroot_fence_gate",
-        "skyroot_fence_gate",
-        1,
-        &["ZXZ", "ZXZ"],
-        &[('X', PLANKS, 0), ('Z', item::SKYROOT_STICK, 0)],
-    ),
     shaped(
         "skyroot_bookshelf",
         "skyroot_bookshelf",

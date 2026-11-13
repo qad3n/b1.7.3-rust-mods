@@ -74,8 +74,8 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Inebriation poison spits red dye icon bits through the new `iconcrack_351_1` particle; check it renders in a client.
 - Life shard hearts past ten, sun altar slider, lore book pages, valkyrie wings, invisibility and record playback are
   built but not seen in a client yet.
-- Beta differences, accepted: doors and signs craft one at a time (beta stacks them to one). Beta has no walls, so the
-  stone walls and their recipes are left out.
+- Beta differences, accepted: doors and signs craft one at a time (beta stacks them to one). Beta has no walls or fence gates,
+  so the stone walls, the skyroot fence gate and their recipes are left out.
 - Accessory dye recipe (RecipeAccessoryDyes) needs NBT colors, not ported; red, blue and yellow capes come only from
   creative or commands, as in the source.
 - Client window loses focus during tests and opens the pause menu (test harness only).
@@ -340,8 +340,8 @@ the state helpers, `tags.rs` holds every tag the port adds.
 - Variants by state:
   - Aether grass gains `dungeon` before `placed`: the golden dungeon's tree spots (the source's metadata 3) are
     `dungeon=true,placed=true`, and only grass with both false doubles under a skyroot shovel.
-  - Stairs `facing` (east, west, south, north), the skyroot fence gate `open` and `facing`, the skyroot bed `head`,
-    `occupied` and `facing`, all in metadata order so placed blocks keep their shape.
+  - Stairs `facing` (east, west, south, north), the skyroot bed `head`, `occupied` and `facing`, all in metadata
+    order so placed blocks keep their shape.
   - Reads go through `ctx.stateAt()`, so harvest code sees the state of a block already removed.
 - Vanilla textures by sprite name: the dungeon chest faces are `minecraft:block/chest_*`.
 - A floating block carries the named state it lifted instead of an id and metadata. One in flight while the world

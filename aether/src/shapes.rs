@@ -67,15 +67,6 @@ mod shape
         [0.0, 8.0, 8.0, 16.0, 16.0, 16.0],
         [0.0, 8.0, 0.0, 16.0, 16.0, 8.0],
     ];
-    // BlockFenceGate: two posts and two bars across the facing, the bars gone while open, model cuboids pick
-    // states by index with open the high property
-    pub const OPEN: i32 = 4;
-    pub const GATE_ALONG_X: [[f32; 6]; 4] = [
-        [0.0, 5.0, 7.0, 2.0, 16.0, 9.0],
-        [14.0, 5.0, 7.0, 16.0, 16.0, 9.0],
-        [2.0, 6.0, 7.0, 14.0, 9.0, 9.0],
-        [2.0, 12.0, 7.0, 14.0, 15.0, 9.0],
-    ];
     pub const QUARTERS: f32 = 4.0;
     pub const FULL_TURN: f32 = 360.0;
 }
@@ -84,18 +75,17 @@ mod shape
 mod state
 {
     pub const FACING: &str = "facing";
-    pub const OPEN: &str = "open";
     pub const HEAD: &str = "head";
     pub const OCCUPIED: &str = "occupied";
     // BlockStairs, the side the raised half sits on
     pub const STAIRS: [&str; 4] = ["east", "west", "south", "north"];
-    // the quarter a player faces, which BlockStairs.onBlockPlacedBy, BlockFenceGate and BlockBed store
+    // the quarter a player faces, which BlockStairs.onBlockPlacedBy and BlockBed store
     pub const QUARTERS: [&str; 4] = ["south", "west", "north", "east"];
 }
 
 fn texture(name: &str) -> String { format!("aether:block/{name}") }
 
-fn cuboid(bounds: [f32; 6], metas: Vec<i32>, connect: Option<i32>) -> Cuboid
+fn cuboid(bounds: [f32; 6], metas: Vec<i32>) -> Cuboid
 {
     Cuboid
     {
@@ -103,7 +93,7 @@ fn cuboid(bounds: [f32; 6], metas: Vec<i32>, connect: Option<i32>) -> Cuboid
         to: [bounds[3], bounds[4], bounds[5]],
         texture: None,
         metas,
-        connect,
+        connect: None,
     }
 }
 
@@ -147,37 +137,6 @@ impl BlockBehavior for Slab
     }
 }
 
-// BlockFenceGate: placed facing the player, opened and closed by hand
-struct Gate;
-
-#[block_behavior]
-impl BlockBehavior for Gate
-{
-    fn onPlacedBy(&self, ctx: &mut BlockCtx, entity: Entity)
-    {
-        names::setProperty(ctx, state::FACING, state::QUARTERS[quarter(entity)]);
-    }
-
-    fn onActivated(&self, ctx: &mut BlockCtx, _player: Player) -> bool
-    {
-        if ctx.isAuthority()
-        {
-            let open: bool = ctx.stateAt().is_some_and(|current| current.flag(state::OPEN));
-            names::setProperty(ctx, state::OPEN, !open);
-
-            let pos: BlockPos = ctx.pos();
-            ctx.world().playSound(
-                [pos.x as f64 + 0.5, pos.y as f64 + 0.5, pos.z as f64 + 0.5],
-                "random.door_open",
-                1.0,
-                1.0,
-            );
-        }
-
-        true
-    }
-}
-
 fn shaped(row: &Stone, hardness: f32, resistance: f32) -> BlockSpecBuilder
 {
     BlockSpecBuilder::template("minecraft:block")
@@ -191,47 +150,11 @@ fn shaped(row: &Stone, hardness: f32, resistance: f32) -> BlockSpecBuilder
 
 fn stairs(row: &Stone) -> BlockSpecBuilder
 {
-    let mut cuboids: Vec<Cuboid> =
-        vec![cuboid([0.0, 0.0, 0.0, shape::FULL, shape::HALF, shape::FULL], Vec::new(), None)];
-    cuboids.extend(shape::STEPS.iter().enumerate().map(|(meta, bounds)| cuboid(*bounds, vec![meta as i32], None)));
+    let mut cuboids: Vec<Cuboid> = vec![cuboid([0.0, 0.0, 0.0, shape::FULL, shape::HALF, shape::FULL], Vec::new())];
+    cuboids.extend(shape::STEPS.iter().enumerate().map(|(meta, bounds)| cuboid(*bounds, vec![meta as i32])));
     shaped(row, row.m_hardness, row.m_resistance)
         .model(BlockModelSpec { cuboids, ..BlockModelSpec::default() })
         .behavior(Stairs)
-}
-
-// the gate's parts across x for facings 0 and 2, turned to run along z for 1 and 3
-fn gate() -> BlockSpecBuilder
-{
-    let mut cuboids: Vec<Cuboid> = Vec::new();
-
-    for facing in 0..4
-    {
-        for (index, bounds) in shape::GATE_ALONG_X.iter().enumerate()
-        {
-            let turned: [f32; 6] = if facing % 2 == 1
-            {
-                [bounds[2], bounds[1], bounds[0], bounds[5], bounds[4], bounds[3]]
-            }
-            else
-            {
-                *bounds
-            };
-            let posts: bool = index < 2;
-            let metas: Vec<i32> = if posts
-            {
-                vec![facing, facing | shape::OPEN]
-            }
-            else
-            {
-                vec![facing]
-            };
-            cuboids.push(cuboid(turned, metas, None));
-        }
-    }
-
-    shaped(&STONES[3], STONES[3].m_hardness, STONES[3].m_resistance)
-        .model(BlockModelSpec { cuboids, ..BlockModelSpec::default() })
-        .behavior(Gate)
 }
 
 // ItemSkyrootBed and BlockSkyrootBed: a two block bed of the bed template, dropping the item from its foot
@@ -397,7 +320,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 
         let half: BlockModelSpec = BlockModelSpec
         {
-            cuboids: vec![cuboid([0.0, 0.0, 0.0, shape::FULL, shape::HALF, shape::FULL], Vec::new(), None)],
+            cuboids: vec![cuboid([0.0, 0.0, 0.0, shape::FULL, shape::HALF, shape::FULL], Vec::new())],
             ..BlockModelSpec::default()
         };
         let slab: String = format!("{}_slab", row.m_name);
@@ -408,11 +331,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .behavior(Slab { m_slab: slab.clone(), m_double: double }),
         )?;
     }
-
-    blocks.register(
-        "skyroot_fence_gate",
-        gate().property(Property::bool(state::OPEN)).property(Property::values(state::FACING, &state::QUARTERS)),
-    )?;
 
     let sheet = |name: &str| texture(&format!("skyroot_bed_{name}"));
 
