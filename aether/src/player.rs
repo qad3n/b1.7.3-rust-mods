@@ -119,6 +119,11 @@ mod armor
     // AbilityArmor: the gravitite jump, liquid strokes and the phoenix set burning out in water
     pub const GRAVITITE_JUMP: f64 = 1.0;
     pub const WATER_STROKE: f64 = 0.03;
+    pub const LAVA_STROKE: f64 = 0.06;
+    // AetherLiquidMovement.negativeDifference eases each movement input this much toward rest
+    pub const EASE: f64 = 0.1;
+    // Entity.moveFlying ignores inputs this small
+    pub const STILL: f64 = 0.01;
     pub const QUENCH_EVERY: f64 = 5.0;
     // PlayerAether.onUpdate sends a player who falls below the Aether to the overworld sky
     pub const FALL_OUT: f64 = -12.0;
@@ -246,19 +251,53 @@ fn localArmor()
     }
 
     let swimmer: bool = wearingSet(player, "neptune") || wearingSet(player, "phoenix");
-    if swimmer && entity.flag(EntityField::InWater)
+    if !swimmer
     {
-        // AetherLiquidMovement repeats the stroke vanilla already takes in water
-        let forward: f64 = entity.field(EntityField::MoveForward);
-        let strafe: f64 = entity.field(EntityField::MoveStrafe);
-        let yaw: f64 = (info.yaw as f64).to_radians();
-        let push: [f64; 2] = [strafe * yaw.cos() - forward * yaw.sin(), forward * yaw.cos() + strafe * yaw.sin()];
-        let _ = entity.setMotion([
-            info.motion[0] + push[0] * armor::WATER_STROKE,
-            info.motion[1],
-            info.motion[2] + push[1] * armor::WATER_STROKE,
-        ]);
+        return;
     }
+
+    // AetherLiquidMovement repeats the stroke vanilla already takes, once in water and once more in lava
+    let strafe: f64 = ease(entity.field(EntityField::MoveStrafe));
+    let forward: f64 = ease(entity.field(EntityField::MoveForward));
+    for (liquid, scale) in [(EntityField::InWater, armor::WATER_STROKE), (EntityField::InLava, armor::LAVA_STROKE)]
+    {
+        if !entity.flag(liquid)
+        {
+            continue;
+        }
+
+        let motion: [f64; 3] = entity.info().map_or(info.motion, |info| info.motion);
+        let push: [f64; 2] = stroke(info.yaw, strafe, forward, scale);
+        let _ = entity.setMotion([motion[0] + push[0], motion[1], motion[2] + push[1]]);
+    }
+}
+
+// AetherLiquidMovement.negativeDifference
+fn ease(input: f64) -> f64
+{
+    if input == 0.0
+    {
+        0.0
+    }
+    else
+    {
+        input - input.signum() * armor::EASE
+    }
+}
+
+// Entity.moveFlying: the horizontal push of one stroke along the look
+fn stroke(yaw: f32, strafe: f64, forward: f64, scale: f64) -> [f64; 2]
+{
+    let length: f64 = strafe.hypot(forward);
+    if length < armor::STILL
+    {
+        return [0.0; 2];
+    }
+
+    let factor: f64 = scale / length.max(1.0);
+    let (strafe, forward): (f64, f64) = (strafe * factor, forward * factor);
+    let (sin, cos): (f64, f64) = f64::from(yaw).to_radians().sin_cos();
+    [strafe * cos - forward * sin, forward * cos + strafe * sin]
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
