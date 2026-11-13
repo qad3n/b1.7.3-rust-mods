@@ -29,8 +29,9 @@ Assets: never committed, `assets.toml` builds them from the player's jar in `mod
   with its metadata or a forest block with named properties (`Resolved`), and `trees.rs` does the same for TF log and
   leaf data values. Unit tests check the castle rune, castle door, pedestal, shield, critter and boss spawner rows keep
   the metadata they stored before, so generation stays the same for a seed.
-- Twilight logs keep their 1.7 axis as an `axis` state (y, x, z, bark). Vanilla logs the source lays sideways stand
-  upright, beta logs have no axis.
+- Logs stand upright only, as beta logs do: twilight, magic and cinder logs have no axis state, and the sideways and
+  all bark logs of 1.7 trees, structures and the cinder furnace are placed upright (2026-11-12, beta has no log
+  rotation).
 - Source class is cited here, never in code comments.
 - Shared math comes from `b173_api::math` (`blockOf`, `floor`, `distance`, `length`, `normalize`, `Face`,
   `yawTowards` for faceEntity turns). Its lengths round through the float `MathHelper.sqrt_double` as Vec3 does.
@@ -312,7 +313,7 @@ Moved off numeric ids: the private `ids.rs` id cache and its hand lists are gone
 caches ids forever, the reverter keeps its snapshot in memory per content generation instead of saving numeric ids,
 vanilla textures are sprite names (`minecraft:block/<sprite>`, `minecraft:item/<sprite>`). Shield facing and latent,
 trophy pedestal turn and latent, trophy facing, slider axis and stagger, boss spawner kind, castle door and rune
-colors, magic core stop, thorn axis, lily pad pieces, aurora phase and cinder log axis are read and written as named
+colors, magic core stop, thorn axis, lily pad pieces, aurora phase are read and written as named
 states. Small behaviour changes from tags: other mods' blocks in the matching tags now count (ores for the ore magnet
 and cinder furnace, chests for the sorting core, buttons for protection), magic cores and the cinder log hold leaves
 as their `sustains_leaves` flag says, and the ore magnet no longer takes any block with "ore" in its name.

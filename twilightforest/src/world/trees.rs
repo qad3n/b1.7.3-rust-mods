@@ -25,8 +25,7 @@ pub(crate) enum Tree
 // TF log data values keep the wood in the low bits and the orientation in bits 4 and 8, 12 is all bark
 mod orient
 {
-    pub const X: i32 = 4;
-    pub const Z: i32 = 8;
+    // the TF log data value of an all bark branch log, placed upright like every beta log
     pub const BARK: i32 = 12;
 }
 
@@ -37,18 +36,8 @@ const PLAIN_LEAVES: [&str; 4] =
 const MAGIC_LEAVES: [&str; 4] = [block::TIME_LEAVES, block::TRANS_LEAVES, block::MINE_LEAVES, block::SORT_LEAVES];
 const CORES: [&str; 4] = [block::TIME_CORE, block::TRANS_CORE, block::MINE_CORE, block::SORT_CORE];
 
-// a TF log data value to this port's block and axis state
-fn logFrom(woods: &[&'static str; 4], data: i32) -> Placed
-{
-    let axis: &str = match data & orient::BARK
-    {
-        orient::X => "x",
-        orient::Z => "z",
-        orient::BARK => "none",
-        _ => "y",
-    };
-    palette::with(woods[(data & 3) as usize], "axis", axis)
-}
+// a TF log data value to this port's block; beta logs only stand upright, so sideways and bark logs are upright too
+fn logFrom(woods: &[&'static str; 4], data: i32) -> Placed { palette::plain(woods[(data & 3) as usize]) }
 
 pub(crate) fn log(data: i32) -> Placed { logFrom(&PLAIN_WOODS, data) }
 

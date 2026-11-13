@@ -308,7 +308,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         block::CINDER_LOG,
         base("minecraft:block", "Cinder Log [NYI]", Kind::Wood, cinderHardness)
             .faces(super::faces(&super::Look::Column { top: "cinder_top", side: "cinder_side" }))
-            .property(Property::values("axis", &super::wood::LOG_AXES))
             .sustainsLeaves(),
     )
 }

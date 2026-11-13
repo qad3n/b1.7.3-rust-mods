@@ -24,8 +24,6 @@ mod leaves
 }
 
 const LOG_HARDNESS: f32 = 2.0;
-// BlockLog orientation bits as a state, metadata 0 stands upright, 1 and 2 lie along x and z, 3 is all bark
-pub(crate) const LOG_AXES: [&str; 4] = ["y", "x", "z", "none"];
 const PLANK_HARDNESS: f32 = 2.0;
 // a root block splits into three or four sticks
 const ROOT_STICKS: [i32; 2] = [3, 4];
@@ -533,7 +531,7 @@ fn registerLogs(ctx: &mut RegisterCtx) -> Result<()>
             .faces(faces(&Look::Column { top: row.m_top, side: row.m_side }))
             .flammable(fire::LOG.0, fire::LOG.1)
             .sustainsLeaves();
-        super::put(ctx, row.m_log, spec.property(Property::values("axis", &LOG_AXES)))?;
+        super::put(ctx, row.m_log, spec)?;
         ctx.tags().add(RegistryKind::Item, tags::LOGS, &[row.m_log])?;
     }
 

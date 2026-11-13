@@ -670,24 +670,8 @@ fn cinderize(world: World, pos: BlockPos)
         return;
     }
 
-    // TileEntityTFCinderFurnace.getCinderMetaFor, the log turns to face the furnace
-    let axis: &str = if dz == 0 && dx != 0
-    {
-        if dy == 0 { "x" } else { "z" }
-    }
-    else if dx == 0 && dz != 0
-    {
-        if dy == 0 { "z" } else { "x" }
-    }
-    else if dx == 0 || dy == 0
-    {
-        "y"
-    }
-    else
-    {
-        "none"
-    };
-    let _ = world.setBlockState(at, names::state(block::CINDER_LOG).with("axis", axis));
+    // beta logs only stand upright, the source turned the cinder log to face the furnace
+    let _ = world.setBlockState(at, names::state(block::CINDER_LOG));
 
     world.playSound(crate::math::center(at), "fire.fire", 1.0, 1.0);
 
