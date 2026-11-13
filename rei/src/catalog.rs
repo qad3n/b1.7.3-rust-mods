@@ -132,6 +132,13 @@ impl Catalog
             .map_or(entries.len(), |index| index + 1);
         entries.splice(at..at, spawners);
 
+        let mut words: HashMap<i32, String> = HashMap::new();
+        for entry in &mut entries
+        {
+            let tagged: &String = words.entry(entry.m_key.m_id).or_insert_with(|| tagWords(entry.m_key.m_id));
+            entry.m_search.push_str(tagged);
+        }
+
         let byKey: HashMap<Key, usize> =
             entries.iter().enumerate().map(|(index, entry)| (entry.m_key, index)).collect();
         let names: HashMap<String, String> = names(&entries);
@@ -349,24 +356,7 @@ impl Catalog
         }
     }
 
-    // item and block tags holding the item
-    pub(crate) fn tags(&self, id: i32) -> BTreeSet<Identifier>
-    {
-        let Some(item) = nameOf(RegistryKind::Item, id)
-        else
-        {
-            return BTreeSet::new();
-        };
-
-        let mut tags: BTreeSet<Identifier> = tagsOf(RegistryKind::Item, &item).into_iter().collect();
-        // the item form of a block shares its numeric id and its name
-        if let Some(block) = nameOf(RegistryKind::Block, id).filter(|block| *block == item)
-        {
-            tags.extend(tagsOf(RegistryKind::Block, &block));
-        }
-
-        tags
-    }
+    pub(crate) fn tags(&self, id: i32) -> BTreeSet<Identifier> { tags(id) }
 
     // every item a tag holds, a block member through its item, each damage of a member taken
     pub(crate) fn members(&self, tag: &Identifier) -> Rc<[Key]>
@@ -374,7 +364,7 @@ impl Catalog
         Rc::clone(self.m_members.borrow_mut().entry(tag.clone()).or_insert_with(|| members(tag).into()))
     }
 
-    // a search matches every word against the name, @word against the owning mod id or name
+    // a search matches every word against the name and tags, @word against the owning mod id or name
     pub(crate) fn search(&self, query: &str) -> Vec<usize>
     {
         let lowered: String = query.to_lowercase();
@@ -417,6 +407,31 @@ impl Catalog
     {
         self.m_entries.iter().map(|entry| entry.m_key).filter(move |listed| key.accepts(*listed))
     }
+}
+
+// item and block tags holding the item
+fn tags(id: i32) -> BTreeSet<Identifier>
+{
+    let Some(item) = nameOf(RegistryKind::Item, id)
+    else
+    {
+        return BTreeSet::new();
+    };
+
+    let mut tags: BTreeSet<Identifier> = tagsOf(RegistryKind::Item, &item).into_iter().collect();
+    // the item form of a block shares its numeric id and its name
+    if let Some(block) = nameOf(RegistryKind::Block, id).filter(|block| *block == item)
+    {
+        tags.extend(tagsOf(RegistryKind::Block, &block));
+    }
+
+    tags
+}
+
+// tag paths read as words on their own lines so no search word spans two tags
+fn tagWords(id: i32) -> String
+{
+    tags(id).iter().map(|tag| format!("\n{}", tag.path().replace(['_', '/'], " "))).collect()
 }
 
 // the shown name of every namespace with listed items, asking the host once per namespace

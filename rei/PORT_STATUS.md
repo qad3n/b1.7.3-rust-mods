@@ -20,7 +20,7 @@ time and gamemode buttons are left out.
 | `Left` / `Right` arrow keys | recipe on a recipe page, else list page |
 | `Esc` / `Backspace` / Back button on a recipe page | close / back to the page an ingredient was opened from, else close. Any screen change closes the page, so the inventory always reopens on the plain container |
 | `O` | hides or shows the panel |
-| Search field | words match the name, `@word` the mod id or name, right click clears |
+| Search field | words match the name or a tag path (`disc` finds every `c:music_discs` member), `@word` the mod id or name, right click clears |
 | Recipe page tooltips | name, owning mod, registry id and every item and block tag, a drop's count, chance and conditions |
 | Tabs left of a recipe page | switch category: Crafting, Smelting, Mob Drops, Block Drops, Chest Loot, Tags. `R` shows how to get an item, `U` what it makes, what a block or spawner drops, a chest's loot |
 | Crafting table button | craftable filter, from the 36 inventory slots |
