@@ -9,6 +9,7 @@ sources, tools and status notes. One `.bmod` per folder runs on both the client 
 | `spc/` | Single Player Commands (modern, minimal redesign) | b1.7.3 v2.11.1 |
 | `rei/` | Roughly Enough Items (item list, recipes and cheat mode only) | Fabric 16.0.799 |
 | `twilightforest/` | The Twilight Forest | 1.7.10 2.4.3 |
+| `discs/` | Music Discs (the nine C418 discs of Beta 1.9) | own mod |
 
 ## Building a mod
 

@@ -1,0 +1,5 @@
+# disc art is Mojang's and comes from the player's 1.0 jar through assets.toml
+assets/*/textures/
+target/
+Cargo.lock
+out/

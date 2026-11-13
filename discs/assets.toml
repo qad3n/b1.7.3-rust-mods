@@ -1,0 +1,20 @@
+[[download]]
+name = "1.0.jar"
+url = "https://minecraft.wiki/w/Java_Edition_1.0.0 (the client jar, renamed to 1.0.jar)"
+
+[[slice]]
+source = "1.0.jar"
+from = "gui/items.png"
+to = "textures/item/"
+tile = 16
+
+[slice.tiles]
+242 = "record_blocks"
+243 = "record_chirp"
+244 = "record_far"
+245 = "record_mall"
+246 = "record_mellohi"
+247 = "record_stal"
+248 = "record_strad"
+249 = "record_ward"
+250 = "record_11"
