@@ -274,10 +274,15 @@ fn registerArmor(ctx: &mut RegisterCtx) -> Result<()>
                 texture: set.m_sheet.to_owned(),
                 color: set.m_color,
             };
-            ctx.items().register(
-                &name,
-                ItemSpecBuilder::new().texture(&texture(&format!("armor/{name}"))).armor(armor).tag(tag),
-            )?;
+            let mut spec: ItemSpecBuilder =
+                ItemSpecBuilder::new().texture(&texture(&format!("armor/{name}"))).armor(armor).tag(tag);
+            // ItemAetherArmor tints the grey icon with the same color as the worn sheet
+            if let Some(color) = set.m_color
+            {
+                spec = spec.color(color);
+            }
+
+            ctx.items().register(&name, spec)?;
         }
     }
 

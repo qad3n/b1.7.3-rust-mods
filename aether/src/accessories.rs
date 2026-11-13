@@ -709,10 +709,9 @@ mod look
 }
 
 // ItemAccessory.setTexture names, accessories without one draw the tinted base sheet
-const SHEETS: [(&str, &str); 9] = [
+const SHEETS: [(&str, &str); 8] = [
     ("leather_gloves", "leather"),
     ("chain_gloves", "chain"),
-    ("neptune_gloves", "chain"),
     ("phoenix_gloves", "phoenix"),
     ("valkyrie_gloves", "valkyrie"),
     ("swet_cape", "swet_cape"),
