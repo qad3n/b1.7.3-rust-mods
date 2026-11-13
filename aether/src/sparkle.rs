@@ -54,7 +54,8 @@ mod portal
     pub const MOTES: i32 = 4;
     pub const SOUND_ODDS: i32 = 100;
     pub const VOLUME: f32 = 0.5;
-    pub const PITCH: f32 = 0.8;
+    // raised over the nether hum's 0.8 so the two portals sound apart
+    pub const PITCH: f32 = 1.4;
     pub const PITCH_SPREAD: f64 = 0.4;
     pub const EDGE: f64 = 0.25;
     pub const FLING: f64 = 2.0;
