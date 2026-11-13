@@ -4,7 +4,7 @@ name = "Music Discs"
 description = "The nine C418 music discs from Beta 1.9, dropped by creepers that skeletons shoot"
 authors = ["b173 mod"]
 license = "MIT code, disc art and music by Mojang from the player's own game files"
-api = "2.0"
+api = "2.1"
 side = "both"
 
 [depends]

@@ -1,5 +1,5 @@
-# disc art is Mojang's and comes from the player's 1.0 jar through assets.toml
-assets/*/textures/
+# the beta 1.9 disc art is Mojang's and comes from the player's 1.0 jar through assets.toml
+assets/*/textures/item/record_*.png
 target/
 Cargo.lock
 out/

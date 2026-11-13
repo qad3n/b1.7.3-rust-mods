@@ -1,7 +1,9 @@
+mod blank;
+
 use b173_api::prelude::*;
 use b173_api::vanilla::entity;
 
-const DISC_TAG: &str = "c:music_discs";
+pub(crate) const DISC_TAG: &str = "c:music_discs";
 const SKELETON_KILL: &str = "killed_by_skeleton";
 const GUNPOWDER: &str = "minecraft:gunpowder";
 
@@ -21,7 +23,8 @@ fn register(ctx: &mut RegisterCtx) -> Result<()>
         ctx.items().register(&format!("record_{disc}"), spec)?;
     }
 
-    creeper(ctx)
+    creeper(ctx)?;
+    blank::register(ctx)
 }
 
 fn skeleton(query: &LootQuery) -> bool
