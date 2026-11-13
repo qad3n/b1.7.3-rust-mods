@@ -74,7 +74,8 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 - Inebriation poison spits red dye icon bits through the new `iconcrack_351_1` particle; check it renders in a client.
 - Life shard hearts past ten, sun altar slider, lore book pages, valkyrie wings, invisibility and record playback are
   built but not seen in a client yet.
-- Beta differences, accepted: doors and signs craft one at a time (beta stacks them to one).
+- Beta differences, accepted: doors and signs craft one at a time (beta stacks them to one). Beta has no walls, so the
+  stone walls and their recipes are left out.
 - Accessory dye recipe (RecipeAccessoryDyes) needs NBT colors, not ported; red, blue and yellow capes come only from
   creative or commands, as in the source.
 - Client window loses focus during tests and opens the pause menu (test harness only).
@@ -95,7 +96,7 @@ Teleporting a test player into terrain suffocates it: check `loader column` firs
 
 ## Done (milestone 5, completion)
 
-- Recipes: every `AetherRegistries.initializeRecipes` and `initializeShapelessRecipes` row (slabs, walls, stairs, gloves,
+- Recipes: every `AetherRegistries.initializeRecipes` and `initializeShapelessRecipes` row (slabs, stairs, gloves,
   pendants, darts, machines, bed, bookshelf, parachutes, lore book), metadata keys, any-color wool for the bed.
 - Enchanter and freezer tables completed (rings, pendants, darts, discs, vanilla armor and hoes; the source repairs the
   iron sword at 550), skyroot water bucket leaves its bucket.

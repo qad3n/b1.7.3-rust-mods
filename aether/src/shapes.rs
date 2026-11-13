@@ -2,7 +2,7 @@ use crate::names::{self, block};
 use b173_api::math::floor;
 use b173_api::prelude::*;
 
-// a building stone or wood the Aether makes stairs, slabs and walls from
+// a building stone or wood the Aether makes stairs and slabs from
 struct Stone
 {
     m_name: &'static str,
@@ -12,10 +12,9 @@ struct Stone
     m_tool: ToolClass,
     m_hardness: f32,
     m_resistance: f32,
-    // BlockAetherSlab sets its own strength, stairs and walls copy their stone
+    // BlockAetherSlab sets its own strength, stairs copy their stone
     m_slabHardness: f32,
     m_slabResistance: f32,
-    m_walls: bool,
 }
 
 const fn stone(name: &'static str, texture: &'static str, hardness: f32, resistance: f32, slab: (f32, f32)) -> Stone
@@ -31,11 +30,10 @@ const fn stone(name: &'static str, texture: &'static str, hardness: f32, resista
         m_resistance: resistance,
         m_slabHardness: slab.0,
         m_slabResistance: slab.1,
-        m_walls: true,
     }
 }
 
-// BlocksAether stairs, slabs and walls, in registration order
+// BlocksAether stairs and slabs, in registration order
 const STONES: [Stone; 8] = [
     stone("carved", "carved_stone", 0.5, 2.5, (2.0, 10.0)),
     stone("angelic", "angelic_stone", 0.5, 2.5, (2.0, 10.0)),
@@ -51,7 +49,6 @@ const STONES: [Stone; 8] = [
         m_resistance: 5.0,
         m_slabHardness: 2.0,
         m_slabResistance: 5.0,
-        m_walls: false,
     },
     stone("holystone", "holystone", 0.5, 2.5, (2.0, 10.0)),
     stone("holystone_brick", "holystone_brick", 0.5, 2.5, (2.0, 10.0)),
@@ -69,14 +66,6 @@ mod shape
         [0.0, 8.0, 0.0, 8.0, 16.0, 16.0],
         [0.0, 8.0, 8.0, 16.0, 16.0, 16.0],
         [0.0, 8.0, 0.0, 16.0, 16.0, 8.0],
-    ];
-    // BlockWall: a post with arms to each joined side
-    pub const POST: [f32; 6] = [4.0, 0.0, 4.0, 12.0, 16.0, 12.0];
-    pub const ARMS: [(i32, [f32; 6]); 4] = [
-        (2, [5.0, 0.0, 0.0, 11.0, 13.0, 8.0]),
-        (3, [5.0, 0.0, 8.0, 11.0, 13.0, 16.0]),
-        (4, [0.0, 0.0, 5.0, 8.0, 13.0, 11.0]),
-        (5, [8.0, 0.0, 5.0, 16.0, 13.0, 11.0]),
     ];
     // BlockFenceGate: two posts and two bars across the facing, the bars gone while open, model cuboids pick
     // states by index with open the high property
@@ -208,29 +197,6 @@ fn stairs(row: &Stone) -> BlockSpecBuilder
     shaped(row, row.m_hardness, row.m_resistance)
         .model(BlockModelSpec { cuboids, ..BlockModelSpec::default() })
         .behavior(Stairs)
-}
-
-fn walls() -> Vec<Identifier>
-{
-    STONES
-        .iter()
-        .filter(|row| row.m_walls)
-        .filter_map(|row| Identifier::parse(&format!("aether:{}_wall", row.m_name)).ok())
-        .chain(Identifier::parse("aether:skyroot_fence_gate").ok())
-        .collect()
-}
-
-fn wall(row: &Stone) -> BlockSpecBuilder
-{
-    let mut cuboids: Vec<Cuboid> = vec![cuboid(shape::POST, Vec::new(), None)];
-    cuboids.extend(shape::ARMS.iter().map(|(face, bounds)| cuboid(*bounds, Vec::new(), Some(*face))));
-
-    shaped(row, row.m_hardness, row.m_resistance).model(BlockModelSpec
-    {
-        cuboids,
-        connects_to: walls(),
-        ..BlockModelSpec::default()
-    })
 }
 
 // the gate's parts across x for facings 0 and 2, turned to run along z for 1 and 3
@@ -441,11 +407,6 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
                 .model(half)
                 .behavior(Slab { m_slab: slab.clone(), m_double: double }),
         )?;
-
-        if row.m_walls
-        {
-            blocks.register(&format!("{}_wall", row.m_name), wall(row))?;
-        }
     }
 
     blocks.register(

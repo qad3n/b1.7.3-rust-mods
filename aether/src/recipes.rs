@@ -192,17 +192,16 @@ const SHAPELESS: [Shapeless; 4] = [
 ];
 
 // slab, wall and stair families: block prefix, the block they are cut from, and whether walls exist
-const FAMILIES: [(&str, &str, bool); 7] = [
-    ("carved", "carved_stone", true),
-    ("angelic", "angelic_stone", true),
-    ("hellfire", "hellfire_stone", true),
-    ("holystone", block::HOLYSTONE, true),
-    ("mossy_holystone", "mossy_holystone", true),
-    ("holystone_brick", "holystone_brick", true),
-    ("skyroot", PLANKS, false),
+const FAMILIES: [(&str, &str); 7] = [
+    ("carved", "carved_stone"),
+    ("angelic", "angelic_stone"),
+    ("hellfire", "hellfire_stone"),
+    ("holystone", block::HOLYSTONE),
+    ("mossy_holystone", "mossy_holystone"),
+    ("holystone_brick", "holystone_brick"),
+    ("skyroot", PLANKS),
 ];
-const FAMILY_SHAPES: [(&str, i32, &[&str]); 3] =
-    [("slab", 6, &["ZZZ"]), ("wall", 6, &["ZZZ", "ZZZ"]), ("stairs", 4, &["Z  ", "ZZ ", "ZZZ"])];
+const FAMILY_SHAPES: [(&str, i32, &[&str]); 2] = [("slab", 6, &["ZZZ"]), ("stairs", 4, &["Z  ", "ZZ ", "ZZZ"])];
 
 // tool and armor shapes shared by every material
 const PICKAXE: [&str; 3] = ["ZZZ", " Y ", " Y "];
@@ -245,15 +244,10 @@ fn build(ctx: &mut RegisterCtx, name: &str, result: ItemStack, pattern: &[&str],
 
 fn families(ctx: &mut RegisterCtx) -> Result<()>
 {
-    for (prefix, source, walls) in FAMILIES
+    for (prefix, source) in FAMILIES
     {
         for (shape, count, pattern) in FAMILY_SHAPES
         {
-            if shape == "wall" && !walls
-            {
-                continue;
-            }
-
             let name: String = format!("{prefix}_{shape}");
             build(ctx, &name, ItemStack::of(name.as_str(), count), pattern, &[('Z', source, 0)])?;
         }
