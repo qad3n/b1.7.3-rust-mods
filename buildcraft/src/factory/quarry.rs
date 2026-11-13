@@ -25,7 +25,6 @@ const FRAME_COST: i32 = 25;
 const DIG_POWER: [i32; 5] = [20, 30, 200, 50, MAX_ENERGY];
 const HARDNESS: f32 = 1.5;
 const RESISTANCE: f32 = 10.0;
-const VIEW_CHANNEL: &str = "quarry";
 
 mod bounds
 {
@@ -207,13 +206,8 @@ struct View
     m_digging: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct ViewPacket
-{
-    m_world: i32,
-    m_pos: BlockPos,
-    m_view: View,
-}
+// kept by the loader on the quarry's tile: clients near it get each change and whoever arrives later the last one
+static VIEW: Attachment<View> = Attachment::new("quarry_view").synced();
 
 thread_local!
 {
@@ -388,8 +382,7 @@ fn view(state: &QuarryState, speed: f64) -> View
 
 fn publish(world: World, pos: BlockPos, view: View)
 {
-    let packet: ViewPacket = ViewPacket { m_world: world.dimension, m_pos: pos, m_view: view };
-    if let Err(error) = send(&format!("buildcraft:{VIEW_CHANNEL}"), Target::Tracking(world.dimension, pos), &packet)
+    if let Err(error) = VIEW.set((world, pos), &view)
     {
         warn(&format!("could not send a quarry update: {error}"));
     }
@@ -706,15 +699,28 @@ impl TileBehavior for QuarryTile
     }
 }
 
-fn onView(packet: ViewPacket)
+fn onView(holder: Holder, view: Option<View>)
 {
-    let world: World = World { dimension: packet.m_world };
-    if world.isAuthority()
+    let Holder::Tile { world: dimension, pos } = holder
+    else
+    {
+        return;
+    };
+
+    if (World { dimension }).isAuthority()
     {
         return;
     }
 
-    VIEWS.with(|views| views.borrow_mut().insert((packet.m_world, packet.m_pos), packet.m_view));
+    VIEWS.with(|views|
+    {
+        let mut views = views.borrow_mut();
+        match view
+        {
+            Some(view) => views.insert((dimension, pos), view),
+            None => views.remove(&(dimension, pos)),
+        };
+    });
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
@@ -737,7 +743,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .tag(crate::machines::CONNECTORS)
             .behavior(MachineBlock { m_faces: &FACES }),
     )?;
-    ctx.channels().register(VIEW_CHANNEL, Direction::ToClient, |packet: ViewPacket, _player| onView(packet))?;
+    ctx.attachments().declare(&VIEW)?;
+    ctx.attachments().watch(&VIEW, onView)?;
 
     if !super::mining()
     {

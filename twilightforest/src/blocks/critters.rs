@@ -414,7 +414,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     for row in &CRITTERS
     {
         let tile: String = tileName(row);
-        let spec: TileEntitySpec = TileEntitySpec { inventory: 0, ticks: true, sync: false, behavior: None };
+        let spec: TileEntitySpec = TileEntitySpec { inventory: 0, ticks: true, sync: false, behavior: None, energy: None, tank: None };
         ctx.tileEntities().register(&tile, spec, Some(std::rc::Rc::new(CritterTile { m_critter: row.m_critter })))?;
         ctx.tileEntities().model(&tile, (row.m_model)())?;
         // BlockTFCritter draws nothing itself, its tile entity draws the model

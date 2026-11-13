@@ -12,6 +12,9 @@ const DIG_COST: i32 = 25;
 const HARDNESS: f32 = 1.5;
 const RESISTANCE: f32 = 10.0;
 
+// whether the well still digs, kept by the loader on its tile and sent to the clients near it
+static DIGGING: Attachment<bool> = Attachment::new("well_digging").saved().synced();
+
 const FACES: Faces = Faces
 {
     m_front: "buildcraft:block/mining_well_front",
@@ -31,12 +34,12 @@ pub(crate) fn active(world: World, pos: BlockPos) -> bool
     }
 
     // clients see whether the well still digs, for the glow of the machines around it
-    world.tileAttachment::<Option<bool>>(pos).unwrap_or(true)
+    DIGGING.get((world, pos)).unwrap_or(true)
 }
 
 fn publish(world: World, pos: BlockPos, digging: bool)
 {
-    if let Err(error) = world.setTileAttachment(pos, &Some(digging))
+    if let Err(error) = DIGGING.set((world, pos), &digging)
     {
         warn(&format!("could not share a mining well's digging: {error}"));
     }
@@ -180,7 +183,7 @@ impl BlockBehavior for MachineBlock
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     FACES.reserve();
-    ctx.attachments().sync(AttachmentHolder::Tile)?;
+    ctx.attachments().declare(&DIGGING)?;
     ctx.blocks().register(
         NAME,
         BlockSpecBuilder::template("minecraft:block")

@@ -296,6 +296,8 @@ Missing behavior found and added:
   while off, so existing seeds generate the same.
 
 Added after the pass:
+- Lightning spares a player holding a lightning sword or knife (AetherEventHandler.onEntityStruckByLightning), on
+  the loader's new cancelable `lightning_strike` event (API 2.0, fired before EntityLightningBolt burns an entity).
 - Worn iron bubbles draw full air bubbles over beta's own while the player's eyes are in water
   (AetherOverlay.renderIronBubble), placed where GuiIngame puts the bubbles, above any extra life shard heart rows.
 - Config options: `misc.skyroot_bucket_only` (only skyroot water lights portals), `gameplay.portal_frame_start`

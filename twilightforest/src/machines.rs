@@ -902,7 +902,7 @@ fn registerTable(ctx: &mut RegisterCtx) -> Result<()>
 
 fn registerFurnace(ctx: &mut RegisterCtx) -> Result<()>
 {
-    let spec: TileEntitySpec = TileEntitySpec { inventory: furnace::SLOTS, ticks: true, sync: true, behavior: None };
+    let spec: TileEntitySpec = TileEntitySpec { inventory: furnace::SLOTS, ticks: true, sync: true, behavior: None, energy: None, tank: None };
     ctx.tileEntities().register(FURNACE_NAME, spec, Some(std::rc::Rc::new(FurnaceTile)))?;
 
     let (top, off, on): (&str, &str, &str) = ("furnace_top", "furnace_front", "furnace_front_on");

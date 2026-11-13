@@ -4,11 +4,8 @@ name = "Roughly Enough Items"
 description = "Item list, search, craftable filter, recipe, drop, loot and tag pages and op-gated cheat mode beside every container screen"
 authors = ["shedaniel (original mod)", "b173 port"]
 license = "MIT"
-api = "1.44"
+api = "2.0"
 side = "both"
-
-[network]
-version = "1"
 
 [depends]
 loader = ">=0.1"

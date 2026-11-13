@@ -144,17 +144,12 @@ pub(crate) struct View
     pub(crate) m_speed: f32,
     pub(crate) m_burning: bool,
     pub(crate) m_scaledBurn: i32,
+    // the world time it was sent, two strokes that look alike still have to reach the client as two values
+    pub(crate) m_sent: i64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct ViewPacket
-{
-    m_world: i32,
-    m_pos: BlockPos,
-    m_view: View,
-}
-
-const VIEW_CHANNEL: &str = "engine";
+// kept by the loader on the engine's tile: clients near it get each change and whoever arrives later the last one
+static VIEW: Attachment<View> = Attachment::new("engine_view").synced();
 
 thread_local!
 {
@@ -266,6 +261,7 @@ fn view(row: &EngineRow, world: World, pos: BlockPos, state: &EngineState) -> Vi
         m_speed: speed(row, state.m_energy),
         m_burning: burning(row, world, pos, state),
         m_scaledBurn: scaled,
+        m_sent: 0,
     }
 }
 
@@ -283,8 +279,8 @@ pub(crate) fn shown(world: World, pos: BlockPos) -> Option<View>
 
 fn publish(world: World, pos: BlockPos, view: View)
 {
-    let packet: ViewPacket = ViewPacket { m_world: world.dimension, m_pos: pos, m_view: view };
-    if let Err(error) = send(&format!("buildcraft:{VIEW_CHANNEL}"), Target::Tracking(world.dimension, pos), &packet)
+    let stamped: View = View { m_sent: world.time(), ..view };
+    if let Err(error) = VIEW.set((world, pos), &stamped)
     {
         warn(&format!("could not send an engine update: {error}"));
     }
@@ -637,16 +633,30 @@ impl TileBehavior for EngineTile
     }
 }
 
-fn onView(packet: ViewPacket)
+fn onView(holder: Holder, view: Option<View>)
 {
-    let world: World = World { dimension: packet.m_world };
+    let Holder::Tile { world: dimension, pos } = holder
+    else
+    {
+        return;
+    };
+
+    let world: World = World { dimension };
     if world.isAuthority()
     {
         return;
     }
 
-    VIEWS.with(|views| views.borrow_mut().insert((packet.m_world, packet.m_pos), packet.m_view));
-    world.markBlockForRender(packet.m_pos);
+    VIEWS.with(|views|
+    {
+        let mut views = views.borrow_mut();
+        match view
+        {
+            Some(view) => views.insert((dimension, pos), view),
+            None => views.remove(&(dimension, pos)),
+        };
+    });
+    world.markBlockForRender(pos);
 }
 
 // the engines as recipe viewers show them, what each burns and the energy it gives
@@ -703,9 +713,10 @@ pub(crate) fn registerPages(ctx: &mut RegisterCtx) -> Result<()>
         .build()
 }
 
-pub(crate) fn registerChannel(ctx: &mut RegisterCtx) -> Result<()>
+pub(crate) fn registerView(ctx: &mut RegisterCtx) -> Result<()>
 {
-    ctx.channels().register(VIEW_CHANNEL, Direction::ToClient, |packet: ViewPacket, _player| onView(packet))
+    ctx.attachments().declare(&VIEW)?;
+    ctx.attachments().watch(&VIEW, onView)
 }
 
 // BlockEngine.blockActivated: a wrench turns it, the steam and combustion engines open their screens

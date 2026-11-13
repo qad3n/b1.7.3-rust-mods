@@ -194,7 +194,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     let tile: Rc<dyn TileBehavior> = Rc::new(engine::EngineTile);
     ctx.tileEntities().register(
         TILE,
-        TileEntitySpec { inventory: SLOTS, ticks: true, sync: false, behavior: None },
+        TileEntitySpec { inventory: SLOTS, ticks: true, sync: false, behavior: None, energy: None, tank: None },
         Some(tile),
     )?;
     ctx.tileEntities().model(TILE, model::spec())?;
@@ -204,7 +204,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
         registerEngine(ctx, row)?;
     }
 
-    engine::registerChannel(ctx)?;
+    engine::registerView(ctx)?;
     engine::registerPages(ctx)?;
     oil::register(ctx)?;
     oil_fx::register(ctx)

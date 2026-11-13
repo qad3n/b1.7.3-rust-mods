@@ -1135,7 +1135,7 @@ pub(crate) fn registerTiles(ctx: &mut RegisterCtx) -> Result<()>
     {
         ctx.tileEntities().register(
             name,
-            TileEntitySpec { inventory: 0, ticks: true, sync, behavior: None },
+            TileEntitySpec { inventory: 0, ticks: true, sync, behavior: None, energy: None, tank: None },
             Some(behavior),
         )?;
     }

@@ -16,7 +16,6 @@ const TUBE_SPEED: f64 = 0.01;
 const RESCAN: i64 = 100;
 const HARDNESS: f32 = 5.0;
 const OIL: &str = "buildcraft:oil";
-const VIEW_CHANNEL: &str = "pump";
 const TOP: &str = "buildcraft:block/pump_top";
 const BOTTOM: &str = "buildcraft:block/pump_bottom";
 const SIDE: &str = "buildcraft:block/pump_side";
@@ -34,13 +33,8 @@ struct PumpState
     m_provider: Option<Provider>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
-struct ViewPacket
-{
-    m_world: i32,
-    m_pos: BlockPos,
-    m_tubeY: f64,
-}
+// the height the tube reaches down to, kept by the loader on the pump's tile for the clients near it
+static TUBE_Y: Attachment<f64> = Attachment::new("pump_tube").synced();
 
 // the pumpable oil under one pump by layer height, the top layer pumped first
 type Pool = BTreeMap<i32, VecDeque<BlockPos>>;
@@ -131,8 +125,7 @@ fn survey(world: World, pump: BlockPos, start: BlockPos)
 
 fn publish(world: World, pos: BlockPos, tubeY: f64)
 {
-    let packet: ViewPacket = ViewPacket { m_world: world.dimension, m_pos: pos, m_tubeY: tubeY };
-    if let Err(error) = send(&format!("buildcraft:{VIEW_CHANNEL}"), Target::Tracking(world.dimension, pos), &packet)
+    if let Err(error) = TUBE_Y.set((world, pos), &tubeY)
     {
         warn(&format!("could not send a pump update: {error}"));
     }
@@ -349,13 +342,28 @@ impl BlockBehavior for PumpBlock
     }
 }
 
-fn onView(packet: ViewPacket)
+fn onView(holder: Holder, tubeY: Option<f64>)
 {
-    let world: World = World { dimension: packet.m_world };
-    if !world.isAuthority()
+    let Holder::Tile { world: dimension, pos } = holder
+    else
     {
-        TUBES.with(|tubes| tubes.borrow_mut().insert((packet.m_world, packet.m_pos), packet.m_tubeY));
+        return;
+    };
+
+    if (World { dimension }).isAuthority()
+    {
+        return;
     }
+
+    TUBES.with(|tubes|
+    {
+        let mut tubes = tubes.borrow_mut();
+        match tubeY
+        {
+            Some(tubeY) => tubes.insert((dimension, pos), tubeY),
+            None => tubes.remove(&(dimension, pos)),
+        };
+    });
 }
 
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
@@ -376,7 +384,8 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             .tag(crate::machines::MACHINES)
             .behavior(PumpBlock),
     )?;
-    ctx.channels().register(VIEW_CHANNEL, Direction::ToClient, |packet: ViewPacket, _player| onView(packet))?;
+    ctx.attachments().declare(&TUBE_Y)?;
+    ctx.attachments().watch(&TUBE_Y, onView)?;
 
     // a tank over a mining well
     ctx.recipes()

@@ -9,7 +9,6 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 
 const ITEM_CHANNEL: &str = "pipe_item";
-const LIQUID_CHANNEL: &str = "pipe_liquid";
 // TilePipe sends an item's place at most once a second and its liquid levels every 50 ticks
 const ITEM_SYNC: i64 = 20;
 const LIQUID_SYNC: i64 = 50;
@@ -41,13 +40,8 @@ struct ItemPacket
     m_item: Traveler,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-struct LiquidPacket
-{
-    m_world: i32,
-    m_pos: BlockPos,
-    m_liquid: Liquid,
-}
+// what a pipe carries of liquid, kept by the loader on the pipe's tile for the clients near it
+static LIQUID: Attachment<Liquid> = Attachment::new("pipe_liquid").synced();
 
 thread_local!
 {
@@ -470,8 +464,7 @@ fn sendLiquid(world: World, pos: BlockPos, state: &mut PipeState)
         return;
     }
 
-    let packet: LiquidPacket = LiquidPacket { m_world: world.dimension, m_pos: pos, m_liquid: state.m_liquid.clone() };
-    if let Err(error) = send(&channel(LIQUID_CHANNEL), Target::Tracking(world.dimension, pos), &packet)
+    if let Err(error) = LIQUID.set((world, pos), &state.m_liquid)
     {
         warn(&format!("could not send pipe liquid: {error}"));
     }
@@ -769,21 +762,28 @@ fn onItemPacket(packet: ItemPacket)
     save(world, packet.m_pos, &state);
 }
 
-fn onLiquidPacket(packet: LiquidPacket)
+fn onLiquid(holder: Holder, liquid: Option<Liquid>)
 {
-    let world: World = World { dimension: packet.m_world };
+    let Holder::Tile { world: dimension, pos } = holder
+    else
+    {
+        return;
+    };
+
+    let world: World = World { dimension };
     if world.isAuthority()
     {
         return;
     }
 
-    let mut state: PipeState = load(world, packet.m_pos);
-    state.m_liquid = packet.m_liquid;
-    save(world, packet.m_pos, &state);
+    let mut state: PipeState = load(world, pos);
+    state.m_liquid = liquid.unwrap_or_default();
+    save(world, pos, &state);
 }
 
 pub(crate) fn registerChannels(ctx: &mut RegisterCtx) -> Result<()>
 {
     ctx.channels().register(ITEM_CHANNEL, Direction::ToClient, |packet: ItemPacket, _player| onItemPacket(packet))?;
-    ctx.channels().register(LIQUID_CHANNEL, Direction::ToClient, |packet: LiquidPacket, _player| onLiquidPacket(packet))
+    ctx.attachments().declare(&LIQUID)?;
+    ctx.attachments().watch(&LIQUID, onLiquid)
 }

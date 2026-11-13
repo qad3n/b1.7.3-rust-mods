@@ -513,7 +513,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             when: crate::blocks::when("facing", head::FACINGS[head::FLOOR as usize + index]),
         })
         .collect();
-    let spec: TileEntitySpec = TileEntitySpec { inventory: 0, ticks: false, sync: true, behavior: None };
+    let spec: TileEntitySpec = TileEntitySpec { inventory: 0, ticks: false, sync: true, behavior: None, energy: None, tank: None };
     ctx.tileEntities().register(head::TILE, spec, Some(std::rc::Rc::new(HeadTile)))?;
     ctx.tileEntities().model(head::TILE, headModel())?;
     ctx.blocks().register(

@@ -7,6 +7,7 @@ use std::cell::RefCell;
 const SHIELD: &str = "repulsion_shield";
 const INVISIBILITY: &str = "invisibility_cape";
 const SENTRY_BOOTS: &str = "sentry_boots";
+const LIGHTNING_HELD: [&str; 2] = ["lightning_sword", "lightning_knife"];
 const WINGS_TEXTURE: &str = "aether:entity/valkyrie/valkyrie";
 const DEGREES_PER_RADIAN: f32 = 57.29578;
 const WHITE: u32 = 0xFFFFFF;
@@ -160,6 +161,26 @@ fn shielded(event: &mut Event)
     let player: Player = Player { id: entity.id };
     let fireproof: bool = crate::damage::burning() && crate::player::wearingSet(player, "phoenix");
     if fireproof || (crate::damage::projectile() && Worn::of(player).wearing(SHIELD)) || cushioned(player)
+    {
+        event.cancel();
+    }
+}
+
+// AetherEventHandler.onEntityStruckByLightning: a player holding a lightning sword or knife is never struck
+fn grounded(event: &mut Event)
+{
+    let EventData::Entity { entity } = event.data()
+    else
+    {
+        return;
+    };
+    if entity.player.is_none()
+    {
+        return;
+    }
+
+    let held: Option<ItemStack> = (Player { id: entity.id }).held();
+    if held.is_some_and(|held| LIGHTNING_HELD.iter().any(|name| held.item.is(name)))
     {
         event.cancel();
     }
@@ -512,6 +533,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
     })?;
     ctx.events().on::<LivingAttack>(Priority::Normal, shielded)?;
     ctx.events().on::<LivingDrops>(Priority::Normal, doubled)?;
+    ctx.events().on::<LightningStrike>(Priority::Normal, grounded)?;
     ctx.events().on::<LivingHurt>(Priority::Normal, hardened)?;
     ctx.events().on::<PlayerChangeDimension>(Priority::Normal, welcome)?;
     ctx.events().on::<PlayerLogin>(Priority::Normal, starter)?;
