@@ -1,4 +1,5 @@
 use b173_api::prelude::*;
+use std::rc::Rc;
 
 // the 1.7 potions the source hands out that beta's attributes can carry, on the loader's status effects; hunger,
 // blindness, jump boost, resistance and fire resistance have no beta stat and stay out
@@ -23,6 +24,16 @@ mod pulse
     pub const SLOWER: f64 = -0.15;
     pub const FASTER: f64 = 0.2;
     pub const STRONGER: f64 = 1.3;
+}
+
+// EntityLivingBase.updatePotionEffects: a coloured swirl on half the ticks somewhere inside the body
+mod swirl
+{
+    // beta has no spell particle, the red dust mote reads its motion as a colour and drifts up the same way
+    pub const PARTICLE: &str = "reddust";
+    pub const ODDS: i32 = 2;
+    pub const HALF: f64 = 0.5;
+    pub const FULL: f64 = 255.0;
 }
 
 const SPEED_ATTRIBUTE: &str = "minecraft:movement_speed";
@@ -110,6 +121,42 @@ pub(crate) fn give(target: Entity, effect: Effect, level: i32, ticks: i32)
     }
 }
 
+struct Swirl
+{
+    m_color: u32,
+}
+
+#[effect_behavior]
+impl EffectBehavior for Swirl
+{
+    // the server spawns them for every watcher, the loader hides the ones on a player's own first person view
+    fn onTick(&self, entity: Entity, _level: i32, _ticks: i32)
+    {
+        let world: World = entity.world;
+        if !world.isAuthority() || world.random(swirl::ODDS) != 0
+        {
+            return;
+        }
+
+        let Some(info) = entity.info()
+        else
+        {
+            return;
+        };
+
+        let width: f64 = entity.field(EntityField::Width);
+        let height: f64 = entity.field(EntityField::Height);
+        let spread = |size: f64| (f64::from(crate::math::fraction(world)) - swirl::HALF) * size;
+        let pos: [f64; 3] = [
+            info.pos[0] + spread(width),
+            entity.field(EntityField::Bottom) + f64::from(crate::math::fraction(world)) * height,
+            info.pos[2] + spread(width),
+        ];
+        let color: [f64; 3] = crate::colors::channels(self.m_color).map(|channel| f64::from(channel) / swirl::FULL);
+        world.particle(swirl::PARTICLE, pos, color);
+    }
+}
+
 pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
 {
     for row in &EFFECTS
@@ -125,7 +172,7 @@ pub(crate) fn register(ctx: &mut RegisterCtx) -> Result<()>
             spec = spec.modifier(attribute, amount, operation);
         }
 
-        ctx.effects().register(row.m_name, spec)?;
+        ctx.effects().registerWith(row.m_name, spec, Rc::new(Swirl { m_color: row.m_color }))?;
     }
 
     Ok(())
