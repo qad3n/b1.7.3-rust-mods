@@ -19,6 +19,7 @@ in single player and slash lines run here.
 | `/tp <x> <y> <z>` | teleport, `~` for relative |
 | `/summon <entity> [count]` | spawns at the player |
 | `/locate <structure> [radius]` | nearest structure of a kind from the loader's structure registry (`dungeon`, `aether:silver_dungeon`, `twilightforest:lich_tower`), 64 chunks unless given |
+| `/butcher` | kills every `c:hostile` mob loaded in the player's dimension (within 256 blocks of any player there) |
 | `/effect <effect> [level] [seconds]`, `/effect remove <effect>` | a mod status effect on the player such as `aether:inebriation`, level 1 for 30 seconds unless given (loader API 1.22) |
 
 Fly and god persist per player (`player.setData`). Flight state reaches the client on the `fly` channel; client movement

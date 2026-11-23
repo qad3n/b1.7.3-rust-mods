@@ -1,6 +1,8 @@
 use crate::abilities::{self, Abilities};
 use b173_api::math::blockOf;
 use b173_api::prelude::*;
+use std::collections::HashSet;
+use std::rc::Rc;
 
 mod limits
 {
@@ -12,6 +14,8 @@ mod limits
     pub const LOCATE: i32 = 64;
     pub const EFFECT_SECONDS: i32 = 30;
     pub const TICKS_PER_SECOND: i32 = 20;
+    // blocks searched around each player, past the farthest view distance so every loaded mob is found
+    pub const BUTCHER: f64 = 256.0;
 }
 
 mod clock
@@ -42,6 +46,7 @@ const COMMANDS: &[Spec] = &[
     Spec { m_name: "tp", m_usage: "<x> <y> <z>", m_run: teleport },
     Spec { m_name: "summon", m_usage: "<entity> [count]", m_run: summon },
     Spec { m_name: "locate", m_usage: "<structure> [radius]", m_run: locate },
+    Spec { m_name: "butcher", m_usage: "", m_run: butcher },
     Spec { m_name: "effect", m_usage: "<effect> [level] [seconds] | remove <effect>", m_run: effect },
 ];
 
@@ -241,6 +246,37 @@ fn locate(args: &[String], player: Player) -> Result<String>
         "not built yet"
     };
     Ok(format!("{kind} at {} {}, {state}", found.x, found.z))
+}
+
+// mobs only live in chunks loaded around players so a box around each one covers the dimension
+fn butcher(_: &[String], player: Player) -> Result<String>
+{
+    const FLOOR: f64 = -64.0;
+    const CEILING: f64 = 256.0;
+
+    let (entity, _): (Entity, EntityInfo) = entityOf(player)?;
+    let world: World = entity.world;
+    let hostile: Rc<HashSet<Identifier>> = tagMembers(RegistryKind::Entity, "c:hostile");
+    let mut killed: HashSet<i32> = HashSet::new();
+
+    for info in world.players().into_iter().filter_map(Player::info)
+    {
+        let min: [f64; 3] = [info.pos[0] - limits::BUTCHER, FLOOR, info.pos[2] - limits::BUTCHER];
+        let max: [f64; 3] = [info.pos[0] + limits::BUTCHER, CEILING, info.pos[2] + limits::BUTCHER];
+
+        for mob in world.entitiesIn(min, max)
+        {
+            let target: bool = mob.alive && mob.kind.as_ref().is_some_and(|kind| hostile.contains(kind));
+            if !target || !killed.insert(mob.id)
+            {
+                continue;
+            }
+
+            Entity { world, id: mob.id }.kill();
+        }
+    }
+
+    Ok(format!("killed {} hostile mobs", killed.len()))
 }
 
 // mod status effects, beta has none of its own; level 1 is the first level
