@@ -1,0 +1,24 @@
+Beta 1.7.3 Rust Mods
+
+This repository holds unofficial ports of other people's Minecraft mods and
+a few original mods. I do not own Minecraft or the mods ported here.
+Minecraft belongs to Mojang AB and Microsoft Corporation, and each ported
+mod belongs to its original authors. None of them are affiliated with or
+endorse this project.
+
+There is no single license for the repository. Each mod folder has its own
+LICENSE file:
+
+  aether            LGPL-3.0, following the original Aether Legacy code
+  rei               MIT, following the original Roughly Enough Items
+  discs, spc        MIT, original code
+  buildcraft, ic2,
+  twilightforest,
+  wirelessredstone  free non-commercial use notice, rights stay with the
+                    original authors
+
+Original mod art and sounds are never committed. The game builds them from
+copies of the original mods the player supplies.
+
+If you are a rights holder and object to any part of this repository,
+contact the author through the repository and it will be taken down.

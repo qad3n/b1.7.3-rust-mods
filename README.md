@@ -46,4 +46,5 @@ so a player's texture pack retextures a mod or replaces its sounds and lang keys
 
 ## Licenses
 
-Each mod keeps the license of the mod it was ported from; see its `mod.toml`.
+Each mod has its own `LICENSE` file. Ports follow the original mod's license, and ports of mods released without
+one carry a free non-commercial use notice that leaves all rights with the original authors. See [LICENSE](LICENSE).

@@ -3,7 +3,7 @@ version = "0.1.0"
 name = "Wireless Redstone"
 description = "Port of ali4z's Wireless Redstone 1.4 and its Clocker, Power Configurator, Remote, Sniffer and Triangulator addons"
 authors = ["ali4z", "b173 port"]
-license = "see the original mod, assets extracted from the user's jar"
+license = "not owned by the port, rights stay with the original authors, free non-commercial use, see LICENSE"
 api = "2.0"
 side = "both"
 
