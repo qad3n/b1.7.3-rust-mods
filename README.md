@@ -3,13 +3,16 @@
 Mods ported to the b1.7.3_rewrite mod loader. Each folder is a project of its own: its own `Cargo.toml`, `mod.toml`,
 sources, tools and status notes. One `.bmod` per folder runs on both the client and the server.
 
-| Folder | Mod | Ported from |
-|---|---|---|
-| `aether/` | The Aether (Aether Legacy) | 1.7.10 v1.1.2.5 |
-| `spc/` | Single Player Commands (modern, minimal redesign) | b1.7.3 v2.11.1 |
-| `rei/` | Roughly Enough Items (item list, recipes and cheat mode only) | Fabric 16.0.799 |
-| `twilightforest/` | The Twilight Forest | 1.7.10 2.4.3 |
-| `discs/` | Music Discs (the nine C418 discs of Beta 1.9) | own mod |
+| Folder | Mod | Ported from | Original |
+|---|---|---|---|
+| `aether/` | The Aether (Aether Legacy) | 1.7.10 v1.1.2.5 | [Modrinth](https://modrinth.com/mod/aether/version/1.7.10-v1.1.2.5) |
+| `buildcraft/` | BuildCraft (Core, Transport, Energy, Factory, Builders) | b1.7.3 2.1.1 | [archive](https://mcarchive.net/mods/buildcraft) |
+| `ic2/` | IndustrialCraft 2 | b1.7.3 v1.00 | [archive](https://mcarchive.net/mods/ic2) |
+| `spc/` | Single Player Commands (modern, minimal redesign) | b1.7.3 v2.11.1 | [archive](https://mcarchive.net/mods/singleplayercommands) |
+| `rei/` | Roughly Enough Items (item list, recipes and cheat mode only) | Fabric 16.0.799 | [Modrinth](https://modrinth.com/mod/rei) |
+| `twilightforest/` | The Twilight Forest | 1.7.10 2.4.3 | [CurseForge](https://www.curseforge.com/minecraft/mc-mods/the-twilight-forest) |
+| `wirelessredstone/` | Wireless Redstone and its five addons | beta 1.4 | [forum thread](https://www.minecraftforum.net/forums/mapping-and-modding-java-edition/minecraft-mods/1273821-1-4-7-wireless-redstone-v1-6-1) |
+| `discs/` | Music Discs (the nine C418 discs of Beta 1.9) | own mod | |
 
 ## Building a mod
 

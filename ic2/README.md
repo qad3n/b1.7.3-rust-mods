@@ -3,6 +3,8 @@
 Port of IndustrialCraft 2 v1.00 for beta 1.7.3 to the b1.7.3_rewrite mod loader. One `.bmod` runs on the client
 and the server. Needs loader API 1.33.
 
+Original mod: IndustrialCraft 2 v1.00 from the [mod archive](https://mcarchive.net/mods/ic2) or the [IC2 wiki downloads](https://wiki.industrial-craft.net/Download).
+
 ## Assets
 
 The textures, gui images and armor layers belong to the original authors and are not in this repository or in the `.bmod`. Put your own

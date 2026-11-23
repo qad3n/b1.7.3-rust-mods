@@ -3,6 +3,8 @@
 Port of BuildCraft 2.1.1 (Core, Transport, Energy, Factory and Builders) to the b1.7.3_rewrite mod loader as one mod.
 One `.bmod` runs on the client and the server. Needs loader API 1.33.
 
+Original mod: BuildCraft 2.1.1 from the [mod archive](https://mcarchive.net/mods/buildcraft). Current BuildCraft lives on its [official site](https://www.mod-buildcraft.com/).
+
 ## Assets
 
 The textures and gui images belong to the original authors and are not in this repository or in the `.bmod`. Put your own `BuildCraft Core 2.1.1.zip`,

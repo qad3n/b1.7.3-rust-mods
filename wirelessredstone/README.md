@@ -4,6 +4,8 @@ Port of ali4z's Wireless Redstone 1.4 for Minecraft beta, with its five addons (
 Configurator 0.5, Wireless Remote 0.4, Wireless Sniffer 0.5, Wireless Triangulator 0.4), to the b1.7.3_rewrite mod
 loader as one mod. One `.bmod` runs on the client and the server.
 
+Original mod: ali4z's [forum thread](https://www.minecraftforum.net/forums/mapping-and-modding-java-edition/minecraft-mods/1273821-1-4-7-wireless-redstone-v1-6-1) and [SourceForge](https://sourceforge.net/projects/wirelessredston/). The thread now covers later versions.
+
 ## Assets
 
 The textures belong to the original author and are not in this repository or in the `.bmod`. Put your own copies of the six original zips

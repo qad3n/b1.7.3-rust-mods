@@ -3,6 +3,8 @@
 Small port of Roughly Enough Items (Fabric 16.0.799) to the b1.7.3_rewrite mod loader: item list, search, recipe pages
 and cheat mode. One `.bmod` runs on the client and the server.
 
+Original mod: [Roughly Enough Items](https://modrinth.com/mod/rei), source on [GitHub](https://github.com/shedaniel/RoughlyEnoughItems).
+
 ## Assets
 
 The lang strings belong to the original authors and are not in this repository or in the `.bmod`. Put your own

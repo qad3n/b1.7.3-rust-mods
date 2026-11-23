@@ -3,6 +3,8 @@
 Port of Aether Legacy 1.7.10 v1.1.2.5 to the b1.7.3_rewrite mod loader. One `.bmod` runs on the client and the
 server.
 
+Original mod: [Aether Legacy 1.7.10 v1.1.2.5](https://modrinth.com/mod/aether/version/1.7.10-v1.1.2.5), also on [CurseForge](https://www.curseforge.com/minecraft/mc-mods/aether).
+
 ## Assets
 
 The textures, sounds and lang files are All Rights Reserved by the original authors and are not in this repository or in the `.bmod`. Put your own
