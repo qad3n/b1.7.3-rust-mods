@@ -431,6 +431,12 @@ impl Overlay for Equipment
             None => inside([x, y], [panel::LEFT, panel::TOP, panel::WIDTH, panel::HEIGHT]),
         }
     }
+
+    // the open panel hides what sits under it such as the inventory effect boxes
+    fn covered(&mut self, x: i32, y: i32) -> bool
+    {
+        SHOWN.with(Cell::get) && inside([x, y], [panel::LEFT, panel::TOP, panel::WIDTH, panel::HEIGHT])
+    }
 }
 
 mod ability
